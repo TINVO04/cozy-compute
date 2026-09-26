@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+playwright-report/
+test-results/
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+backups/
+*.tsbuildinfo
+gamevps/
+*.db
+*.db-*

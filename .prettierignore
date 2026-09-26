@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+dist
+coverage
+ai_social_mmo_claude_opus_plan
+apps/desktop/src-tauri/target
+apps/desktop/src-tauri/gen

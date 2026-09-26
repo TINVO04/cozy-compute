@@ -1,0 +1,292 @@
+export type ItemType = 'clothing' | 'furniture';
+export type ClothingSlot = 'hat' | 'top' | 'face';
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
+
+export const RARITY_LABELS: Record<Rarity, string> = {
+  common: 'Questionable',
+  rare: 'Why Do You Own This?',
+  epic: 'Unreasonably Expensive',
+  legendary: 'I Regret Everything',
+};
+
+export interface ItemDefinitionSeed {
+  id: string;
+  type: ItemType;
+  name: string;
+  description: string;
+  rarity: Rarity;
+  coinPrice: number;
+  /** Sprite key used by the client renderer. */
+  sprite: string;
+  slot?: ClothingSlot;
+  /** Furniture footprint in apartment tiles. */
+  size?: { w: number; h: number };
+  /** Apartment score contribution for furniture. */
+  decor?: number;
+}
+
+export const ITEM_SEEDS: ItemDefinitionSeed[] = [
+  // clothing: hats
+  {
+    id: 'hat_beanie_plum',
+    type: 'clothing',
+    slot: 'hat',
+    sprite: 'beanie:#7a4b8c',
+    name: 'Plum Beanie',
+    rarity: 'common',
+    coinPrice: 120,
+    description: 'Keeps exactly one thought warm.',
+  },
+  {
+    id: 'hat_cap_mint',
+    type: 'clothing',
+    slot: 'hat',
+    sprite: 'cap:#3e9b7a',
+    name: 'Mint Dad Cap',
+    rarity: 'common',
+    coinPrice: 150,
+    description: 'Comes with unsolicited grilling advice.',
+  },
+  {
+    id: 'hat_chef',
+    type: 'clothing',
+    slot: 'hat',
+    sprite: 'chef:#f7f4ee',
+    name: 'Suspicious Chef Hat',
+    rarity: 'rare',
+    coinPrice: 420,
+    description: 'You have never cooked. The hat does not know that.',
+  },
+  {
+    id: 'hat_cone',
+    type: 'clothing',
+    slot: 'hat',
+    sprite: 'cone:#ef7a3a',
+    name: 'Traffic Cone',
+    rarity: 'epic',
+    coinPrice: 1200,
+    description: 'Found on the street. Legally ambiguous.',
+  },
+  {
+    id: 'hat_crown',
+    type: 'clothing',
+    slot: 'hat',
+    sprite: 'crown:#e6b84a',
+    name: 'Crown of Mild Importance',
+    rarity: 'legendary',
+    coinPrice: 4800,
+    description: 'Rule over a kingdom of three chairs.',
+  },
+  // clothing: tops
+  {
+    id: 'top_hoodie_coral',
+    type: 'clothing',
+    slot: 'top',
+    sprite: 'hoodie:#e0735b',
+    name: 'Coral Hoodie',
+    rarity: 'common',
+    coinPrice: 180,
+    description: 'Pocket contains a receipt from 2019.',
+  },
+  {
+    id: 'top_tee_sky',
+    type: 'clothing',
+    slot: 'top',
+    sprite: 'tee:#6f9fe0',
+    name: 'Sky Tee',
+    rarity: 'common',
+    coinPrice: 140,
+    description: 'A shirt. Blue. That is the whole story.',
+  },
+  {
+    id: 'top_raincoat',
+    type: 'clothing',
+    slot: 'top',
+    sprite: 'raincoat:#e6c63a',
+    name: 'Pier Raincoat',
+    rarity: 'rare',
+    coinPrice: 520,
+    description: 'Smells faintly of fish and ambition.',
+  },
+  {
+    id: 'top_suit',
+    type: 'clothing',
+    slot: 'top',
+    sprite: 'suit:#2f3350',
+    name: 'Job Interview Suit',
+    rarity: 'epic',
+    coinPrice: 1500,
+    description: 'Dress like you owe money.',
+  },
+  {
+    id: 'top_sweater_duck',
+    type: 'clothing',
+    slot: 'top',
+    sprite: 'sweater:#3e9b7a',
+    name: 'Duck Sweater',
+    rarity: 'legendary',
+    coinPrice: 5200,
+    description: 'The duck on it is watching.',
+  },
+  // clothing: face
+  {
+    id: 'face_glasses',
+    type: 'clothing',
+    slot: 'face',
+    sprite: 'glasses:#2b2320',
+    name: 'Round Glasses',
+    rarity: 'common',
+    coinPrice: 100,
+    description: '+2 perceived intelligence.',
+  },
+  {
+    id: 'face_shades',
+    type: 'clothing',
+    slot: 'face',
+    sprite: 'shades:#1c1c28',
+    name: 'Too-Cool Shades',
+    rarity: 'rare',
+    coinPrice: 380,
+    description: 'Worn indoors, at night, with confidence.',
+  },
+  {
+    id: 'face_mustache',
+    type: 'clothing',
+    slot: 'face',
+    sprite: 'mustache:#5a3a22',
+    name: 'Distinguished Mustache',
+    rarity: 'epic',
+    coinPrice: 900,
+    description: 'Glued on. Nobody needs to know.',
+  },
+  // furniture
+  {
+    id: 'furn_chair',
+    type: 'furniture',
+    sprite: 'chair:#b4553f',
+    size: { w: 1, h: 1 },
+    decor: 2,
+    name: 'Wobbly Chair',
+    rarity: 'common',
+    coinPrice: 90,
+    description: 'Three good legs out of four.',
+  },
+  {
+    id: 'furn_table',
+    type: 'furniture',
+    sprite: 'table:#8a5a3b',
+    size: { w: 2, h: 1 },
+    decor: 3,
+    name: 'Snack Table',
+    rarity: 'common',
+    coinPrice: 160,
+    description: 'Rated for up to one snack.',
+  },
+  {
+    id: 'furn_plant',
+    type: 'furniture',
+    sprite: 'plant:#3e9b7a',
+    size: { w: 1, h: 1 },
+    decor: 3,
+    name: 'Unkillable Fern',
+    rarity: 'common',
+    coinPrice: 110,
+    description: 'It is plastic. That is the secret.',
+  },
+  {
+    id: 'furn_rug',
+    type: 'furniture',
+    sprite: 'rug:#7a4b8c',
+    size: { w: 2, h: 2 },
+    decor: 4,
+    name: 'Plum Rug',
+    rarity: 'common',
+    coinPrice: 200,
+    description: 'Ties the room together, allegedly.',
+  },
+  {
+    id: 'furn_lamp',
+    type: 'furniture',
+    sprite: 'lamp:#e6b84a',
+    size: { w: 1, h: 1 },
+    decor: 3,
+    name: 'Moody Lamp',
+    rarity: 'common',
+    coinPrice: 130,
+    description: 'Only turns on when it feels seen.',
+  },
+  {
+    id: 'furn_bed',
+    type: 'furniture',
+    sprite: 'bed:#6f9fe0',
+    size: { w: 2, h: 2 },
+    decor: 5,
+    name: 'Nap Headquarters',
+    rarity: 'rare',
+    coinPrice: 480,
+    description: 'Professional Procrastinator certified.',
+  },
+  {
+    id: 'furn_sofa',
+    type: 'furniture',
+    sprite: 'sofa:#e0735b',
+    size: { w: 2, h: 1 },
+    decor: 5,
+    name: 'Sofa So Good',
+    rarity: 'rare',
+    coinPrice: 540,
+    description: 'Contains at least 40 lost coins.',
+  },
+  {
+    id: 'furn_bookshelf',
+    type: 'furniture',
+    sprite: 'bookshelf:#8a5a3b',
+    size: { w: 2, h: 1 },
+    decor: 5,
+    name: 'Unread Bookshelf',
+    rarity: 'rare',
+    coinPrice: 460,
+    description: 'Every book is "on the list".',
+  },
+  {
+    id: 'furn_tv',
+    type: 'furniture',
+    sprite: 'tv:#2f3350',
+    size: { w: 2, h: 1 },
+    decor: 6,
+    name: 'Enormous TV',
+    rarity: 'epic',
+    coinPrice: 1300,
+    description: 'Mostly shows loading screens.',
+  },
+  {
+    id: 'furn_aquarium',
+    type: 'furniture',
+    sprite: 'aquarium:#6fc3d8',
+    size: { w: 2, h: 1 },
+    decor: 7,
+    name: 'Judgmental Aquarium',
+    rarity: 'epic',
+    coinPrice: 1600,
+    description: 'The fish have opinions about your rug.',
+  },
+  {
+    id: 'furn_duck_statue',
+    type: 'furniture',
+    sprite: 'duckstatue:#e6c63a',
+    size: { w: 1, h: 1 },
+    decor: 12,
+    name: 'Golden Duck Statue',
+    rarity: 'legendary',
+    coinPrice: 6000,
+    description: 'I regret everything. I regret nothing.',
+  },
+];
+
+/** Items granted to every new player so housing and style are usable from minute one. */
+export const STARTER_ITEMS: { itemId: string; quantity: number }[] = [
+  { itemId: 'furn_chair', quantity: 2 },
+  { itemId: 'furn_table', quantity: 1 },
+  { itemId: 'furn_plant', quantity: 1 },
+  { itemId: 'top_tee_sky', quantity: 1 },
+];

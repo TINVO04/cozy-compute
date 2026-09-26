@@ -1,0 +1,14 @@
+{
+  "name": "@cozy/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "typecheck": "node -e \"console.log('Tauri wrapper has no TypeScript sources')\""
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.8.4"
+  }
+}

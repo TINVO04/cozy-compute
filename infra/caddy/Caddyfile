@@ -1,0 +1,19 @@
+# Production reverse proxy. Set GAME_DOMAIN before starting Caddy.
+{$GAME_DOMAIN} {
+  encode zstd gzip
+
+  @api path /api/* /auth/* /me /events* /shop* /activities* /inventory* /apartments* /ai* /internal/* /admin/*
+  handle @api { reverse_proxy api:8787 }
+
+  @realtime {
+    header Connection *Upgrade*
+    header Upgrade websocket
+  }
+  handle @realtime { reverse_proxy realtime:2567 }
+
+  handle {
+    root * /srv/web
+    try_files {path} /index.html
+    file_server
+  }
+}

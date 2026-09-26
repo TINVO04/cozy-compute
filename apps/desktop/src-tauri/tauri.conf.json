@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Cozy Compute",
+  "version": "0.1.0",
+  "identifier": "com.cozycompute.desktop",
+  "build": {
+    "beforeDevCommand": "pnpm --filter @cozy/web dev",
+    "beforeBuildCommand": "pnpm --filter @cozy/web build",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../../web/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Cozy Compute",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 1024,
+        "minHeight": 640,
+        "resizable": true
+      }
+    ],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi"],
+    "windows": { "wix": { "language": "en-US" } }
+  }
+}

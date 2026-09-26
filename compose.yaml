@@ -1,0 +1,87 @@
+name: cozy-compute
+
+x-node-env: &node-env
+  NODE_ENV: ${NODE_ENV:-development}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cozy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cozy_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-cozy}
+    ports:
+      - '${POSTGRES_HOST_PORT:-55432}:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-cozy} -d ${POSTGRES_DB:-cozy}']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'no', '--save', '']
+    ports:
+      - '${REDIS_HOST_PORT:-56379}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  # OpenAI-compatible stand-in upstream for local development and end-to-end tests.
+  # Production deployments point model deployments at real admin-configured endpoints instead.
+  mock-upstream:
+    image: node:24-alpine
+    working_dir: /app
+    command: ['node', 'server.mjs']
+    volumes:
+      - ./infra/mock-upstream:/app:ro
+    environment:
+      MOCK_UPSTREAM_KEY: ${UPSTREAM_KEY_MOCK:-mock-upstream-secret}
+    ports:
+      - '${MOCK_UPSTREAM_HOST_PORT:-4010}:4010'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4010/healthz']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    command: ['--config', '/app/config.yaml', '--port', '4000']
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cozy}:${POSTGRES_PASSWORD:-cozy_dev_password}@postgres:5432/litellm
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-cozy-dev-master}
+      LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:-sk-cozy-dev-salt-change-me}
+      STORE_MODEL_IN_DB: 'True'
+      # Upstream credentials live only here. Model deployments reference them by env var name.
+      UPSTREAM_KEY_MOCK: ${UPSTREAM_KEY_MOCK:-mock-upstream-secret}
+      UPSTREAM_KEY_1: ${UPSTREAM_KEY_1:-}
+      UPSTREAM_KEY_2: ${UPSTREAM_KEY_2:-}
+      UPSTREAM_KEY_3: ${UPSTREAM_KEY_3:-}
+    volumes:
+      - ./infra/litellm/config.yaml:/app/config.yaml:ro
+    ports:
+      - '${LITELLM_HOST_PORT:-4000}:4000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness')"
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  pgdata:

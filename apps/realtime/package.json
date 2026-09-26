@@ -1,0 +1,28 @@
+{
+  "name": "@cozy/realtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "loadtest": "tsx --env-file-if-exists=../../.env scripts/loadtest.ts"
+  },
+  "dependencies": {
+    "@colyseus/core": "^0.16.26",
+    "@colyseus/schema": "^3.0.76",
+    "@colyseus/ws-transport": "^0.16.5",
+    "@cozy/game-data": "workspace:*",
+    "ioredis": "^5.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.0",
+    "colyseus.js": "^0.16.22",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.6",
+    "vitest": "^4.0.0"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "@cozy/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
+    "migrate": "tsx --env-file-if-exists=../../.env src/migrate-cli.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "e2e:gateway": "tsx --env-file-if-exists=../../.env scripts/e2e-gateway.ts"
+  },
+  "dependencies": {
+    "@cozy/economy": "workspace:*",
+    "@cozy/game-data": "workspace:*",
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.1.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "@node-rs/argon2": "^2.0.2",
+    "fastify": "^5.6.1",
+    "ioredis": "^5.8.1",
+    "pg": "^8.16.3",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.0",
+    "@types/pg": "^8.15.5",
+    "openai": "^6.3.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.6",
+    "vitest": "^4.0.0"
+  }
+}
