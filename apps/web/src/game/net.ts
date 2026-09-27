@@ -62,7 +62,7 @@ class Net {
       console.warn('[net] join failed', err);
       const msg = err instanceof Error ? err.message : String(err);
       if (target.name === 'apartment') {
-        useUi.getState().toast({ kind: 'error', title: 'Could not enter apartment', body: msg });
+        useUi.getState().toast({ kind: 'error', title: 'Không thể vào căn hộ', body: msg });
         return this.connect({ name: 'town' });
       }
       this.scheduleRetry();
@@ -89,7 +89,7 @@ class Net {
       if (this.closedByUs) return;
       if (code === 4001) {
         useUi.getState().setConnection('offline');
-        useUi.getState().toast({ kind: 'info', title: 'You opened the game in another tab.' });
+        useUi.getState().toast({ kind: 'info', title: 'Bạn đã mở game ở một thẻ trình duyệt khác.' });
         return;
       }
       if (code === 4003) {
@@ -125,7 +125,7 @@ class Net {
   }
 
   goTown() {
-    useUi.getState().setRoom({ kind: 'town', label: 'Town' });
+    useUi.getState().setRoom({ kind: 'town', label: 'Thị trấn' });
     return this.connect({ name: 'town' });
   }
 

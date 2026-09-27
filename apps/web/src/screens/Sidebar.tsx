@@ -10,7 +10,7 @@ import { EmptyState, ErrorState, Progress } from '../ui/primitives';
 export function Sidebar({ me }: { me: Me }) {
   const [tab, setTab] = useState<'chat' | 'friends'>('chat');
   return (
-    <aside className="sidebar" aria-label="Social">
+    <aside className="sidebar" aria-label="Xã hội">
       {!me.onboarding.completed ? <Onboarding me={me} /> : null}
       <div className="side-tabs">
         <div className="tabs" role="tablist">
@@ -22,7 +22,7 @@ export function Sidebar({ me }: { me: Me }) {
             onClick={() => setTab('chat')}
           >
             <MessageCircle size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
-            Chat
+            Trò chuyện
           </button>
           <button
             role="tab"
@@ -32,7 +32,7 @@ export function Sidebar({ me }: { me: Me }) {
             onClick={() => setTab('friends')}
           >
             <Users size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
-            Friends
+            Bạn bè
           </button>
         </div>
       </div>
@@ -45,9 +45,9 @@ function Onboarding({ me }: { me: Me }) {
   const done = me.onboarding.steps.filter((s) => s.done).length;
   const total = me.onboarding.steps.length;
   return (
-    <section className="onboarding" aria-label="Newcomer checklist">
+    <section className="onboarding" aria-label="Nhiệm vụ tân thủ">
       <h3>
-        Newcomer checklist
+        Nhiệm vụ tân thủ
         <span className="pill pill-primary">
           {done}/{total}
         </span>
@@ -64,8 +64,8 @@ function Onboarding({ me }: { me: Me }) {
         ))}
       </ul>
       <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-        Finish all steps for {me.onboarding.reward.coin} Coin and {me.onboarding.reward.fame} Fame. It also
-        counts toward AI reward eligibility.
+        Hoàn thành tất cả các bước để nhận {me.onboarding.reward.coin} Xu và {me.onboarding.reward.fame} Danh
+        tiếng. Đồng thời giúp bạn đủ điều kiện nhận phần thưởng AI.
       </p>
     </section>
   );
@@ -85,11 +85,11 @@ function Chat() {
   const online = connection === 'online';
   return (
     <>
-      <div className="chat-log" ref={log} aria-live="polite" aria-label={`Chat in ${room.label}`}>
+      <div className="chat-log" ref={log} aria-live="polite" aria-label={`Trò chuyện tại ${room.label}`}>
         {chat.length === 0 ? (
           <p className="muted" style={{ fontSize: 13 }}>
-            Chat is quiet. Press <span className="kbd">Enter</span> and say hi — people nearby will see a
-            bubble over your head.
+            Kênh trò chuyện đang yên tĩnh. Nhấn <span className="kbd">Enter</span> để gửi lời chào — người
+            chơi ở gần sẽ nhìn thấy bong bóng trò chuyện trên đầu bạn.
           </p>
         ) : (
           chat.map((c) => (
@@ -112,7 +112,7 @@ function Chat() {
         <input
           id="chat-input"
           className="input"
-          placeholder={online ? 'Say something…' : 'Reconnecting…'}
+          placeholder={online ? 'Nhập tin nhắn…' : 'Đang kết nối lại…'}
           value={text}
           maxLength={140}
           disabled={!online}
@@ -120,12 +120,12 @@ function Chat() {
           onKeyDown={(e) => {
             if (e.key === 'Escape') (e.target as HTMLInputElement).blur();
           }}
-          aria-label="Chat message"
+          aria-label="Nội dung trò chuyện"
         />
         <button
           className="btn btn-primary"
           style={{ width: 40, padding: 0 }}
-          aria-label="Send"
+          aria-label="Gửi"
           disabled={!online || !text.trim()}
         >
           <Send size={16} />
@@ -148,8 +148,8 @@ function FriendsList() {
     return (
       <EmptyState
         icon={<UserPlus size={22} />}
-        title="No friends yet"
-        body="Click on any player in town or in chat to see their card and add them as a friend."
+        title="Chưa có bạn bè"
+        body="Nhấp vào bất kỳ người chơi nào trong thị trấn hoặc trong khung trò chuyện để xem hồ sơ và kết bạn."
       />
     );
   const sorted = [...friends.data].sort((a, b) => Number(b.online) - Number(a.online));
@@ -168,8 +168,8 @@ function FriendsList() {
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 600 }}>{f.displayName}</div>
             <div className="muted" style={{ fontSize: 12 }}>
-              {f.online ? (f.location ?? 'Online') : 'Offline'}
-              {f.mutual ? ' · Mutual' : ''}
+              {f.online ? (f.location ?? 'Đang online') : 'Ngoại tuyến'}
+              {f.mutual ? ' · Bạn chung' : ''}
             </div>
           </div>
         </div>

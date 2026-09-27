@@ -17,20 +17,20 @@ interface ActivityRow {
 }
 
 const AI_FIELDS: [string, string, string?][] = [
-  ['coinPerUsd', 'Coin per $1 of AI Credit', 'Exchange rate for Coin → AI Credit.'],
-  ['weeklyPoolCents', 'Weekly reward pool (cents)', 'Total AI Credit that can be minted per UTC week.'],
-  ['perUserMonthlyCapCents', 'Per-player monthly cap (cents)'],
-  ['minMintCents', 'Minimum redemption (cents)'],
-  ['maxMintCents', 'Maximum single redemption (cents)'],
-  ['maxActiveKeys', 'Max active keys per player'],
-  ['keyTtlDays', 'Key lifetime (days)'],
-  ['minKeyBudgetCents', 'Minimum key budget (cents)'],
-  ['minAccountAgeHours', 'Eligibility: account age (hours)'],
-  ['minUniqueActivities', 'Eligibility: distinct activities'],
-  ['minFame', 'Eligibility: Fame'],
-  ['minTrustScore', 'Eligibility: trust score (0–100)'],
-  ['cooldownHours', 'Cooldown between redemptions (hours)'],
-  ['keySharingIpThreshold', 'Auto-suspend key after N distinct IPs/day'],
+  ['coinPerUsd', 'Xu đổi lấy $1 AI Credit', 'Tỷ giá quy đổi Xu → AI Credit.'],
+  ['weeklyPoolCents', 'Quỹ thưởng tuần (cent)', 'Tổng AI Credit tối đa được tạo mỗi tuần (UTC).'],
+  ['perUserMonthlyCapCents', 'Hạn mức tháng mỗi người chơi (cent)'],
+  ['minMintCents', 'Mức đổi tối thiểu (cent)'],
+  ['maxMintCents', 'Mức đổi tối đa một lần (cent)'],
+  ['maxActiveKeys', 'Số khóa hoạt động tối đa mỗi người'],
+  ['keyTtlDays', 'Thời hạn khóa (ngày)'],
+  ['minKeyBudgetCents', 'Ngân sách khóa tối thiểu (cent)'],
+  ['minAccountAgeHours', 'Điều kiện: Tuổi tài khoản (giờ)'],
+  ['minUniqueActivities', 'Điều kiện: Hoạt động khác nhau đã tham gia'],
+  ['minFame', 'Điều kiện: Danh tiếng'],
+  ['minTrustScore', 'Điều kiện: Điểm tin cậy (0–100)'],
+  ['cooldownHours', 'Thời gian chờ giữa các lần đổi (giờ)'],
+  ['keySharingIpThreshold', 'Tự động tạm khóa nếu vượt quá N IP khác nhau/ngày'],
 ];
 
 export function PolicyPage() {
@@ -56,30 +56,32 @@ export function PolicyPage() {
   const savePolicy = useMutation({
     mutationFn: (p: AiPolicy) => api('/admin/settings/ai_policy', { method: 'PUT', body: p }),
     onSuccess: () => {
-      useUi
-        .getState()
-        .toast({ kind: 'success', title: 'Reward policy saved', body: 'Recorded in the audit log.' });
+      useUi.getState().toast({
+        kind: 'success',
+        title: 'Đã lưu chính sách phần thưởng',
+        body: 'Đã ghi lại vào nhật ký kiểm toán.',
+      });
       setConfirmPause(false);
       void qc.invalidateQueries({ queryKey: ['admin'] });
     },
-    onError: (err) => toastError(err, 'Could not save'),
+    onError: (err) => toastError(err, 'Không thể lưu chính sách'),
   });
   const saveSchedule = useMutation({
     mutationFn: (p: Settings['event_schedule']) =>
       api('/admin/settings/event_schedule', { method: 'PUT', body: p }),
     onSuccess: () => {
-      useUi.getState().toast({ kind: 'success', title: 'Event schedule saved' });
+      useUi.getState().toast({ kind: 'success', title: 'Đã lưu lịch sự kiện' });
       void qc.invalidateQueries({ queryKey: ['admin', 'settings'] });
     },
-    onError: (err) => toastError(err, 'Could not save'),
+    onError: (err) => toastError(err, 'Không thể lưu lịch'),
   });
   const scheduleNow = useMutation({
     mutationFn: () => api<{ startsAt: string }>('/admin/events/schedule', { body: { startInSeconds: 60 } }),
     onSuccess: (r) =>
       useUi.getState().toast({
         kind: 'success',
-        title: 'Event scheduled',
-        body: `Starts at ${new Date(r.startsAt).toLocaleTimeString()}`,
+        title: 'Đã lên lịch sự kiện',
+        body: `Bắt đầu lúc ${new Date(r.startsAt).toLocaleTimeString('vi-VN')}`,
       }),
     onError: (err) => toastError(err),
   });
@@ -93,8 +95,10 @@ export function PolicyPage() {
     <div className="stack-lg">
       <header className="admin-head">
         <div>
-          <h1>Rewards & quotas</h1>
-          <p className="muted">Every change here applies immediately and is written to the audit log.</p>
+          <h1>Phần thưởng & Hạn mức</h1>
+          <p className="muted">
+            Mọi thay đổi tại đây áp dụng ngay lập tức và được ghi vào nhật ký kiểm toán.
+          </p>
         </div>
       </header>
 
@@ -108,28 +112,28 @@ export function PolicyPage() {
           <PlayCircle size={28} color="var(--success)" />
         )}
         <div style={{ flex: 1 }}>
-          <strong>Redemptions are {paused ? 'paused' : 'open'}</strong>
+          <strong>Hệ thống đổi thưởng đang {paused ? 'tạm dừng' : 'mở'}</strong>
           <div className="muted" style={{ fontSize: 13 }}>
             {paused
-              ? 'Players cannot mint AI Credit, create or rotate keys. Existing keys keep working.'
-              : 'Emergency stop for all new AI redemptions.'}
+              ? 'Người chơi không thể đúc AI Credit, tạo hoặc xoay khóa. Các khóa hiện tại vẫn hoạt động.'
+              : 'Dừng khẩn cấp toàn bộ hoạt động đổi thưởng AI mới.'}
           </div>
         </div>
         <Button variant={paused ? 'primary' : 'danger'} onClick={() => setConfirmPause(true)}>
-          {paused ? 'Resume redemptions' : 'Pause all redemptions'}
+          {paused ? 'Mở lại đổi thưởng' : 'Tạm dừng tất cả đổi thưởng'}
         </Button>
       </section>
 
       <section className="card" style={{ padding: 20 }}>
         <div className="section-title">
-          <h3>AI reward policy</h3>
+          <h3>Chính sách thưởng AI</h3>
           <label className="checkbox">
             <input
               type="checkbox"
               checked={Boolean(policy.rolloverEnabled)}
               onChange={(e) => setPolicy({ ...policy, rolloverEnabled: e.target.checked })}
             />
-            Roll unused pool into next week
+            Chuyển quỹ chưa dùng sang tuần sau
           </label>
         </div>
         <div className="form-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
@@ -151,13 +155,13 @@ export function PolicyPage() {
             <Switch
               checked={Boolean(policy.requireOnboarding)}
               onChange={(v) => setPolicy({ ...policy, requireOnboarding: v })}
-              label="Require newcomer checklist"
+              label="Yêu cầu hoàn thành danh sách tân thủ"
             />
           </div>
         </div>
         <div className="row" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
           <Button variant="ghost" disabled={!dirty} onClick={() => setPolicy(settings.data.ai_policy)}>
-            Reset
+            Khôi phục
           </Button>
           <Button
             variant="primary"
@@ -165,27 +169,27 @@ export function PolicyPage() {
             loading={savePolicy.isPending}
             onClick={() => savePolicy.mutate({ ...policy, redemptionsPaused: paused })}
           >
-            Save policy
+            Lưu chính sách
           </Button>
         </div>
       </section>
 
       <section className="card" style={{ padding: 20 }}>
         <div className="section-title">
-          <h3>Events</h3>
+          <h3>Sự kiện</h3>
           <Button size="sm" loading={scheduleNow.isPending} onClick={() => scheduleNow.mutate()}>
-            <CalendarPlus size={14} /> Start an event in 60s
+            <CalendarPlus size={14} /> Bắt đầu sự kiện sau 60s
           </Button>
         </div>
         <div className="form-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
           {(
             [
-              ['intervalMinutes', 'Minutes between events'],
-              ['lobbyMinutes', 'Lobby length (minutes)'],
-              ['durationSeconds', 'Event length (seconds)'],
-              ['duckCount', 'Ducks per event'],
-              ['minPlayers', 'Minimum players'],
-              ['maxPlayers', 'Maximum players'],
+              ['intervalMinutes', 'Thời gian giữa các sự kiện (phút)'],
+              ['lobbyMinutes', 'Thời gian phòng chờ (phút)'],
+              ['durationSeconds', 'Thời lượng sự kiện (giây)'],
+              ['duckCount', 'Số lượng vịt mỗi sự kiện'],
+              ['minPlayers', 'Số người chơi tối thiểu'],
+              ['maxPlayers', 'Số người chơi tối đa'],
             ] as const
           ).map(([k, label]) => (
             <div key={k} className="field">
@@ -203,7 +207,7 @@ export function PolicyPage() {
             <Switch
               checked={Boolean(schedule.autoSchedule)}
               onChange={(v) => setSchedule({ ...schedule, autoSchedule: v })}
-              label="Schedule automatically"
+              label="Tự động lên lịch sự kiện"
             />
           </div>
         </div>
@@ -213,14 +217,14 @@ export function PolicyPage() {
             loading={saveSchedule.isPending}
             onClick={() => saveSchedule.mutate(schedule)}
           >
-            Save schedule
+            Lưu lịch sự kiện
           </Button>
         </div>
       </section>
 
       <section>
         <div className="section-title">
-          <h3>Activity rewards</h3>
+          <h3>Phần thưởng hoạt động</h3>
         </div>
         {activities.isPending ? (
           <LoadingState rows={2} />
@@ -234,18 +238,18 @@ export function PolicyPage() {
       {confirmPause ? (
         <ConfirmDialog
           danger={!paused}
-          title={paused ? 'Resume AI redemptions?' : 'Pause all AI redemptions?'}
+          title={paused ? 'Mở lại hệ thống đổi thưởng AI?' : 'Tạm dừng tất cả đổi thưởng AI?'}
           body={
             paused ? (
-              'Players will be able to mint AI Credit and create keys again.'
+              'Người chơi sẽ có thể đúc AI Credit và tạo khóa trở lại.'
             ) : (
               <span className="row" style={{ alignItems: 'flex-start' }}>
-                <AlertTriangle size={16} /> Players will immediately be unable to mint AI Credit or
-                create/rotate keys. Existing keys keep working.
+                <AlertTriangle size={16} /> Người chơi sẽ ngay lập tức không thể đúc AI Credit hoặc tạo/xoay
+                khóa. Các khóa hiện tại vẫn hoạt động bình thường.
               </span>
             )
           }
-          confirmLabel={paused ? 'Resume' : 'Pause redemptions'}
+          confirmLabel={paused ? 'Mở lại' : 'Tạm dừng đổi thưởng'}
           loading={savePolicy.isPending}
           onConfirm={() => savePolicy.mutate({ ...settings.data.ai_policy, redemptionsPaused: !paused })}
           onClose={() => setConfirmPause(false)}
@@ -262,19 +266,19 @@ function ActivityEditor({ row }: { row: ActivityRow }) {
   const save = useMutation({
     mutationFn: () => api(`/admin/activities/${row.slug}`, { method: 'PUT', body: { enabled, config: cfg } }),
     onSuccess: () => {
-      useUi.getState().toast({ kind: 'success', title: `${row.slug} updated` });
+      useUi.getState().toast({ kind: 'success', title: `Đã cập nhật ${row.slug}` });
       void qc.invalidateQueries({ queryKey: ['admin', 'activities'] });
     },
-    onError: (err) => toastError(err, 'Could not save'),
+    onError: (err) => toastError(err, 'Không thể lưu'),
   });
   return (
     <div className="card" style={{ padding: 16, marginBottom: 12 }}>
       <div className="row between" style={{ marginBottom: 12 }}>
         <strong style={{ fontFamily: 'var(--font-mono)' }}>{row.slug}</strong>
         <div className="row">
-          <Switch checked={enabled} onChange={setEnabled} label="Enabled" />
+          <Switch checked={enabled} onChange={setEnabled} label="Kích hoạt" />
           <Button size="sm" variant="primary" loading={save.isPending} onClick={() => save.mutate()}>
-            Save
+            Lưu
           </Button>
         </div>
       </div>

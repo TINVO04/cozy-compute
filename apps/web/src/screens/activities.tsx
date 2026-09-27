@@ -11,14 +11,14 @@ function rewardToast(coin: number, fame: number, title: string, tired?: boolean)
   useUi.getState().toast({
     kind: 'reward',
     title,
-    body: `+${num(coin)} Coin${fame ? ` · +${fame} Fame` : ''}${tired ? ' · Daily soft cap reached, rewards reduced' : ''}`,
+    body: `+${num(coin)} Xu${fame ? ` · +${fame} Danh tiếng` : ''}${tired ? ' · Đã đạt giới hạn mềm hàng ngày, phần thưởng giảm' : ''}`,
   });
 }
 
 function errorToast(err: unknown) {
   useUi
     .getState()
-    .toast({ kind: 'error', title: err instanceof ApiError ? err.message : 'Something went wrong' });
+    .toast({ kind: 'error', title: err instanceof ApiError ? err.message : 'Đã có lỗi xảy ra' });
   play('error');
 }
 
@@ -93,8 +93,8 @@ export function FishingActivity() {
         setPhase({
           kind: 'result',
           good: true,
-          title: `You caught a ${r.fish.name}!`,
-          body: `A ${r.fish.rarity} catch.`,
+          title: `Bạn đã câu được ${r.fish.name}!`,
+          body: `Một chiến lợi phẩm cấp ${r.fish.rarity}.`,
           coin: r.coin,
           fame: r.fame,
         });
@@ -105,7 +105,7 @@ export function FishingActivity() {
         setPhase({
           kind: 'result',
           good: false,
-          title: r.outcome === 'too_early' ? 'Too early!' : 'It got away',
+          title: r.outcome === 'too_early' ? 'Quá sớm rồi!' : 'Cá đã thoát mất',
           body: r.message ?? '',
         });
       }
@@ -149,7 +149,7 @@ export function FishingActivity() {
 
   const biting = phase.kind === 'bite';
   return (
-    <div className="activity" role="dialog" aria-label="Fishing">
+    <div className="activity" role="dialog" aria-label="Câu cá">
       <div className="activity-card">
         <div
           className="activity-art"
@@ -169,34 +169,34 @@ export function FishingActivity() {
         <div className="activity-body" aria-live="assertive">
           {phase.kind === 'idle' ? (
             <>
-              <h3>Wobbly Pier</h3>
+              <h3>Cầu Tàu Lắc Lư</h3>
               <p className="muted">
-                Cast your line and wait for a bite. React fast when the bobber dips — quicker reactions land
-                rarer fish.
+                Thả cần câu và chờ cá cắn câu. Hãy phản xạ thật nhanh khi phao câu chìm xuống — kéo càng nhanh
+                càng dễ bắt được cá hiếm.
               </p>
               <Button variant="primary" size="lg" onClick={() => void cast()}>
-                Cast line <span className="kbd">Space</span>
+                Thả câu <span className="kbd">Space</span>
               </Button>
             </>
           ) : phase.kind === 'starting' ? (
-            <h3>Casting…</h3>
+            <h3>Đang thả câu…</h3>
           ) : phase.kind === 'waiting' ? (
             <>
-              <h3>Waiting for a bite…</h3>
-              <p className="muted">Don’t pull too early.</p>
+              <h3>Đang chờ cá cắn câu…</h3>
+              <p className="muted">Đừng giật cần quá sớm nhé.</p>
               <Button size="lg" onClick={() => void reel()}>
-                Reel in <span className="kbd">Space</span>
+                Kéo cần <span className="kbd">Space</span>
               </Button>
             </>
           ) : phase.kind === 'bite' ? (
             <>
-              <h3 style={{ color: 'var(--reward)' }}>Something bit! Reel it in!</h3>
+              <h3 style={{ color: 'var(--reward)' }}>Cá cắn câu rồi! Giật cần ngay!</h3>
               <Button variant="reward" size="lg" onClick={() => void reel()}>
-                Reel in now <span className="kbd">Space</span>
+                Giật cần ngay <span className="kbd">Space</span>
               </Button>
             </>
           ) : phase.kind === 'reeling' ? (
-            <h3>Reeling…</h3>
+            <h3>Đang kéo cần…</h3>
           ) : (
             <>
               <h3>{phase.title}</h3>
@@ -204,17 +204,17 @@ export function FishingActivity() {
               {phase.good ? <Reward coin={phase.coin ?? 0} fame={phase.fame ?? 0} /> : null}
               <div className="row" style={{ justifyContent: 'center' }}>
                 <Button variant="ghost" onClick={() => close(null)}>
-                  Done
+                  Xong
                 </Button>
                 <Button variant="primary" onClick={() => void cast()}>
-                  Cast again <span className="kbd">Space</span>
+                  Câu tiếp <span className="kbd">Space</span>
                 </Button>
               </div>
             </>
           )}
           {phase.kind !== 'result' && phase.kind !== 'idle' ? null : phase.kind === 'idle' ? (
             <Button variant="ghost" onClick={() => close(null)}>
-              Leave pier
+              Rời cầu tàu
             </Button>
           ) : null}
         </div>
@@ -288,18 +288,18 @@ export function CafeActivity() {
         play('coin');
         setResult({
           good: true,
-          title: 'Order served!',
-          body: `${run.customer} looks almost pleased.`,
+          title: 'Đã phục vụ món!',
+          body: `${run.customer} trông có vẻ rất hài lòng.`,
           coin: r.coin,
           fame: r.fame,
         });
-        rewardToast(r.coin ?? 0, r.fame ?? 0, 'Drink served', r.tired);
+        rewardToast(r.coin ?? 0, r.fame ?? 0, 'Đã giao đồ uống', r.tired);
         refresh();
       } else {
         play('error');
         setResult({
           good: false,
-          title: r.outcome === 'late' ? 'Too slow' : 'Wrong order',
+          title: r.outcome === 'late' ? 'Quá chậm rồi' : 'Sai công thức món',
           body: r.message ?? '',
         });
       }
@@ -340,7 +340,7 @@ export function CafeActivity() {
   const left = run ? Math.max(0, run.timeLimitMs - (Date.now() - run.started)) : 0;
 
   return (
-    <div className="activity" role="dialog" aria-label="Cafe shift">
+    <div className="activity" role="dialog" aria-label="Ca làm quán cà phê">
       <div className="activity-card" style={{ width: 'min(520px, calc(100% - 32px))' }}>
         <div
           className="activity-art"
@@ -353,13 +353,13 @@ export function CafeActivity() {
             <>
               <div className="row between">
                 <span className="muted" style={{ fontSize: 13 }}>
-                  Customer: <strong style={{ color: 'var(--ink)' }}>{run.customer}</strong>
+                  Khách hàng: <strong style={{ color: 'var(--ink)' }}>{run.customer}</strong>
                 </span>
                 <span className="timer-ring" style={{ color: left < 5000 ? 'var(--danger)' : 'var(--ink)' }}>
                   {(left / 1000).toFixed(1)}s
                 </span>
               </div>
-              <div className="order-strip" aria-label="Order">
+              <div className="order-strip" aria-label="Món yêu cầu">
                 {run.order.map((o, i) => (
                   <div key={i} className={`order-slot ${seq[i] ? (seq[i] === o ? 'filled' : 'wrong') : ''}`}>
                     {label(o)}
@@ -367,8 +367,8 @@ export function CafeActivity() {
                 ))}
               </div>
               <p className="muted" style={{ fontSize: 12 }}>
-                Add ingredients in order. Keys <span className="kbd">1</span>–<span className="kbd">8</span>{' '}
-                work too.
+                Thêm nguyên liệu theo thứ tự. Bạn cũng có thể dùng phím <span className="kbd">1</span>–
+                <span className="kbd">8</span>.
               </p>
               <div className="ingredients">
                 {CAFE_INGREDIENTS.map((ing, i) => (
@@ -387,7 +387,7 @@ export function CafeActivity() {
                   disabled={!seq.length || busy}
                   onClick={() => setSeq(seq.slice(0, -1))}
                 >
-                  Undo last
+                  Hoàn tác bước trước
                 </Button>
               </div>
             </>
@@ -398,26 +398,26 @@ export function CafeActivity() {
               {result.good ? <Reward coin={result.coin ?? 0} fame={result.fame ?? 0} /> : null}
               <div className="row" style={{ justifyContent: 'center' }}>
                 <Button variant="ghost" onClick={() => close(null)}>
-                  End shift
+                  Hết ca làm
                 </Button>
                 <Button variant="primary" loading={busy} onClick={() => void start()}>
-                  Next customer <span className="kbd">Space</span>
+                  Khách tiếp theo <span className="kbd">Space</span>
                 </Button>
               </div>
             </>
           ) : (
             <>
-              <h3>Bean There Cafe</h3>
+              <h3>Tiệm Cà Phê Bean There</h3>
               <p className="muted">
-                Customers shout an order. Build the drink in the exact order before they lose patience. Faster
-                service pays a bigger tip.
+                Khách hàng sẽ gọi đồ uống. Hãy pha chế chuẩn xác theo thứ tự trước khi họ mất kiên nhẫn. Phục
+                vụ càng nhanh thì tiền boa càng lớn.
               </p>
               <div className="row" style={{ justifyContent: 'center' }}>
                 <Button variant="ghost" onClick={() => close(null)}>
-                  Not now
+                  Để sau
                 </Button>
                 <Button variant="primary" size="lg" loading={busy} onClick={() => void start()}>
-                  Start shift <span className="kbd">Space</span>
+                  Bắt đầu ca làm <span className="kbd">Space</span>
                 </Button>
               </div>
             </>
@@ -445,8 +445,8 @@ export async function startDelivery() {
     ui.setDelivery({ ...r, startedAt: Date.now() });
     ui.toast({
       kind: 'info',
-      title: `Deliver "${r.package}"`,
-      body: `Take it to ${r.destinationLabel}. Follow the orange marker.`,
+      title: `Giao kiện "${r.package}"`,
+      body: `Mang tới ${r.destinationLabel}. Đi theo dấu chỉ dẫn màu cam.`,
     });
   } catch (err) {
     errorToast(err);
@@ -483,11 +483,11 @@ export function DeliveryHud() {
       });
       if (r.outcome === 'delivered') {
         play('coin');
-        rewardToast(r.coin ?? 0, r.fame ?? 0, 'Delivered!', r.tired);
+        rewardToast(r.coin ?? 0, r.fame ?? 0, 'Giao hàng thành công!', r.tired);
         refresh();
       } else {
         play('error');
-        useUi.getState().toast({ kind: 'error', title: r.message ?? 'Delivery failed' });
+        useUi.getState().toast({ kind: 'error', title: r.message ?? 'Giao hàng thất bại' });
       }
       setDelivery(null);
     } catch (err) {
@@ -510,8 +510,8 @@ export function DeliveryHud() {
         <strong style={{ display: 'block', fontSize: 14 }}>{job.package}</strong>
         <span className="muted" style={{ fontSize: 12 }}>
           {left === 0
-            ? 'Out of time — deliver anyway for no pay, or abandon.'
-            : `Deliver to ${job.destinationLabel}`}
+            ? 'Hết thời gian — giao hàng trễ sẽ không nhận được thù lao, hoặc bạn có thể hủy đơn.'
+            : `Giao tới ${job.destinationLabel}`}
         </span>
       </div>
       <span className="timer-ring" style={{ color: left < 8000 ? 'var(--danger)' : 'var(--ink)' }}>
@@ -519,11 +519,11 @@ export function DeliveryHud() {
       </span>
       {here ? (
         <Button variant="reward" loading={busy} onClick={() => void deliver()}>
-          Hand over
+          Giao hàng
         </Button>
       ) : (
         <Button variant="ghost" size="sm" onClick={() => void abandon()}>
-          Abandon
+          Hủy đơn
         </Button>
       )}
     </div>

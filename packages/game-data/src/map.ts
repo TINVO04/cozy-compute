@@ -43,7 +43,7 @@ export interface Building {
 export const BUILDINGS: Building[] = [
   {
     id: 'cafe',
-    label: 'Bean There Cafe',
+    label: 'Tiệm Cà Phê Bean There',
     rect: t(3, 2, 8, 6),
     wall: 0xf1dcc0,
     roof: 0xb4553f,
@@ -52,7 +52,7 @@ export const BUILDINGS: Building[] = [
   },
   {
     id: 'fashion',
-    label: 'Threadbare Boutique',
+    label: 'Tiệm Thời Trang Threadbare',
     rect: t(14, 2, 7, 6),
     wall: 0xf4e3ea,
     roof: 0x7a4b8c,
@@ -61,7 +61,7 @@ export const BUILDINGS: Building[] = [
   },
   {
     id: 'furniture',
-    label: 'Sofa So Good',
+    label: 'Nội Thất Sofa So Good',
     rect: t(24, 2, 7, 6),
     wall: 0xe7ecd9,
     roof: 0x3f7a64,
@@ -70,7 +70,7 @@ export const BUILDINGS: Building[] = [
   },
   {
     id: 'apartments',
-    label: 'Mildly Haunted Apartments',
+    label: 'Khu Căn Hộ Chung Cư',
     rect: t(35, 1, 10, 8),
     wall: 0xdad7ee,
     roof: 0x3e3b6b,
@@ -79,7 +79,7 @@ export const BUILDINGS: Building[] = [
   },
   {
     id: 'delivery',
-    label: 'Parcel Panic Depot',
+    label: 'Trạm Giao Hàng Siêu Tốc',
     rect: t(2, 14, 6, 5),
     wall: 0xf3e2b8,
     roof: 0xc98a2b,
@@ -89,20 +89,35 @@ export const BUILDINGS: Building[] = [
 ];
 
 export const ZONES: Zone[] = [
-  { id: 'cafe', label: 'Bean There Cafe', prompt: 'Take a shift at the cafe', rect: t(4, 8, 6, 2) },
-  { id: 'fashion', label: 'Threadbare Boutique', prompt: 'Browse clothes', rect: t(14, 8, 7, 2) },
-  { id: 'furniture', label: 'Sofa So Good', prompt: 'Browse furniture', rect: t(24, 8, 7, 2) },
+  {
+    id: 'cafe',
+    label: 'Tiệm Cà Phê Bean There',
+    prompt: 'Bắt đầu ca làm tại quán cà phê',
+    rect: t(4, 8, 6, 2),
+  },
+  {
+    id: 'fashion',
+    label: 'Tiệm Thời Trang Threadbare',
+    prompt: 'Xem và thử trang phục',
+    rect: t(14, 8, 7, 2),
+  },
+  { id: 'furniture', label: 'Nội Thất Sofa So Good', prompt: 'Xem và mua nội thất', rect: t(24, 8, 7, 2) },
   {
     id: 'apartments',
-    label: 'Mildly Haunted Apartments',
-    prompt: 'Enter your apartment',
+    label: 'Khu Căn Hộ Chung Cư',
+    prompt: 'Bước vào căn hộ của bạn',
     rect: t(37, 9, 6, 2),
   },
-  { id: 'delivery', label: 'Parcel Panic Depot', prompt: 'Pick up a delivery', rect: t(8, 14, 3, 5) },
-  { id: 'events', label: 'Event Board', prompt: "Check today's events", rect: t(30, 12, 5, 5) },
-  { id: 'ai_kiosk', label: 'AI Rewards Kiosk', prompt: 'Open AI Rewards', rect: t(11, 21, 6, 5) },
-  { id: 'pier', label: 'Wobbly Pier', prompt: 'Cast a line', rect: t(37, 26, 4, 4) },
-  { id: 'plaza', label: 'Central Plaza', prompt: 'Hang out', rect: t(18, 12, 12, 8) },
+  {
+    id: 'delivery',
+    label: 'Trạm Giao Hàng Siêu Tốc',
+    prompt: 'Nhận đơn hàng cần giao',
+    rect: t(8, 14, 3, 5),
+  },
+  { id: 'events', label: 'Bảng Sự Kiện', prompt: 'Xem sự kiện hôm nay', rect: t(30, 12, 5, 5) },
+  { id: 'ai_kiosk', label: 'Trạm Thưởng AI', prompt: 'Mở trạm đổi thưởng AI', rect: t(11, 21, 6, 5) },
+  { id: 'pier', label: 'Cầu Tàu Lắc Lư', prompt: 'Thả cần câu cá', rect: t(37, 26, 4, 4) },
+  { id: 'plaza', label: 'Quảng Trường Trung Tâm', prompt: 'Gặp gỡ bạn bè', rect: t(18, 12, 12, 8) },
 ];
 
 export const BLOCKERS: Rect[] = [
@@ -190,16 +205,37 @@ export const DELIVERY_DESTINATIONS: ZoneId[] = [
 export const APARTMENT_COLS = 12;
 export const APARTMENT_ROWS = 9;
 export const APARTMENT_THEMES = [
-  { id: 'cozy', label: 'Cozy Oak', floor: 0xc8966a, floorAlt: 0xbd8a5f, wall: 0xf0dfc8, trim: 0x8a5a3b },
+  {
+    id: 'cozy',
+    label: 'Gỗ Sồi Ấm Cúng',
+    floor: 0xc8966a,
+    floorAlt: 0xbd8a5f,
+    wall: 0xf0dfc8,
+    trim: 0x8a5a3b,
+  },
   {
     id: 'mint',
-    label: 'Mint Condition',
+    label: 'Bạc Hà Tươi Mát',
     floor: 0x9fcfbf,
     floorAlt: 0x93c4b3,
     wall: 0xe6f3ee,
     trim: 0x3f7a64,
   },
-  { id: 'night', label: 'Night Owl', floor: 0x4b4a78, floorAlt: 0x444370, wall: 0x2e2c52, trim: 0xe0b44c },
-  { id: 'peach', label: 'Peach Fuzz', floor: 0xefb9a0, floorAlt: 0xe6ad94, wall: 0xfff0e6, trim: 0xc0604a },
+  {
+    id: 'night',
+    label: 'Cú Đêm Huyền Bí',
+    floor: 0x4b4a78,
+    floorAlt: 0x444370,
+    wall: 0x2e2c52,
+    trim: 0xe0b44c,
+  },
+  {
+    id: 'peach',
+    label: 'Hồng Đào Dịu Ngọt',
+    floor: 0xefb9a0,
+    floorAlt: 0xe6ad94,
+    wall: 0xfff0e6,
+    trim: 0xc0604a,
+  },
 ] as const;
 export type ApartmentThemeId = (typeof APARTMENT_THEMES)[number]['id'];

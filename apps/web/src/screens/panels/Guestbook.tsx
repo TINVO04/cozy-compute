@@ -23,7 +23,7 @@ export function Guestbook({ apartment, onClose }: { apartment: Apartment; onClos
       setMessage('');
       void qc.invalidateQueries({ queryKey: qk.guestbook(apartment.ownerId) });
     },
-    onError: (err) => toastError(err, 'Could not sign'),
+    onError: (err) => toastError(err, 'Không thể gửi lời nhắn'),
   });
   const remove = useMutation({
     mutationFn: (id: string) => api(`/apartments/me/guestbook/${id}`, { method: 'DELETE' }),
@@ -32,9 +32,11 @@ export function Guestbook({ apartment, onClose }: { apartment: Apartment; onClos
   });
   return (
     <Modal
-      title={`${apartment.name} — Guestbook`}
+      title={`${apartment.name} — Sổ lưu bút`}
       description={
-        apartment.isOwner ? 'Messages visitors left for you.' : `Leave a note for ${apartment.ownerName}.`
+        apartment.isOwner
+          ? 'Lời nhắn từ những vị khách ghé thăm căn hộ của bạn.'
+          : `Để lại lời nhắn cho ${apartment.ownerName}.`
       }
       onClose={onClose}
       width={560}
@@ -49,14 +51,14 @@ export function Guestbook({ apartment, onClose }: { apartment: Apartment; onClos
         >
           <input
             className="input"
-            placeholder="Say something nice (or weird)…"
+            placeholder="Gửi lời chào ấm áp hoặc một câu thú vị nào…"
             maxLength={200}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            aria-label="Guestbook message"
+            aria-label="Nội dung lưu bút"
           />
           <Button type="submit" variant="primary" loading={sign.isPending} disabled={!message.trim()}>
-            Sign
+            Gửi lời nhắn
           </Button>
         </form>
       ) : null}
@@ -67,9 +69,11 @@ export function Guestbook({ apartment, onClose }: { apartment: Apartment; onClos
       ) : entries.data.length === 0 ? (
         <EmptyState
           icon={<BookOpen size={22} />}
-          title="No entries yet"
+          title="Chưa có lời nhắn nào"
           body={
-            apartment.isOwner ? 'Publish your apartment so visitors can find it.' : 'Be the first to sign.'
+            apartment.isOwner
+              ? 'Hãy mở công khai căn hộ để khách có thể tìm thấy và ghé thăm.'
+              : 'Hãy là người đầu tiên để lại lời nhắn.'
           }
         />
       ) : (
@@ -99,7 +103,7 @@ export function Guestbook({ apartment, onClose }: { apartment: Apartment; onClos
                 <p style={{ fontSize: 14 }}>{g.message}</p>
               </div>
               {apartment.isOwner ? (
-                <IconButton label="Delete entry" onClick={() => remove.mutate(g.id)}>
+                <IconButton label="Xóa lời nhắn" onClick={() => remove.mutate(g.id)}>
                   <Trash2 size={15} />
                 </IconButton>
               ) : null}

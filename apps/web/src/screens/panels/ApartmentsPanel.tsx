@@ -30,22 +30,22 @@ export function ApartmentsPanel({ me, onClose }: { me: Me; onClose: () => void }
   function visit(l: Listing) {
     setPanel(null);
     if (l.ownerId !== me.id) void api(`/apartments/${l.ownerId}/visit`, { body: {} }).catch(() => undefined);
-    void net.goApartment(l.ownerId, l.ownerId === me.id ? 'Your apartment' : `${l.ownerName}'s apartment`);
+    void net.goApartment(l.ownerId, l.ownerId === me.id ? 'Căn hộ của bạn' : `Căn hộ của ${l.ownerName}`);
   }
 
   return (
     <Panel
       icon={<Home size={18} />}
-      eyebrow="Mildly Haunted Apartments"
-      title="Visit apartments"
+      eyebrow="Chung Cư Hơi Bị Ám"
+      title="Tham quan căn hộ"
       onClose={onClose}
       actions={
-        <div className="tabs" role="tablist" aria-label="Sort">
+        <div className="tabs" role="tablist" aria-label="Sắp xếp">
           {(
             [
-              ['score', 'Top rated'],
-              ['visits', 'Most visited'],
-              ['recent', 'Recently updated'],
+              ['score', 'Điểm cao nhất'],
+              ['visits', 'Nhiều khách nhất'],
+              ['recent', 'Mới cập nhật'],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -68,8 +68,8 @@ export function ApartmentsPanel({ me, onClose }: { me: Me; onClose: () => void }
       ) : list.data.length === 0 ? (
         <EmptyState
           icon={<DoorOpen size={22} />}
-          title="No public apartments yet"
-          body="Decorate your place and switch on “Open to visitors” to be the first on the list."
+          title="Chưa có căn hộ công khai nào"
+          body="Hãy trang trí phòng của bạn và bật 'Mở cửa đón khách' để trở thành người đầu tiên xuất hiện trong danh sách."
           action={
             <Button
               variant="primary"
@@ -85,7 +85,7 @@ export function ApartmentsPanel({ me, onClose }: { me: Me; onClose: () => void }
                 })
               }
             >
-              Go to my apartment
+              Về căn hộ của tôi
             </Button>
           }
         />
@@ -111,16 +111,16 @@ export function ApartmentsPanel({ me, onClose }: { me: Me; onClose: () => void }
                 <div className="item-info">
                   <span className="item-name">{l.name}</span>
                   <span className="muted" style={{ fontSize: 13 }}>
-                    by {l.ownerName}
-                    {l.ownerId === me.id ? ' (you)' : ''}
+                    bởi {l.ownerName}
+                    {l.ownerId === me.id ? ' (bạn)' : ''}
                   </span>
                 </div>
                 <div className="item-foot">
                   <span className="muted" style={{ fontSize: 12 }}>
-                    Score {l.score} · {l.visits} visits · {l.objects} items
+                    Điểm {l.score} · {l.visits} lượt ghé · {l.objects} vật dụng
                   </span>
                   <Button size="sm" variant="primary" onClick={() => visit(l)}>
-                    Visit
+                    Ghé thăm
                   </Button>
                 </div>
               </article>

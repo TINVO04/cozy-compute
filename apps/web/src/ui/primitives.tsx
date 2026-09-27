@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { ApiError } from '../lib/api';
 import { useUi } from '../lib/store';
 
-export function Spinner({ label = 'Loading' }: { label?: string }) {
+export function Spinner({ label = 'Đang tải' }: { label?: string }) {
   return <span className="spinner" role="status" aria-label={label} />;
 }
 
@@ -118,7 +118,7 @@ export function Modal({
             <h2 id={id}>{title}</h2>
             {description ? <p className="muted">{description}</p> : null}
           </div>
-          <IconButton label="Close" onClick={onClose} data-close>
+          <IconButton label="Đóng" onClick={onClose} data-close>
             <X size={18} />
           </IconButton>
         </div>
@@ -154,7 +154,7 @@ export function ConfirmDialog({
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            Hủy
           </Button>
           <Button variant={danger ? 'danger' : 'primary'} loading={loading} onClick={onConfirm}>
             {confirmLabel}
@@ -202,7 +202,7 @@ export function Panel({
         </div>
         <div className="row" style={{ marginLeft: 'auto' }}>
           {actions}
-          <IconButton label="Close panel (Esc)" onClick={onClose}>
+          <IconButton label="Đóng bảng (Esc)" onClick={onClose}>
             <X size={20} />
           </IconButton>
         </div>
@@ -234,18 +234,18 @@ export function EmptyState({
 }
 
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
-  const message = error instanceof ApiError ? error.message : 'Something unexpected happened.';
+  const message = error instanceof ApiError ? error.message : 'Đã xảy ra sự cố không mong muốn.';
   const forbidden = error instanceof ApiError && error.status === 403;
   return (
     <div className="state state-error" role="alert">
       <div className="state-icon">
         <CircleAlert size={22} />
       </div>
-      <h3>{forbidden ? 'You do not have access' : 'Could not load this'}</h3>
+      <h3>{forbidden ? 'Bạn không có quyền truy cập' : 'Không thể tải nội dung này'}</h3>
       <p>{message}</p>
       {onRetry && !forbidden ? (
         <Button onClick={onRetry} size="sm">
-          Try again
+          Thử lại
         </Button>
       ) : null}
     </div>
@@ -254,7 +254,7 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
 
 export function LoadingState({ rows = 3 }: { rows?: number }) {
   return (
-    <div className="stack" aria-busy="true" aria-label="Loading">
+    <div className="stack" aria-busy="true" aria-label="Đang tải">
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="skeleton" style={{ height: i === 0 ? 96 : 56 }} />
       ))}
@@ -338,18 +338,18 @@ export function CoinIcon({ size = 14 }: { size?: number }) {
   );
 }
 
-export function toastError(err: unknown, title = 'Something went wrong') {
+export function toastError(err: unknown, title = 'Đã có lỗi xảy ra') {
   useUi.getState().toast({ kind: 'error', title, body: err instanceof Error ? err.message : undefined });
 }
 
 export function timeAgo(iso: string): string {
   const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
-  if (s < 60) return 'just now';
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-  return `${Math.floor(s / 86400)}d ago`;
+  if (s < 60) return 'vừa xong';
+  if (s < 3600) return `${Math.floor(s / 60)} phút trước`;
+  if (s < 86400) return `${Math.floor(s / 3600)} giờ trước`;
+  return `${Math.floor(s / 86400)} ngày trước`;
 }
 
 export function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric', year: 'numeric' });
 }

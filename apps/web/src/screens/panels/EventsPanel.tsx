@@ -40,15 +40,15 @@ export function EventsPanel({ onClose }: { onClose: () => void }) {
       if (!v.leave)
         useUi.getState().toast({
           kind: 'success',
-          title: 'You are in!',
-          body: 'Stay in town when the event starts — ducks will appear around the map.',
+          title: 'Đã tham gia!',
+          body: 'Hãy ở trong thị trấn khi sự kiện bắt đầu — những chú vịt sẽ xuất hiện khắp bản đồ.',
         });
     },
-    onError: (err) => toastError(err, 'Could not update entry'),
+    onError: (err) => toastError(err, 'Không thể cập nhật đăng ký'),
   });
 
   return (
-    <Panel icon={<CalendarDays size={18} />} eyebrow="Event Board" title="Events" onClose={onClose}>
+    <Panel icon={<CalendarDays size={18} />} eyebrow="Bảng Sự Kiện" title="Sự kiện" onClose={onClose}>
       {hub.isPending ? (
         <LoadingState />
       ) : hub.isError ? (
@@ -62,7 +62,7 @@ export function EventsPanel({ onClose }: { onClose: () => void }) {
               busy={join.isPending}
             />
             <section className="card" style={{ padding: 20 }}>
-              <h3 style={{ fontSize: 15, marginBottom: 8 }}>How Find the Duck works</h3>
+              <h3 style={{ fontSize: 15, marginBottom: 8 }}>Cách chơi Săn Vịt Vàng</h3>
               <ol style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 6, color: 'var(--ink-2)' }}>
                 {hub.data.rules.map((r) => (
                   <li key={r}>{r}</li>
@@ -72,13 +72,13 @@ export function EventsPanel({ onClose }: { onClose: () => void }) {
           </div>
           <section>
             <div className="section-title">
-              <h3>Recent events</h3>
+              <h3>Sự kiện gần đây</h3>
             </div>
             {hub.data.history.length === 0 ? (
               <EmptyState
                 icon={<Trophy size={22} />}
-                title="No finished events yet"
-                body="Winners and your past results will show up here."
+                title="Chưa có sự kiện nào kết thúc"
+                body="Người chiến thắng và kết quả các vòng trước sẽ hiển thị ở đây."
               />
             ) : (
               <div className="stack" style={{ gap: 10 }}>
@@ -87,7 +87,7 @@ export function EventsPanel({ onClose }: { onClose: () => void }) {
                     <div className="row between">
                       <strong>{h.title}</strong>
                       <span className="muted" style={{ fontSize: 12 }}>
-                        {timeAgo(h.endedAt)} · {h.participants} players
+                        {timeAgo(h.endedAt)} · {h.participants} người chơi
                       </span>
                     </div>
                     <div className="row wrap" style={{ marginTop: 8, gap: 6 }}>
@@ -99,13 +99,13 @@ export function EventsPanel({ onClose }: { onClose: () => void }) {
                         ))
                       ) : (
                         <span className="muted" style={{ fontSize: 12 }}>
-                          Nobody found a duck. The ducks win this round.
+                          Không ai tìm thấy chú vịt nào. Đội vịt đã chiến thắng vòng này!
                         </span>
                       )}
                     </div>
                     {h.myPlacement ? (
                       <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>
-                        You placed #{h.myPlacement} with {h.myScore} duck{h.myScore === 1 ? '' : 's'}.
+                        Bạn xếp hạng #{h.myPlacement} với {h.myScore} chú vịt.
                       </div>
                     ) : null}
                   </article>
@@ -134,8 +134,8 @@ function CurrentEvent({
       <section className="card">
         <EmptyState
           icon={<CalendarDays size={22} />}
-          title="No event scheduled right now"
-          body="The next event is posted automatically every few minutes. Check back soon."
+          title="Hiện không có sự kiện nào diễn ra"
+          body="Sự kiện tiếp theo sẽ được tạo tự động sau vài phút. Hãy quay lại sớm nhé."
         />
       </section>
     );
@@ -161,25 +161,25 @@ function CurrentEvent({
             className={`pill ${ev.status === 'running' ? 'pill-reward' : 'pill-primary'}`}
             style={{ justifySelf: 'start' }}
           >
-            {ev.status === 'running' ? 'Live now' : 'Lobby open'}
+            {ev.status === 'running' ? 'Đang diễn ra' : 'Đang mở đăng ký'}
           </span>
           <h3 style={{ fontSize: 24, fontFamily: 'var(--font-pixel)' }}>{ev.title}</h3>
           <div className="row" style={{ gap: 16 }}>
             <div>
-              <div className="stat-label">{ev.status === 'running' ? 'Ends in' : 'Starts in'}</div>
+              <div className="stat-label">{ev.status === 'running' ? 'Kết thúc sau' : 'Bắt đầu sau'}</div>
               <div className="tabular" style={{ fontSize: 28, fontWeight: 700 }}>
                 {mm}:{ss}
               </div>
             </div>
             <div>
-              <div className="stat-label">Players</div>
+              <div className="stat-label">Người chơi</div>
               <div className="row" style={{ fontSize: 20, fontWeight: 700 }}>
                 <Users size={18} /> {ev.participants}/{ev.maxPlayers}
               </div>
             </div>
             {ev.status === 'running' && ev.joined ? (
               <div>
-                <div className="stat-label">Your ducks</div>
+                <div className="stat-label">Vịt của bạn</div>
                 <div style={{ fontSize: 28, fontWeight: 700 }}>{ev.myScore}</div>
               </div>
             ) : null}
@@ -193,7 +193,7 @@ function CurrentEvent({
         {r ? (
           <div className="row wrap" style={{ gap: 8 }}>
             <span className="pill pill-warn">
-              🥇 <CoinIcon size={11} /> {r.placementCoin[0]} + {r.placementFame[0]} Fame
+              🥇 <CoinIcon size={11} /> {r.placementCoin[0]} + {r.placementFame[0]} Danh tiếng
             </span>
             <span className="pill">
               🥈 <CoinIcon size={11} /> {r.placementCoin[1]}
@@ -202,19 +202,19 @@ function CurrentEvent({
               🥉 <CoinIcon size={11} /> {r.placementCoin[2]}
             </span>
             <span className="pill">
-              <CoinIcon size={11} /> {r.coinPerPoint} per duck
+              <CoinIcon size={11} /> {r.coinPerPoint} Xu mỗi chú vịt
             </span>
             <span className="pill pill-success">
-              Everyone: <CoinIcon size={11} /> {r.participationCoin} + {r.fame} Fame
+              Tất cả: <CoinIcon size={11} /> {r.participationCoin} + {r.fame} Danh tiếng
             </span>
           </div>
         ) : null}
         {ev.status === 'scheduled' ? (
           ev.joined ? (
             <div className="row between">
-              <span className="muted">You are registered. Be in town when it starts.</span>
+              <span className="muted">Bạn đã đăng ký. Hãy ở lại thị trấn khi trận đấu bắt đầu.</span>
               <Button variant="ghost" loading={busy} onClick={() => onJoin(ev.id, true)}>
-                Leave lobby
+                Hủy đăng ký
               </Button>
             </div>
           ) : (
@@ -225,13 +225,17 @@ function CurrentEvent({
               loading={busy}
               onClick={() => onJoin(ev.id, false)}
             >
-              {full ? 'Event is full' : 'Join event'}
+              {full ? 'Phòng đã đầy' : 'Tham gia sự kiện'}
             </Button>
           )
         ) : ev.joined ? (
-          <div className="callout callout-success">Go! Walk into ducks around town to collect them.</div>
+          <div className="callout callout-success">
+            Nhanh lên! Chạy lại gần các chú vịt xuất hiện trong thị trấn để nhặt!
+          </div>
         ) : (
-          <div className="callout callout-info">This round has started. Join the lobby for the next one.</div>
+          <div className="callout callout-info">
+            Vòng này đã bắt đầu. Hãy chờ và đăng ký ở vòng tiếp theo nhé.
+          </div>
         )}
       </div>
     </section>

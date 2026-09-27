@@ -15,16 +15,16 @@ interface Entry {
 }
 
 const REASONS: Record<string, string> = {
-  starter_grant: 'Welcome gift',
-  onboarding_bonus: 'Newcomer checklist bonus',
-  fishing: 'Fishing',
-  delivery: 'Delivery',
-  cafe: 'Cafe shift',
-  event_reward: 'Event reward',
-  shop_purchase: 'Shop purchase',
-  ai_mint: 'AI Credit redemption',
-  ai_key_allocate: 'API key created',
-  ai_key_refund: 'API key refund',
+  starter_grant: 'Quà tân thủ',
+  onboarding_bonus: 'Thưởng danh sách tân thủ',
+  fishing: 'Câu cá',
+  delivery: 'Giao hàng',
+  cafe: 'Làm thêm quán cafe',
+  event_reward: 'Thưởng sự kiện',
+  shop_purchase: 'Mua sắm tại cửa hàng',
+  ai_mint: 'Đổi thưởng AI Credit',
+  ai_key_allocate: 'Tạo khóa API',
+  ai_key_refund: 'Hoàn trả khóa API',
 };
 
 export function LedgerPanel({ onClose }: { onClose: () => void }) {
@@ -37,16 +37,16 @@ export function LedgerPanel({ onClose }: { onClose: () => void }) {
   return (
     <Panel
       icon={<Receipt size={18} />}
-      eyebrow="Account"
-      title="Transaction history"
+      eyebrow="Tài Khoản"
+      title="Lịch sử giao dịch"
       onClose={onClose}
       actions={
         <div className="tabs" role="tablist">
           {(
             [
-              ['', 'All'],
-              ['coin', 'Coin'],
-              ['fame', 'Fame'],
+              ['', 'Tất cả'],
+              ['coin', 'Xu'],
+              ['fame', 'Danh tiếng'],
               ['ai_credit', 'AI Credit'],
             ] as const
           ).map(([id, label]) => (
@@ -70,28 +70,28 @@ export function LedgerPanel({ onClose }: { onClose: () => void }) {
       ) : ledger.data.length === 0 ? (
         <EmptyState
           icon={<Receipt size={22} />}
-          title="No transactions yet"
-          body="Every Coin, Fame and AI Credit change shows up here."
+          title="Chưa có giao dịch nào"
+          body="Mọi biến động Xu, Danh tiếng và AI Credit sẽ được ghi nhận tại đây."
         />
       ) : (
         <div className="table-wrap" style={{ maxWidth: 900, margin: '0 auto' }}>
           <table className="table">
             <thead>
               <tr>
-                <th>When</th>
-                <th>What</th>
-                <th>Currency</th>
-                <th className="num">Change</th>
-                <th className="num">Balance</th>
+                <th>Thời gian</th>
+                <th>Nội dung</th>
+                <th>Loại tiền</th>
+                <th className="num">Biến động</th>
+                <th className="num">Số dư sau GD</th>
               </tr>
             </thead>
             <tbody>
               {ledger.data.map((e) => (
                 <tr key={e.id}>
-                  <td className="muted">{new Date(e.created_at).toLocaleString()}</td>
+                  <td className="muted">{new Date(e.created_at).toLocaleString('vi-VN')}</td>
                   <td>{REASONS[e.reason_type] ?? e.reason_type}</td>
                   <td>
-                    {e.currency === 'ai_credit' ? 'AI Credit' : e.currency === 'coin' ? 'Coin' : 'Fame'}
+                    {e.currency === 'ai_credit' ? 'AI Credit' : e.currency === 'coin' ? 'Xu' : 'Danh tiếng'}
                   </td>
                   <td className={`num ${e.amount >= 0 ? 'pos' : 'neg'}`}>
                     {e.amount >= 0 ? '+' : '−'}

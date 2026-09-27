@@ -8,11 +8,11 @@ import { useUi } from '../../lib/store';
 import { Button, ErrorState, Modal, toastError } from '../../ui/primitives';
 
 const REPORT_REASONS = [
-  ['harassment', 'Harassment or bullying'],
-  ['spam', 'Spam or advertising'],
-  ['cheating', 'Cheating or botting'],
-  ['inappropriate_name', 'Inappropriate name'],
-  ['other', 'Something else'],
+  ['harassment', 'Quấy rối hoặc bắt nạt'],
+  ['spam', 'Spam hoặc quảng cáo'],
+  ['cheating', 'Gian lận hoặc dùng bot'],
+  ['inappropriate_name', 'Tên không phù hợp'],
+  ['other', 'Lý do khác'],
 ] as const;
 
 export function PlayerCardModal() {
@@ -65,18 +65,20 @@ function Card({ userId, onClose }: { userId: string; onClose: () => void }) {
         },
       }),
     onSuccess: () => {
-      useUi
-        .getState()
-        .toast({ kind: 'success', title: 'Report sent', body: 'Thanks. A moderator will review it.' });
+      useUi.getState().toast({
+        kind: 'success',
+        title: 'Đã gửi báo cáo',
+        body: 'Cảm ơn bạn. Điều hành viên sẽ xem xét báo cáo này.',
+      });
       setReporting(false);
       onClose();
     },
-    onError: (err) => toastError(err, 'Could not send report'),
+    onError: (err) => toastError(err, 'Không thể gửi báo cáo'),
   });
 
   if (card.isError) {
     return (
-      <Modal title="Player" onClose={onClose}>
+      <Modal title="Người chơi" onClose={onClose}>
         <ErrorState error={card.error} onRetry={() => void card.refetch()} />
       </Modal>
     );
@@ -84,7 +86,7 @@ function Card({ userId, onClose }: { userId: string; onClose: () => void }) {
   const p = card.data;
   if (!p) {
     return (
-      <Modal title="Loading player…" onClose={onClose}>
+      <Modal title="Đang tải người chơi…" onClose={onClose}>
         <div className="skeleton" style={{ height: 120 }} />
       </Modal>
     );
@@ -93,22 +95,22 @@ function Card({ userId, onClose }: { userId: string; onClose: () => void }) {
   if (reporting) {
     return (
       <Modal
-        title={`Report ${p.displayName}`}
-        description="Reports are private. The player is not told who reported them."
+        title={`Báo cáo ${p.displayName}`}
+        description="Báo cáo được bảo mật. Người chơi này sẽ không biết ai đã gửi báo cáo."
         onClose={() => setReporting(false)}
         footer={
           <>
             <Button variant="ghost" onClick={() => setReporting(false)}>
-              Cancel
+              Hủy
             </Button>
             <Button variant="danger" loading={report.isPending} onClick={() => report.mutate()}>
-              Send report
+              Gửi báo cáo
             </Button>
           </>
         }
       >
         <div className="field">
-          <label htmlFor="reason">Reason</label>
+          <label htmlFor="reason">Lý do</label>
           <select
             id="reason"
             className="select"
@@ -123,7 +125,7 @@ function Card({ userId, onClose }: { userId: string; onClose: () => void }) {
           </select>
         </div>
         <div className="field">
-          <label htmlFor="details">Details (optional)</label>
+          <label htmlFor="details">Chi tiết (tùy chọn)</label>
           <textarea
             id="details"
             className="textarea"
@@ -132,7 +134,7 @@ function Card({ userId, onClose }: { userId: string; onClose: () => void }) {
             value={details}
             onChange={(e) => setDetails(e.target.value)}
           />
-          <span className="field-hint">Their recent chat messages are attached automatically.</span>
+          <span className="field-hint">Tin nhắn chat gần đây của họ sẽ được tự động đính kèm.</span>
         </div>
       </Modal>
     );
@@ -142,8 +144,8 @@ function Card({ userId, onClose }: { userId: string; onClose: () => void }) {
     <Modal title={p.displayName} description={p.statusText || p.title} onClose={onClose} width={440}>
       <div className="row wrap" style={{ gap: 6 }}>
         <span className="pill pill-primary">{p.title}</span>
-        <span className="pill pill-reward">{p.fame} Fame</span>
-        {p.apartment ? <span className="pill">Apartment score {p.apartment.score}</span> : null}
+        <span className="pill pill-reward">{p.fame} Danh tiếng</span>
+        {p.apartment ? <span className="pill">Điểm căn hộ {p.apartment.score}</span> : null}
         {p.eventPodiums.map((b) => (
           <span key={b.placement} className="pill pill-warn">
             {['🥇', '🥈', '🥉'][b.placement - 1]} ×{b.count}
@@ -151,7 +153,7 @@ function Card({ userId, onClose }: { userId: string; onClose: () => void }) {
         ))}
       </div>
       <p className="muted" style={{ fontSize: 13 }}>
-        In town since {formatDateSafe(p.memberSince)}
+        Tham gia thị trấn từ {formatDateSafe(p.memberSince)}
       </p>
       {p.isSelf ? null : (
         <div className="stack" style={{ gap: 8 }}>
@@ -163,7 +165,7 @@ function Card({ userId, onClose }: { userId: string; onClose: () => void }) {
               onClick={() => toggle.mutate('friend')}
             >
               {p.isFriend ? <UserMinus size={16} /> : <UserPlus size={16} />}{' '}
-              {p.isFriend ? 'Remove friend' : 'Add friend'}
+              {p.isFriend ? 'Hủy kết bạn' : 'Kết bạn'}
             </Button>
             {p.apartment ? (
               <Button
@@ -171,10 +173,10 @@ function Card({ userId, onClose }: { userId: string; onClose: () => void }) {
                 onClick={() => {
                   onClose();
                   void api(`/apartments/${p.id}/visit`, { body: {} }).catch(() => undefined);
-                  void net.goApartment(p.id, `${p.displayName}'s apartment`);
+                  void net.goApartment(p.id, `Căn hộ của ${p.displayName}`);
                 }}
               >
-                <Home size={16} /> Visit apartment
+                <Home size={16} /> Ghé căn hộ
               </Button>
             ) : null}
           </div>
@@ -185,14 +187,15 @@ function Card({ userId, onClose }: { userId: string; onClose: () => void }) {
               loading={toggle.isPending && toggle.variables === 'mute'}
               onClick={() => toggle.mutate('mute')}
             >
-              {p.isMuted ? <Volume2 size={16} /> : <VolumeX size={16} />} {p.isMuted ? 'Unmute' : 'Mute'}
+              {p.isMuted ? <Volume2 size={16} /> : <VolumeX size={16} />}{' '}
+              {p.isMuted ? 'Bật tiếng' : 'Tắt tiếng'}
             </Button>
             <Button
               variant="ghost"
               style={{ flex: 1, color: 'var(--danger)' }}
               onClick={() => setReporting(true)}
             >
-              <Flag size={16} /> Report
+              <Flag size={16} /> Báo cáo
             </Button>
           </div>
         </div>

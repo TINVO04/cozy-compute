@@ -16,6 +16,20 @@ import { qk, useRefreshEconomy } from '../../lib/queries';
 import { useUi } from '../../lib/store';
 import { Button, EmptyState, ErrorState, LoadingState, Panel, toastError } from '../../ui/primitives';
 
+const HAIR_STYLE_NAMES: Record<HairStyle, string> = {
+  short: 'Tóc ngắn',
+  long: 'Tóc dài',
+  bun: 'Búi tóc',
+  spiky: 'Gai nhọn',
+  bald: 'Đầu trọc',
+};
+
+const SLOT_NAMES: Record<string, string> = {
+  hat: 'Mũ',
+  top: 'Áo',
+  face: 'Phụ kiện',
+};
+
 export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) {
   const qc = useQueryClient();
   const refresh = useRefreshEconomy();
@@ -41,28 +55,30 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
       api<Me>('/me/profile', { method: 'PUT', body: { appearance: draft, statusText: status } }),
     onSuccess: (data) => {
       qc.setQueryData(qk.me, data);
-      useUi
-        .getState()
-        .toast({ kind: 'success', title: 'Look saved', body: 'Everyone in town sees the new you.' });
+      useUi.getState().toast({
+        kind: 'success',
+        title: 'Đã lưu diện mạo',
+        body: 'Mọi người trong thị trấn đều thấy bạn đổi mới.',
+      });
     },
-    onError: (err) => toastError(err, 'Could not save'),
+    onError: (err) => toastError(err, 'Không thể lưu'),
   });
 
   const equip = useMutation({
     mutationFn: (v: { itemId: string | null; slot: 'hat' | 'top' | 'face' }) =>
       api('/inventory/equip', { body: v }),
     onSuccess: () => refresh(),
-    onError: (err) => toastError(err, 'Could not equip'),
+    onError: (err) => toastError(err, 'Không thể thay đổi trang bị'),
   });
 
   const owned = (shop.data ?? []).filter((i) => i.type === 'clothing' && i.owned > 0);
 
   return (
-    <Panel icon={<Shirt size={18} />} eyebrow="Style" title="Wardrobe & profile" onClose={onClose}>
+    <Panel icon={<Shirt size={18} />} eyebrow="Phong cách" title="Tủ đồ & Hồ sơ" onClose={onClose}>
       <div className="split">
         <div className="sticky stack">
           <div className="preview-stage">
-            <img src={avatarPortrait(preview, 7)} alt="Avatar preview" />
+            <img src={avatarPortrait(preview, 7)} alt="Xem trước nhân vật" />
           </div>
           <div className="card" style={{ padding: 16 }}>
             <div style={{ fontWeight: 700, fontSize: 16 }}>{me.displayName}</div>
@@ -70,16 +86,18 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
               {me.title}
             </div>
             <div className="field" style={{ marginTop: 12 }}>
-              <label htmlFor="status">Status line</label>
+              <label htmlFor="status">Dòng trạng thái</label>
               <input
                 id="status"
                 className="input"
                 maxLength={60}
-                placeholder="e.g. looking for the duck"
+                placeholder="ví dụ: Đang tìm vịt vàng..."
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
               />
-              <span className="field-hint">Shown above your head. {60 - status.length} characters left.</span>
+              <span className="field-hint">
+                Hiển thị trên đầu nhân vật. Còn lại {60 - status.length} ký tự.
+              </span>
             </div>
           </div>
           <Button
@@ -89,22 +107,22 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
             loading={save.isPending}
             onClick={() => save.mutate()}
           >
-            {dirty ? 'Save look' : 'Saved'}
+            {dirty ? 'Lưu diện mạo' : 'Đã lưu'}
           </Button>
         </div>
         <div className="stack-lg">
           <section>
             <div className="section-title">
-              <h3>Skin tone</h3>
+              <h3>Màu da</h3>
             </div>
-            <div className="swatches" role="radiogroup" aria-label="Skin tone">
+            <div className="swatches" role="radiogroup" aria-label="Màu da">
               {SKIN_TONES.map((c, i) => (
                 <button
                   key={c}
                   className="swatch"
                   style={{ background: c }}
                   aria-pressed={draft.skin === i}
-                  aria-label={`Skin tone ${i + 1}`}
+                  aria-label={`Màu da ${i + 1}`}
                   onClick={() => setDraft({ ...draft, skin: i })}
                 />
               ))}
@@ -112,12 +130,12 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
           </section>
           <section>
             <div className="section-title">
-              <h3>Hair</h3>
+              <h3>Kiểu & màu tóc</h3>
             </div>
             <div
               className="tabs"
               role="radiogroup"
-              aria-label="Hair style"
+              aria-label="Kiểu tóc"
               style={{ display: 'inline-flex', marginBottom: 12 }}
             >
               {HAIR_STYLES.map((h) => (
@@ -126,20 +144,19 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
                   className="tab"
                   aria-selected={draft.hairStyle === h}
                   onClick={() => setDraft({ ...draft, hairStyle: h as HairStyle })}
-                  style={{ textTransform: 'capitalize' }}
                 >
-                  {h}
+                  {HAIR_STYLE_NAMES[h as HairStyle] ?? h}
                 </button>
               ))}
             </div>
-            <div className="swatches" role="radiogroup" aria-label="Hair color">
+            <div className="swatches" role="radiogroup" aria-label="Màu tóc">
               {HAIR_COLORS.map((c, i) => (
                 <button
                   key={c}
                   className="swatch"
                   style={{ background: c }}
                   aria-pressed={draft.hairColor === i}
-                  aria-label={`Hair color ${i + 1}`}
+                  aria-label={`Màu tóc ${i + 1}`}
                   onClick={() => setDraft({ ...draft, hairColor: i })}
                 />
               ))}
@@ -147,19 +164,19 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
           </section>
           <section>
             <div className="section-title">
-              <h3>Basic shirt color</h3>
+              <h3>Màu áo cơ bản</h3>
               <span className="muted" style={{ fontSize: 12 }}>
-                Used when no top is equipped
+                Áp dụng khi không mặc áo ngoài
               </span>
             </div>
-            <div className="swatches" role="radiogroup" aria-label="Shirt color">
+            <div className="swatches" role="radiogroup" aria-label="Màu áo">
               {TOP_COLORS.map((c, i) => (
                 <button
                   key={c}
                   className="swatch"
                   style={{ background: c }}
                   aria-pressed={draft.baseTop === i}
-                  aria-label={`Shirt color ${i + 1}`}
+                  aria-label={`Màu áo ${i + 1}`}
                   onClick={() => setDraft({ ...draft, baseTop: i })}
                 />
               ))}
@@ -167,9 +184,9 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
           </section>
           <section>
             <div className="section-title">
-              <h3>Your clothes</h3>
+              <h3>Trang phục của bạn</h3>
               <Button size="sm" variant="ghost" onClick={() => setPanel('shop-fashion')}>
-                Browse boutique
+                Ghé cửa hàng thời trang
               </Button>
             </div>
             {shop.isPending ? (
@@ -179,8 +196,8 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
             ) : owned.length === 0 ? (
               <EmptyState
                 icon={<Shirt size={22} />}
-                title="No clothes yet"
-                body="Earn Coin with activities, then visit the boutique."
+                title="Chưa có trang phục nào"
+                body="Kiếm Xu từ các hoạt động rồi ghé cửa hàng thời trang nhé."
               />
             ) : (
               <div
@@ -189,14 +206,14 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
               >
                 {owned.map((item) => (
                   <article key={item.id} className="card item-card">
-                    {item.equipped ? <span className="pill pill-primary owned-tag">Wearing</span> : null}
+                    {item.equipped ? <span className="pill pill-primary owned-tag">Đang mặc</span> : null}
                     <div className={`item-art r-${item.rarity}`} style={{ height: 104 }}>
                       <img src={itemIcon(item.sprite, 'clothing', item.size, 4)} alt="" />
                     </div>
                     <div className="item-info">
                       <span className="item-name">{item.name}</span>
-                      <span className="muted" style={{ fontSize: 12, textTransform: 'capitalize' }}>
-                        {item.slot}
+                      <span className="muted" style={{ fontSize: 12 }}>
+                        {item.slot ? (SLOT_NAMES[item.slot] ?? item.slot) : ''}
                       </span>
                     </div>
                     <div className="item-foot">
@@ -209,7 +226,7 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
                           equip.mutate({ itemId: item.equipped ? null : item.id, slot: item.slot! })
                         }
                       >
-                        {item.equipped ? 'Take off' : 'Wear'}
+                        {item.equipped ? 'Tháo ra' : 'Mặc vào'}
                       </Button>
                     </div>
                   </article>

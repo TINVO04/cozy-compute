@@ -86,20 +86,20 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
         <HeroArt />
         <div className="auth-copy">
           <Brand light />
-          <h1>Build a funny little life. Earn real AI compute.</h1>
+          <h1>Xây dựng cuộc sống thú vị. Kiếm hạn mức AI thật.</h1>
           <p>
-            Fish off a wobbly pier, deliver suspicious parcels, decorate a mildly haunted apartment — and turn
-            your time in town into API quota you can use anywhere.
+            Câu cá trên cầu tàu lắc lư, giao những kiện hàng đáng ngờ, trang hoàng căn hộ nhỏ — và biến thời
+            gian trải nghiệm trong thị trấn thành hạn mức API AI để bạn sử dụng ở mọi nơi.
           </p>
           <div className="auth-points">
             <div>
-              <strong>Play together</strong>A live town full of real people.
+              <strong>Chơi cùng nhau</strong>Thị trấn sống động với người chơi thực.
             </div>
             <div>
-              <strong>Make it yours</strong>Outfits, furniture, your own room.
+              <strong>Đậm chất riêng</strong>Trang phục, nội thất, căn hộ của riêng bạn.
             </div>
             <div>
-              <strong>Real rewards</strong>Redeem Coin for AI API credit.
+              <strong>Phần thưởng thực</strong>Đổi Xu lấy hạn mức API AI chất lượng.
             </div>
           </div>
         </div>
@@ -107,14 +107,14 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
       <section className="auth-form-wrap">
         <form className="auth-form" onSubmit={submit} noValidate>
           <div className="stack" style={{ gap: 6 }}>
-            <h2>{mode === 'register' ? 'Move into town' : 'Welcome back'}</h2>
+            <h2>{mode === 'register' ? 'Gia nhập thị trấn' : 'Chào mừng trở lại'}</h2>
             <p className="muted">
               {mode === 'register'
-                ? 'Create an account to get your starter apartment and 300 Coin.'
-                : 'Sign in to pick up where you left off.'}
+                ? 'Tạo tài khoản để nhận ngay căn hộ khởi đầu và 300 Xu.'
+                : 'Đăng nhập để tiếp tục cuộc phiêu lưu của bạn.'}
             </p>
           </div>
-          <div className="tabs" role="tablist" aria-label="Account">
+          <div className="tabs" role="tablist" aria-label="Tài khoản">
             <button
               type="button"
               role="tab"
@@ -123,7 +123,7 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
               aria-selected={mode === 'register'}
               onClick={() => setMode('register')}
             >
-              Create account
+              Tạo tài khoản
             </button>
             <button
               type="button"
@@ -133,12 +133,12 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
               aria-selected={mode === 'login'}
               onClick={() => setMode('login')}
             >
-              Sign in
+              Đăng nhập
             </button>
           </div>
           {mode === 'register' ? (
             <div className="field">
-              <label htmlFor="name">Display name</label>
+              <label htmlFor="name">Tên hiển thị</label>
               <input
                 id="name"
                 className="input"
@@ -149,7 +149,7 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
                 maxLength={20}
                 required
               />
-              <span className="field-hint">3–20 characters. Everyone in town will see this.</span>
+              <span className="field-hint">3–20 ký tự. Mọi người trong thị trấn sẽ thấy tên này.</span>
             </div>
           ) : null}
           <div className="field">
@@ -165,7 +165,7 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
             />
           </div>
           <div className="field">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">Mật khẩu</label>
             <input
               id="password"
               className="input"
@@ -176,7 +176,7 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
               minLength={8}
               required
             />
-            {mode === 'register' ? <span className="field-hint">At least 8 characters.</span> : null}
+            {mode === 'register' ? <span className="field-hint">Tối thiểu 8 ký tự.</span> : null}
           </div>
           {error ? (
             <div className="callout callout-danger" role="alert">
@@ -184,15 +184,15 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
             </div>
           ) : null}
           <Button type="submit" variant="primary" size="lg" block loading={busy}>
-            {mode === 'register' ? 'Create account and enter town' : 'Sign in'}
+            {mode === 'register' ? 'Tạo tài khoản và vào thị trấn' : 'Đăng nhập'}
           </Button>
           <p className="muted" style={{ fontSize: 12, textAlign: 'center' }}>
-            AI rewards come from a limited weekly pool and are not a cash equivalent.
+            Phần thưởng AI đến từ quỹ hạn mức hàng tuần có giới hạn và không có giá trị quy đổi tiền mặt.
           </p>
           {import.meta.env.DEV ? (
             <p className="muted" style={{ fontSize: 11, textAlign: 'center', opacity: 0.8 }}>
-              💡 Dev note: Accounts registered with <code>admin@cozy.local</code> receive full Admin console
-              permissions.
+              💡 Lưu ý dev: Tài khoản đăng ký với <code>admin@cozy.local</code> sẽ nhận toàn quyền quản trị
+              Admin.
             </p>
           ) : null}
         </form>

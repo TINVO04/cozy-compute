@@ -147,8 +147,8 @@ export function ApartmentEditor() {
       if (selectedItem.placed >= selectedItem.item.owned) {
         useUi.getState().toast({
           kind: 'info',
-          title: `All your ${selectedItem.item.name}s are placed`,
-          body: 'Buy more in the furniture shop.',
+          title: `Đã đặt hết ${selectedItem.item.name}`,
+          body: 'Hãy mua thêm tại cửa hàng nội thất.',
         });
         return;
       }
@@ -192,14 +192,14 @@ export function ApartmentEditor() {
       saved.current = JSON.stringify(l);
       useUi.getState().toast({
         kind: 'success',
-        title: 'Apartment saved',
-        body: `Room score: ${r.score}${l.published ? ' · Visible to visitors' : ' · Private'}`,
+        title: 'Đã lưu căn hộ',
+        body: `Điểm phòng: ${r.score}${l.published ? ' · Khách có thể ghé thăm' : ' · Riêng tư'}`,
       });
       void qc.invalidateQueries({ queryKey: qk.apartment(me.id) });
       void qc.invalidateQueries({ queryKey: qk.me });
       setEditing(false);
     },
-    onError: (err) => toastError(err, 'Could not save'),
+    onError: (err) => toastError(err, 'Không thể lưu'),
   });
 
   const dirty = layout ? JSON.stringify(layout) !== saved.current : false;
@@ -229,14 +229,14 @@ export function ApartmentEditor() {
       <>
         <div className="hud-bottom" style={{ flexDirection: 'row' }}>
           <Button variant="primary" onClick={() => setEditing(true)}>
-            <Hammer size={16} /> Decorate
+            <Hammer size={16} /> Trang trí
           </Button>
           <Button onClick={() => setGuestbook(true)}>
-            <BookOpen size={16} /> Guestbook
+            <BookOpen size={16} /> Lưu bút
           </Button>
           <span className="pill" style={{ background: '#fff', height: 38, padding: '0 12px' }}>
-            Score {apt.data?.score ?? 0} · {apt.data?.visits ?? 0} visits ·{' '}
-            {layout.published ? 'Public' : 'Private'}
+            Điểm {apt.data?.score ?? 0} · {apt.data?.visits ?? 0} lượt ghé ·{' '}
+            {layout.published ? 'Công khai' : 'Riêng tư'}
           </span>
         </div>
         {guestbook && apt.data ? (
@@ -247,21 +247,21 @@ export function ApartmentEditor() {
   }
 
   return (
-    <div className="editor-bar" role="region" aria-label="Apartment editor">
+    <div className="editor-bar" role="region" aria-label="Chỉnh sửa căn hộ">
       <div className="stack" style={{ gap: 10, minWidth: 0 }}>
         <div className="row between wrap">
           <div className="row">
-            <strong>Furniture</strong>
+            <strong>Nội thất</strong>
             <span className="muted" style={{ fontSize: 12 }}>
-              Click a slot, then click the floor. Click placed furniture to pick it up.{' '}
-              <span className="kbd">R</span> rotate
+              Bấm chọn món đồ, rồi bấm sàn nhà để đặt. Bấm đồ đã đặt để thu lại.{' '}
+              <span className="kbd">R</span> xoay
             </span>
           </div>
           <div className="row">
             <Button
               size="sm"
               variant="ghost"
-              aria-label="Undo"
+              aria-label="Hoàn tác"
               disabled={cursor <= 0}
               onClick={() => setCursor(cursor - 1)}
             >
@@ -270,7 +270,7 @@ export function ApartmentEditor() {
             <Button
               size="sm"
               variant="ghost"
-              aria-label="Redo"
+              aria-label="Làm lại"
               disabled={cursor >= history.length - 1}
               onClick={() => setCursor(cursor + 1)}
             >
@@ -285,14 +285,14 @@ export function ApartmentEditor() {
               disabled={!layout.objects.length}
               onClick={() => commit({ ...layout, objects: [] })}
             >
-              <Trash2 size={15} /> Clear room
+              <Trash2 size={15} /> Dọn phòng
             </Button>
           </div>
         </div>
         <div className="editor-inv">
           {inventory.length === 0 ? (
             <span className="muted" style={{ fontSize: 13, padding: 12 }}>
-              You do not own furniture yet. Visit Sofa So Good in town.
+              Bạn chưa sở hữu nội thất nào. Hãy ghé tiệm Sofa So Good trong thị trấn.
             </span>
           ) : (
             inventory.map(({ item, placed }) => (
@@ -301,7 +301,7 @@ export function ApartmentEditor() {
                 className="inv-slot"
                 aria-pressed={selected === item.id}
                 disabled={placed >= item.owned && selected !== item.id}
-                title={`${item.name} (${item.owned - placed} left)`}
+                title={`${item.name} (còn ${item.owned - placed})`}
                 onClick={() => setSelected(selected === item.id ? null : item.id)}
               >
                 <img src={itemIcon(item.sprite, 'furniture', item.size, 2)} alt={item.name} />
@@ -316,7 +316,7 @@ export function ApartmentEditor() {
       <div className="editor-actions">
         <input
           className="input"
-          aria-label="Apartment name"
+          aria-label="Tên căn hộ"
           maxLength={40}
           value={layout.name}
           onChange={(e) =>
@@ -325,7 +325,7 @@ export function ApartmentEditor() {
         />
         <select
           className="select"
-          aria-label="Room theme"
+          aria-label="Chủ đề căn hộ"
           value={layout.themeId}
           onChange={(e) => commit({ ...layout, themeId: e.target.value })}
         >
@@ -338,11 +338,11 @@ export function ApartmentEditor() {
         <Switch
           checked={layout.published}
           onChange={(v) => commit({ ...layout, published: v })}
-          label="Open to visitors"
+          label="Mở cửa đón khách"
         />
         <div className="row">
           <Button variant="ghost" onClick={() => (dirty ? setConfirmLeave(true) : setEditing(false))}>
-            Cancel
+            Hủy
           </Button>
           <Button
             variant="primary"
@@ -351,15 +351,15 @@ export function ApartmentEditor() {
             disabled={!layout.name.trim()}
             onClick={() => save.mutate(layout)}
           >
-            Save
+            Lưu
           </Button>
         </div>
       </div>
       {confirmLeave ? (
         <ConfirmDialog
-          title="Discard changes?"
-          body="Your unsaved furniture changes will be lost."
-          confirmLabel="Discard"
+          title="Hủy bỏ thay đổi?"
+          body="Các sắp xếp nội thất chưa lưu sẽ bị mất."
+          confirmLabel="Bỏ thay đổi"
           danger
           onConfirm={() => {
             setConfirmLeave(false);

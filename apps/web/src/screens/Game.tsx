@@ -42,14 +42,14 @@ import { Brand } from './Brand';
 import { Button, CoinIcon, Spinner } from '../ui/primitives';
 
 const EMOTES = [
-  ['wave', '👋', 'Wave'],
-  ['laugh', '😂', 'Laugh'],
-  ['heart', '❤️', 'Love'],
-  ['shock', '😱', 'Shock'],
-  ['dance', '💃', 'Dance'],
-  ['sleep', '💤', 'Sleep'],
-  ['angry', '💢', 'Grr'],
-  ['thumbs', '👍', 'Nice'],
+  ['wave', '👋', 'Vẫy tay'],
+  ['laugh', '😂', 'Cười lớn'],
+  ['heart', '❤️', 'Yêu thích'],
+  ['shock', '😱', 'Bất ngờ'],
+  ['dance', '💃', 'Nhảy múa'],
+  ['sleep', '💤', 'Ngủ say'],
+  ['angry', '💢', 'Tức giận'],
+  ['thumbs', '👍', 'Tuyệt vời'],
 ] as const;
 
 export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
@@ -149,7 +149,7 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
   }[] = [
     {
       id: 'town',
-      label: 'Town',
+      label: 'Thị trấn',
       icon: <MapIcon size={17} />,
       onClick: () => {
         setPanel(null);
@@ -159,38 +159,38 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
     },
     {
       id: 'events',
-      label: 'Events',
+      label: 'Sự kiện',
       icon: <CalendarDays size={17} />,
       onClick: () => setPanel('events'),
       current: panel === 'events',
     },
     {
       id: 'shop-fashion',
-      label: 'Shop',
+      label: 'Cửa hàng',
       icon: <Shirt size={17} />,
       onClick: () => setPanel('shop-fashion'),
       current: panel === 'shop-fashion' || panel === 'shop-furniture',
     },
     {
       id: 'home',
-      label: 'Apartment',
+      label: 'Căn hộ',
       icon: <Home size={17} />,
       onClick: () => {
         setPanel(null);
-        void net.goApartment(me.id, 'Your apartment');
+        void net.goApartment(me.id, 'Căn hộ của bạn');
       },
       current: !panel && room.kind === 'apartment' && room.ownerId === me.id,
     },
     {
       id: 'ai',
-      label: 'AI Rewards',
+      label: 'Thưởng AI',
       icon: <Bot size={17} />,
       onClick: () => setPanel('ai'),
       current: panel === 'ai',
     },
     {
       id: 'apartments',
-      label: 'Visit',
+      label: 'Thăm quan',
       icon: <Users size={17} />,
       onClick: () => setPanel('apartments'),
       current: panel === 'apartments',
@@ -199,7 +199,7 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
       ? [
           {
             id: 'admin' as const,
-            label: 'Admin',
+            label: 'Quản trị',
             icon: <Shield size={17} color="var(--accent-coral, #ff7a60)" />,
             onClick: () => navigate('/admin'),
             current: false,
@@ -219,7 +219,7 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
   return (
     <header className="topbar">
       <Brand />
-      <nav className="nav" aria-label="Main">
+      <nav className="nav" aria-label="Menu chính">
         {nav.map((n) => (
           <button key={n.id} className="nav-btn" aria-current={n.current} onClick={n.onClick} title={n.label}>
             {n.icon}
@@ -231,40 +231,40 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
         <button
           className={`balance balance-coin ${bump ? 'bump' : ''}`}
           onClick={() => setPanel('ledger')}
-          title="Coin — spend in shops, redeem for AI Credit"
+          title="Xu — chi tiêu tại cửa hàng, đổi lấy Tín dụng AI"
         >
           <span className="balance-icon">
             <CoinIcon />
           </span>
           <span>
             <div className="balance-value">{num(me.balances.coin)}</div>
-            <div className="balance-label">Coin</div>
+            <div className="balance-label">Xu</div>
           </span>
         </button>
         <button
           className="balance balance-fame"
           onClick={() => setPanel('ledger')}
-          title="Fame — earned from activities and events"
+          title="Danh tiếng — kiếm từ hoạt động và sự kiện"
         >
           <span className="balance-icon">
             <Star size={14} />
           </span>
           <span>
             <div className="balance-value">{num(me.balances.fame)}</div>
-            <div className="balance-label">Fame</div>
+            <div className="balance-label">Danh tiếng</div>
           </span>
         </button>
         <button
           className="balance balance-ai"
           onClick={() => setPanel('ai')}
-          title="AI Credit — allocate to API keys"
+          title="Tín dụng AI — cấp hạn mức cho khóa API"
         >
           <span className="balance-icon">
             <Sparkles size={14} />
           </span>
           <span>
             <div className="balance-value">{usd(me.balances.aiCreditCents)}</div>
-            <div className="balance-label">AI Credit</div>
+            <div className="balance-label">Tín dụng AI</div>
           </span>
         </button>
       </div>
@@ -297,7 +297,7 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
                 setPanel('wardrobe');
               }}
             >
-              <Shirt size={16} /> Wardrobe & profile
+              <Shirt size={16} /> Tủ đồ & hồ sơ
             </button>
             <button
               role="menuitem"
@@ -307,7 +307,7 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
                 setPanel('shop-furniture');
               }}
             >
-              <Armchair size={16} /> Furniture shop
+              <Armchair size={16} /> Cửa hàng nội thất
             </button>
             <button
               role="menuitem"
@@ -317,19 +317,19 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
                 setPanel('ledger');
               }}
             >
-              <Receipt size={16} /> Transaction history
+              <Receipt size={16} /> Lịch sử giao dịch
             </button>
             <button role="menuitem" className="menu-item" onClick={() => setMuted(!muted)}>
-              {muted ? <VolumeX size={16} /> : <Volume2 size={16} />} Sound {muted ? 'off' : 'on'}
+              {muted ? <VolumeX size={16} /> : <Volume2 size={16} />} Âm thanh: {muted ? 'Tắt' : 'Bật'}
             </button>
             {me.role === 'admin' ? (
               <button role="menuitem" className="menu-item" onClick={() => navigate('/admin')}>
-                <Shield size={16} /> Admin console
+                <Shield size={16} /> Bảng điều khiển quản trị
               </button>
             ) : null}
             <div className="menu-sep" />
             <button role="menuitem" className="menu-item" onClick={() => void signOut()}>
-              <LogOut size={16} /> Sign out
+              <LogOut size={16} /> Đăng xuất
             </button>
           </div>
         ) : null}
@@ -339,14 +339,14 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
 }
 
 const ZONE_ACTIONS: Partial<Record<ZoneId, { cta: string; hint: string }>> = {
-  pier: { cta: 'Cast a line', hint: 'Fish for Coin and Fame' },
-  delivery: { cta: 'Take an order', hint: 'Deliver a parcel across town' },
-  cafe: { cta: 'Start a shift', hint: 'Make drinks for odd customers' },
-  fashion: { cta: 'Browse clothes', hint: 'Hats, tops and questionable glasses' },
-  furniture: { cta: 'Browse furniture', hint: 'Things for your apartment' },
-  apartments: { cta: 'Go home', hint: 'Enter your apartment' },
-  events: { cta: 'Open event board', hint: 'Join the next event' },
-  ai_kiosk: { cta: 'Open AI Rewards', hint: 'Redeem Coin for AI quota' },
+  pier: { cta: 'Thả cần câu', hint: 'Câu cá kiếm Xu và Danh tiếng' },
+  delivery: { cta: 'Nhận đơn hàng', hint: 'Giao kiện hàng quanh thị trấn' },
+  cafe: { cta: 'Bắt đầu ca làm', hint: 'Pha chế đồ uống cho khách hàng kỳ lạ' },
+  fashion: { cta: 'Xem trang phục', hint: 'Mũ nón, áo quần và phụ kiện cá tính' },
+  furniture: { cta: 'Xem nội thất', hint: 'Vật phẩm trang trí căn hộ của bạn' },
+  apartments: { cta: 'Về nhà', hint: 'Bước vào căn hộ của bạn' },
+  events: { cta: 'Mở bảng sự kiện', hint: 'Tham gia sự kiện tiếp theo' },
+  ai_kiosk: { cta: 'Mở Trạm thưởng AI', hint: 'Đổi Xu lấy hạn mức API AI' },
 };
 
 function WorldHud({ me }: { me: Me }) {
@@ -388,7 +388,7 @@ function WorldHud({ me }: { me: Me }) {
       case 'furniture':
         return setPanel('shop-furniture');
       case 'apartments':
-        return void net.goApartment(me.id, 'Your apartment');
+        return void net.goApartment(me.id, 'Căn hộ của bạn');
       case 'events':
         return setPanel('events');
       case 'ai_kiosk':
@@ -422,11 +422,11 @@ function WorldHud({ me }: { me: Me }) {
         <div className="row">
           <div className="location-chip">
             <span className="dot" />
-            {room.kind === 'apartment' ? room.label : (zoneLabel ?? 'Town')}
+            {room.kind === 'apartment' ? room.label : (zoneLabel ?? 'Thị trấn')}
           </div>
           {room.kind === 'apartment' ? (
             <Button size="sm" onClick={() => void net.goTown()}>
-              <MapIcon size={15} /> Back to town
+              <MapIcon size={15} /> Về thị trấn
             </Button>
           ) : null}
         </div>
@@ -434,10 +434,10 @@ function WorldHud({ me }: { me: Me }) {
           <div className="event-chip">
             <span>
               {ev.status === 'running' ? '🦆 ' : ''}
-              {ev.title} {ev.status === 'running' ? 'ends in' : 'starts in'} <strong>{mmss}</strong>
+              {ev.title} {ev.status === 'running' ? 'kết thúc sau' : 'bắt đầu sau'} <strong>{mmss}</strong>
             </span>
             <Button size="sm" variant={ev.joined ? 'secondary' : 'reward'} onClick={() => setPanel('events')}>
-              {ev.joined ? (ev.status === 'running' ? `Score ${ev.myScore}` : 'Joined') : 'Join'}
+              {ev.joined ? (ev.status === 'running' ? `Điểm ${ev.myScore}` : 'Đã tham gia') : 'Tham gia'}
             </Button>
           </div>
         ) : null}
@@ -473,14 +473,14 @@ function WorldHud({ me }: { me: Me }) {
           <button
             className="hud-tool"
             aria-pressed={emotes}
-            aria-label="Emotes (Q)"
-            title="Emotes (Q)"
+            aria-label="Cảm xúc (Q)"
+            title="Biểu cảm (Q)"
             onClick={() => setEmotes((v) => !v)}
           >
             <Smile size={20} />
           </button>
           {emotes ? (
-            <div className="emote-wheel" role="menu" aria-label="Emotes">
+            <div className="emote-wheel" role="menu" aria-label="Biểu cảm">
               {EMOTES.map(([id, icon, label]) => (
                 <button
                   key={id}
@@ -497,12 +497,7 @@ function WorldHud({ me }: { me: Me }) {
             </div>
           ) : null}
         </div>
-        <button
-          className="hud-tool"
-          aria-label="Wardrobe"
-          title="Wardrobe"
-          onClick={() => setPanel('wardrobe')}
-        >
+        <button className="hud-tool" aria-label="Tủ đồ" title="Tủ đồ" onClick={() => setPanel('wardrobe')}>
           <Shirt size={20} />
         </button>
       </div>
@@ -511,9 +506,9 @@ function WorldHud({ me }: { me: Me }) {
         <span className="kbd">W</span>
         <span className="kbd">A</span>
         <span className="kbd">S</span>
-        <span className="kbd">D</span> move
-        <span className="kbd">E</span> interact
-        <span className="kbd">Enter</span> chat
+        <span className="kbd">D</span> di chuyển
+        <span className="kbd">E</span> tương tác
+        <span className="kbd">Enter</span> trò chuyện
       </div>
     </>
   );
@@ -529,21 +524,21 @@ function ConnectionOverlay() {
         {offline ? <WifiOff size={28} /> : <Spinner />}
         <h3>
           {connection === 'connecting'
-            ? 'Entering town…'
+            ? 'Đang vào thị trấn…'
             : offline
-              ? 'You are disconnected'
-              : 'Reconnecting…'}
+              ? 'Bạn đã bị ngắt kết nối'
+              : 'Đang kết nối lại…'}
         </h3>
         <p className="muted">
           {connection === 'connecting'
-            ? 'Loading the neighbourhood.'
+            ? 'Đang tải khu phố…'
             : offline
-              ? 'This session was closed. You may have opened the game somewhere else.'
-              : 'Lost connection to the town server. Your progress is saved on the server.'}
+              ? 'Phiên đăng nhập đã đóng. Có thể bạn đã mở game ở một thiết bị hoặc tab khác.'
+              : 'Mất kết nối tới máy chủ thị trấn. Dữ liệu của bạn được lưu an toàn trên máy chủ.'}
         </p>
         {connection !== 'connecting' ? (
           <Button variant="primary" onClick={() => net.retryNow()}>
-            Reconnect now
+            Kết nối lại ngay
           </Button>
         ) : null}
       </div>

@@ -42,7 +42,11 @@ export async function api<T>(
       body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
     });
   } catch {
-    throw new ApiError(0, 'offline', 'Cannot reach the game server. Check your connection and try again.');
+    throw new ApiError(
+      0,
+      'offline',
+      'Không thể kết nối đến máy chủ game. Vui lòng kiểm tra kết nối mạng và thử lại.',
+    );
   }
   const text = await res.text();
   const data = text ? JSON.parse(text) : undefined;
@@ -52,7 +56,7 @@ export async function api<T>(
     throw new ApiError(
       res.status,
       err.code ?? 'error',
-      err.message ?? `Request failed (${res.status}).`,
+      err.message ?? `Yêu cầu thất bại (${res.status}).`,
       err.details,
     );
   }
@@ -238,4 +242,4 @@ export interface PlayerCard {
 export const usd = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 export const num = (n: number) => n.toLocaleString('en-US');
 export const formatDateSafe = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  new Date(iso).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });

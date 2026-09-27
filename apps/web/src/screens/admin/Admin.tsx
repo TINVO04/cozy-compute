@@ -22,16 +22,16 @@ import { ServerPage } from './Server';
 import { AuditPage, FlagsPage, KeysPage, LedgerPage, PlayersPage, ReportsPage, UsagePage } from './Tables';
 
 const NAV = [
-  ['', 'Overview', Gauge],
-  ['models', 'Models', Bot],
-  ['policy', 'Rewards & quotas', Settings2],
-  ['keys', 'Player keys', KeyRound],
-  ['usage', 'Usage', Activity],
-  ['ledger', 'Ledger', Receipt],
-  ['players', 'Players', Users],
-  ['flags', 'Abuse & reports', Flag],
-  ['audit', 'Audit log', ScrollText],
-  ['server', 'Server', Server],
+  ['', 'Tổng quan', Gauge],
+  ['models', 'Mô hình AI', Bot],
+  ['policy', 'Quy tắc & Hạn mức', Settings2],
+  ['keys', 'Khóa người chơi', KeyRound],
+  ['usage', 'Mức sử dụng', Activity],
+  ['ledger', 'Sổ cái GD', Receipt],
+  ['players', 'Người chơi', Users],
+  ['flags', 'Cảnh báo & Báo cáo', Flag],
+  ['audit', 'Nhật ký kiểm toán', ScrollText],
+  ['server', 'Máy chủ', Server],
 ] as const;
 
 export default function AdminScreen() {
@@ -40,7 +40,7 @@ export default function AdminScreen() {
   const section = loc.pathname.replace(/^\/admin\/?/, '').split('/')[0] ?? '';
   return (
     <div className="admin">
-      <nav className="admin-nav" aria-label="Admin">
+      <nav className="admin-nav" aria-label="Quản trị">
         <Brand />
         {NAV.map(([id, label, Icon]) => (
           <button
@@ -54,7 +54,7 @@ export default function AdminScreen() {
         ))}
         <div style={{ marginTop: 'auto' }}>
           <button className="nav-btn" onClick={() => navigate('/')}>
-            <ArrowLeft size={17} /> Back to game
+            <ArrowLeft size={17} /> Trở lại game
           </button>
         </div>
       </nav>
@@ -120,53 +120,53 @@ function Overview() {
     <div className="stack-lg">
       <header className="admin-head">
         <div>
-          <h1>Overview</h1>
-          <p className="muted">Live economy and AI gateway health.</p>
+          <h1>Tổng quan</h1>
+          <p className="muted">Trạng thái kinh tế thời gian thực và cổng kết nối AI.</p>
         </div>
         <div className="row">
           <span className={`pill ${d.gatewayHealthy ? 'pill-success' : 'pill-danger'}`}>
-            Gateway {d.gatewayHealthy ? 'healthy' : 'unreachable'}
+            Cổng AI: {d.gatewayHealthy ? 'Hoạt động tốt' : 'Mất kết nối'}
           </span>
           <span className={`pill ${d.policy.redemptionsPaused ? 'pill-danger' : 'pill-success'}`}>
-            Redemptions {d.policy.redemptionsPaused ? 'paused' : 'open'}
+            Đổi thưởng: {d.policy.redemptionsPaused ? 'Tạm dừng' : 'Đang mở'}
           </span>
         </div>
       </header>
       <div className="kpis">
         <Kpi
-          label="Players online"
+          label="Người chơi trực tuyến"
           value={num(d.online)}
-          sub={`${num(d.stats.players)} total · ${d.stats.new_today} new today`}
+          sub={`${num(d.stats.players)} tổng cộng · ${d.stats.new_today} mới hôm nay`}
         />
         <Kpi
-          label="Weekly AI pool"
-          value={`${usd(d.pool.remainingCents)} left`}
-          sub={`${usd(d.pool.usedCents)} of ${usd(d.pool.totalCents)} minted`}
+          label="Quỹ AI tuần"
+          value={`${usd(d.pool.remainingCents)} còn lại`}
+          sub={`Đã đổi ${usd(d.pool.usedCents)} / ${usd(d.pool.totalCents)}`}
         />
         <Kpi
-          label="Active player keys"
+          label="Khóa đang hoạt động"
           value={num(d.stats.active_keys)}
-          sub={`${usd(Math.round(d.stats.spend_cents))} gateway spend all-time`}
+          sub={`Tổng chi phí gateway: ${usd(Math.round(d.stats.spend_cents))}`}
         />
         <Kpi
-          label="Needs review"
+          label="Cần xét duyệt"
           value={num(d.stats.open_flags + d.stats.open_reports)}
-          sub={`${d.stats.open_flags} flags · ${d.stats.open_reports} reports`}
+          sub={`${d.stats.open_flags} cảnh báo · ${d.stats.open_reports} báo cáo`}
           onClick={() => navigate('/admin/flags')}
         />
       </div>
       <div className="kpis">
-        <Kpi label="Coin issued (24h)" value={num(d.stats.coin_issued_today)} />
-        <Kpi label="Coin burned (24h)" value={num(d.stats.coin_burned_today)} />
+        <Kpi label="Xu phát hành (24h)" value={num(d.stats.coin_issued_today)} />
+        <Kpi label="Xu tiêu thụ (24h)" value={num(d.stats.coin_burned_today)} />
         <Kpi
-          label="Mints (7d)"
+          label="Lượt đổi thưởng (7 ngày)"
           value={num(red('mint', 'completed'))}
-          sub={`${red('mint', 'failed')} failed`}
+          sub={`${red('mint', 'failed')} thất bại`}
         />
         <Kpi
-          label="Keys created (7d)"
+          label="Khóa đã tạo (7 ngày)"
           value={num(red('allocate', 'completed'))}
-          sub={`${red('allocate', 'failed')} failed & refunded`}
+          sub={`${red('allocate', 'failed')} lỗi & đã hoàn tiền`}
         />
       </div>
     </div>

@@ -48,11 +48,11 @@ function Authed({ onSignedOut }: { onSignedOut: () => void }) {
   if (me.isError || !me.data) {
     return (
       <div className="state" style={{ height: '100vh' }}>
-        <h3>We could not load your account</h3>
+        <h3>Không thể tải thông tin tài khoản</h3>
         <p>{me.error instanceof Error ? me.error.message : ''}</p>
         <div className="row">
           <button className="btn btn-primary" onClick={() => void me.refetch()}>
-            Try again
+            Thử lại
           </button>
           <button
             className="btn btn-ghost"
@@ -61,7 +61,7 @@ function Authed({ onSignedOut }: { onSignedOut: () => void }) {
               onSignedOut();
             }}
           >
-            Sign out
+            Đăng xuất
           </button>
         </div>
       </div>

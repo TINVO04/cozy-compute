@@ -42,11 +42,11 @@ import {
 async function copy(text: string, what: string) {
   try {
     await navigator.clipboard.writeText(text);
-    useUi.getState().toast({ kind: 'success', title: `${what} copied` });
+    useUi.getState().toast({ kind: 'success', title: `Đã sao chép ${what}` });
   } catch {
     useUi
       .getState()
-      .toast({ kind: 'error', title: 'Could not copy', body: 'Select the text and copy it manually.' });
+      .toast({ kind: 'error', title: 'Không thể sao chép', body: 'Hãy chọn văn bản và sao chép thủ công.' });
   }
 }
 
@@ -56,7 +56,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   return (
-    <Panel icon={<Bot size={18} />} eyebrow="AI Rewards Kiosk" title="AI Rewards" onClose={onClose}>
+    <Panel icon={<Bot size={18} />} eyebrow="Trạm Đổi Thưởng AI" title="Phần Thưởng AI" onClose={onClose}>
       {ai.isPending ? (
         <LoadingState rows={4} />
       ) : ai.isError ? (
@@ -67,8 +67,8 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
             <div className="callout callout-warn" role="status">
               <PauseCircle size={18} />
               <div>
-                <strong>Redemptions are paused.</strong> Your balances and existing keys are safe. New
-                redemptions will reopen soon.
+                <strong>Hệ thống đổi thưởng đang tạm dừng.</strong> Số dư và các khóa API hiện có của bạn vẫn
+                an toàn. Đổi thưởng sẽ sớm mở lại.
               </div>
             </div>
           ) : null}
@@ -104,17 +104,17 @@ function Summary({ data }: { data: AiOverview }) {
   return (
     <div className="ai-hero">
       <div className="card stat">
-        <div className="stat-label">AI Credit balance</div>
+        <div className="stat-label">Số dư AI Credit</div>
         <div className="stat-value">{usd(data.balances.aiCreditCents)}</div>
-        <div className="stat-sub">Ready to allocate to an API key</div>
+        <div className="stat-sub">Sẵn sàng cấp cho khóa API</div>
       </div>
       <div className="card stat">
-        <div className="stat-label">Active key quota</div>
+        <div className="stat-label">Hạn mức khóa hoạt động</div>
         <div className="stat-value">{usd(Math.floor(activeQuota))}</div>
-        <div className="stat-sub">Remaining across your active keys</div>
+        <div className="stat-sub">Còn lại trên các khóa đang hoạt động</div>
       </div>
       <div className="card stat">
-        <div className="stat-label">Monthly redemption limit</div>
+        <div className="stat-label">Giới hạn đổi thưởng tháng</div>
         <div className="stat-value">
           {usd(data.monthly.remainingCents)}
           <span className="muted" style={{ fontSize: 14, fontWeight: 500 }}>
@@ -125,7 +125,7 @@ function Summary({ data }: { data: AiOverview }) {
         <div style={{ margin: '8px 0 4px' }}>
           <Progress value={data.monthly.usedCents} max={data.monthly.capCents} tone="success" />
         </div>
-        <div className="stat-sub">Resets {formatDate(data.monthly.resetsAt)}</div>
+        <div className="stat-sub">Làm mới vào {formatDate(data.monthly.resetsAt)}</div>
       </div>
     </div>
   );
@@ -136,11 +136,11 @@ function Eligibility({ data }: { data: AiOverview }) {
   return (
     <section>
       <div className="section-title">
-        <h3>Redemption eligibility</h3>
+        <h3>Điều kiện đổi thưởng</h3>
         {eligible ? (
-          <span className="pill pill-success">Eligible</span>
+          <span className="pill pill-success">Đủ điều kiện</span>
         ) : (
-          <span className="pill pill-warn">{checks.filter((c) => !c.met).length} requirements left</span>
+          <span className="pill pill-warn">Còn {checks.filter((c) => !c.met).length} điều kiện chưa đạt</span>
         )}
       </div>
       <div className="eligibility">
@@ -169,15 +169,15 @@ function MintCard({ data }: { data: AiOverview }) {
   const [idem, setIdem] = useState(newIdempotencyKey);
   const coinCost = Math.ceil((cents * coinPerUsd) / 100);
   const blockedReason = data.paused
-    ? 'Redemptions are paused.'
+    ? 'Hệ thống đổi thưởng đang tạm dừng.'
     : !data.eligibility.eligible
-      ? 'Complete the eligibility requirements above first.'
+      ? 'Vui lòng hoàn thành các điều kiện đổi thưởng bên trên trước.'
       : cap < minMintCents
         ? affordableCents < minMintCents
-          ? `You need at least ${num(Math.ceil((minMintCents * coinPerUsd) / 100))} Coin.`
+          ? `Bạn cần ít nhất ${num(Math.ceil((minMintCents * coinPerUsd) / 100))} Xu.`
           : data.monthly.remainingCents < minMintCents
-            ? 'Monthly limit reached.'
-            : "This week's reward pool is used up."
+            ? 'Đã đạt giới hạn đổi thưởng tháng.'
+            : 'Quỹ thưởng tuần này đã hết.'
         : null;
 
   const mint = useMutation({
@@ -186,8 +186,8 @@ function MintCard({ data }: { data: AiOverview }) {
     onSuccess: (r) => {
       useUi.getState().toast({
         kind: 'reward',
-        title: `${usd(r.creditCents)} AI Credit added`,
-        body: `${num(r.coinSpent)} Coin redeemed.`,
+        title: `Đã cộng ${usd(r.creditCents)} AI Credit`,
+        body: `Đã đổi ${num(r.coinSpent)} Xu.`,
       });
       setConfirm(false);
       setIdem(newIdempotencyKey());
@@ -197,7 +197,7 @@ function MintCard({ data }: { data: AiOverview }) {
       setConfirm(false);
       // A genuine failure means a new attempt should get a new key.
       if (err instanceof ApiError && err.code !== 'redemption_in_progress') setIdem(newIdempotencyKey());
-      toastError(err, 'Redemption failed');
+      toastError(err, 'Đổi thưởng thất bại');
       refresh();
     },
   });
@@ -205,26 +205,26 @@ function MintCard({ data }: { data: AiOverview }) {
   return (
     <section className="card" style={{ padding: 20, display: 'grid', gap: 14, alignContent: 'start' }}>
       <div>
-        <h3 style={{ fontSize: 15 }}>1 · Redeem Coin for AI Credit</h3>
+        <h3 style={{ fontSize: 15 }}>1 · Đổi Xu lấy AI Credit</h3>
         <p className="muted" style={{ fontSize: 13 }}>
-          {num(coinPerUsd)} Coin = $1.00 of AI quota. AI Credit cannot be transferred or cashed out.
+          {num(coinPerUsd)} Xu = $1.00 hạn mức AI. AI Credit không thể chuyển nhượng hoặc rút thành tiền mặt.
         </p>
       </div>
       <div className="conversion">
         <div>
-          <div className="stat-label">You spend</div>
+          <div className="stat-label">Bạn dùng</div>
           <div className="amt row" style={{ gap: 6 }}>
             <CoinIcon size={18} /> {num(coinCost)}
           </div>
         </div>
         <span className="muted">→</span>
         <div style={{ textAlign: 'right' }}>
-          <div className="stat-label">You get</div>
+          <div className="stat-label">Bạn nhận</div>
           <div className="amt">{usd(cents)}</div>
         </div>
       </div>
       <div className="field">
-        <label htmlFor="mint-amt">Amount</label>
+        <label htmlFor="mint-amt">Số lượng</label>
         <input
           id="mint-amt"
           className="slider"
@@ -239,7 +239,7 @@ function MintCard({ data }: { data: AiOverview }) {
         <div className="row between muted" style={{ fontSize: 12 }}>
           <span>{usd(minMintCents)}</span>
           <span>
-            Balance: {num(data.balances.coin)} Coin · Pool left this week: {usd(data.pool.remainingCents)}
+            Số dư: {num(data.balances.coin)} Xu · Quỹ tuần này còn: {usd(data.pool.remainingCents)}
           </span>
         </div>
       </div>
@@ -250,18 +250,18 @@ function MintCard({ data }: { data: AiOverview }) {
         </div>
       ) : null}
       <Button variant="primary" disabled={Boolean(blockedReason)} onClick={() => setConfirm(true)}>
-        Redeem {usd(cents)}
+        Đổi {usd(cents)}
       </Button>
       {confirm ? (
         <ConfirmDialog
-          title={`Redeem ${num(coinCost)} Coin?`}
+          title={`Đổi ${num(coinCost)} Xu?`}
           body={
             <>
-              You will receive <strong>{usd(cents)} AI Credit</strong>. This cannot be undone, and AI Credit
-              cannot be converted back into Coin.
+              Bạn sẽ nhận được <strong>{usd(cents)} AI Credit</strong>. Thao tác này không thể hoàn tác, và AI
+              Credit không thể đổi ngược lại thành Xu.
             </>
           }
-          confirmLabel="Redeem"
+          confirmLabel="Đổi thưởng"
           loading={mint.isPending}
           onConfirm={() => mint.mutate()}
           onClose={() => setConfirm(false)}
@@ -285,15 +285,15 @@ function CreateKeyCard({ data, onCreated }: { data: AiOverview; onCreated: (r: N
   const cost = Math.ceil(budget * maxMult);
   const atLimit = data.keyPolicy.activeKeys >= data.keyPolicy.maxActiveKeys;
   const blocked = data.paused
-    ? 'Redemptions are paused.'
+    ? 'Hệ thống đổi thưởng đang tạm dừng.'
     : !data.models.length
-      ? 'No models are available right now.'
+      ? 'Hiện không có mô hình nào khả dụng.'
       : atLimit
-        ? `You already have ${data.keyPolicy.maxActiveKeys} active keys. Revoke one to create another.`
+        ? `Bạn đã có ${data.keyPolicy.maxActiveKeys} khóa đang hoạt động. Hãy thu hồi một khóa để tạo mới.`
         : maxBudget < data.keyPolicy.minBudgetCents
-          ? `You need at least ${usd(Math.ceil(data.keyPolicy.minBudgetCents * maxMult))} AI Credit.`
+          ? `Bạn cần ít nhất ${usd(Math.ceil(data.keyPolicy.minBudgetCents * maxMult))} AI Credit.`
           : !models.length
-            ? 'Pick at least one model.'
+            ? 'Hãy chọn ít nhất một mô hình.'
             : null;
 
   const create = useMutation({
@@ -309,7 +309,7 @@ function CreateKeyCard({ data, onCreated }: { data: AiOverview; onCreated: (r: N
     },
     onError: (err) => {
       if (err instanceof ApiError && err.code !== 'redemption_in_progress') setIdem(newIdempotencyKey());
-      toastError(err, 'Could not create key');
+      toastError(err, 'Không thể tạo khóa');
       refresh();
     },
   });
@@ -317,14 +317,14 @@ function CreateKeyCard({ data, onCreated }: { data: AiOverview; onCreated: (r: N
   return (
     <section className="card" style={{ padding: 20, display: 'grid', gap: 14, alignContent: 'start' }}>
       <div>
-        <h3 style={{ fontSize: 15 }}>2 · Create an API key</h3>
+        <h3 style={{ fontSize: 15 }}>2 · Tạo khóa API</h3>
         <p className="muted" style={{ fontSize: 13 }}>
-          Allocate AI Credit to a key restricted to the models you pick. Keys expire after{' '}
-          {data.keyPolicy.ttlDays} days.
+          Phân bổ AI Credit vào khóa API giới hạn cho các mô hình bạn chọn. Khóa hết hạn sau{' '}
+          {data.keyPolicy.ttlDays} ngày.
         </p>
       </div>
       {data.models.length ? (
-        <div className="stack" style={{ gap: 8 }} role="group" aria-label="Models">
+        <div className="stack" style={{ gap: 8 }} role="group" aria-label="Danh sách mô hình">
           {data.models.map((m) => {
             const on = models.includes(m.id);
             return (
@@ -339,7 +339,7 @@ function CreateKeyCard({ data, onCreated }: { data: AiOverview; onCreated: (r: N
                   {m.creditMultiplier !== 1 ? (
                     <span className="pill">×{m.creditMultiplier} credit</span>
                   ) : (
-                    <span className="pill pill-success">Standard rate</span>
+                    <span className="pill pill-success">Tỷ lệ chuẩn</span>
                   )}
                 </div>
                 <span style={{ fontWeight: 600, fontSize: 13 }}>{m.displayName}</span>
@@ -349,8 +349,8 @@ function CreateKeyCard({ data, onCreated }: { data: AiOverview; onCreated: (r: N
                   </span>
                 ) : null}
                 <span className="muted" style={{ fontSize: 12 }}>
-                  {m.rpm} req/min · {num(m.tpm)} tokens/min
-                  {m.contextLimit ? ` · ${num(m.contextLimit)} max tokens` : ''}
+                  {m.rpm} yêu cầu/phút · {num(m.tpm)} token/phút
+                  {m.contextLimit ? ` · tối đa ${num(m.contextLimit)} token` : ''}
                 </span>
               </button>
             );
@@ -359,13 +359,13 @@ function CreateKeyCard({ data, onCreated }: { data: AiOverview; onCreated: (r: N
       ) : (
         <EmptyState
           icon={<Bot size={22} />}
-          title="No models yet"
-          body="The admins have not enabled any models. Check back soon."
+          title="Chưa có mô hình nào"
+          body="Quản trị viên chưa kích hoạt mô hình nào. Hãy quay lại sau nhé."
         />
       )}
       <div className="form-grid">
         <div className="field">
-          <label htmlFor="key-label">Key name</label>
+          <label htmlFor="key-label">Tên khóa</label>
           <input
             id="key-label"
             className="input"
@@ -375,7 +375,7 @@ function CreateKeyCard({ data, onCreated }: { data: AiOverview; onCreated: (r: N
           />
         </div>
         <div className="field">
-          <label htmlFor="key-budget">Budget (USD)</label>
+          <label htmlFor="key-budget">Ngân sách (USD)</label>
           <input
             id="key-budget"
             className="input"
@@ -390,8 +390,8 @@ function CreateKeyCard({ data, onCreated }: { data: AiOverview; onCreated: (r: N
         </div>
       </div>
       <div className="muted" style={{ fontSize: 12 }}>
-        Uses {usd(cost)} of your {usd(data.balances.aiCreditCents)} AI Credit · {data.keyPolicy.activeKeys}/
-        {data.keyPolicy.maxActiveKeys} active keys
+        Dùng {usd(cost)} trong {usd(data.balances.aiCreditCents)} AI Credit · {data.keyPolicy.activeKeys}/
+        {data.keyPolicy.maxActiveKeys} khóa đang hoạt động
       </div>
       {blocked ? (
         <div className="callout callout-info">
@@ -407,7 +407,7 @@ function CreateKeyCard({ data, onCreated }: { data: AiOverview; onCreated: (r: N
         loading={create.isPending}
         onClick={() => create.mutate()}
       >
-        <KeyRound size={16} /> Create key with {usd(budget)} quota
+        <KeyRound size={16} /> Tạo khóa với hạn mức {usd(budget)}
       </Button>
     </section>
   );
@@ -427,17 +427,17 @@ function KeysTable({ data, onSelect }: { data: AiOverview; onSelect: (id: string
   return (
     <section>
       <div className="section-title">
-        <h3>Your keys</h3>
+        <h3>Danh sách khóa của bạn</h3>
         <span className="muted" style={{ fontSize: 12 }}>
-          Usage syncs from the gateway about once a minute.
+          Mức sử dụng đồng bộ từ cổng gateway khoảng 1 phút/lần.
         </span>
       </div>
       {data.keys.length === 0 ? (
         <div className="card">
           <EmptyState
             icon={<KeyRound size={22} />}
-            title="No keys yet"
-            body="Create a key above to get a Base URL and API key you can use in any OpenAI-compatible app."
+            title="Chưa có khóa nào"
+            body="Tạo khóa ở trên để nhận Base URL và khóa API có thể dùng trong mọi ứng dụng tương thích OpenAI."
           />
         </div>
       ) : (
@@ -445,12 +445,12 @@ function KeysTable({ data, onSelect }: { data: AiOverview; onSelect: (id: string
           <table className="table">
             <thead>
               <tr>
-                <th>Key</th>
-                <th>Status</th>
-                <th>Models</th>
-                <th className="num">Remaining</th>
-                <th style={{ width: 160 }}>Usage</th>
-                <th>Expires</th>
+                <th>Khóa</th>
+                <th>Trạng thái</th>
+                <th>Mô hình</th>
+                <th className="num">Còn lại</th>
+                <th style={{ width: 160 }}>Đã dùng</th>
+                <th>Hết hạn</th>
                 <th />
               </tr>
             </thead>
@@ -478,7 +478,7 @@ function KeysTable({ data, onSelect }: { data: AiOverview; onSelect: (id: string
                   <td className="muted">{formatDate(k.expiresAt)}</td>
                   <td style={{ textAlign: 'right' }}>
                     <Button size="sm" onClick={() => onSelect(k.id)}>
-                      Details
+                      Chi tiết
                     </Button>
                   </td>
                 </tr>
@@ -537,8 +537,8 @@ function CodeTabs({ baseUrl, apiKey, model }: { baseUrl: string; apiKey: string;
             </button>
           ))}
         </div>
-        <Button size="sm" onClick={() => void copy(ex[tab], 'Example')}>
-          <Copy size={14} /> Copy example
+        <Button size="sm" onClick={() => void copy(ex[tab], 'Đoạn mã mẫu')}>
+          <Copy size={14} /> Sao chép ví dụ
         </Button>
       </div>
       <pre className="code">{ex[tab]}</pre>
@@ -552,21 +552,21 @@ function SecretModal({ result, onClose }: { result: NewKeyResult; onClose: () =>
   const masked = result.apiKey.slice(0, 6) + '•'.repeat(18) + result.apiKey.slice(-4);
   return (
     <Modal
-      title="Your new API key"
-      description="Copy it now. For your security we only show the full key once."
+      title="Khóa API mới của bạn"
+      description="Hãy sao chép ngay bây giờ. Vì lý do bảo mật, khóa đầy đủ chỉ hiển thị một lần duy nhất."
       onClose={onClose}
       width={680}
       footer={
         <Button variant="primary" onClick={onClose}>
-          {copied ? 'Done' : 'I saved my key'}
+          {copied ? 'Xong' : 'Tôi đã lưu khóa an toàn'}
         </Button>
       }
     >
       <div className="callout callout-warn">
         <AlertTriangle size={18} />
         <div>
-          Treat this key like a password. Anyone with it can spend your quota. If it leaks, revoke or rotate
-          it from AI Rewards.
+          Hãy bảo mật khóa này như mật khẩu. Bất kỳ ai có khóa đều có thể sử dụng hạn mức của bạn. Nếu bị lộ,
+          hãy thu hồi hoặc đổi khóa ngay.
         </div>
       </div>
       <div className="console">
@@ -578,13 +578,13 @@ function SecretModal({ result, onClose }: { result: NewKeyResult; onClose: () =>
           </Button>
         </div>
         <div className="console-row">
-          <span className="k">API key</span>
+          <span className="k">Khóa API</span>
           <span className="v">{revealed ? result.apiKey : masked}</span>
           <div className="row" style={{ gap: 4 }}>
             <Button
               size="sm"
               variant="ghost"
-              aria-label={revealed ? 'Hide key' : 'Show key'}
+              aria-label={revealed ? 'Ẩn khóa' : 'Hiện khóa'}
               onClick={() => setRevealed(!revealed)}
             >
               {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -593,23 +593,23 @@ function SecretModal({ result, onClose }: { result: NewKeyResult; onClose: () =>
               size="sm"
               variant="primary"
               onClick={() => {
-                void copy(result.apiKey, 'API key');
+                void copy(result.apiKey, 'Khóa API');
                 setCopied(true);
               }}
             >
-              <Copy size={14} /> Copy key
+              <Copy size={14} /> Sao chép khóa
             </Button>
           </div>
         </div>
         <div className="console-row">
-          <span className="k">Models</span>
+          <span className="k">Mô hình</span>
           <span className="v">{result.models.join(', ')}</span>
           <span />
         </div>
         <div className="console-row">
-          <span className="k">Quota</span>
+          <span className="k">Hạn mức</span>
           <span className="v">
-            ${result.budgetUsd.toFixed(2)} · expires {formatDate(result.expiresAt)}
+            ${result.budgetUsd.toFixed(2)} · hết hạn {formatDate(result.expiresAt)}
           </span>
           <span />
         </div>
@@ -660,11 +660,11 @@ function KeyDetail({
     onSuccess: () => {
       useUi
         .getState()
-        .toast({ kind: 'success', title: 'Key revoked', body: 'It stopped working immediately.' });
+        .toast({ kind: 'success', title: 'Đã thu hồi khóa', body: 'Khóa đã ngừng hoạt động ngay lập tức.' });
       void qc.invalidateQueries({ queryKey: qk.ai });
       onClose();
     },
-    onError: (err) => toastError(err, 'Could not revoke'),
+    onError: (err) => toastError(err, 'Không thể thu hồi khóa'),
   });
   const rotate = useMutation({
     mutationFn: () => api<NewKeyResult>(`/ai/keys/${keyId}/rotate`, { body: {} }),
@@ -672,14 +672,14 @@ function KeyDetail({
       refresh();
       onRotated(r);
     },
-    onError: (err) => toastError(err, 'Could not rotate'),
+    onError: (err) => toastError(err, 'Không thể đổi khóa'),
   });
   if (!key) return null;
   const usable = key.status === 'active';
   return (
     <Modal
       title={key.label}
-      description={`${key.keyPreview ?? ''} · created ${formatDate(key.createdAt)}`}
+      description={`${key.keyPreview ?? ''} · tạo ngày ${formatDate(key.createdAt)}`}
       onClose={onClose}
       width={720}
     >
@@ -687,11 +687,11 @@ function KeyDetail({
         <div className="callout callout-danger">
           <AlertTriangle size={18} />
           <div>
-            This key is suspended
+            Khóa này đã bị tạm đình chỉ
             {key.suspendedReason?.startsWith('auto:')
-              ? ' because it was used from many different places at once'
+              ? ' do phát hiện được sử dụng từ nhiều vị trí khác nhau cùng lúc'
               : ''}
-            . Contact support or rotate to a new key.
+            . Vui lòng liên hệ hỗ trợ hoặc đổi khóa mới.
           </div>
         </div>
       ) : null}
@@ -704,42 +704,42 @@ function KeyDetail({
           </Button>
         </div>
         <div className="console-row">
-          <span className="k">API key</span>
-          <span className="v">{key.keyPreview} (hidden — shown only once at creation)</span>
+          <span className="k">Khóa API</span>
+          <span className="v">{key.keyPreview} (đã ẩn — chỉ hiển thị một lần khi tạo)</span>
           <span />
         </div>
         <div className="console-row">
-          <span className="k">Models</span>
+          <span className="k">Mô hình</span>
           <span className="v">{key.models.join(', ')}</span>
-          <Button size="sm" variant="ghost" onClick={() => void copy(key.models[0] ?? '', 'Model name')}>
+          <Button size="sm" variant="ghost" onClick={() => void copy(key.models[0] ?? '', 'Tên mô hình')}>
             <Copy size={14} />
           </Button>
         </div>
         <div className="console-row">
-          <span className="k">Quota</span>
+          <span className="k">Hạn mức</span>
           <span className="v">
-            {usd(Math.floor(key.remainingCents))} remaining of {usd(key.budgetCents)}
+            {usd(Math.floor(key.remainingCents))} còn lại trong {usd(key.budgetCents)}
           </span>
           <span />
         </div>
         <div className="console-row">
-          <span className="k">Limits</span>
+          <span className="k">Giới hạn</span>
           <span className="v">
-            {key.rpm} requests/min · {num(key.tpm)} tokens/min
+            {key.rpm} yêu cầu/phút · {num(key.tpm)} token/phút
           </span>
           <span />
         </div>
         <div className="console-row">
-          <span className="k">Expires</span>
+          <span className="k">Hết hạn</span>
           <span className="v">{formatDate(key.expiresAt)}</span>
           <span />
         </div>
       </div>
       <section>
         <div className="section-title">
-          <h3>Usage</h3>
+          <h3>Mức sử dụng</h3>
           <span className="muted" style={{ fontSize: 12 }}>
-            {num(totals.req)} requests · {num(totals.tok)} tokens
+            {num(totals.req)} yêu cầu · {num(totals.tok)} token
           </span>
         </div>
         {usage.isPending ? (
@@ -748,18 +748,18 @@ function KeyDetail({
           <ErrorState error={usage.error} onRetry={() => void usage.refetch()} />
         ) : usage.data.length === 0 ? (
           <p className="muted" style={{ fontSize: 13 }}>
-            No requests recorded yet. Usage can take a minute or two to appear after you call the API.
+            Chưa ghi nhận yêu cầu nào. Mức sử dụng có thể mất 1–2 phút để hiển thị sau khi bạn gọi API.
           </p>
         ) : (
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Day</th>
-                  <th>Model</th>
-                  <th className="num">Requests</th>
-                  <th className="num">Tokens in / out</th>
-                  <th className="num">Cost</th>
+                  <th>Ngày</th>
+                  <th>Mô hình</th>
+                  <th className="num">Số yêu cầu</th>
+                  <th className="num">Token vào / ra</th>
+                  <th className="num">Chi phí</th>
                 </tr>
               </thead>
               <tbody>
@@ -784,31 +784,31 @@ function KeyDetail({
       ) : null}
       {key.status === 'active' || key.status === 'suspended' || key.status === 'exhausted' ? (
         <div className="card danger-zone" style={{ padding: 16, display: 'grid', gap: 10 }}>
-          <strong>Key controls</strong>
+          <strong>Quản lý khóa</strong>
           <div className="row wrap">
             <Button
               onClick={() => setConfirm('rotate')}
               disabled={key.status !== 'active'}
-              title={key.status !== 'active' ? 'Only active keys with quota can be rotated' : undefined}
+              title={key.status !== 'active' ? 'Chỉ những khóa còn hạn mức mới có thể đổi' : undefined}
             >
-              <RefreshCw size={15} /> Rotate key
+              <RefreshCw size={15} /> Đổi khóa mới
             </Button>
             <Button variant="danger" onClick={() => setConfirm('revoke')}>
-              <Trash2 size={15} /> Revoke key
+              <Trash2 size={15} /> Thu hồi khóa
             </Button>
           </div>
           <span className="muted" style={{ fontSize: 12 }}>
-            Rotating issues a new secret with the remaining quota and disables the old one immediately.
-            Revoking disables the key permanently; unused quota is not refunded.
+            Đổi khóa sẽ cấp một bí mật mới với hạn mức còn lại và vô hiệu hóa khóa cũ ngay lập tức. Thu hồi sẽ
+            hủy khóa vĩnh viễn; hạn mức chưa dùng sẽ không được hoàn lại.
           </span>
         </div>
       ) : null}
       {confirm === 'revoke' ? (
         <ConfirmDialog
           danger
-          title="Revoke this key?"
-          body={`Apps using ${key.keyPreview} will stop working immediately. The remaining ${usd(Math.floor(key.remainingCents))} of quota on this key will be lost.`}
-          confirmLabel="Revoke key"
+          title="Thu hồi khóa này?"
+          body={`Các ứng dụng sử dụng ${key.keyPreview} sẽ ngừng hoạt động ngay lập tức. Hạn mức còn lại ${usd(Math.floor(key.remainingCents))} trên khóa này sẽ bị hủy.`}
+          confirmLabel="Thu hồi khóa"
           loading={revoke.isPending}
           onConfirm={() => revoke.mutate()}
           onClose={() => setConfirm(null)}
@@ -816,9 +816,9 @@ function KeyDetail({
       ) : null}
       {confirm === 'rotate' ? (
         <ConfirmDialog
-          title="Rotate this key?"
-          body="You will get a new secret with the same models and remaining quota. The current key stops working right away, so update your apps afterwards."
-          confirmLabel="Rotate key"
+          title="Đổi khóa mới?"
+          body="Bạn sẽ nhận được mã bí mật mới với cùng danh sách mô hình và hạn mức còn lại. Khóa hiện tại sẽ ngừng hoạt động ngay, hãy cập nhật lại ứng dụng sau khi đổi."
+          confirmLabel="Đổi khóa"
           loading={rotate.isPending}
           onConfirm={() => rotate.mutate()}
           onClose={() => setConfirm(null)}

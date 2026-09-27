@@ -57,7 +57,7 @@ export function ModelsPage() {
     onSuccess: (r) =>
       useUi.getState().toast({
         kind: r.ok ? 'success' : 'error',
-        title: r.ok ? `Upstream OK (${r.latencyMs} ms)` : 'Upstream test failed',
+        title: r.ok ? `Cổng Gateway OK (${r.latencyMs} ms)` : 'Kiểm tra upstream thất bại',
         body: r.message,
       }),
     onError: (err) => toastError(err),
@@ -65,23 +65,23 @@ export function ModelsPage() {
   const sync = useMutation({
     mutationFn: (id: string) => api(`/admin/models/${id}/sync`, { body: {} }),
     onSuccess: () => {
-      useUi.getState().toast({ kind: 'success', title: 'Gateway synced' });
+      useUi.getState().toast({ kind: 'success', title: 'Đã đồng bộ Gateway' });
       void qc.invalidateQueries({ queryKey: ['admin', 'models'] });
     },
-    onError: (err) => toastError(err, 'Sync failed'),
+    onError: (err) => toastError(err, 'Đồng bộ thất bại'),
   });
   return (
     <div className="stack-lg">
       <header className="admin-head">
         <div>
-          <h1>Models</h1>
+          <h1>Mô hình AI</h1>
           <p className="muted">
-            OpenAI-compatible upstreams players can reach through the gateway. Secrets stay on the gateway
-            host.
+            Các upstream tương thích OpenAI mà người chơi có thể truy cập qua cổng Gateway. Khóa bí mật được
+            lưu an toàn trên máy chủ Gateway.
           </p>
         </div>
         <Button variant="primary" onClick={() => setEditing(BLANK)}>
-          <Plus size={16} /> Add model
+          <Plus size={16} /> Thêm mô hình
         </Button>
       </header>
       {models.isPending ? (
@@ -92,11 +92,11 @@ export function ModelsPage() {
         <div className="card">
           <EmptyState
             icon={<Bot size={22} />}
-            title="No models configured"
-            body="Add a model deployment to let players create API keys."
+            title="Chưa cấu hình mô hình nào"
+            body="Thêm một mô hình triển khai để cho phép người chơi tạo khóa API."
             action={
               <Button variant="primary" onClick={() => setEditing(BLANK)}>
-                Add model
+                Thêm mô hình
               </Button>
             }
           />
@@ -106,13 +106,13 @@ export function ModelsPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>Public alias</th>
+                <th>Bí danh công khai</th>
                 <th>Upstream</th>
-                <th>Secret ref</th>
-                <th className="num">Credit ×</th>
-                <th className="num">$/Mtok in·out</th>
+                <th>Biến khóa bí mật</th>
+                <th className="num">Hệ số AI Credit</th>
+                <th className="num">$/Mtok vào·ra</th>
                 <th className="num">RPM · TPM</th>
-                <th>Status</th>
+                <th>Trạng thái</th>
                 <th />
               </tr>
             </thead>
@@ -142,9 +142,9 @@ export function ModelsPage() {
                   <td>
                     <div className="row wrap" style={{ gap: 4 }}>
                       <span className={`pill ${m.enabled ? 'pill-success' : ''}`}>
-                        {m.enabled ? 'Enabled' : 'Disabled'}
+                        {m.enabled ? 'Đang bật' : 'Đã tắt'}
                       </span>
-                      {!m.gatewaySyncedAt ? <span className="pill pill-danger">Not synced</span> : null}
+                      {!m.gatewaySyncedAt ? <span className="pill pill-danger">Chưa đồng bộ</span> : null}
                     </div>
                   </td>
                   <td>
@@ -154,9 +154,9 @@ export function ModelsPage() {
                         variant="ghost"
                         loading={test.isPending && test.variables === m.id}
                         onClick={() => test.mutate(m.id)}
-                        title="Send a tiny test request through the gateway"
+                        title="Gửi một yêu cầu kiểm tra nhỏ qua cổng Gateway"
                       >
-                        <Zap size={14} /> Test
+                        <Zap size={14} /> Kiểm tra
                       </Button>
                       {!m.gatewaySyncedAt ? (
                         <Button
@@ -165,11 +165,11 @@ export function ModelsPage() {
                           loading={sync.isPending}
                           onClick={() => sync.mutate(m.id)}
                         >
-                          <RefreshCw size={14} /> Retry sync
+                          <RefreshCw size={14} /> Thử lại đồng bộ
                         </Button>
                       ) : null}
                       <Button size="sm" onClick={() => setEditing(m)}>
-                        Edit
+                        Chỉnh sửa
                       </Button>
                     </div>
                   </td>
@@ -222,13 +222,13 @@ function ModelForm({ model, onClose }: { model: Model | typeof BLANK; onClose: (
       void qc.invalidateQueries({ queryKey: ['admin', 'models'] });
       useUi.getState().toast({
         kind: 'success',
-        title: isNew ? 'Model created' : 'Model updated',
-        body: 'Change recorded in the audit log.',
+        title: isNew ? 'Đã tạo mô hình' : 'Đã cập nhật mô hình',
+        body: 'Thay đổi đã được ghi vào nhật ký kiểm toán.',
       });
       onClose();
     },
     onError: (e) => {
-      setErr(e instanceof Error ? e.message : 'Save failed');
+      setErr(e instanceof Error ? e.message : 'Lưu thất bại');
       void qc.invalidateQueries({ queryKey: ['admin', 'models'] });
     },
   });
@@ -262,36 +262,36 @@ function ModelForm({ model, onClose }: { model: Model | typeof BLANK; onClose: (
   );
   return (
     <Modal
-      title={isNew ? 'Add model deployment' : `Edit ${(model as Model).publicModelName}`}
+      title={isNew ? 'Thêm mô hình triển khai' : `Chỉnh sửa ${(model as Model).publicModelName}`}
       onClose={onClose}
       width={760}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            Hủy
           </Button>
           <Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>
-            {isNew ? 'Create model' : 'Save changes'}
+            {isNew ? 'Tạo mô hình' : 'Lưu thay đổi'}
           </Button>
         </>
       }
     >
       <div className="form-grid">
-        {input('displayName', 'Display name')}
-        {input('slug', 'Slug', { mono: true, hint: 'Internal id, e.g. creator-pro' })}
-        {input('publicModelName', 'Public model alias', {
+        {input('displayName', 'Tên hiển thị')}
+        {input('slug', 'Mã slug nội bộ', { mono: true, hint: 'Mã định danh nội bộ, vd: creator-pro' })}
+        {input('publicModelName', 'Bí danh mô hình công khai', {
           mono: true,
-          hint: 'What players pass as "model".',
+          hint: 'Tên người chơi truyền vào trường "model".',
         })}
         <div className="field">
-          <label htmlFor="m-prov">Upstream API style</label>
+          <label htmlFor="m-prov">Giao thức API Upstream</label>
           <select
             id="m-prov"
             className="select"
             value={f.upstreamProvider}
             onChange={(e) => set('upstreamProvider', e.target.value)}
           >
-            <option value="openai">OpenAI-compatible</option>
+            <option value="openai">Tương thích OpenAI</option>
             <option value="hosted_vllm">vLLM</option>
             <option value="ollama">Ollama</option>
             <option value="azure">Azure OpenAI</option>
@@ -299,43 +299,43 @@ function ModelForm({ model, onClose }: { model: Model | typeof BLANK; onClose: (
             <option value="gemini">Gemini</option>
           </select>
         </div>
-        {input('upstreamBaseUrl', 'Upstream base URL', {
+        {input('upstreamBaseUrl', 'URL gốc Upstream', {
           mono: true,
           full: true,
-          hint: 'e.g. https://my-provider.example/v1',
+          hint: 'vd: https://my-provider.example/v1',
         })}
-        {input('upstreamModelName', 'Upstream model name', { mono: true })}
-        {input('secretRef', 'Credential reference', {
+        {input('upstreamModelName', 'Tên mô hình Upstream', { mono: true })}
+        {input('secretRef', 'Biến môi trường khóa bí mật', {
           mono: true,
-          hint: 'Name of an UPSTREAM_KEY_* env var on the gateway host. Never paste the key itself.',
+          hint: 'Tên biến môi trường UPSTREAM_KEY_* trên máy chủ Gateway. Tuyệt đối không dán khóa trực tiếp.',
         })}
-        {input('description', 'Description for players', { full: true })}
-        {input('creditMultiplier', 'AI Credit multiplier', {
+        {input('description', 'Mô tả cho người chơi', { full: true })}
+        {input('creditMultiplier', 'Hệ số AI Credit', {
           type: 'number',
           step: '0.1',
-          hint: '1 = $1 AI Credit buys $1 quota.',
+          hint: '1 = $1 AI Credit mua $1 hạn mức.',
         })}
-        {input('userMonthlyBudgetCents', 'Per-player monthly cap (cents)', {
+        {input('userMonthlyBudgetCents', 'Hạn mức tháng mỗi người chơi (cent)', {
           type: 'number',
-          hint: 'Blank = only the global cap applies.',
+          hint: 'Để trống = chỉ áp dụng hạn mức chung.',
         })}
-        {input('inputCostPerMtok', 'Input cost $ / 1M tokens', { type: 'number', step: '0.01' })}
-        {input('outputCostPerMtok', 'Output cost $ / 1M tokens', { type: 'number', step: '0.01' })}
-        {input('rpm', 'Requests / minute per key', { type: 'number' })}
-        {input('tpm', 'Tokens / minute per key', { type: 'number' })}
-        {input('contextLimit', 'Max output tokens', { type: 'number', hint: 'Optional.' })}
+        {input('inputCostPerMtok', 'Chi phí đầu vào $ / 1M token', { type: 'number', step: '0.01' })}
+        {input('outputCostPerMtok', 'Chi phí đầu ra $ / 1M token', { type: 'number', step: '0.01' })}
+        {input('rpm', 'Số yêu cầu / phút mỗi khóa (RPM)', { type: 'number' })}
+        {input('tpm', 'Số token / phút mỗi khóa (TPM)', { type: 'number' })}
+        {input('contextLimit', 'Số token đầu ra tối đa', { type: 'number', hint: 'Không bắt buộc.' })}
         <div className="field" style={{ alignContent: 'end', gap: 12 }}>
-          <Switch checked={f.enabled} onChange={(v) => set('enabled', v)} label="Enabled" />
+          <Switch checked={f.enabled} onChange={(v) => set('enabled', v)} label="Kích hoạt" />
           <Switch
             checked={f.allowExternalUse}
             onChange={(v) => set('allowExternalUse', v)}
-            label="Players can create keys"
+            label="Cho phép người chơi tạo khóa"
           />
         </div>
       </div>
       <p className="muted" style={{ fontSize: 12 }}>
-        Estimated player cost: {usd(Math.round(Number(f.creditMultiplier) * 100))} AI Credit per $1.00 of
-        quota.
+        Chi phí người chơi ước tính: {usd(Math.round(Number(f.creditMultiplier) * 100))} AI Credit cho mỗi
+        $1.00 hạn mức.
       </p>
       {err ? (
         <div className="callout callout-danger" role="alert">

@@ -3,10 +3,10 @@ export type ClothingSlot = 'hat' | 'top' | 'face';
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
 
 export const RARITY_LABELS: Record<Rarity, string> = {
-  common: 'Questionable',
-  rare: 'Why Do You Own This?',
-  epic: 'Unreasonably Expensive',
-  legendary: 'I Regret Everything',
+  common: 'Phổ thông',
+  rare: 'Hiếm có',
+  epic: 'Sử thi',
+  legendary: 'Huyền thoại',
 };
 
 export interface ItemDefinitionSeed {

@@ -23,7 +23,10 @@ export function GameCanvas() {
       banner: false,
       scene: [TownScene, ApartmentScene],
     });
-    game.canvas?.setAttribute('aria-label', 'Game world. Use arrow keys or WASD to move.');
+    game.canvas?.setAttribute(
+      'aria-label',
+      'Thế giới trò chơi. Dùng các phím mũi tên hoặc WASD để di chuyển.',
+    );
     return () => {
       game?.destroy(true);
       game = null;
