@@ -25,12 +25,13 @@ class Net {
 
   onRoom(fn: Listener) {
     this.listeners.add(fn);
-    if (this.room) fn(this.room);
+    if (this.room && !this.closedByUs) fn(this.room);
     return () => this.listeners.delete(fn);
   }
 
   connect(target = this.target): Promise<void> {
     this.target = target;
+    this.closedByUs = false;
     const gen = ++this.generation;
     this.queue = this.queue.then(() => this.doConnect(target, gen));
     return this.queue;
@@ -142,10 +143,11 @@ class Net {
     this.generation++;
     window.clearTimeout(this.retryTimer);
     this.closedByUs = true;
+    const oldRoom = this.room;
+    this.room = null;
     this.queue = this.queue.then(async () => {
       this.closedByUs = true;
-      await this.room?.leave(true).catch(() => undefined);
-      this.room = null;
+      await oldRoom?.leave(true).catch(() => undefined);
     });
     await this.queue;
   }

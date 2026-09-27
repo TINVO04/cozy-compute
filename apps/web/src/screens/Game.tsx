@@ -59,9 +59,10 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
   const room = useUi((s) => s.room);
 
   useEffect(() => {
+    useUi.getState().setMyUserId(me.id);
     void net.goTown();
     return () => void net.disconnect();
-  }, []);
+  }, [me.id]);
 
   // Keyboard shortcuts for non-game UI.
   useEffect(() => {

@@ -53,11 +53,13 @@ interface UiState {
   editingApartment: boolean;
   reducedMotion: boolean;
   muted: boolean;
+  myUserId: string | null;
   setPanel: (p: Panel) => void;
   setActivity: (a: Activity) => void;
   setZone: (z: ZoneId | null) => void;
   setConnection: (c: UiState['connection']) => void;
   setRoom: (r: UiState['room']) => void;
+  setMyUserId: (id: string | null) => void;
   toast: (t: Omit<Toast, 'id'>) => void;
   dismissToast: (id: number) => void;
   pushChat: (c: Omit<ChatLine, 'id'>) => void;
@@ -83,11 +85,13 @@ export const useUi = create<UiState>((set) => ({
   reducedMotion:
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   muted: localStorage.getItem('cozy.muted') === '1',
+  myUserId: null,
   setPanel: (panel) => set({ panel }),
   setActivity: (activity) => set({ activity }),
   setZone: (zone) => set({ zone }),
   setConnection: (connection) => set({ connection }),
   setRoom: (room) => set({ room }),
+  setMyUserId: (myUserId) => set({ myUserId }),
   toast: (t) => {
     const id = nextId++;
     set((s) => ({ toasts: [...s.toasts.slice(-3), { ...t, id }] }));

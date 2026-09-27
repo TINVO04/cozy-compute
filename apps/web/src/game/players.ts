@@ -227,6 +227,32 @@ export class PlayerLayer {
       }),
     );
     room.onMessage('chat', (m: { from: string; text: string }) => this.avatars.get(m.from)?.say(m.text));
+
+    // Fallback sync: also inspect current room state directly if players already exist
+    const rawState = room.state as unknown as { players?: Map<string, PlayerSnapshot> };
+    if (rawState?.players && typeof rawState.players.forEach === 'function') {
+      rawState.players.forEach((p, sid) => {
+        if (!this.avatars.has(sid)) {
+          this.add(p, sid);
+        }
+      });
+    }
+
+    // Also listen to state updates in case initial snapshot was delayed
+    const onState = (state: unknown) => {
+      const s = state as { players?: Map<string, PlayerSnapshot> };
+      if (s?.players && typeof s.players.forEach === 'function') {
+        s.players.forEach((p, sid) => {
+          if (!this.avatars.has(sid)) {
+            this.add(p, sid);
+          }
+        });
+      }
+    };
+    room.onStateChange(onState as never);
+    this.cleanup.push(() => {
+      room.onStateChange.remove(onState as never);
+    });
   }
 
   setWorldBlockers(blockers: Rect[]) {
@@ -234,7 +260,9 @@ export class PlayerLayer {
   }
 
   private add(p: PlayerSnapshot, sid: string) {
-    const isSelf = sid === this.selfSessionId;
+    if (this.avatars.has(sid)) return;
+    const myId = useUi.getState().myUserId;
+    const isSelf = sid === this.selfSessionId || (Boolean(myId) && p.userId === myId);
     const av = new Avatar(this.scene, p.userId, p.name, parseAppearance(p.appearance), p.x, p.y, isSelf);
     av.setStatus(p.status);
     av.container.setAlpha(p.connected ? 1 : 0.45);

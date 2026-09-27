@@ -35,13 +35,28 @@ export function GameCanvas() {
 
   useEffect(() => {
     if (!game) return;
-    const start = () => {
+    const switchScene = () => {
+      if (!game) return;
       const target = roomKind === 'town' ? 'town' : 'apartment';
-      for (const s of game!.scene.getScenes(true)) if (s.scene.key !== target) game!.scene.stop(s.scene.key);
-      if (!game!.scene.isActive(target)) game!.scene.start(target);
+      const activeScenes = game.scene.getScenes(true);
+      const isTargetActive = activeScenes.some((s) => s.scene.key === target);
+      if (isTargetActive) return;
+
+      for (const s of activeScenes) {
+        if (s.scene.key !== target) game.scene.stop(s.scene.key);
+      }
+      game.scene.start(target);
     };
-    if (game.isBooted) start();
-    else game.events.once('ready', start);
+
+    if (game.isBooted) {
+      switchScene();
+    } else {
+      game.events.once('ready', () => {
+        if (roomKind !== 'town') {
+          switchScene();
+        }
+      });
+    }
   }, [roomKind]);
 
   return <div ref={ref} className="game-canvas" onContextMenu={(e) => e.preventDefault()} />;
