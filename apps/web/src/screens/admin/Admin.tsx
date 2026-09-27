@@ -42,6 +42,24 @@ export default function AdminScreen() {
     <div className="admin">
       <nav className="admin-nav" aria-label="Quản trị">
         <Brand />
+        <div style={{ padding: '0 0 12px', borderBottom: '1px solid var(--line)', marginBottom: 8 }}>
+          <button
+            className="btn btn-secondary"
+            style={{
+              width: '100%',
+              justifyContent: 'center',
+              gap: 8,
+              fontWeight: 600,
+              fontSize: 13,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+            onClick={() => navigate('/')}
+          >
+            <ArrowLeft size={16} /> Quay lại Game
+          </button>
+        </div>
         {NAV.map(([id, label, Icon]) => (
           <button
             key={id}
@@ -52,13 +70,49 @@ export default function AdminScreen() {
             <Icon size={17} /> {label}
           </button>
         ))}
-        <div style={{ marginTop: 'auto' }}>
-          <button className="nav-btn" onClick={() => navigate('/')}>
-            <ArrowLeft size={17} /> Trở lại game
+        <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--line)' }}>
+          <button
+            className="nav-btn"
+            style={{ fontWeight: 600, color: 'var(--accent)' }}
+            onClick={() => navigate('/')}
+          >
+            <ArrowLeft size={17} /> Quay lại Game
           </button>
         </div>
       </nav>
       <main className="admin-main">
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingBottom: 16,
+            marginBottom: 20,
+            borderBottom: '1px solid var(--line)',
+          }}
+        >
+          <div style={{ fontSize: 13, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Khu vực Quản trị Hệ thống</span>
+            <span>/</span>
+            <strong style={{ color: 'var(--ink)' }}>
+              {NAV.find(([id]) => id === section)?.[1] ?? 'Trang quản trị'}
+            </strong>
+          </div>
+          <button
+            className="btn btn-secondary"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+            onClick={() => navigate('/')}
+          >
+            <ArrowLeft size={16} /> Quay lại Game
+          </button>
+        </div>
         <Routes>
           <Route index element={<Overview />} />
           <Route path="models" element={<ModelsPage />} />

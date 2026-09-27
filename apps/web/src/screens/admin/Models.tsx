@@ -30,12 +30,12 @@ interface Model {
 const BLANK: Omit<Model, 'id' | 'gatewaySyncedAt'> = {
   slug: '',
   displayName: '',
-  description: '',
+  description: 'Mô hình AI tương thích OpenAI',
   publicModelName: '',
   upstreamProvider: 'openai',
   upstreamModelName: '',
   upstreamBaseUrl: 'http://host.docker.internal:3001/v1',
-  secretRef: 'UPSTREAM_KEY_1',
+  secretRef: 'UPSTREAM_KEY_NEWAPI',
   enabled: true,
   allowExternalUse: true,
   creditMultiplier: 1,
@@ -76,8 +76,7 @@ export function ModelsPage() {
         <div>
           <h1>Mô hình AI</h1>
           <p className="muted">
-            Kết nối các mô hình AI từ New-API hoặc nhà cung cấp tương thích OpenAI. Chi phí token và hạn mức
-            đã do New-API tự động quản lý.
+            Kết nối các mô hình AI từ New-API tương thích chuẩn OpenAI Compatible để cấp cho người dùng.
           </p>
         </div>
         <Button variant="primary" onClick={() => setEditing(BLANK)}>
@@ -93,7 +92,7 @@ export function ModelsPage() {
           <EmptyState
             icon={<Bot size={22} />}
             title="Chưa cấu hình mô hình nào"
-            body="Thêm một mô hình từ New-API để cho phép người chơi tạo khóa API."
+            body="Thêm một mô hình từ New-API để cấp quyền sử dụng cho người chơi."
             action={
               <Button variant="primary" onClick={() => setEditing(BLANK)}>
                 Thêm mô hình
@@ -106,9 +105,10 @@ export function ModelsPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>Mô hình</th>
-                <th>Base URL (New-API / Upstream)</th>
-                <th>Khóa (Key)</th>
+                <th>Tên model hiển thị</th>
+                <th>Base URL</th>
+                <th>Key để giao cho người dùng</th>
+                <th>Chuẩn API</th>
                 <th>Trạng thái</th>
                 <th />
               </tr>
@@ -117,19 +117,19 @@ export function ModelsPage() {
               {models.data.map((m) => (
                 <tr key={m.id}>
                   <td>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{m.publicModelName}</div>
-                    <div className="muted" style={{ fontSize: 12 }}>
-                      {m.displayName}
+                    <div style={{ fontWeight: 600 }}>{m.displayName || m.publicModelName}</div>
+                    <div className="muted" style={{ fontSize: 12, fontFamily: 'var(--font-mono)' }}>
+                      {m.publicModelName}
                     </div>
                   </td>
                   <td style={{ fontSize: 12 }}>
                     <div style={{ fontFamily: 'var(--font-mono)' }}>{m.upstreamBaseUrl}</div>
-                    <div className="muted">
-                      {m.upstreamProvider}/{m.upstreamModelName}
-                    </div>
                   </td>
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>
                     <span className="pill">{m.secretRef}</span>
+                  </td>
+                  <td>
+                    <span className="pill">OpenAI Compatible</span>
                   </td>
                   <td>
                     <div className="row wrap" style={{ gap: 4 }}>
@@ -182,33 +182,54 @@ function ModelForm({ model, onClose }: { model: Model | typeof BLANK; onClose: (
   const [f, setF] = useState({ ...model });
   const [err, setErr] = useState<string | null>(null);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
+
   const save = useMutation({
     mutationFn: () => {
-      const publicName = f.publicModelName.trim().toLowerCase();
-      const slug = (f.slug.trim() || publicName).replace(/[^a-z0-9-]/g, '-').slice(0, 40);
-      const displayName = f.displayName.trim() || f.publicModelName.trim();
-      const upstreamModel = f.upstreamModelName.trim() || f.publicModelName.trim();
+      const rawName = (f.displayName || f.publicModelName).trim();
+      if (!rawName) throw new Error('Vui lòng nhập tên model hiển thị');
+      const publicName = rawName
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]/g, '-')
+        .slice(0, 60);
+      let slug = rawName
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-')
+        .slice(0, 40);
+      if (slug.length < 2) slug = `${slug || 'm'}-model`;
+      const displayName = f.displayName.trim() || rawName;
+      const upstreamModel = rawName;
+
+      let upstreamBaseUrl = f.upstreamBaseUrl.trim();
+      if (!upstreamBaseUrl) throw new Error('Vui lòng nhập Base URL');
+      if (!/^https?:\/\//i.test(upstreamBaseUrl)) {
+        upstreamBaseUrl = `http://${upstreamBaseUrl}`;
+      }
+
+      const secretRef = (f.secretRef || '').trim() || 'UPSTREAM_KEY_NEWAPI';
+      if (!/^UPSTREAM_KEY_[A-Z0-9_]{1,40}$/.test(secretRef)) {
+        throw new Error(
+          'Key phải là tên biến môi trường máy chủ (ví dụ: UPSTREAM_KEY_NEWAPI hoặc UPSTREAM_KEY_1). API Key thực tế (sk-...) cần được lưu trong file .env trên máy chủ.',
+        );
+      }
+
       const body = {
         slug,
         displayName,
-        description: f.description.trim(),
+        description: f.description.trim() || `Mô hình AI ${displayName}`,
         publicModelName: publicName,
-        upstreamProvider: f.upstreamProvider || 'openai',
+        upstreamProvider: 'openai',
         upstreamModelName: upstreamModel,
-        upstreamBaseUrl: f.upstreamBaseUrl.trim(),
-        secretRef: f.secretRef.trim() || 'UPSTREAM_KEY_1',
+        upstreamBaseUrl,
+        secretRef,
         enabled: f.enabled,
-        allowExternalUse: f.allowExternalUse,
-        creditMultiplier: Number(f.creditMultiplier) || 1,
-        inputCostPerMtok: Number(f.inputCostPerMtok) || 0,
-        outputCostPerMtok: Number(f.outputCostPerMtok) || 0,
-        rpm: Number(f.rpm) || 60,
-        tpm: Number(f.tpm) || 100000,
-        contextLimit: f.contextLimit ? Number(f.contextLimit) : null,
-        userMonthlyBudgetCents:
-          f.userMonthlyBudgetCents === null || (f.userMonthlyBudgetCents as unknown) === ''
-            ? null
-            : Number(f.userMonthlyBudgetCents),
+        allowExternalUse: true,
+        creditMultiplier: 1,
+        inputCostPerMtok: 0,
+        outputCostPerMtok: 0,
+        rpm: 60,
+        tpm: 100000,
+        contextLimit: null,
+        userMonthlyBudgetCents: null,
       };
       return isNew
         ? api('/admin/models', { body })
@@ -219,7 +240,7 @@ function ModelForm({ model, onClose }: { model: Model | typeof BLANK; onClose: (
       useUi.getState().toast({
         kind: 'success',
         title: isNew ? 'Đã tạo mô hình' : 'Đã cập nhật mô hình',
-        body: 'Thay đổi đã được ghi vào nhật ký kiểm toán.',
+        body: 'Mô hình tương thích OpenAI đã sẵn sàng cấp cho người dùng.',
       });
       onClose();
     },
@@ -228,76 +249,59 @@ function ModelForm({ model, onClose }: { model: Model | typeof BLANK; onClose: (
       void qc.invalidateQueries({ queryKey: ['admin', 'models'] });
     },
   });
-  const input = (
-    k: keyof typeof f,
-    label: string,
-    opts: {
-      type?: string;
-      hint?: string;
-      mono?: boolean;
-      full?: boolean;
-      step?: string;
-      placeholder?: string;
-    } = {},
-  ) => (
-    <div className={`field ${opts.full ? 'full' : ''}`}>
-      <label htmlFor={`m-${String(k)}`}>{label}</label>
-      <input
-        id={`m-${String(k)}`}
-        className="input"
-        type={opts.type ?? 'text'}
-        step={opts.step}
-        placeholder={opts.placeholder}
-        style={opts.mono ? { fontFamily: 'var(--font-mono)' } : undefined}
-        value={(f[k] as string | number | null) ?? ''}
-        onChange={(e) => {
-          const val = e.target.value;
-          set(k, (opts.type === 'number' ? (val === '' ? null : val) : val) as never);
-          if (k === 'publicModelName' && isNew) {
-            if (!f.displayName || f.displayName === f.publicModelName) {
-              set('displayName', val as never);
-            }
-          }
-        }}
-      />
-      {opts.hint ? <span className="field-hint">{opts.hint}</span> : null}
-    </div>
-  );
 
   return (
     <Modal
-      title={isNew ? 'Thêm mô hình AI' : `Chỉnh sửa ${(model as Model).publicModelName}`}
+      title={isNew ? 'Thêm mô hình AI' : `Chỉnh sửa ${f.displayName || (model as Model).publicModelName}`}
       onClose={onClose}
-      width={680}
+      width={560}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
             Hủy
           </Button>
           <Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>
-            {isNew ? 'Tạo mô hình' : 'Lưu thay đổi'}
+            {isNew ? 'Thêm mô hình' : 'Lưu thay đổi'}
           </Button>
         </>
       }
     >
-      <div className="form-grid">
-        {input('publicModelName', 'Tên mô hình (Model ID)', {
-          mono: true,
-          placeholder: 'vd: gpt-4o, claude-3-5-sonnet, gemini-2.5-flash',
-          hint: 'Tên mô hình được New-API hỗ trợ mà người chơi gọi trong API.',
-        })}
-        {input('displayName', 'Tên hiển thị (Tùy chọn)', {
-          placeholder: 'vd: GPT-4o Omni',
-          hint: 'Tên thân thiện hiển thị trên giao diện trò chơi. Mặc định giống Tên mô hình.',
-        })}
-        {input('upstreamBaseUrl', 'Base URL (New-API / Upstream)', {
-          mono: true,
-          full: true,
-          placeholder: 'http://host.docker.internal:3001/v1 hoặc http://localhost:3001/v1',
-          hint: 'Địa chỉ cổng New-API hoặc nhà cung cấp API tương thích OpenAI.',
-        })}
-        <div className="field">
-          <label htmlFor="m-secret">Khóa API (Key Reference)</label>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="field full">
+          <label htmlFor="m-displayName">Tên model hiển thị</label>
+          <input
+            id="m-displayName"
+            className="input"
+            value={f.displayName}
+            onChange={(e) => {
+              set('displayName', e.target.value);
+              set('publicModelName', e.target.value);
+            }}
+            placeholder="vd: gpt-4o, claude-3-5-sonnet, gemini-2.5-flash"
+            autoFocus
+          />
+          <span className="field-hint">
+            Tên định danh mô hình hiển thị cho người chơi trong game (vd: gpt-4o).
+          </span>
+        </div>
+
+        <div className="field full">
+          <label htmlFor="m-baseUrl">Base URL</label>
+          <input
+            id="m-baseUrl"
+            className="input"
+            style={{ fontFamily: 'var(--font-mono)' }}
+            value={f.upstreamBaseUrl}
+            onChange={(e) => set('upstreamBaseUrl', e.target.value)}
+            placeholder="http://host.docker.internal:3001/v1"
+          />
+          <span className="field-hint">
+            Địa chỉ Base URL cổng API New-API hoặc nhà cung cấp tương thích OpenAI.
+          </span>
+        </div>
+
+        <div className="field full">
+          <label htmlFor="m-secret">Key để giao cho người dùng</label>
           <input
             id="m-secret"
             className="input"
@@ -305,99 +309,46 @@ function ModelForm({ model, onClose }: { model: Model | typeof BLANK; onClose: (
             style={{ fontFamily: 'var(--font-mono)' }}
             value={f.secretRef}
             onChange={(e) => set('secretRef', e.target.value)}
-            placeholder="UPSTREAM_KEY_1"
+            placeholder="UPSTREAM_KEY_NEWAPI"
           />
           <datalist id="key-options">
-            <option value="UPSTREAM_KEY_1">UPSTREAM_KEY_1 (Khóa mặc định)</option>
             <option value="UPSTREAM_KEY_NEWAPI">UPSTREAM_KEY_NEWAPI (Khóa New-API)</option>
+            <option value="UPSTREAM_KEY_1">UPSTREAM_KEY_1 (Khóa mặc định)</option>
             <option value="UPSTREAM_KEY_2">UPSTREAM_KEY_2</option>
             <option value="UPSTREAM_KEY_3">UPSTREAM_KEY_3</option>
-            <option value="UPSTREAM_KEY_MOCK">UPSTREAM_KEY_MOCK (Mock Dev)</option>
           </datalist>
           <span className="field-hint">
-            Tên biến môi trường chứa API Key trong file .env trên máy chủ (mặc định: UPSTREAM_KEY_1 hoặc
-            UPSTREAM_KEY_NEWAPI).
+            Tên biến môi trường API Key trong file .env trên máy chủ (mặc định: UPSTREAM_KEY_NEWAPI).
           </span>
         </div>
-        <div className="field">
-          <label htmlFor="m-prov">Giao thức API</label>
-          <select
-            id="m-prov"
-            className="select"
-            value={f.upstreamProvider}
-            onChange={(e) => set('upstreamProvider', e.target.value)}
-          >
-            <option value="openai">Tương thích OpenAI (New-API / One-API)</option>
-            <option value="anthropic">Anthropic</option>
-            <option value="gemini">Gemini</option>
-            <option value="azure">Azure OpenAI</option>
-            <option value="ollama">Ollama</option>
-            <option value="hosted_vllm">vLLM</option>
-          </select>
-        </div>
-        {input('description', 'Mô tả mô hình cho người chơi', {
-          full: true,
-          placeholder: 'vd: Mô hình AI thông minh tốc độ cao kết nối qua New-API',
-        })}
-        <div
-          className="field full"
-          style={{ display: 'flex', flexDirection: 'row', gap: 24, padding: '4px 0' }}
-        >
-          <Switch checked={f.enabled} onChange={(v) => set('enabled', v)} label="Kích hoạt mô hình" />
-          <Switch
-            checked={f.allowExternalUse}
-            onChange={(v) => set('allowExternalUse', v)}
-            label="Cho phép người chơi tạo khóa"
-          />
-        </div>
 
-        <details
+        <div
           style={{
-            gridColumn: '1 / -1',
-            border: '1px solid var(--line-2)',
-            borderRadius: 9,
-            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '10px 14px',
             background: 'var(--surface-2)',
-            marginTop: 8,
+            borderRadius: 8,
+            border: '1px solid var(--line-1)',
           }}
         >
-          <summary
-            style={{
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: 13,
-              userSelect: 'none',
-              color: 'var(--ink-2)',
-            }}
-          >
-            ⚙️ Cài đặt chi phí & giới hạn nâng cao (Tùy chọn - mặc định do New-API lo)
-          </summary>
-          <div className="form-grid" style={{ marginTop: 14 }}>
-            {input('slug', 'Mã slug nội bộ', {
-              mono: true,
-              hint: 'Để trống sẽ tự động lấy theo tên mô hình.',
-            })}
-            {input('upstreamModelName', 'Tên mô hình Upstream riêng', {
-              mono: true,
-              hint: 'Nếu khác tên mô hình công khai.',
-            })}
-            {input('creditMultiplier', 'Hệ số AI Credit', {
-              type: 'number',
-              step: '0.1',
-              hint: '1 = $1 AI Credit mua $1 hạn mức.',
-            })}
-            {input('userMonthlyBudgetCents', 'Hạn mức tháng mỗi người chơi (cent)', {
-              type: 'number',
-              hint: 'Để trống = áp dụng hạn mức chung.',
-            })}
-            {input('inputCostPerMtok', 'Chi phí đầu vào $ / 1M token', { type: 'number', step: '0.01' })}
-            {input('outputCostPerMtok', 'Chi phí đầu ra $ / 1M token', { type: 'number', step: '0.01' })}
-            {input('rpm', 'Số yêu cầu / phút mỗi khóa (RPM)', { type: 'number' })}
-            {input('tpm', 'Số token / phút mỗi khóa (TPM)', { type: 'number' })}
-            {input('contextLimit', 'Số token đầu ra tối đa', { type: 'number', hint: 'Không bắt buộc.' })}
+          <Zap size={16} style={{ color: 'var(--accent)' }} />
+          <div style={{ fontSize: 13, lineHeight: 1.4 }}>
+            <div>
+              Chuẩn kết nối: <strong>OpenAI Compatible</strong>
+            </div>
+            <div className="muted" style={{ fontSize: 11 }}>
+              Tự động tương thích hoàn toàn với New-API, chi phí và token do New-API quản lý.
+            </div>
           </div>
-        </details>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', paddingTop: 4 }}>
+          <Switch checked={f.enabled} onChange={(v) => set('enabled', v)} label="Kích hoạt mô hình ngay" />
+        </div>
       </div>
+
       {err ? (
         <div className="callout callout-danger" role="alert" style={{ marginTop: 14 }}>
           {err}
