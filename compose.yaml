@@ -66,6 +66,7 @@ services:
       UPSTREAM_KEY_1: ${UPSTREAM_KEY_1:-}
       UPSTREAM_KEY_2: ${UPSTREAM_KEY_2:-}
       UPSTREAM_KEY_3: ${UPSTREAM_KEY_3:-}
+      UPSTREAM_KEY_NEWAPI: ${UPSTREAM_KEY_NEWAPI:-}
     volumes:
       - ./infra/litellm/config.yaml:/app/config.yaml:ro
     ports:
