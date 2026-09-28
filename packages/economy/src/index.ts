@@ -24,13 +24,14 @@ export function rollFish(
   reactionMs: number,
   windowMs: number,
   table: FishSpecies[] = FISH,
+  rodBonus: number = 0,
 ): FishSpecies {
   const quality = Math.max(0, Math.min(1, 1 - reactionMs / windowMs));
   const boost: Record<FishSpecies['rarity'], number> = {
     common: 1,
-    rare: 1 + quality,
-    epic: 1 + quality * 2,
-    legendary: 1 + quality * 3,
+    rare: 1 + quality + rodBonus * 0.4,
+    epic: 1 + quality * 2 + rodBonus * 1.0,
+    legendary: 1 + quality * 3 + rodBonus * 1.8,
   };
   const weights = table.map((f) => f.weight * boost[f.rarity]);
   const total = weights.reduce((a, b) => a + b, 0);
@@ -149,50 +150,50 @@ export function checkEligibility(
   const checks: EligibilityCheck[] = [
     {
       id: 'account_age',
-      label: 'Account age',
+      label: 'Thời gian tạo tài khoản',
       met: ageHours >= p.minAccountAgeHours,
-      detail: `${Math.floor(ageHours)}h of ${p.minAccountAgeHours}h`,
+      detail: `${Math.floor(ageHours)}h / ${p.minAccountAgeHours}h`,
     },
     {
       id: 'onboarding',
-      label: 'Finish the newcomer checklist',
+      label: 'Hoàn thành hướng dẫn tân thủ',
       met: !p.requireOnboarding || s.onboardingComplete,
-      detail: s.onboardingComplete ? 'Done' : 'Not finished yet',
+      detail: s.onboardingComplete ? 'Đã hoàn thành' : 'Chưa xong',
     },
     {
       id: 'activities',
-      label: 'Try different activities',
+      label: 'Tham gia các hoạt động thị trấn',
       met: s.uniqueActivities >= p.minUniqueActivities,
-      detail: `${s.uniqueActivities} of ${p.minUniqueActivities}`,
+      detail: `${s.uniqueActivities} / ${p.minUniqueActivities}`,
     },
-    { id: 'fame', label: 'Fame', met: s.fame >= p.minFame, detail: `${s.fame} of ${p.minFame}` },
+    { id: 'fame', label: 'Điểm danh tiếng', met: s.fame >= p.minFame, detail: `${s.fame} / ${p.minFame}` },
     {
       id: 'trust',
-      label: 'Account standing',
+      label: 'Mức độ tin cậy tài khoản',
       met: s.trustScore >= p.minTrustScore,
-      detail: s.trustScore >= p.minTrustScore ? 'Good standing' : 'Under review',
+      detail: s.trustScore >= p.minTrustScore ? 'Tốt' : 'Đang xem xét',
     },
     {
       id: 'cooldown',
-      label: 'Redemption cooldown',
+      label: 'Thời gian chờ nhận thưởng',
       met: sinceLast >= p.cooldownHours,
       detail:
         sinceLast === Infinity
-          ? 'Ready'
+          ? 'Sẵn sàng'
           : sinceLast >= p.cooldownHours
-            ? 'Ready'
-            : `${Math.ceil(p.cooldownHours - sinceLast)}h left`,
+            ? 'Sẵn sàng'
+            : `Còn lại ${Math.ceil(p.cooldownHours - sinceLast)}h`,
     },
   ];
   return { eligible: checks.every((c) => c.met), checks };
 }
 
 export const FAME_TITLES = [
-  { min: 0, title: 'New in Town' },
-  { min: 50, title: 'Local Oddity' },
-  { min: 200, title: "Landlord's Favorite Tenant" },
-  { min: 600, title: 'Minor Celebrity' },
-  { min: 1500, title: 'Town Legend' },
+  { min: 0, title: 'Cư Dân Mới Đến' },
+  { min: 50, title: 'Gương Mặt Thân Quen' },
+  { min: 200, title: 'Khách Thuê Gương Mẫu' },
+  { min: 600, title: 'Ngôi Sao Khu Phố' },
+  { min: 1500, title: 'Huyền Thoại Thị Trấn' },
 ] as const;
 
 export function fameTitle(fame: number): string {

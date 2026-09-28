@@ -2,7 +2,20 @@ import { Client, type Room } from 'colyseus.js';
 import { session } from '../lib/api';
 import { useUi } from '../lib/store';
 
-const WS = (import.meta.env.VITE_REALTIME_URL as string | undefined) ?? 'ws://localhost:2567';
+function resolveWsUrl(): string {
+  const env = import.meta.env.VITE_REALTIME_URL as string | undefined;
+  if (typeof window !== 'undefined' && window.location.hostname) {
+    const host = window.location.hostname;
+    if (host !== 'localhost' && (!env || env.includes('localhost') || env.includes('127.0.0.1'))) {
+      const port = env ? new URL(env.replace(/^ws/, 'http'), window.location.origin).port || '2567' : '2567';
+      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      return `${proto}//${host}:${port}`;
+    }
+  }
+  return env ?? 'ws://localhost:2567';
+}
+
+const WS = resolveWsUrl();
 
 type Listener = (room: Room) => void;
 

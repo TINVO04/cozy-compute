@@ -317,3 +317,123 @@ describe('events', () => {
     expect((await ledgerSum(a.id, 'coin')).bal).toBe(300 + 20 + 75 + 150);
   });
 });
+
+describe('backpack & fish', () => {
+  it('stores caught fish in backpack, holds on avatar, and sells for coin', async () => {
+    const p = await register(h);
+    at(p.id, 'pier');
+    h.rngQueue.push(0);
+    const start = await api(h, 'POST', '/activities/fishing/start', { token: p.token });
+    h.clock.now += start.body.biteInMs + 300;
+    h.rngQueue.push(0);
+    const caught = await api(h, 'POST', '/activities/fishing/complete', {
+      token: p.token,
+      body: { runId: start.body.runId, nonce: start.body.nonce },
+    });
+    expect(caught.body.outcome).toBe('caught');
+    const backpackId = caught.body.backpackFishId;
+    expect(backpackId).toBeDefined();
+
+    // Check backpack list (caught fish is automatically held on avatar)
+    const list1 = await api(h, 'GET', '/backpack/fish', { token: p.token });
+    expect(list1.status).toBe(200);
+    expect(list1.body.length).toBe(1);
+    expect(list1.body[0].id).toBe(backpackId);
+    expect(list1.body[0].isHeld).toBe(true);
+
+    // Check /me appearance shows held fish
+    const me1 = await api(h, 'GET', '/me', { token: p.token });
+    expect(me1.body.appearance.heldFish?.speciesId).toBe(caught.body.fish.id);
+
+    // Unhold fish
+    const unhold = await api(h, 'POST', '/backpack/fish/unhold', { token: p.token });
+    expect(unhold.status).toBe(200);
+    expect(unhold.body.appearance.heldFish).toBeNull();
+
+    // Hold fish again from backpack
+    const hold = await api(h, 'POST', `/backpack/fish/${backpackId}/hold`, { token: p.token });
+    expect(hold.status).toBe(200);
+    expect(hold.body.appearance.heldFish?.speciesId).toBe(caught.body.fish.id);
+
+    // Check /me appearance shows held fish again
+    const me2 = await api(h, 'GET', '/me', { token: p.token });
+    expect(me2.body.appearance.heldFish?.speciesId).toBe(caught.body.fish.id);
+
+    // Sell fish
+    const balBefore = (await ledgerSum(p.id, 'coin')).bal;
+    const sell = await api(h, 'POST', `/backpack/fish/${backpackId}/sell`, { token: p.token });
+    expect(sell.status).toBe(200);
+    expect(sell.body.coinEarned).toBeGreaterThan(0);
+    const balAfter = (await ledgerSum(p.id, 'coin')).bal;
+    expect(balAfter).toBe(balBefore + sell.body.coinEarned);
+
+    // Backpack is now empty
+    const list2 = await api(h, 'GET', '/backpack/fish', { token: p.token });
+    expect(list2.body.length).toBe(0);
+  });
+
+  it('allows admin to view full fish dictionary and tune fish size', async () => {
+    const admin = await register(h, 'admin@test.local');
+    const list = await api(h, 'GET', '/admin/fish', { token: admin.token });
+    expect(list.status).toBe(200);
+    expect(list.body.length).toBeGreaterThan(50);
+
+    const update = await api(h, 'PUT', '/admin/fish/blue_whale/size', {
+      token: admin.token,
+      body: { minSizeCm: 2200, maxSizeCm: 3500 },
+    });
+    expect(update.status).toBe(200);
+    expect(update.body.minSizeCm).toBe(2200);
+    expect(update.body.maxSizeCm).toBe(3500);
+    expect(update.body.isOverridden).toBe(true);
+
+    const listAfter = await api(h, 'GET', '/admin/fish', { token: admin.token });
+    const bw = listAfter.body.find((f: { id: string }) => f.id === 'blue_whale');
+    expect(bw.minSizeCm).toBe(2200);
+    expect(bw.maxSizeCm).toBe(3500);
+    expect(bw.isOverridden).toBe(true);
+
+    // Batch update multiple fish sizes
+    const batchUpdate = await api(h, 'PUT', '/admin/fish/batch-size', {
+      token: admin.token,
+      body: {
+        updates: [
+          { id: 'clownfish', minSizeCm: 15, maxSizeCm: 30 },
+          { id: 'guppy_rainbow', minSizeCm: 8, maxSizeCm: 16 },
+        ],
+      },
+    });
+    expect(batchUpdate.status).toBe(200);
+    const cf = batchUpdate.body.find((f: { id: string }) => f.id === 'clownfish');
+    const gp = batchUpdate.body.find((f: { id: string }) => f.id === 'guppy_rainbow');
+    expect(cf.minSizeCm).toBe(15);
+    expect(cf.maxSizeCm).toBe(30);
+    expect(cf.isOverridden).toBe(true);
+    expect(gp.minSizeCm).toBe(8);
+    expect(gp.maxSizeCm).toBe(16);
+    expect(gp.isOverridden).toBe(true);
+
+    // Public /activities/fishing/species returns overridden sizes
+    const pubList = await api(h, 'GET', '/activities/fishing/species');
+    expect(pubList.status).toBe(200);
+    const pubCf = pubList.body.find((f: { id: string }) => f.id === 'clownfish');
+    expect(pubCf.minSizeCm).toBe(15);
+    expect(pubCf.maxSizeCm).toBe(30);
+
+    // Batch reset clownfish and guppy_rainbow back to default
+    const batchReset = await api(h, 'POST', '/admin/fish/batch-reset', {
+      token: admin.token,
+      body: { ids: ['clownfish', 'guppy_rainbow'] },
+    });
+    expect(batchReset.status).toBe(200);
+    const cfReset = batchReset.body.find((f: { id: string }) => f.id === 'clownfish');
+    expect(cfReset.isOverridden).toBe(false);
+    expect(cfReset.minSizeCm).toBe(cfReset.defaultMinSizeCm);
+
+    // Delete single fish override
+    const del = await api(h, 'DELETE', '/admin/fish/blue_whale/size', { token: admin.token });
+    expect(del.status).toBe(200);
+    expect(del.body.isOverridden).toBe(false);
+    expect(del.body.minSizeCm).toBe(del.body.defaultMinSizeCm);
+  });
+});

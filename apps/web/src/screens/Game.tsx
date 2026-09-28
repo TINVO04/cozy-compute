@@ -1,20 +1,18 @@
 import { ZONES, type ZoneId } from '@cozy/game-data';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Armchair,
-  Bot,
+  BookOpen,
   CalendarDays,
   ChevronDown,
-  Home,
+  Compass,
   LogOut,
   Map as MapIcon,
+  Package,
   Receipt,
   Shield,
-  Shirt,
   Smile,
   Sparkles,
   Star,
-  Users,
   Volume2,
   VolumeX,
   WifiOff,
@@ -24,6 +22,7 @@ import { useNavigate } from 'react-router';
 import { avatarPortrait } from '../art/avatar';
 import { GameCanvas } from '../game/GameCanvas';
 import { net } from '../game/net';
+import { townFishingController } from '../game/scenes';
 import { api, num, session, usd, type EventHub, type Me } from '../lib/api';
 import { qk } from '../lib/queries';
 import { play } from '../lib/sound';
@@ -36,7 +35,9 @@ import { EventsPanel } from './panels/EventsPanel';
 import { LedgerPanel } from './panels/LedgerPanel';
 import { PlayerCardModal } from './panels/PlayerCard';
 import { ShopPanel } from './panels/ShopPanel';
-import { WardrobePanel } from './panels/WardrobePanel';
+import { FishingShopPanel } from './panels/FishingShopPanel';
+import { BackpackPanel } from './panels/BackpackPanel';
+import { FishCompendium } from './panels/FishCompendium';
 import { Sidebar } from './Sidebar';
 import { Brand } from './Brand';
 import { Button, CoinIcon, Spinner } from '../ui/primitives';
@@ -74,10 +75,18 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
         e.preventDefault();
         document.getElementById('chat-input')?.focus();
       }
+      if (e.code === 'KeyB' || e.key === 'b' || e.key === 'B') {
+        e.preventDefault();
+        if (activity) {
+          townFishingController?.cleanup();
+          useUi.getState().setActivity(null);
+        }
+        setPanel(panel === 'backpack' ? null : 'backpack');
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [panel, activity]);
+  }, [panel, activity, setPanel]);
 
   return (
     <div className="shell">
@@ -92,11 +101,24 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
           {room.kind === 'apartment' && room.ownerId === me.id ? <ApartmentEditor /> : null}
           {panel === 'shop-fashion' ? <ShopPanel kind="clothing" onClose={() => setPanel(null)} /> : null}
           {panel === 'shop-furniture' ? <ShopPanel kind="furniture" onClose={() => setPanel(null)} /> : null}
-          {panel === 'wardrobe' ? <WardrobePanel me={me} onClose={() => setPanel(null)} /> : null}
+          {panel === 'shop-rods' ? <FishingShopPanel me={me} onClose={() => setPanel(null)} /> : null}
+          {panel === 'backpack' ? (
+            <BackpackPanel me={me} initialTab="backpack" onClose={() => setPanel(null)} />
+          ) : null}
+          {panel === 'tackle' ? (
+            <BackpackPanel me={me} initialTab="tackle" onClose={() => setPanel(null)} />
+          ) : null}
+          {panel === 'wardrobe' ? (
+            <BackpackPanel me={me} initialTab="wardrobe" onClose={() => setPanel(null)} />
+          ) : null}
+          {panel === 'profile' ? (
+            <BackpackPanel me={me} initialTab="profile" onClose={() => setPanel(null)} />
+          ) : null}
           {panel === 'events' ? <EventsPanel onClose={() => setPanel(null)} /> : null}
           {panel === 'ai' ? <AiPanel onClose={() => setPanel(null)} /> : null}
           {panel === 'apartments' ? <ApartmentsPanel me={me} onClose={() => setPanel(null)} /> : null}
           {panel === 'ledger' ? <LedgerPanel onClose={() => setPanel(null)} /> : null}
+          {panel === 'fishdex' ? <FishCompendium onClose={() => setPanel(null)} /> : null}
         </main>
         <Sidebar me={me} />
       </div>
@@ -142,7 +164,7 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
   }, [menu]);
 
   const nav: {
-    id: Panel | 'town' | 'home' | 'admin';
+    id: Panel | 'town' | 'admin';
     label: string;
     icon: React.ReactNode;
     onClick: () => void;
@@ -159,42 +181,18 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
       current: !panel && room.kind === 'town',
     },
     {
+      id: 'backpack',
+      label: 'Balo (B)',
+      icon: <Package size={17} />,
+      onClick: () => setPanel(panel === 'backpack' ? null : 'backpack'),
+      current: panel === 'backpack' || panel === 'tackle' || panel === 'wardrobe',
+    },
+    {
       id: 'events',
-      label: 'Sự kiện',
+      label: 'Bảng tin sự kiện',
       icon: <CalendarDays size={17} />,
       onClick: () => setPanel('events'),
       current: panel === 'events',
-    },
-    {
-      id: 'shop-fashion',
-      label: 'Cửa hàng',
-      icon: <Shirt size={17} />,
-      onClick: () => setPanel('shop-fashion'),
-      current: panel === 'shop-fashion' || panel === 'shop-furniture',
-    },
-    {
-      id: 'home',
-      label: 'Căn hộ',
-      icon: <Home size={17} />,
-      onClick: () => {
-        setPanel(null);
-        void net.goApartment(me.id, 'Căn hộ của bạn');
-      },
-      current: !panel && room.kind === 'apartment' && room.ownerId === me.id,
-    },
-    {
-      id: 'ai',
-      label: 'Thưởng AI',
-      icon: <Bot size={17} />,
-      onClick: () => setPanel('ai'),
-      current: panel === 'ai',
-    },
-    {
-      id: 'apartments',
-      label: 'Thăm quan',
-      icon: <Users size={17} />,
-      onClick: () => setPanel('apartments'),
-      current: panel === 'apartments',
     },
     ...(me.role === 'admin'
       ? [
@@ -295,20 +293,20 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
               className="menu-item"
               onClick={() => {
                 setMenu(false);
-                setPanel('wardrobe');
+                setPanel('backpack');
               }}
             >
-              <Shirt size={16} /> Tủ đồ & hồ sơ
+              <Package size={16} /> Balo cá nhân (Tủ đồ & Hồ sơ)
             </button>
             <button
               role="menuitem"
               className="menu-item"
               onClick={() => {
                 setMenu(false);
-                setPanel('shop-furniture');
+                setPanel('fishdex');
               }}
             >
-              <Armchair size={16} /> Cửa hàng nội thất
+              <BookOpen size={16} /> Từ điển cá (55 loài)
             </button>
             <button
               role="menuitem"
@@ -341,6 +339,7 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
 
 const ZONE_ACTIONS: Partial<Record<ZoneId, { cta: string; hint: string }>> = {
   pier: { cta: 'Thả cần câu', hint: 'Câu cá kiếm Xu và Danh tiếng' },
+  fishing_shop: { cta: 'Mua cần câu & Ngư cụ', hint: 'Sắm cần câu xịn, tăng cơ hội săn cá khổng lồ' },
   delivery: { cta: 'Nhận đơn hàng', hint: 'Giao kiện hàng quanh thị trấn' },
   cafe: { cta: 'Bắt đầu ca làm', hint: 'Pha chế đồ uống cho khách hàng kỳ lạ' },
   fashion: { cta: 'Xem trang phục', hint: 'Mũ nón, áo quần và phụ kiện cá tính' },
@@ -380,6 +379,8 @@ function WorldHud({ me }: { me: Me }) {
     switch (zone) {
       case 'pier':
         return setActivity('fishing');
+      case 'fishing_shop':
+        return setPanel('shop-rods');
       case 'cafe':
         return setActivity('cafe');
       case 'delivery':
@@ -423,7 +424,8 @@ function WorldHud({ me }: { me: Me }) {
         <div className="row">
           <div className="location-chip">
             <span className="dot" />
-            {room.kind === 'apartment' ? room.label : (zoneLabel ?? 'Thị trấn')}
+            <Compass size={14} style={{ color: 'var(--primary)', flex: 'none' }} />
+            <span>{room.kind === 'apartment' ? room.label : (zoneLabel ?? 'Thị trấn')}</span>
           </div>
           {room.kind === 'apartment' ? (
             <Button size="sm" onClick={() => void net.goTown()}>
@@ -448,21 +450,15 @@ function WorldHud({ me }: { me: Me }) {
         {delivery ? <DeliveryHud /> : null}
         {action && !activity && !panel && !(delivery && !deliveringHere) ? (
           <div className="prompt" role="status">
+            <div className="prompt-icon">
+              <Sparkles size={18} />
+            </div>
             <div className="prompt-text">
               <strong>{zoneLabel}</strong>
               <span>{action.hint}</span>
             </div>
             <Button variant="primary" onClick={runAction}>
-              <span
-                className="kbd"
-                style={{
-                  background: 'rgba(255,255,255,.2)',
-                  borderColor: 'rgba(255,255,255,.3)',
-                  color: '#fff',
-                }}
-              >
-                E
-              </span>
+              <span className="kbd">E</span>
               {action.cta}
             </Button>
           </div>
@@ -498,18 +494,39 @@ function WorldHud({ me }: { me: Me }) {
             </div>
           ) : null}
         </div>
-        <button className="hud-tool" aria-label="Tủ đồ" title="Tủ đồ" onClick={() => setPanel('wardrobe')}>
-          <Shirt size={20} />
+        <button
+          className="hud-tool"
+          aria-label="Balo cá nhân (B)"
+          title="Balo cá nhân (B)"
+          onClick={() => setPanel(panel === 'backpack' ? null : 'backpack')}
+        >
+          <Package size={20} />
         </button>
       </div>
 
       <div className="help-card" aria-hidden>
-        <span className="kbd">W</span>
-        <span className="kbd">A</span>
-        <span className="kbd">S</span>
-        <span className="kbd">D</span> di chuyển
-        <span className="kbd">E</span> tương tác
-        <span className="kbd">Enter</span> trò chuyện
+        <div className="help-group">
+          <span className="kbd">W</span>
+          <span className="kbd">A</span>
+          <span className="kbd">S</span>
+          <span className="kbd">D</span>
+          <span>di chuyển</span>
+        </div>
+        <div className="help-sep" />
+        <div className="help-group">
+          <span className="kbd">E</span>
+          <span>tương tác</span>
+        </div>
+        <div className="help-sep" />
+        <div className="help-group">
+          <span className="kbd">B</span>
+          <span>balo</span>
+        </div>
+        <div className="help-sep" />
+        <div className="help-group">
+          <span className="kbd">Enter</span>
+          <span>trò chuyện</span>
+        </div>
       </div>
     </>
   );

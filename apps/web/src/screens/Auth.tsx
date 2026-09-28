@@ -74,7 +74,12 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
       qc.setQueryData(['me'], res.user);
       onSignedIn();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
+      if (err instanceof ApiError && err.code === 'email_taken' && mode === 'register') {
+        setMode('login');
+        setError('Tài khoản với email này đã tồn tại. Đã chuyển sang tab Đăng nhập, vui lòng nhập mật khẩu.');
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
+      }
     } finally {
       setBusy(false);
     }

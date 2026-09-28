@@ -53,12 +53,70 @@ export class PixelGrid {
       }
   }
 
+  ellipse(cx: number, cy: number, rx: number, ry: number, c: string | null) {
+    const minX = Math.max(0, Math.floor(cx - rx));
+    const maxX = Math.min(this.w - 1, Math.ceil(cx + rx));
+    const minY = Math.max(0, Math.floor(cy - ry));
+    const maxY = Math.min(this.h - 1, Math.ceil(cy + ry));
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        const dx = (x - cx) / rx;
+        const dy = (y - cy) / ry;
+        if (dx * dx + dy * dy <= 1) {
+          this.set(x, y, c);
+        }
+      }
+    }
+  }
+
+  circle(cx: number, cy: number, r: number, c: string | null) {
+    this.ellipse(cx, cy, r, r, c);
+  }
+
+  line(x0: number, y0: number, x1: number, y1: number, c: string | null) {
+    x0 = Math.round(x0);
+    y0 = Math.round(y0);
+    x1 = Math.round(x1);
+    y1 = Math.round(y1);
+    const dx = Math.abs(x1 - x0);
+    const dy = Math.abs(y1 - y0);
+    const sx = x0 < x1 ? 1 : -1;
+    const sy = y0 < y1 ? 1 : -1;
+    let err = dx - dy;
+    while (true) {
+      this.set(x0, y0, c);
+      if (x0 === x1 && y0 === y1) break;
+      const e2 = 2 * err;
+      if (e2 > -dy) {
+        err -= dy;
+        x0 += sx;
+      }
+      if (e2 < dx) {
+        err += dx;
+        y0 += sy;
+      }
+    }
+  }
+
+  dither(x: number, y: number, w: number, h: number, c1: string | null, c2: string | null) {
+    for (let j = 0; j < h; j++) {
+      for (let i = 0; i < w; i++) {
+        this.set(x + i, y + j, (i + j) % 2 === 0 ? c1 : c2);
+      }
+    }
+  }
+
   toCanvas(scale: number): HTMLCanvasElement {
     const c = document.createElement('canvas');
     c.width = this.w * scale;
     c.height = this.h * scale;
     this.drawTo(c.getContext('2d')!, 0, 0, scale);
     return c;
+  }
+
+  toDataURL(scale: number): string {
+    if (typeof document === 'undefined') return '';
+    return this.toCanvas(scale).toDataURL();
   }
 }
 

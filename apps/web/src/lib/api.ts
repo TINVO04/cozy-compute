@@ -1,6 +1,20 @@
+export type { Appearance } from '@cozy/game-data';
 import type { Appearance } from '@cozy/game-data';
 
-const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8787';
+function resolveApiBase(): string {
+  const env = import.meta.env.VITE_API_URL as string | undefined;
+  if (typeof window !== 'undefined' && window.location.hostname) {
+    const host = window.location.hostname;
+    if (host !== 'localhost' && (!env || env.includes('localhost') || env.includes('127.0.0.1'))) {
+      const port = env ? new URL(env, window.location.origin).port || '8787' : '8787';
+      const proto = window.location.protocol === 'https:' ? 'https:' : 'http:';
+      return `${proto}//${host}:${port}`;
+    }
+  }
+  return env ?? 'http://localhost:8787';
+}
+
+const BASE = resolveApiBase();
 const TOKEN_KEY = 'cozy.session';
 
 export class ApiError extends Error {
@@ -91,8 +105,8 @@ export interface Me {
 
 export interface ShopItem {
   id: string;
-  type: 'clothing' | 'furniture';
-  slot: 'hat' | 'top' | 'face' | null;
+  type: 'clothing' | 'furniture' | 'rod';
+  slot: 'hat' | 'top' | 'face' | 'rod' | null;
   name: string;
   description: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
@@ -237,6 +251,29 @@ export interface PlayerCard {
   isFriend: boolean;
   isMuted: boolean;
   isSelf: boolean;
+}
+
+export interface FishJournalEntry {
+  speciesId: string;
+  count: number;
+  maxSizeCm: number;
+  maxWeightKg: number;
+  firstCaughtAt: string;
+  lastCaughtAt: string;
+}
+
+export interface BackpackFish {
+  id: string;
+  speciesId: string;
+  sizeCm: number;
+  weightKg: number;
+  sizeCategory: 'small' | 'standard' | 'large' | 'giant';
+  isHeld: boolean;
+  caughtAt: string;
+  name: string;
+  rarity: string;
+  habitat: string;
+  coinValue: number;
 }
 
 export const usd = (cents: number) => `$${(cents / 100).toFixed(2)}`;

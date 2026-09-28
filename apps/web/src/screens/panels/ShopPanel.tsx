@@ -69,7 +69,7 @@ export function ShopPanel({ kind, onClose }: { kind: 'clothing' | 'furniture'; o
         title: `Đã mua ${item.name}`,
         body:
           item.type === 'clothing'
-            ? 'Tìm thấy trong tủ đồ của bạn.'
+            ? 'Đã chuyển vào Balo & Tủ đồ (phím B). Hãy mở Balo để mặc vào nhé!'
             : 'Vật phẩm đã sẵn sàng đặt trong căn hộ.',
       });
       setConfirm(null);

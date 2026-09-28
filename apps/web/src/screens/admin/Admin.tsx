@@ -3,6 +3,7 @@ import {
   Activity,
   ArrowLeft,
   Bot,
+  Fish,
   Flag,
   Gauge,
   KeyRound,
@@ -20,9 +21,11 @@ import { ModelsPage } from './Models';
 import { PolicyPage } from './Policy';
 import { ServerPage } from './Server';
 import { AuditPage, FlagsPage, KeysPage, LedgerPage, PlayersPage, ReportsPage, UsagePage } from './Tables';
+import { FishAdminPage } from './FishAdmin';
 
 const NAV = [
   ['', 'Tổng quan', Gauge],
+  ['fish', 'Từ điển cá & Size', Fish],
   ['models', 'Mô hình AI', Bot],
   ['policy', 'Quy tắc & Hạn mức', Settings2],
   ['keys', 'Khóa người chơi', KeyRound],
@@ -115,6 +118,7 @@ export default function AdminScreen() {
         </div>
         <Routes>
           <Route index element={<Overview />} />
+          <Route path="fish" element={<FishAdminPage />} />
           <Route path="models" element={<ModelsPage />} />
           <Route path="policy" element={<PolicyPage />} />
           <Route path="keys" element={<KeysPage />} />

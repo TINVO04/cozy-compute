@@ -33,6 +33,57 @@ export class TownRoom extends BaseRoom {
     this.state.label = 'Town';
     this.eventTimer = setInterval(() => void this.syncEvent(), 1000);
     void this.syncEvent();
+
+    this.onMessage('fishing:cast', (client, msg) => {
+      const p = this.state.players.get(client.sessionId);
+      if (!p) return;
+      this.broadcast(
+        'fishing:remote_cast',
+        {
+          sessionId: client.sessionId,
+          userId: p.userId,
+          name: p.name,
+          ...(typeof msg === 'object' && msg !== null ? msg : {}),
+        },
+        { except: client },
+      );
+    });
+
+    this.onMessage('fishing:nibble', (client, msg) => {
+      this.broadcast(
+        'fishing:remote_nibble',
+        {
+          sessionId: client.sessionId,
+          ...(typeof msg === 'object' && msg !== null ? msg : {}),
+        },
+        { except: client },
+      );
+    });
+
+    this.onMessage('fishing:bite', (client) => {
+      this.broadcast(
+        'fishing:remote_bite',
+        {
+          sessionId: client.sessionId,
+        },
+        { except: client },
+      );
+    });
+
+    this.onMessage('fishing:stop', (client) => {
+      this.broadcast(
+        'fishing:remote_stop',
+        {
+          sessionId: client.sessionId,
+        },
+        { except: client },
+      );
+    });
+  }
+
+  override async onLeave(client: Client, consented: boolean) {
+    this.broadcast('fishing:remote_stop', { sessionId: client.sessionId });
+    await super.onLeave(client, consented);
   }
 
   override onDispose() {

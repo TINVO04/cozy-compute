@@ -20,7 +20,16 @@ export const t = (x: number, y: number, w: number, h: number): Rect => ({
 });
 
 export type ZoneId =
-  'plaza' | 'cafe' | 'fashion' | 'furniture' | 'apartments' | 'delivery' | 'events' | 'ai_kiosk' | 'pier';
+  | 'plaza'
+  | 'cafe'
+  | 'fashion'
+  | 'furniture'
+  | 'apartments'
+  | 'delivery'
+  | 'events'
+  | 'ai_kiosk'
+  | 'pier'
+  | 'fishing_shop';
 
 export interface Zone {
   id: ZoneId;
@@ -86,6 +95,15 @@ export const BUILDINGS: Building[] = [
     accent: 0x6d4a17,
     door: { x: 7, w: 1 },
   },
+  {
+    id: 'fishing_shop',
+    label: 'Tiệm Ngư Cụ Bác Ba',
+    rect: t(28, 20, 5, 4),
+    wall: 0x386b7c,
+    roof: 0x163445,
+    accent: 0xf59e0b,
+    door: { x: 30, w: 2 },
+  },
 ];
 
 export const ZONES: Zone[] = [
@@ -117,6 +135,12 @@ export const ZONES: Zone[] = [
   { id: 'events', label: 'Bảng Sự Kiện', prompt: 'Xem sự kiện hôm nay', rect: t(30, 12, 5, 5) },
   { id: 'ai_kiosk', label: 'Trạm Thưởng AI', prompt: 'Mở trạm đổi thưởng AI', rect: t(11, 21, 6, 5) },
   { id: 'pier', label: 'Cầu Tàu Lắc Lư', prompt: 'Thả cần câu cá', rect: t(37, 26, 4, 4) },
+  {
+    id: 'fishing_shop',
+    label: 'Tiệm Ngư Cụ Bác Ba',
+    prompt: 'Mua & Nâng Cấp Cần Câu',
+    rect: t(29, 24, 3, 2),
+  },
   { id: 'plaza', label: 'Quảng Trường Trung Tâm', prompt: 'Gặp gỡ bạn bè', rect: t(18, 12, 12, 8) },
 ];
 
@@ -154,6 +178,7 @@ export const PATHS: Rect[] = [
   t(14, 8, 7, 2),
   t(24, 8, 7, 2),
   t(37, 9, 6, 1),
+  t(29, 24, 3, 1),
 ];
 export const PLAZA: Rect = t(18, 12, 12, 8);
 export const SPAWN = { x: 24 * TILE, y: 19 * TILE };
@@ -199,6 +224,7 @@ export const DELIVERY_DESTINATIONS: ZoneId[] = [
   'events',
   'ai_kiosk',
   'pier',
+  'fishing_shop',
 ];
 
 /** Apartment interior grid. */

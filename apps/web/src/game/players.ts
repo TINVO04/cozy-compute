@@ -8,8 +8,42 @@ import {
 import { getStateCallbacks, type Room } from 'colyseus.js';
 import type Phaser from 'phaser';
 import { AVATAR_FEET_OFFSET, ensureAvatarTexture } from './avatars';
+import { spawnFootstepDust } from './atmosphere';
 import { net } from './net';
 import { useUi } from '../lib/store';
+import { getHDFishCanvas, FISH_3D_ASSETS, getSpeciesData } from '../art/fish';
+
+function ensureFishTexture(scene: Phaser.Scene, speciesId: string): string {
+  const key = `fish_tx_hd:${speciesId}`;
+  if (scene.textures.exists(key)) return key;
+
+  const assetUrl = FISH_3D_ASSETS[speciesId];
+  if (assetUrl) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 180;
+    canvas.height = 120;
+    const ctx = canvas.getContext('2d')!;
+    const fallbackCanvas = getHDFishCanvas(speciesId, 180, 120);
+    ctx.drawImage(fallbackCanvas, 0, 0);
+
+    const img = new Image();
+    img.src = assetUrl;
+    img.onload = () => {
+      ctx.clearRect(0, 0, 180, 120);
+      ctx.drawImage(img, 0, 0, 180, 120);
+      const tex = scene.textures.get(key);
+      if (tex && 'update' in tex && typeof tex.update === 'function') {
+        tex.update();
+      }
+    };
+    scene.textures.addCanvas(key, canvas);
+    return key;
+  }
+
+  const canvas = getHDFishCanvas(speciesId, 180, 120);
+  scene.textures.addCanvas(key, canvas);
+  return key;
+}
 
 interface PlayerSnapshot {
   userId: string;
@@ -55,6 +89,18 @@ class Avatar {
   target = { x: 0, y: 0 };
   dir = 0;
   moving = false;
+  appearance: Appearance;
+  baseSpriteY = 0;
+  breathSeed = 0;
+  dustTimer = 0;
+  heldFishContainer: Phaser.GameObjects.Container | null = null;
+  heldFishSprite: Phaser.GameObjects.Image | null = null;
+  heldFishBaseY = 0;
+  heldFishKey: string | null = null;
+  heldFishTweens: Phaser.Tweens.Tween[] = [];
+  facingDependentEffects: { obj: { x: number }; baseRelX: number }[] = [];
+  rodGlowContainer: Phaser.GameObjects.Container | null = null;
+  rodTweens: Phaser.Tweens.Tween[] = [];
 
   constructor(
     private scene: Phaser.Scene,
@@ -65,9 +111,12 @@ class Avatar {
     y: number,
     isSelf: boolean,
   ) {
+    this.appearance = appearance;
     this.shadow = scene.add.ellipse(0, 0, 22, 8, 0x2a2438, 0.25);
     this.texKey = ensureAvatarTexture(scene, appearance);
-    this.sprite = scene.add.sprite(0, -AVATAR_FEET_OFFSET / 2 - 3, this.texKey, 0);
+    this.baseSpriteY = -AVATAR_FEET_OFFSET / 2 - 3;
+    this.breathSeed = Math.random() * 100;
+    this.sprite = scene.add.sprite(0, this.baseSpriteY, this.texKey, 0);
     this.label = scene.add
       .text(0, -AVATAR_FEET_OFFSET - 8, name, {
         fontFamily: 'Inter Variable, Inter, system-ui, sans-serif',
@@ -81,17 +130,498 @@ class Avatar {
       .setOrigin(0.5, 1);
     this.container = scene.add.container(x, y, [this.shadow, this.sprite, this.label]);
     this.container.setSize(28, 56);
+    this.container.setDepth(y);
     this.sprite.setInteractive({ useHandCursor: !isSelf, pixelPerfect: false });
     if (!isSelf) this.sprite.on('pointerdown', () => useUi.getState().inspect(userId));
     this.target = { x, y };
+    this.updateHeldFish();
+    this.updateEquippedRodEffect();
+  }
+
+  clearHeldFishEffects() {
+    for (const t of this.heldFishTweens) {
+      t.stop();
+      t.remove();
+    }
+    this.heldFishTweens = [];
+    this.facingDependentEffects = [];
+  }
+
+  clearRodEffects() {
+    for (const t of this.rodTweens) {
+      t.stop();
+      t.remove();
+    }
+    this.rodTweens = [];
+    if (this.rodGlowContainer) {
+      this.rodGlowContainer.destroy();
+      this.rodGlowContainer = null;
+    }
+  }
+
+  updateHeldFish() {
+    const held = this.appearance.heldFish;
+    const currentKey = held ? `${held.speciesId}:${held.sizeCm}` : null;
+    if (this.heldFishKey === currentKey) return;
+    this.heldFishKey = currentKey;
+
+    this.clearHeldFishEffects();
+
+    if (!held) {
+      if (this.heldFishContainer) {
+        this.heldFishContainer.destroy();
+        this.heldFishContainer = null;
+        this.heldFishSprite = null;
+      }
+      this.label.setY(-AVATAR_FEET_OFFSET - 8);
+      return;
+    }
+
+    const { speciesId, sizeCm } = held;
+    const texKey = ensureFishTexture(this.scene, speciesId);
+    const aspect = 120 / 180;
+
+    // Display width: smoothly scaled based on sizeCm so small fish is ~32px and colossal whale is ~128px
+    const targetW = Math.max(32, Math.min(128, Math.round(24 + Math.pow(sizeCm, 0.64) * 1.45)));
+    const targetH = Math.round(targetW * aspect);
+
+    const isGiant = sizeCm > 120;
+
+    if (!this.heldFishContainer) {
+      this.heldFishContainer = this.scene.add.container(0, 0);
+      this.container.add(this.heldFishContainer);
+    }
+    this.heldFishContainer.removeAll(true);
+
+    const sp = getSpeciesData(speciesId);
+    const rarity = sp?.rarity ?? 'common';
+    const reducedMotion = useUi.getState().reducedMotion;
+
+    // --- 1. BACKDROP AURA (Rendered BEHIND the fish sprite) ---
+    if (rarity === 'legendary') {
+      // Golden Celestial Sunburst Corona
+      const aura = this.scene.add.graphics();
+      aura.fillStyle(0xd97706, 0.32);
+      aura.fillEllipse(0, 0, targetW * 1.6, targetH * 1.7);
+      aura.fillStyle(0xf59e0b, 0.48);
+      aura.fillEllipse(0, 0, targetW * 1.3, targetH * 1.4);
+      aura.fillStyle(0xfde047, 0.62);
+      aura.fillEllipse(0, 0, targetW * 1.05, targetH * 1.15);
+      this.heldFishContainer.add(aura);
+
+      const sunburst = this.scene.add.graphics();
+      const rays = 8;
+      const rayLen = Math.max(targetW, targetH) * 0.72;
+      sunburst.lineStyle(2, 0xfef08a, 0.65);
+      for (let i = 0; i < rays; i++) {
+        const ang = (i / rays) * Math.PI * 2;
+        sunburst.lineBetween(0, 0, Math.cos(ang) * rayLen, Math.sin(ang) * rayLen * (targetH / targetW));
+      }
+      this.heldFishContainer.add(sunburst);
+
+      if (!reducedMotion) {
+        this.heldFishTweens.push(
+          this.scene.tweens.add({
+            targets: aura,
+            scaleX: 1.12,
+            scaleY: 1.12,
+            alpha: 0.82,
+            yoyo: true,
+            repeat: -1,
+            duration: 1000,
+            ease: 'Sine.easeInOut',
+          }),
+          this.scene.tweens.add({
+            targets: sunburst,
+            angle: 360,
+            repeat: -1,
+            duration: 8000,
+            ease: 'Linear',
+          }),
+        );
+      }
+    } else if (rarity === 'epic') {
+      // Cosmic Nebula Amethyst / Cyan Aura
+      const aura = this.scene.add.graphics();
+      aura.fillStyle(0x6b21a8, 0.3);
+      aura.fillEllipse(0, 0, targetW * 1.5, targetH * 1.6);
+      aura.fillStyle(0xa855f7, 0.45);
+      aura.fillEllipse(0, 0, targetW * 1.25, targetH * 1.35);
+      aura.fillStyle(0xe879f9, 0.55);
+      aura.fillEllipse(0, 0, targetW * 1.05, targetH * 1.15);
+      this.heldFishContainer.add(aura);
+
+      const ring = this.scene.add.graphics();
+      ring.lineStyle(1.8, 0x38bdf8, 0.6);
+      ring.strokeEllipse(0, 0, targetW * 1.22, targetH * 1.28);
+      this.heldFishContainer.add(ring);
+
+      if (!reducedMotion) {
+        this.heldFishTweens.push(
+          this.scene.tweens.add({
+            targets: aura,
+            scaleX: 1.14,
+            scaleY: 1.14,
+            alpha: 0.8,
+            yoyo: true,
+            repeat: -1,
+            duration: 1100,
+            ease: 'Sine.easeInOut',
+          }),
+          this.scene.tweens.add({
+            targets: ring,
+            angle: 360,
+            repeat: -1,
+            duration: 6500,
+            ease: 'Linear',
+          }),
+        );
+      }
+    } else if (rarity === 'rare') {
+      // Shimmering Sapphire Aqua Aura
+      const aura = this.scene.add.graphics();
+      aura.fillStyle(0x0369a1, 0.28);
+      aura.fillEllipse(0, 0, targetW * 1.38, targetH * 1.48);
+      aura.fillStyle(0x0284c7, 0.42);
+      aura.fillEllipse(0, 0, targetW * 1.15, targetH * 1.25);
+      aura.fillStyle(0x38bdf8, 0.55);
+      aura.fillEllipse(0, 0, targetW * 0.95, targetH * 1.05);
+      this.heldFishContainer.add(aura);
+
+      if (!reducedMotion) {
+        this.heldFishTweens.push(
+          this.scene.tweens.add({
+            targets: aura,
+            scaleX: 1.1,
+            scaleY: 1.1,
+            alpha: 0.72,
+            yoyo: true,
+            repeat: -1,
+            duration: 1200,
+            ease: 'Sine.easeInOut',
+          }),
+        );
+      }
+    }
+
+    // --- 2. HELD FISH SPRITE ---
+    this.heldFishSprite = this.scene.add.image(0, 0, texKey);
+    this.heldFishSprite.setDisplaySize(targetW, targetH);
+    this.heldFishContainer.add(this.heldFishSprite);
+
+    // --- 3. FOREGROUND PARTICLES & SPARKLING STARS ---
+    const addSparkleStar = (relX: number, relY: number, color: number, size: number, delayMs: number) => {
+      const spk = this.scene.add.graphics();
+      const initialX = this.dir === 1 ? -relX : relX;
+      spk.x = initialX;
+      spk.y = relY;
+      spk.fillStyle(color, 1);
+      spk.beginPath();
+      spk.moveTo(0, -size);
+      spk.lineTo(size * 0.35, -size * 0.35);
+      spk.lineTo(size, 0);
+      spk.lineTo(size * 0.35, size * 0.35);
+      spk.lineTo(0, size);
+      spk.lineTo(-size * 0.35, size * 0.35);
+      spk.lineTo(-size, 0);
+      spk.lineTo(-size * 0.35, -size * 0.35);
+      spk.closePath();
+      spk.fillPath();
+      spk.fillStyle(0xffffff, 0.95);
+      spk.fillRect(-0.75, -0.75, 1.5, 1.5);
+
+      this.heldFishContainer!.add(spk);
+      this.facingDependentEffects.push({ obj: spk, baseRelX: relX });
+
+      if (!reducedMotion) {
+        spk.setScale(0.2);
+        spk.setAlpha(0);
+        const tw = this.scene.tweens.add({
+          targets: spk,
+          scaleX: 1.25,
+          scaleY: 1.25,
+          alpha: 1,
+          y: relY - 4,
+          yoyo: true,
+          repeat: -1,
+          duration: 650 + (delayMs % 400),
+          delay: delayMs,
+          ease: 'Sine.easeInOut',
+        });
+        this.heldFishTweens.push(tw);
+      }
+    };
+
+    if (rarity === 'legendary') {
+      // 10 Golden Starlight Particles
+      addSparkleStar(-targetW * 0.4, -targetH * 0.32, 0xfde047, 4.5, 0);
+      addSparkleStar(targetW * 0.38, -targetH * 0.3, 0xffffff, 5, 150);
+      addSparkleStar(0, -targetH * 0.44, 0xfbbf24, 4.5, 300);
+      addSparkleStar(-targetW * 0.22, targetH * 0.32, 0xfef08a, 3.5, 450);
+      addSparkleStar(targetW * 0.28, targetH * 0.3, 0xffffff, 4, 600);
+      addSparkleStar(targetW * 0.44, 0, 0xfde047, 4, 750);
+      addSparkleStar(-targetW * 0.44, 0, 0xfbbf24, 4, 900);
+      addSparkleStar(targetW * 0.15, -targetH * 0.36, 0xffffff, 3.5, 1050);
+      addSparkleStar(-targetW * 0.15, targetH * 0.36, 0xfef08a, 3.5, 1200);
+      addSparkleStar(0, targetH * 0.4, 0xfde047, 4, 1350);
+    } else if (rarity === 'epic') {
+      // 7 Prismatic Diamond Stars
+      addSparkleStar(-targetW * 0.38, -targetH * 0.3, 0xc084fc, 4, 0);
+      addSparkleStar(targetW * 0.38, -targetH * 0.28, 0x38bdf8, 4.5, 180);
+      addSparkleStar(0, -targetH * 0.42, 0xffffff, 4.5, 360);
+      addSparkleStar(targetW * 0.24, targetH * 0.32, 0xe879f9, 3.5, 540);
+      addSparkleStar(-targetW * 0.28, targetH * 0.28, 0x38bdf8, 3.5, 720);
+      addSparkleStar(targetW * 0.42, 0, 0xf472b6, 3.5, 900);
+      addSparkleStar(-targetW * 0.15, -targetH * 0.36, 0xffffff, 3, 1080);
+    } else if (rarity === 'rare') {
+      // 4 Shimmering Aqua Stars
+      addSparkleStar(-targetW * 0.32, -targetH * 0.3, 0x38bdf8, 3.5, 0);
+      addSparkleStar(targetW * 0.35, -targetH * 0.25, 0xffffff, 4, 250);
+      addSparkleStar(targetW * 0.1, targetH * 0.32, 0x7dd3fc, 3, 500);
+      addSparkleStar(-targetW * 0.25, targetH * 0.28, 0x38bdf8, 3.5, 750);
+    } else {
+      // Fresh water droplets for common/uncommon
+      addSparkleStar(-targetW * 0.25, -targetH * 0.2, 0x38bdf8, 2, 0);
+      addSparkleStar(targetW * 0.25, targetH * 0.2, 0xffffff, 2, 400);
+    }
+
+    // --- 4. SPECIES-SPECIFIC UNIQUE EFFECTS ---
+    if (speciesId === 'narwhal') {
+      // Cá Kỳ Lân Bắt Sóng Wi-Fi: Expanding concentric Wi-Fi wave pulses from horn!
+      const hornBaseX = targetW * 0.44;
+      const hornBaseY = -targetH * 0.08;
+
+      for (let w = 0; w < 3; w++) {
+        const wave = this.scene.add.graphics();
+        const startX = this.dir === 1 ? -hornBaseX : hornBaseX;
+        wave.x = startX;
+        wave.y = hornBaseY;
+        wave.lineStyle(2.5, 0x38bdf8, 0.95);
+        wave.strokeCircle(0, 0, 7);
+        this.heldFishContainer.add(wave);
+        this.facingDependentEffects.push({ obj: wave, baseRelX: hornBaseX });
+
+        if (!reducedMotion) {
+          wave.setScale(0.25);
+          wave.setAlpha(0.95);
+          const tw = this.scene.tweens.add({
+            targets: wave,
+            scaleX: 2.8,
+            scaleY: 2.8,
+            alpha: 0,
+            repeat: -1,
+            duration: 1500,
+            delay: w * 480,
+            ease: 'Cubic.easeOut',
+          });
+          this.heldFishTweens.push(tw);
+        }
+      }
+
+      // Horn tip glowing beacon
+      const beacon = this.scene.add.graphics();
+      const beaconX = this.dir === 1 ? -hornBaseX : hornBaseX;
+      beacon.x = beaconX;
+      beacon.y = hornBaseY;
+      beacon.fillStyle(0x38bdf8, 0.95);
+      beacon.fillCircle(0, 0, 4);
+      beacon.fillStyle(0xffffff, 1);
+      beacon.fillCircle(0, 0, 2);
+      this.heldFishContainer.add(beacon);
+      this.facingDependentEffects.push({ obj: beacon, baseRelX: hornBaseX });
+
+      if (!reducedMotion) {
+        const beaconTw = this.scene.tweens.add({
+          targets: beacon,
+          scaleX: 1.5,
+          scaleY: 1.5,
+          alpha: 0.5,
+          yoyo: true,
+          repeat: -1,
+          duration: 400,
+          ease: 'Sine.easeInOut',
+        });
+        this.heldFishTweens.push(beaconTw);
+      }
+    } else if (speciesId === 'anglerfish') {
+      // Cá Lồng Đèn: Glowing pulsing deep-sea lantern beacon
+      const bulbBaseX = targetW * 0.28;
+      const bulbBaseY = -targetH * 0.44;
+
+      const lantern = this.scene.add.graphics();
+      const lanternX = this.dir === 1 ? -bulbBaseX : bulbBaseX;
+      lantern.x = lanternX;
+      lantern.y = bulbBaseY;
+      lantern.fillStyle(0xfde047, 0.45);
+      lantern.fillCircle(0, 0, 10);
+      lantern.fillStyle(0xfacc15, 0.85);
+      lantern.fillCircle(0, 0, 5);
+      lantern.fillStyle(0xffffff, 1);
+      lantern.fillCircle(0, 0, 2.5);
+      this.heldFishContainer.add(lantern);
+      this.facingDependentEffects.push({ obj: lantern, baseRelX: bulbBaseX });
+
+      if (!reducedMotion) {
+        const lanternTw = this.scene.tweens.add({
+          targets: lantern,
+          scaleX: 1.6,
+          scaleY: 1.6,
+          alpha: 0.6,
+          yoyo: true,
+          repeat: -1,
+          duration: 600,
+          ease: 'Sine.easeInOut',
+        });
+        this.heldFishTweens.push(lanternTw);
+      }
+    } else if (speciesId === 'electric_catfish' || speciesId === 'electric_eel') {
+      // Crackling high-voltage lightning sparks
+      const sparks = this.scene.add.graphics();
+      sparks.lineStyle(1.5, 0xfef08a, 0.9);
+      sparks.lineBetween(-targetW * 0.25, -targetH * 0.2, targetW * 0.2, -targetH * 0.15);
+      sparks.lineStyle(1.5, 0x38bdf8, 0.9);
+      sparks.lineBetween(-targetW * 0.2, targetH * 0.2, targetW * 0.25, targetH * 0.15);
+      this.heldFishContainer.add(sparks);
+
+      if (!reducedMotion) {
+        this.heldFishTweens.push(
+          this.scene.tweens.add({
+            targets: sparks,
+            alpha: 0.2,
+            yoyo: true,
+            repeat: -1,
+            duration: 120,
+            ease: 'Stepped',
+          }),
+        );
+      }
+    } else if (speciesId === 'rubber_duck_leviathan') {
+      // Crown jewels sparkles atop giant duck head
+      const crownX = targetW * 0.32;
+      const crownY = -targetH * 0.42;
+      const crownGlow = this.scene.add.graphics();
+      const startX = this.dir === 1 ? -crownX : crownX;
+      crownGlow.x = startX;
+      crownGlow.y = crownY;
+      crownGlow.fillStyle(0xf59e0b, 0.85);
+      crownGlow.fillCircle(0, 0, 5);
+      crownGlow.fillStyle(0xffffff, 1);
+      crownGlow.fillCircle(0, 0, 2);
+      this.heldFishContainer.add(crownGlow);
+      this.facingDependentEffects.push({ obj: crownGlow, baseRelX: crownX });
+
+      if (!reducedMotion) {
+        this.heldFishTweens.push(
+          this.scene.tweens.add({
+            targets: crownGlow,
+            scaleX: 1.5,
+            scaleY: 1.5,
+            alpha: 0.5,
+            yoyo: true,
+            repeat: -1,
+            duration: 500,
+            ease: 'Sine.easeInOut',
+          }),
+        );
+      }
+    }
+
+    if (isGiant) {
+      // Hoisted proudly above the player's head
+      this.heldFishBaseY = -AVATAR_FEET_OFFSET - Math.max(12, Math.round(targetH * 0.45)) - 4;
+      this.heldFishContainer.setY(this.heldFishBaseY);
+      // Place player name neatly above hoisted fish
+      const labelY = this.heldFishBaseY - targetH / 2 - 8;
+      this.label.setY(labelY);
+    } else {
+      // Held at chest level in front
+      this.heldFishBaseY = -22;
+      this.heldFishContainer.setY(this.heldFishBaseY);
+      this.label.setY(-AVATAR_FEET_OFFSET - 8);
+    }
+
+    this.updateHeldFishFacing();
+  }
+
+  updateHeldFishFacing() {
+    if (!this.heldFishSprite) return;
+    const isFlipped = this.dir === 1;
+    this.heldFishSprite.setFlipX(isFlipped);
+
+    for (const fx of this.facingDependentEffects) {
+      fx.obj.x = isFlipped ? -fx.baseRelX : fx.baseRelX;
+    }
+
+    if (this.heldFishContainer) {
+      const isGiant = (this.appearance.heldFish?.sizeCm ?? 0) > 120;
+      if (this.dir === 3 && !isGiant) {
+        this.container.sendToBack(this.heldFishContainer);
+        this.container.sendToBack(this.shadow);
+      } else {
+        this.container.bringToTop(this.heldFishContainer);
+        this.container.bringToTop(this.label);
+      }
+    }
+  }
+
+  updateEquippedRodEffect() {
+    this.clearRodEffects();
+    const rodId = this.appearance.rod;
+    if (!rodId || this.appearance.heldFish || this.appearance.isFishing) return;
+
+    let glowColor: number | null = null;
+    if (rodId === 'rod_golden_legend') glowColor = 0xf59e0b;
+    else if (rodId === 'rod_abyssal') glowColor = 0x8b5cf6;
+    else if (rodId === 'rod_pro_carbon') glowColor = 0xa855f7;
+    else if (rodId === 'rod_fiberglass') glowColor = 0x38bdf8;
+
+    if (glowColor === null) return;
+
+    this.rodGlowContainer = this.scene.add.container(0, 0);
+    this.container.add(this.rodGlowContainer);
+
+    // Rod tip sparkles on player's back
+    const tip = this.scene.add.graphics();
+    tip.x = 8;
+    tip.y = -AVATAR_FEET_OFFSET + 8;
+    tip.fillStyle(glowColor, 0.9);
+    tip.fillCircle(0, 0, 3);
+    tip.fillStyle(0xffffff, 1);
+    tip.fillCircle(0, 0, 1.2);
+    this.rodGlowContainer.add(tip);
+
+    if (!useUi.getState().reducedMotion) {
+      const tw = this.scene.tweens.add({
+        targets: tip,
+        scaleX: 1.5,
+        scaleY: 1.5,
+        alpha: 0.4,
+        yoyo: true,
+        repeat: -1,
+        duration: 700,
+        ease: 'Sine.easeInOut',
+      });
+      this.rodTweens.push(tw);
+    }
   }
 
   setAppearance(a: Appearance) {
+    this.appearance = a;
+    this.updateHeldFish();
+    this.updateEquippedRodEffect();
     const key = ensureAvatarTexture(this.scene, a);
     if (key === this.texKey) return;
     this.texKey = key;
     this.sprite.setTexture(key, this.dir * 3);
     this.updateAnim(true);
+  }
+
+  setFacing(d: number) {
+    this.dir = d;
+    this.moving = false;
+    this.sprite.stop();
+    this.sprite.setFrame(d * 3);
+    this.updateHeldFishFacing();
   }
 
   setStatus(text: string) {
@@ -169,10 +699,38 @@ class Avatar {
       this.sprite.stop();
       this.sprite.setFrame(this.dir * 3);
     }
+    this.updateHeldFishFacing();
+  }
+
+  update(dtMs: number, time: number) {
+    if (this.moving) {
+      this.sprite.y = this.baseSpriteY;
+      if (!useUi.getState().reducedMotion) {
+        this.dustTimer += dtMs;
+        if (this.dustTimer >= 220) {
+          this.dustTimer = 0;
+          spawnFootstepDust(this.scene, this.container.x, this.container.y);
+        }
+      }
+    } else {
+      this.dustTimer = 0;
+      if (!useUi.getState().reducedMotion) {
+        this.sprite.y = this.baseSpriteY + Math.sin(time * 0.0035 + this.breathSeed) * 0.75;
+      }
+    }
+
+    if (this.heldFishContainer && !useUi.getState().reducedMotion) {
+      const bob = Math.sin(time * 0.0035 + this.breathSeed) * 1.5;
+      this.heldFishContainer.setY(this.heldFishBaseY + bob);
+    }
   }
 
   destroy() {
     this.bubbleTimer?.remove();
+    this.clearHeldFishEffects();
+    this.clearRodEffects();
+    this.heldFishContainer?.destroy();
+    this.rodGlowContainer?.destroy();
     this.container.destroy();
   }
 }
@@ -259,49 +817,73 @@ export class PlayerLayer {
     this.world = { ...this.world, blockers };
   }
 
-  private add(p: PlayerSnapshot, sid: string) {
-    if (this.avatars.has(sid)) return;
-    const myId = useUi.getState().myUserId;
-    const isSelf = sid === this.selfSessionId || (Boolean(myId) && p.userId === myId);
-    const av = new Avatar(this.scene, p.userId, p.name, parseAppearance(p.appearance), p.x, p.y, isSelf);
-    av.setStatus(p.status);
-    av.container.setAlpha(p.connected ? 1 : 0.45);
-    this.avatars.set(sid, av);
-    if (isSelf) {
-      this.self = av;
-      this.scene.cameras.main.startFollow(av.container, true, 0.12, 0.12);
+  saySelf(text: string) {
+    this.self?.say(text);
+  }
+
+  setSelfHeldFish(heldFish: { speciesId: string; sizeCm: number } | null) {
+    if (!this.self) return;
+    const a = this.self.appearance;
+    this.self.setAppearance({ ...a, heldFish });
+  }
+
+  setSelfFishing(isFishing: boolean, facingDir?: number) {
+    if (!this.self) return;
+    if (facingDir !== undefined) {
+      this.self.setFacing(facingDir);
     }
-    const $p = this.$(p as never) as unknown as Callbacks;
-    this.cleanup.push(
-      $p.onChange(() => {
-        if (isSelf) {
-          // Reconcile: start from the server position and replay unacknowledged inputs.
-          this.pending = this.pending.filter((i) => i.seq > p.seq);
-          let pos = { x: p.x, y: p.y };
-          for (const i of this.pending) pos = stepMovement(pos, i.input, i.dt, this.world);
-          const dx = pos.x - av.container.x;
-          const dy = pos.y - av.container.y;
-          if (Math.hypot(dx, dy) > 48) av.container.setPosition(pos.x, pos.y);
-          else av.target = pos;
-        } else {
-          av.target = { x: p.x, y: p.y };
-          av.dir = p.dir;
-          av.moving = p.moving;
-          av.updateAnim();
-        }
-        av.container.setAlpha(p.connected ? 1 : 0.45);
-      }),
-      $p.listen('appearance', (v) => av.setAppearance(parseAppearance(String(v)))),
-      $p.listen('status', (v) => av.setStatus(String(v ?? ''))),
-      $p.listen('emote', (v) => av.showEmote(String(v ?? ''))),
-    );
+    const a = this.self.appearance;
+    this.self.setAppearance({ ...a, isFishing });
+  }
+
+  private add(p: PlayerSnapshot, sid: string) {
+    if (!this.scene.sys || !this.scene.sys.displayList || !this.scene.scene.isActive()) return;
+    if (this.avatars.has(sid)) return;
+    try {
+      const myId = useUi.getState().myUserId;
+      const isSelf = sid === this.selfSessionId || (Boolean(myId) && p.userId === myId);
+      const av = new Avatar(this.scene, p.userId, p.name, parseAppearance(p.appearance), p.x, p.y, isSelf);
+      av.setStatus(p.status);
+      av.container.setAlpha(p.connected ? 1 : 0.45);
+      this.avatars.set(sid, av);
+      if (isSelf) {
+        this.self = av;
+        this.scene.cameras.main.startFollow(av.container, true, 0.12, 0.12);
+      }
+      const $p = this.$(p as never) as unknown as Callbacks;
+      this.cleanup.push(
+        $p.onChange(() => {
+          if (isSelf) {
+            // Reconcile: start from the server position and replay unacknowledged inputs.
+            this.pending = this.pending.filter((i) => i.seq > p.seq);
+            let pos = { x: p.x, y: p.y };
+            for (const i of this.pending) pos = stepMovement(pos, i.input, i.dt, this.world);
+            const dx = pos.x - av.container.x;
+            const dy = pos.y - av.container.y;
+            if (Math.hypot(dx, dy) > 48) av.container.setPosition(pos.x, pos.y);
+            else av.target = pos;
+          } else {
+            av.target = { x: p.x, y: p.y };
+            av.dir = p.dir;
+            av.moving = p.moving;
+            av.updateAnim();
+          }
+          av.container.setAlpha(p.connected ? 1 : 0.45);
+        }),
+        $p.listen('appearance', (v) => av.setAppearance(parseAppearance(String(v)))),
+        $p.listen('status', (v) => av.setStatus(String(v ?? ''))),
+        $p.listen('emote', (v) => av.showEmote(String(v ?? ''))),
+      );
+    } catch (err) {
+      console.warn('[PlayerLayer] error adding avatar:', err);
+    }
   }
 
   setInput(input: MoveInput) {
     this.input = input;
   }
 
-  update(dtMs: number) {
+  update(dtMs: number, time = 0) {
     const dt = dtMs / 1000;
     // local prediction
     if (this.self) {
@@ -338,13 +920,14 @@ export class PlayerLayer {
       if (changed || this.input.x || this.input.y)
         net.send('input', { x: this.input.x, y: this.input.y, seq: this.seq });
     }
-    // interpolate remote players and depth-sort everyone by feet position
+    // interpolate remote players, run micro-animations, and depth-sort everyone by feet position
     for (const [sid, av] of this.avatars) {
       if (sid !== this.selfSessionId) {
         const k = Math.min(1, dt * 10);
         av.container.x += (av.target.x - av.container.x) * k;
         av.container.y += (av.target.y - av.container.y) * k;
       }
+      av.update(dtMs, time);
       av.container.setDepth(av.container.y);
     }
   }

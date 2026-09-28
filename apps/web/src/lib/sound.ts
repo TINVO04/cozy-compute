@@ -2,16 +2,18 @@ import { useUi } from './store';
 
 let ctx: AudioContext | null = null;
 
-type Cue = 'coin' | 'click' | 'error' | 'splash' | 'bite' | 'duck' | 'pop';
+type Cue = 'coin' | 'click' | 'error' | 'splash' | 'bite' | 'duck' | 'pop' | 'nibble' | 'reel';
 
 const CUES: Record<Cue, { f: number[]; d: number; type: OscillatorType; vol: number }> = {
   coin: { f: [988, 1319], d: 0.08, type: 'square', vol: 0.05 },
   click: { f: [660], d: 0.03, type: 'triangle', vol: 0.05 },
   error: { f: [220, 180], d: 0.1, type: 'sawtooth', vol: 0.04 },
   splash: { f: [320, 240, 180], d: 0.06, type: 'triangle', vol: 0.05 },
+  nibble: { f: [440, 360], d: 0.04, type: 'triangle', vol: 0.04 },
   bite: { f: [880, 880], d: 0.06, type: 'square', vol: 0.06 },
   duck: { f: [740, 988, 1175], d: 0.06, type: 'square', vol: 0.05 },
   pop: { f: [523, 784], d: 0.05, type: 'triangle', vol: 0.05 },
+  reel: { f: [520, 680], d: 0.04, type: 'triangle', vol: 0.05 },
 };
 
 /** Tiny synthesized sound effects — no audio assets required. */

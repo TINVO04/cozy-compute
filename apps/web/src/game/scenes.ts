@@ -3,12 +3,14 @@ import {
   APARTMENT_ROWS,
   BLOCKERS,
   BUILDINGS,
+  FISHING_RODS,
   MAP_HEIGHT,
   MAP_WIDTH,
   t,
   TILE,
   ZONES,
   zoneAt,
+  type FishShadowTier,
   type Rect,
 } from '@cozy/game-data';
 import { getStateCallbacks, type Room } from 'colyseus.js';
@@ -25,8 +27,10 @@ import {
 } from '../art/town';
 import { play } from '../lib/sound';
 import { useUi } from '../lib/store';
+import { ensureAtmosphereTextures, setupTownLighting, setupTownParticles } from './atmosphere';
 import { net } from './net';
 import { PlayerLayer } from './players';
+import { InWorldFishingController } from './fishing';
 
 /** Keyboard input is ignored while typing in React inputs. */
 function typing(): boolean {
@@ -55,11 +59,16 @@ abstract class WorldScene extends Phaser.Scene {
     ) as typeof this.keys;
     this.buildWorld();
     this.offRoom = net.onRoom((room) => this.bindRoom(room));
-    this.events.once('shutdown', () => {
-      this.offRoom?.();
+    const teardown = () => {
+      if (this.offRoom) {
+        this.offRoom();
+        this.offRoom = null;
+      }
       this.layer?.destroy();
       this.layer = null;
-    });
+    };
+    this.events.once('shutdown', teardown);
+    this.events.once('destroy', teardown);
     this.scale.on('resize', () => this.fitCamera());
     this.fitCamera();
   }
@@ -91,6 +100,7 @@ abstract class WorldScene extends Phaser.Scene {
 
   private bindRoom(room: Room) {
     if (!this.matchesRoom(room)) return;
+    if (!this.sys || !this.sys.displayList || !this.scene.isActive()) return;
     this.layer?.destroy();
     const size = this.worldSize();
     this.layer = new PlayerLayer(this, room, { ...size, blockers: this.blockers() }, (x, y) =>
@@ -101,23 +111,55 @@ abstract class WorldScene extends Phaser.Scene {
 
   protected onBind(_room: Room) {}
 
-  override update(_time: number, delta: number) {
+  override update(time: number, delta: number) {
     if (!this.layer) return;
     const k = this.keys;
     const blocked = typing() || useUi.getState().activity !== null || useUi.getState().editingApartment;
     const x = blocked ? 0 : (k.right.isDown || k.d.isDown ? 1 : 0) - (k.left.isDown || k.a.isDown ? 1 : 0);
     const y = blocked ? 0 : (k.down.isDown || k.s.isDown ? 1 : 0) - (k.up.isDown || k.w.isDown ? 1 : 0);
     this.layer.setInput({ x, y });
-    this.layer.update(delta);
+    this.layer.update(delta, time);
   }
+}
+
+export let townFishingController: InWorldFishingController | null = null;
+let townSelfPosProvider: (() => { x: number; y: number } | null) | null = null;
+
+export function getTownSelfPosition(): { x: number; y: number } {
+  return townSelfPosProvider?.() ?? { x: 38 * 32, y: 27 * 32 };
 }
 
 export class TownScene extends WorldScene {
   private ducks = new Map<string, Phaser.GameObjects.Image>();
   private deliveryMarker: Phaser.GameObjects.Container | null = null;
+  public fishingController: InWorldFishingController | null = null;
+  public remoteFishingControllers = new Map<string, InWorldFishingController>();
 
   constructor() {
     super('town');
+  }
+
+  getSelfPos(): { x: number; y: number } | null {
+    if (!this.layer?.self) return null;
+    return { x: this.layer.self.container.x, y: this.layer.self.container.y };
+  }
+
+  setSelfFishing(isFishing: boolean, facingDir?: number) {
+    this.layer?.setSelfFishing(isFishing, facingDir);
+  }
+
+  setSelfHeldFish(heldFish: { speciesId: string; sizeCm: number } | null) {
+    this.layer?.setSelfHeldFish(heldFish);
+  }
+
+  saySelf(text: string) {
+    this.layer?.saySelf(text);
+  }
+
+  override update(time: number, delta: number) {
+    super.update(time, delta);
+    this.fishingController?.update(time, delta);
+    this.remoteFishingControllers.forEach((ctrl) => ctrl.update(time, delta));
   }
 
   protected worldSize() {
@@ -223,10 +265,23 @@ export class TownScene extends WorldScene {
         },
       });
     }
+    setupTownLighting(this);
+    setupTownParticles(this);
+    this.fishingController = new InWorldFishingController(this);
+    townFishingController = this.fishingController;
+    townSelfPosProvider = () => this.getSelfPos();
+
     this.unsubscribe = useUi.subscribe((s, prev) => {
       if (s.delivery !== prev.delivery) this.drawDeliveryMarker();
     });
-    this.events.once('shutdown', () => this.unsubscribe?.());
+    this.events.once('shutdown', () => {
+      this.unsubscribe?.();
+      this.fishingController?.cleanup();
+      this.remoteFishingControllers.forEach((ctrl) => ctrl.cleanup());
+      this.remoteFishingControllers.clear();
+      townFishingController = null;
+      townSelfPosProvider = null;
+    });
     this.drawDeliveryMarker();
   }
 
@@ -294,6 +349,59 @@ export class TownScene extends WorldScene {
       },
       true,
     );
+
+    // Sync remote player fishing visuals across all town players
+    room.onMessage(
+      'fishing:remote_cast',
+      (msg: {
+        sessionId: string;
+        selfX: number;
+        selfY: number;
+        facingDir?: number;
+        shadowTier?: FishShadowTier;
+        biteInMs?: number;
+        shadowDelayMs?: number;
+        equippedRodId?: string;
+        nibbleCount?: number;
+        nibbleTimes?: number[];
+      }) => {
+        if (!msg?.sessionId) return;
+        this.remoteFishingControllers.get(msg.sessionId)?.cleanup();
+        const ctrl = new InWorldFishingController(this, { isRemote: true });
+        this.remoteFishingControllers.set(msg.sessionId, ctrl);
+
+        const equippedRod = FISHING_RODS[msg.equippedRodId ?? 'rod_twig'] ?? FISHING_RODS['rod_twig']!;
+        ctrl.startCast({
+          selfX: msg.selfX,
+          selfY: msg.selfY,
+          shadowTier: msg.shadowTier ?? 1,
+          nibbleCount: msg.nibbleCount ?? 5,
+          nibbleTimes: msg.nibbleTimes ?? [],
+          biteInMs: msg.biteInMs ?? 15000,
+          shadowDelayMs: msg.shadowDelayMs ?? 8000,
+          equippedRod,
+        });
+      },
+    );
+
+    room.onMessage('fishing:remote_nibble', (msg: { sessionId: string; nibbleIndex?: number }) => {
+      if (!msg?.sessionId) return;
+      this.remoteFishingControllers.get(msg.sessionId)?.triggerRemoteNibble(msg.nibbleIndex ?? 0);
+    });
+
+    room.onMessage('fishing:remote_bite', (msg: { sessionId: string }) => {
+      if (!msg?.sessionId) return;
+      this.remoteFishingControllers.get(msg.sessionId)?.triggerRemoteBite();
+    });
+
+    room.onMessage('fishing:remote_stop', (msg: { sessionId: string }) => {
+      if (!msg?.sessionId) return;
+      const ctrl = this.remoteFishingControllers.get(msg.sessionId);
+      if (ctrl) {
+        ctrl.cleanup();
+        this.remoteFishingControllers.delete(msg.sessionId);
+      }
+    });
   }
 
   private lastZone: string | null = null;
@@ -321,6 +429,7 @@ export class ApartmentScene extends WorldScene {
   private grid: Phaser.GameObjects.Graphics | null = null;
   private ghost: Phaser.GameObjects.Image | null = null;
   private furnitureBlockers: Rect[] = [];
+  private roomGlow: Phaser.GameObjects.Image | null = null;
 
   constructor() {
     super('apartment');
@@ -411,6 +520,25 @@ export class ApartmentScene extends WorldScene {
         return { x: o.x * APT_TILE + 3, y: o.y * APT_TILE + 6, w: w * APT_TILE - 6, h: h * APT_TILE - 8 };
       });
     this.layer?.setWorldBlockers(this.blockers());
+    ensureAtmosphereTextures(this);
+    if (!this.roomGlow) {
+      this.roomGlow = this.add
+        .image((APARTMENT_COLS * APT_TILE) / 2, (APARTMENT_ROWS * APT_TILE) / 2 + 10, 'glow:indoor')
+        .setScale(2.2)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setAlpha(0.35)
+        .setDepth(2000);
+      if (!useUi.getState().reducedMotion) {
+        this.tweens.add({
+          targets: this.roomGlow,
+          alpha: { from: 0.3, to: 0.42 },
+          duration: 3200,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      }
+    }
     if (!this.grid) {
       this.grid = this.add.graphics().setDepth(8000).setVisible(false);
       this.grid.lineStyle(1, 0xffffff, 0.35);

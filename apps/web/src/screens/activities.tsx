@@ -1,11 +1,25 @@
-import { CAFE_INGREDIENTS } from '@cozy/game-data';
-import { Coffee, Fish, Package, Star } from 'lucide-react';
+import {
+  CAFE_INGREDIENTS,
+  FISHING_RODS,
+  RARITY_LABELS,
+  SHADOW_TIER_CONFIG,
+  type FishShadowTier,
+  type Rarity,
+  type RodConfig,
+} from '@cozy/game-data';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { BookOpen, Coffee, Fish, Package, Star, Zap } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, ApiError, num } from '../lib/api';
+import { api, ApiError, num, type Me } from '../lib/api';
 import { play } from '../lib/sound';
 import { useUi } from '../lib/store';
-import { useRefreshEconomy } from '../lib/queries';
+import { qk, useRefreshEconomy } from '../lib/queries';
 import { Button, CoinIcon } from '../ui/primitives';
+import { coffeeIcon } from '../art/items';
+import { fishIcon, fishRenderDimensions, FISH_EFFECT_CLASS } from '../art/fish';
+import { chibiTrophyScene } from '../art/chibi';
+import { getTownSelfPosition, townFishingController } from '../game/scenes';
+import { net } from '../game/net';
 
 function rewardToast(coin: number, fame: number, title: string, tired?: boolean) {
   useUi.getState().toast({
@@ -42,183 +56,830 @@ function Reward({ coin, fame }: { coin: number; fame: number }) {
 type FishPhase =
   | { kind: 'idle' }
   | { kind: 'starting' }
-  | { kind: 'waiting'; runId: string; nonce: string; biteAt: number; windowMs: number }
-  | { kind: 'bite'; runId: string; nonce: string }
-  | { kind: 'reeling' }
-  | { kind: 'result'; title: string; body: string; coin?: number; fame?: number; good: boolean };
+  | {
+      kind: 'waiting';
+      runId: string;
+      nonce: string;
+      startedAt: number;
+      biteAt: number;
+      windowMs: number;
+      shadowTier: FishShadowTier;
+      nibbleCount: number;
+      currentNibble: number;
+      nibbleTimes: number[];
+      equippedRod: RodConfig;
+    }
+  | {
+      kind: 'bite';
+      runId: string;
+      nonce: string;
+      startedAt: number;
+      biteAt: number;
+      windowMs: number;
+      shadowTier: FishShadowTier;
+      equippedRod: RodConfig;
+    }
+  | {
+      kind: 'reeling';
+      runId: string;
+      nonce: string;
+      equippedRod: RodConfig;
+      shadowTier: FishShadowTier;
+      mashProgress: number;
+    }
+  | {
+      kind: 'result';
+      title: string;
+      body: string;
+      coin?: number;
+      fame?: number;
+      good: boolean;
+      fishId?: string;
+      shadowTier?: FishShadowTier;
+      equippedRod?: RodConfig;
+      sizeCm?: number;
+      weightKg?: number;
+      sizeCategory?: 'small' | 'standard' | 'large' | 'giant';
+      isFirstCatch?: boolean;
+      isRecord?: boolean;
+    };
 
 export function FishingActivity() {
   const close = useUi((s) => s.setActivity);
+  const setPanel = useUi((s) => s.setPanel);
   const refresh = useRefreshEconomy();
   const [phase, setPhase] = useState<FishPhase>({ kind: 'idle' });
+  const [resultView, setResultView] = useState<'chibi' | 'illustration'>('chibi');
+  const qc = useQueryClient();
+  const { data: me } = useQuery<Me>({ queryKey: qk.me, queryFn: () => api<Me>('/me') });
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
 
+  // On entering fishing activity (approaching lake and pressing E):
+  // 1. If character is holding anything (e.g. heldFish), put it away immediately
+  // 2. Character equips and holds their fishing rod in ready stance facing the water
+  useEffect(() => {
+    if (me?.appearance.heldFish) {
+      void api('/backpack/fish/unhold', { method: 'POST' }).catch(() => undefined);
+      qc.setQueryData(qk.me, (old: Me | undefined) =>
+        old ? { ...old, appearance: { ...old.appearance, heldFish: null } } : old,
+      );
+      (
+        townFishingController?.getScene() as unknown as {
+          setSelfHeldFish?: (h: null) => void;
+        }
+      )?.setSelfHeldFish?.(null);
+    }
+
+    const equippedRod = FISHING_RODS[me?.appearance.rod ?? 'rod_twig'] ?? FISHING_RODS['rod_twig']!;
+    const selfPos = getTownSelfPosition();
+    townFishingController?.holdRodReady({
+      selfX: selfPos.x,
+      selfY: selfPos.y,
+      equippedRod,
+    });
+
+    return () => {
+      townFishingController?.cleanup();
+      net.send('fishing:stop', {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Return to ready stance holding fishing rod (e.g. after catch, pressing Space)
+  const returnToRodReady = useCallback(() => {
+    net.send('fishing:stop', {});
+    if (me?.appearance.heldFish) {
+      void api('/backpack/fish/unhold', { method: 'POST' }).catch(() => undefined);
+      qc.setQueryData(qk.me, (old: Me | undefined) =>
+        old ? { ...old, appearance: { ...old.appearance, heldFish: null } } : old,
+      );
+      (
+        townFishingController?.getScene() as unknown as {
+          setSelfHeldFish?: (h: null) => void;
+        }
+      )?.setSelfHeldFish?.(null);
+    }
+    const equippedRod = FISHING_RODS[me?.appearance.rod ?? 'rod_twig'] ?? FISHING_RODS['rod_twig']!;
+    const selfPos = getTownSelfPosition();
+    townFishingController?.holdRodReady({
+      selfX: selfPos.x,
+      selfY: selfPos.y,
+      equippedRod,
+    });
+    setPhase({ kind: 'idle' });
+  }, [me?.appearance.rod, me?.appearance.heldFish, qc]);
+
   const cast = useCallback(async () => {
     setPhase({ kind: 'starting' });
-    play('splash');
     try {
-      const r = await api<{ runId: string; nonce: string; biteInMs: number; reactionWindowMs: number }>(
-        '/activities/fishing/start',
-        { body: {} },
-      );
+      const r = await api<{
+        runId: string;
+        nonce: string;
+        biteInMs: number;
+        reactionWindowMs: number;
+        shadowTier?: FishShadowTier;
+        nibbleCount?: number;
+        shadowDelayMs?: number;
+        equippedRod?: RodConfig;
+      }>('/activities/fishing/start', { body: {} });
+
+      const now = Date.now();
+      const biteAt = now + r.biteInMs;
+      const nibbleCount = r.nibbleCount ?? 4 + Math.floor(Math.random() * 5);
+      const shadowDelayMs = r.shadowDelayMs ?? 7000 + Math.floor(Math.random() * 5001);
+      const nibbleTimes: number[] = [];
+
+      // Shadow appears after 7-12s, swims in (~2.2s), then 4-8 nibbles before bite
+      const startNibble = now + shadowDelayMs + 2200;
+      const endNibble = biteAt - 400;
+      const step = (endNibble - startNibble) / Math.max(1, nibbleCount);
+      for (let i = 0; i < nibbleCount; i++) {
+        nibbleTimes.push(Math.round(startNibble + i * step));
+      }
+
+      const equippedRod = r.equippedRod ?? FISHING_RODS['rod_twig']!;
+      const shadowTier = r.shadowTier ?? 1;
+
+      // Start In-World Visuals on Town Lake
+      const selfPos = getTownSelfPosition();
+
+      // Broadcast casting to all other players in the town
+      net.send('fishing:cast', {
+        selfX: selfPos.x,
+        selfY: selfPos.y,
+        facingDir: townFishingController?.getFacingDir(),
+        shadowTier,
+        biteInMs: r.biteInMs,
+        shadowDelayMs,
+        equippedRodId: equippedRod.id,
+        nibbleCount,
+        nibbleTimes,
+      });
+
+      townFishingController?.startCast({
+        selfX: selfPos.x,
+        selfY: selfPos.y,
+        shadowTier,
+        nibbleCount,
+        nibbleTimes,
+        biteInMs: r.biteInMs,
+        shadowDelayMs,
+        equippedRod,
+        onNibble: (idx) => {
+          net.send('fishing:nibble', { nibbleIndex: idx });
+          setPhase((prev) => (prev.kind === 'waiting' ? { ...prev, currentNibble: idx + 1 } : prev));
+        },
+        onBite: () => {
+          net.send('fishing:bite', {});
+          setPhase((prev) => {
+            if (prev.kind !== 'waiting') return prev;
+            return {
+              kind: 'bite',
+              runId: prev.runId,
+              nonce: prev.nonce,
+              startedAt: prev.startedAt,
+              biteAt: prev.biteAt,
+              windowMs: prev.windowMs,
+              shadowTier: prev.shadowTier,
+              equippedRod: prev.equippedRod,
+            };
+          });
+        },
+      });
+
       setPhase({
         kind: 'waiting',
         runId: r.runId,
         nonce: r.nonce,
-        biteAt: Date.now() + r.biteInMs,
+        startedAt: now,
+        biteAt,
         windowMs: r.reactionWindowMs,
+        shadowTier,
+        nibbleCount,
+        currentNibble: 0,
+        nibbleTimes,
+        equippedRod,
       });
     } catch (err) {
       errorToast(err);
+      townFishingController?.cleanup();
       close(null);
     }
   }, [close]);
 
-  const reel = useCallback(async () => {
-    const p = phaseRef.current;
-    if (p.kind !== 'waiting' && p.kind !== 'bite') return;
-    setPhase({ kind: 'reeling' });
-    try {
-      const r = await api<{
-        outcome: string;
-        message?: string;
-        fish?: { name: string; rarity: string };
-        coin?: number;
-        fame?: number;
-        tired?: boolean;
-      }>('/activities/fishing/complete', { body: { runId: p.runId, nonce: p.nonce } });
-      if (r.outcome === 'caught' && r.fish) {
-        play('coin');
-        setPhase({
-          kind: 'result',
-          good: true,
-          title: `Bạn đã câu được ${r.fish.name}!`,
-          body: `Một chiến lợi phẩm cấp ${r.fish.rarity}.`,
-          coin: r.coin,
-          fame: r.fame,
-        });
-        rewardToast(r.coin ?? 0, r.fame ?? 0, r.fish.name, r.tired);
-        refresh();
-      } else {
-        play('error');
-        setPhase({
-          kind: 'result',
-          good: false,
-          title: r.outcome === 'too_early' ? 'Quá sớm rồi!' : 'Cá đã thoát mất',
-          body: r.message ?? '',
-        });
+  // Complete catch API
+  const finishCatch = useCallback(
+    async (p: { runId: string; nonce: string; equippedRod: RodConfig; shadowTier: FishShadowTier }) => {
+      try {
+        const r = await api<{
+          outcome: string;
+          message?: string;
+          fish?: { id: string; name: string; rarity: string; description?: string };
+          coin?: number;
+          fame?: number;
+          tired?: boolean;
+          sizeCm?: number;
+          weightKg?: number;
+          sizeCategory?: 'small' | 'standard' | 'large' | 'giant';
+          shadowTier?: FishShadowTier;
+          isFirstCatch?: boolean;
+          isRecord?: boolean;
+        }>('/activities/fishing/complete', { body: { runId: p.runId, nonce: p.nonce } });
+
+        if (r.outcome === 'caught' && r.fish) {
+          townFishingController?.catchSuccess(r.fish.id);
+
+          const caughtFish = {
+            speciesId: r.fish.id,
+            sizeCm: r.sizeCm ?? 50,
+          };
+
+          // Character holds the fish in hands
+          qc.setQueryData(qk.me, (old: Me | undefined) =>
+            old
+              ? {
+                  ...old,
+                  appearance: {
+                    ...old.appearance,
+                    heldFish: caughtFish,
+                  },
+                }
+              : old,
+          );
+          (
+            townFishingController?.getScene() as unknown as {
+              setSelfHeldFish?: (h: typeof caughtFish) => void;
+              saySelf?: (t: string) => void;
+            }
+          )?.setSelfHeldFish?.(caughtFish);
+
+          // Character announces catch in speech bubble and town chat
+          const announce = `Tôi đã câu được ${r.fish.name} với độ dài ${r.sizeCm} cm!`;
+          (
+            townFishingController?.getScene() as unknown as {
+              saySelf?: (t: string) => void;
+            }
+          )?.saySelf?.(announce);
+          net.send('chat', { text: announce });
+
+          setPhase({
+            kind: 'result',
+            good: true,
+            title: `Bạn đã câu được ${r.fish.name}!`,
+            body:
+              r.fish.description ??
+              `Một chiến lợi phẩm cấp ${RARITY_LABELS[r.fish.rarity as Rarity] ?? r.fish.rarity}.`,
+            coin: r.coin,
+            fame: r.fame,
+            fishId: r.fish.id,
+            sizeCm: r.sizeCm,
+            weightKg: r.weightKg,
+            sizeCategory: r.sizeCategory,
+            shadowTier: r.shadowTier ?? p.shadowTier,
+            equippedRod: p.equippedRod,
+            isFirstCatch: r.isFirstCatch,
+            isRecord: r.isRecord,
+          });
+          net.send('fishing:stop', {});
+          rewardToast(r.coin ?? 0, r.fame ?? 0, r.fish.name, r.tired);
+          refresh();
+        } else {
+          townFishingController?.cleanupVisuals();
+          net.send('fishing:stop', {});
+          play('error');
+          setPhase({
+            kind: 'result',
+            good: false,
+            title: r.outcome === 'too_early' ? 'Quá sớm rồi!' : 'Câu xịt rồi!',
+            body:
+              r.message ??
+              (r.outcome === 'escaped'
+                ? 'Dù đã kéo cần hết sức nhưng cá đã giãy mạnh và sẩy mất!'
+                : 'Cá đã thoát mất!'),
+          });
+        }
+      } catch (err) {
+        townFishingController?.cleanup();
+        net.send('fishing:stop', {});
+        errorToast(err);
+        setPhase({ kind: 'idle' });
       }
+    },
+    [refresh, qc],
+  );
+
+  // Hook fish on Bite -> enter reeling phase
+  const hookFish = useCallback(() => {
+    const p = phaseRef.current;
+    if (p.kind !== 'bite') return;
+    setPhase({
+      kind: 'reeling',
+      runId: p.runId,
+      nonce: p.nonce,
+      equippedRod: p.equippedRod,
+      shadowTier: p.shadowTier,
+      mashProgress: 30,
+    });
+    townFishingController?.onMashReel(30);
+    play('reel');
+  }, []);
+
+  // Mash reel key/button
+  const mashReel = useCallback(() => {
+    const p = phaseRef.current;
+    if (p.kind !== 'reeling') return;
+    play('reel');
+    const rodBonus = Math.min(6, (p.equippedRod.reactionBonusMs ?? 0) / 40);
+    const gain = 14 + rodBonus;
+    const next = Math.min(100, p.mashProgress + gain);
+
+    townFishingController?.onMashReel(next);
+
+    if (next >= 100) {
+      void finishCatch(p);
+    } else {
+      setPhase((prev) => (prev.kind === 'reeling' ? { ...prev, mashProgress: next } : prev));
+    }
+  }, [finishCatch]);
+
+  // Early pull when waiting (likely too early)
+  const pullEarly = useCallback(async () => {
+    const p = phaseRef.current;
+    if (p.kind !== 'waiting') return;
+    townFishingController?.cleanup();
+    net.send('fishing:stop', {});
+    try {
+      const r = await api<{ outcome: string; message?: string }>('/activities/fishing/complete', {
+        body: { runId: p.runId, nonce: p.nonce },
+      });
+      play('error');
+      setPhase({
+        kind: 'result',
+        good: false,
+        title: 'Quá sớm rồi!',
+        body: r.message ?? 'Cá chưa cắn câu đã giật cần mất rồi!',
+      });
     } catch (err) {
       errorToast(err);
       setPhase({ kind: 'idle' });
     }
-  }, [refresh]);
+  }, []);
 
-  // bite timer (visual cue only; the server decides whether the reaction was in time)
-  useEffect(() => {
-    if (phase.kind !== 'waiting') return;
-    const t = window.setTimeout(
-      () => {
-        play('bite');
-        setPhase({ kind: 'bite', runId: phase.runId, nonce: phase.nonce });
-      },
-      Math.max(0, phase.biteAt - Date.now()),
-    );
-    return () => clearTimeout(t);
-  }, [phase]);
+  // Bite timeout if player doesn't react in time
   useEffect(() => {
     if (phase.kind !== 'bite') return;
-    const t = window.setTimeout(() => void reel(), 2400);
+    const t = window.setTimeout(() => {
+      const cur = phaseRef.current;
+      if (cur.kind === 'bite') {
+        townFishingController?.cleanup();
+        play('error');
+        setPhase({
+          kind: 'result',
+          good: false,
+          title: 'Cá đã thoát mất!',
+          body: 'Bạn đã giật cần quá chậm, cá đã cắn trộm mồi rồi bơi đi!',
+        });
+      }
+    }, phase.windowMs || 2500);
     return () => clearTimeout(t);
-  }, [phase, reel]);
+  }, [phase]);
 
+  // Reeling decay loop (fish pulls back!)
+  useEffect(() => {
+    if (phase.kind !== 'reeling') return;
+    const interval = window.setInterval(() => {
+      setPhase((prev) => {
+        if (prev.kind !== 'reeling') return prev;
+        const next = Math.max(0, prev.mashProgress - 1.4);
+        if (next <= 0) {
+          townFishingController?.cleanup();
+          play('error');
+          return {
+            kind: 'result',
+            good: false,
+            title: 'Cá đã thoát mất!',
+            body: 'Lực giật không đủ nhanh, cá đã giãy thoát khỏi lưỡi câu!',
+          };
+        }
+        return { ...prev, mashProgress: next };
+      });
+    }, 60);
+    return () => clearInterval(interval);
+  }, [phase.kind]);
+
+  // Space / Enter / B / Esc keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const el = document.activeElement;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return;
+
+      if (e.code === 'KeyB' || e.key === 'b' || e.key === 'B') {
+        e.preventDefault();
+        townFishingController?.cleanup();
+        net.send('fishing:stop', {});
+        close(null);
+        setPanel('backpack');
+        return;
+      }
+
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
         const p = phaseRef.current;
-        if (p.kind === 'idle' || p.kind === 'result') void cast();
-        else if (p.kind === 'waiting' || p.kind === 'bite') void reel();
+        if (p.kind === 'idle') {
+          void cast();
+        } else if (p.kind === 'result') {
+          returnToRodReady();
+        } else if (p.kind === 'bite') {
+          hookFish();
+        } else if (p.kind === 'reeling') {
+          mashReel();
+        }
       }
-      if (e.key === 'Escape') close(null);
+      if (e.key === 'Escape') {
+        townFishingController?.cleanup();
+        net.send('fishing:stop', {});
+        close(null);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [cast, reel, close]);
+  }, [cast, hookFish, mashReel, returnToRodReady, close, setPanel]);
 
-  const biting = phase.kind === 'bite';
+  const shadowTier: FishShadowTier | undefined =
+    phase.kind === 'waiting' || phase.kind === 'bite' || phase.kind === 'reeling' || phase.kind === 'result'
+      ? phase.shadowTier
+      : undefined;
+  const shadowInfo = shadowTier ? SHADOW_TIER_CONFIG[shadowTier] : undefined;
+
   return (
-    <div className="activity" role="dialog" aria-label="Câu cá">
-      <div className="activity-card">
+    <div className="fishing-inworld-hud" role="region" aria-label="Giao diện câu cá ngoài thế giới">
+      {phase.kind === 'idle' && (
+        <div className="fishing-status-chip" style={{ gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              close(null);
+              setPanel('tackle');
+            }}
+          >
+            🎣 Tủ Cần Câu
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              close(null);
+              setPanel('backpack');
+            }}
+          >
+            <Package size={14} /> Balo & Giỏ Cá
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => setPanel('fishdex')}>
+            <BookOpen size={14} /> Từ Điển Cá
+          </Button>
+          <Button variant="primary" size="sm" onClick={() => void cast()}>
+            🎣 Quăng cần <span className="kbd">Space</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              townFishingController?.cleanup();
+              close(null);
+            }}
+          >
+            Rời cầu tàu <span className="kbd">Esc</span>
+          </Button>
+        </div>
+      )}
+
+      {phase.kind === 'starting' && (
+        <div className="fishing-status-chip">
+          <span>🌊 Đang quăng cần ra giữa hồ nước…</span>
+        </div>
+      )}
+
+      {phase.kind === 'waiting' && (
         <div
-          className="activity-art"
-          style={{ background: 'linear-gradient(#bfe3ef, #6fb6d6 55%, #5aa3c6)' }}
+          className="fishing-status-chip"
+          style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 22px' }}
         >
-          {phase.kind === 'waiting' || phase.kind === 'bite' || phase.kind === 'reeling' ? (
-            <>
-              <span className="ripple" style={{ top: 110 }} />
-              <div className={`bobber ${biting ? 'bite' : ''}`} />
-            </>
-          ) : phase.kind === 'result' ? (
-            <Fish size={64} color={phase.good ? '#2a2438' : '#ffffff'} strokeWidth={1.5} />
-          ) : (
-            <Fish size={56} color="#ffffff" strokeWidth={1.5} />
-          )}
+          <span style={{ fontSize: 13, color: '#f1f5f9', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>🎣</span>
+            <span>
+              Quan sát mặt nước và chờ cá cắn câu <strong>(!)</strong>…
+            </span>
+          </span>
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs"
+            style={{ fontSize: 11, color: '#94a3b8' }}
+            onClick={() => void pullEarly()}
+          >
+            Thu cần sớm
+          </button>
         </div>
-        <div className="activity-body" aria-live="assertive">
-          {phase.kind === 'idle' ? (
-            <>
-              <h3>Cầu Tàu Lắc Lư</h3>
-              <p className="muted">
-                Thả cần câu và chờ cá cắn câu. Hãy phản xạ thật nhanh khi phao câu chìm xuống — kéo càng nhanh
-                càng dễ bắt được cá hiếm.
-              </p>
-              <Button variant="primary" size="lg" onClick={() => void cast()}>
-                Thả câu <span className="kbd">Space</span>
-              </Button>
-            </>
-          ) : phase.kind === 'starting' ? (
-            <h3>Đang thả câu…</h3>
-          ) : phase.kind === 'waiting' ? (
-            <>
-              <h3>Đang chờ cá cắn câu…</h3>
-              <p className="muted">Đừng giật cần quá sớm nhé.</p>
-              <Button size="lg" onClick={() => void reel()}>
-                Kéo cần <span className="kbd">Space</span>
-              </Button>
-            </>
-          ) : phase.kind === 'bite' ? (
-            <>
-              <h3 style={{ color: 'var(--reward)' }}>Cá cắn câu rồi! Giật cần ngay!</h3>
-              <Button variant="reward" size="lg" onClick={() => void reel()}>
-                Giật cần ngay <span className="kbd">Space</span>
-              </Button>
-            </>
-          ) : phase.kind === 'reeling' ? (
-            <h3>Đang kéo cần…</h3>
-          ) : (
-            <>
-              <h3>{phase.title}</h3>
-              <p className="muted">{phase.body}</p>
-              {phase.good ? <Reward coin={phase.coin ?? 0} fame={phase.fame ?? 0} /> : null}
-              <div className="row" style={{ justifyContent: 'center' }}>
-                <Button variant="ghost" onClick={() => close(null)}>
-                  Xong
-                </Button>
-                <Button variant="primary" onClick={() => void cast()}>
-                  Câu tiếp <span className="kbd">Space</span>
-                </Button>
+      )}
+
+      {phase.kind === 'bite' && (
+        <div
+          className="fishing-status-chip"
+          style={{
+            border: '2px solid #ef4444',
+            boxShadow: '0 0 25px rgba(239, 68, 68, 0.7)',
+            animation: 'bump 0.25s infinite ease-in-out',
+            padding: '12px 28px',
+            background: 'rgba(239, 68, 68, 0.25)',
+          }}
+        >
+          <Zap size={22} color="#ef4444" />
+          <span style={{ fontSize: 16, fontWeight: 800, color: '#fca5a5' }}>BITE! CÁ ĐÃ CẮN CÂU!</span>
+          <button
+            type="button"
+            className="fishing-mash-btn"
+            onClick={hookFish}
+            style={{ animation: 'pulse 0.5s infinite' }}
+          >
+            ⚡ GIẬT NGAY!{' '}
+            <span className="kbd" style={{ background: 'rgba(0,0,0,0.3)', color: '#fff' }}>
+              Space
+            </span>
+          </button>
+        </div>
+      )}
+
+      {phase.kind === 'reeling' && (
+        <div className="fishing-mash-widget">
+          <div
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
+          >
+            <span
+              style={{
+                fontSize: 14,
+                fontWeight: 800,
+                color: '#f87171',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <Zap size={16} /> GIẰNG CO! ẤN SPACE LIÊN TỤC!
+            </span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8' }}>
+              {Math.round(phase.mashProgress)}%
+            </span>
+          </div>
+          <div className="fishing-meter-track">
+            <div
+              className="fishing-meter-fill"
+              style={{ width: `${Math.min(100, Math.max(0, phase.mashProgress))}%` }}
+            />
+          </div>
+          <button type="button" className="fishing-mash-btn" onClick={mashReel}>
+            ⚡ GIẬT DÂY!{' '}
+            <span className="kbd" style={{ background: 'rgba(0,0,0,0.3)', color: '#fff' }}>
+              Space
+            </span>
+          </button>
+        </div>
+      )}
+
+      {phase.kind === 'result' && (
+        <div className="fishing-result-card" role="dialog" aria-label="Kết quả câu cá">
+          <div style={{ height: 210, position: 'relative', overflow: 'hidden' }}>
+            {phase.fishId ? (
+              <>
+                {resultView === 'chibi' ? (
+                  <img
+                    src={chibiTrophyScene(
+                      me?.appearance ?? { skin: 1, hairStyle: 'short', hairColor: 1, baseTop: 0 },
+                      phase.fishId,
+                      phase.sizeCm ?? 50,
+                      440,
+                      210,
+                    )}
+                    alt="Chiến lợi phẩm HD Chibi"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  (() => {
+                    const { displayScale, baseWidth, baseHeight } = fishRenderDimensions(
+                      phase.fishId,
+                      phase.sizeCm,
+                    );
+                    return (
+                      <div
+                        className={`fish-3d-pedestal ${FISH_EFFECT_CLASS[phase.fishId] ?? ''}`}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          position: 'relative',
+                        }}
+                      >
+                        <img
+                          src={fishIcon(phase.fishId, displayScale)}
+                          alt="Chiến lợi phẩm cá"
+                          className="fish-3d-float"
+                          style={{
+                            width: Math.min(baseWidth * displayScale, 240),
+                            height: Math.min(baseHeight * displayScale, 140),
+                            objectFit: 'contain',
+                            imageRendering: 'pixelated',
+                          }}
+                        />
+                      </div>
+                    );
+                  })()
+                )}
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 8,
+                    right: 8,
+                    display: 'flex',
+                    gap: 4,
+                    zIndex: 2,
+                  }}
+                >
+                  <button
+                    type="button"
+                    className={`btn btn-xs ${resultView === 'chibi' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={{
+                      fontSize: 10,
+                      padding: '2px 6px',
+                      background: resultView === 'chibi' ? undefined : 'rgba(0,0,0,0.6)',
+                    }}
+                    onClick={() => setResultView('chibi')}
+                  >
+                    ✨ Chibi Vinh Danh
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-xs ${resultView === 'illustration' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={{
+                      fontSize: 10,
+                      padding: '2px 6px',
+                      background: resultView === 'illustration' ? undefined : 'rgba(0,0,0,0.6)',
+                    }}
+                    onClick={() => setResultView('illustration')}
+                  >
+                    🌟 3D Render Studio
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+                }}
+              >
+                <Fish size={56} color="#94a3b8" />
               </div>
-            </>
-          )}
-          {phase.kind !== 'result' && phase.kind !== 'idle' ? null : phase.kind === 'idle' ? (
-            <Button variant="ghost" onClick={() => close(null)}>
-              Rời cầu tàu
-            </Button>
-          ) : null}
+            )}
+          </div>
+
+          <div
+            style={{
+              padding: '16px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+              textAlign: 'center',
+            }}
+          >
+            <div className="row" style={{ justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
+              {shadowInfo && (
+                <span
+                  className="pill"
+                  style={{
+                    background: shadowInfo.hasCrown ? 'rgba(251, 191, 36, 0.25)' : 'rgba(56, 189, 248, 0.2)',
+                    color: shadowInfo.hasCrown ? '#fbbf24' : '#38bdf8',
+                    border: `1px solid ${shadowInfo.hasCrown ? '#f59e0b' : '#0284c7'}`,
+                    fontWeight: 700,
+                  }}
+                >
+                  {shadowInfo.hasCrown ? '👑 ' : ''}
+                  {shadowInfo.label}
+                </span>
+              )}
+              {phase.isFirstCatch ? (
+                <span
+                  className="pill"
+                  style={{ background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', fontWeight: 700 }}
+                >
+                  ✨ Mới khám phá!
+                </span>
+              ) : null}
+              {phase.isRecord && !phase.isFirstCatch ? (
+                <span
+                  className="pill"
+                  style={{ background: 'rgba(251, 191, 36, 0.2)', color: '#fbbf24', fontWeight: 700 }}
+                >
+                  👑 Kỷ lục mới!
+                </span>
+              ) : null}
+              {phase.sizeCategory === 'giant' ? (
+                <span
+                  className="pill"
+                  style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', fontWeight: 700 }}
+                >
+                  🏆 Siêu to khổng lồ
+                </span>
+              ) : phase.sizeCategory === 'large' ? (
+                <span
+                  className="pill"
+                  style={{ background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', fontWeight: 700 }}
+                >
+                  ⭐ Cỡ lớn
+                </span>
+              ) : phase.sizeCategory === 'small' ? (
+                <span className="pill" style={{ background: 'rgba(148, 163, 184, 0.2)', color: '#cbd5e1' }}>
+                  Bé nhỏ xinh xắn
+                </span>
+              ) : null}
+            </div>
+
+            <h3 style={{ margin: 0, fontSize: 18, color: '#f8fafc' }}>{phase.title}</h3>
+
+            {phase.sizeCm ? (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 12,
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  padding: '4px 12px',
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#38bdf8',
+                }}
+              >
+                <span>📏 Dài: {phase.sizeCm} cm</span>
+                <span>⚖️ Nặng: {phase.weightKg} kg</span>
+              </div>
+            ) : null}
+
+            <p className="muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.4 }}>
+              {phase.body}
+            </p>
+
+            {phase.good ? <Reward coin={phase.coin ?? 0} fame={phase.fame ?? 0} /> : null}
+
+            <div className="row" style={{ justifyContent: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  townFishingController?.cleanup();
+                  close(null);
+                  setPanel('shop-rods');
+                }}
+              >
+                🎣 Tiệm Ngư Cụ
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  townFishingController?.cleanup();
+                  close(null);
+                  setPanel('backpack');
+                }}
+              >
+                <Package size={14} /> Giỏ Cá
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setPanel('fishdex')}>
+                <BookOpen size={14} /> Từ Điển
+              </Button>
+              <Button variant="primary" size="sm" onClick={() => void returnToRodReady()}>
+                🎣 Cầm cần câu <span className="kbd">Space</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  townFishingController?.cleanup();
+                  close(null);
+                }}
+              >
+                Đóng <span className="kbd">Esc</span>
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -344,9 +1005,29 @@ export function CafeActivity() {
       <div className="activity-card" style={{ width: 'min(520px, calc(100% - 32px))' }}>
         <div
           className="activity-art"
-          style={{ background: 'linear-gradient(160deg, #f1dcc0, #e7c49b)', height: 140 }}
+          style={{
+            background: 'linear-gradient(160deg, #f1dcc0, #e7c49b)',
+            height: 140,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
-          <Coffee size={56} color="#6b3b2a" strokeWidth={1.5} />
+          {run || result ? (
+            <img
+              src={coffeeIcon(run ? seq : ['espresso', 'milk', 'caramel'], 5)}
+              alt="Artisan Coffee"
+              className="pixel"
+              style={{
+                width: 100,
+                height: 100,
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 6px 12px rgba(107, 59, 42, 0.25))',
+              }}
+            />
+          ) : (
+            <Coffee size={56} color="#6b3b2a" strokeWidth={1.5} />
+          )}
         </div>
         <div className="activity-body">
           {run ? (

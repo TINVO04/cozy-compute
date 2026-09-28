@@ -8,6 +8,7 @@ import * as ai from '../services/ai.js';
 import { audit } from '../services/audit.js';
 import { scheduleNext, finishEvent } from '../services/events.js';
 import { getSetting, settingSchema, type SettingKey } from '../settings.js';
+import { FISH } from '@cozy/game-data';
 
 const SECRET_REF = /^UPSTREAM_KEY_[A-Z0-9_]{1,40}$/;
 
@@ -374,6 +375,222 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext) {
       await audit(tx, admin.id, 'activity.update', 'activity', slug, p, { config, enabled: b.enabled });
     });
     return { ok: true };
+  });
+
+  function parseFishOverrides(raw: unknown): Record<string, { minSizeCm: number; maxSizeCm: number }> {
+    if (!raw) return {};
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        return typeof parsed === 'object' && parsed !== null ? parsed : {};
+      } catch {
+        return {};
+      }
+    }
+    return typeof raw === 'object' && raw !== null
+      ? (raw as Record<string, { minSizeCm: number; maxSizeCm: number }>)
+      : {};
+  }
+
+  app.get('/admin/fish', async (req) => {
+    requireAdmin(req);
+    const r = await ctx.db.query<{ value: unknown }>(`SELECT value FROM settings WHERE key = 'fish_sizes'`);
+    const overrides = parseFishOverrides(r.rows[0]?.value);
+    return FISH.map((f) => {
+      const o = overrides[f.id];
+      return {
+        ...f,
+        minSizeCm: o?.minSizeCm ?? f.minSizeCm,
+        maxSizeCm: o?.maxSizeCm ?? f.maxSizeCm,
+        defaultMinSizeCm: f.minSizeCm,
+        defaultMaxSizeCm: f.maxSizeCm,
+        isOverridden: Boolean(o),
+      };
+    });
+  });
+
+  app.put('/admin/fish/:id/size', async (req) => {
+    const admin = requireAdmin(req);
+    const { id } = z.object({ id: z.string().max(60) }).parse(req.params);
+    const b = z
+      .object({
+        minSizeCm: z.number().positive().max(10000),
+        maxSizeCm: z.number().positive().max(10000),
+      })
+      .refine((data) => data.maxSizeCm >= data.minSizeCm, {
+        message: 'maxSizeCm must be greater than or equal to minSizeCm',
+      })
+      .parse(req.body);
+
+    const baseFish = FISH.find((f) => f.id === id);
+    if (!baseFish) throw notFound('Fish species not found.');
+
+    return withTx(ctx.db, async (tx) => {
+      const r = await tx.query<{ value: unknown }>(
+        `SELECT value FROM settings WHERE key = 'fish_sizes' FOR UPDATE`,
+      );
+      const current = parseFishOverrides(r.rows[0]?.value);
+      const updated = {
+        ...current,
+        [id]: { minSizeCm: b.minSizeCm, maxSizeCm: b.maxSizeCm },
+      };
+
+      await tx.query(
+        `INSERT INTO settings (key, value, updated_at) VALUES ('fish_sizes', $1, now())
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now()`,
+        [JSON.stringify(updated)],
+      );
+
+      await audit(tx, admin.id, 'fish_size.update', 'fish_species', id, current[id] ?? null, b);
+
+      return {
+        ...baseFish,
+        minSizeCm: b.minSizeCm,
+        maxSizeCm: b.maxSizeCm,
+        defaultMinSizeCm: baseFish.minSizeCm,
+        defaultMaxSizeCm: baseFish.maxSizeCm,
+        isOverridden: true,
+      };
+    });
+  });
+
+  app.delete('/admin/fish/:id/size', async (req) => {
+    const admin = requireAdmin(req);
+    const { id } = z.object({ id: z.string().max(60) }).parse(req.params);
+    const baseFish = FISH.find((f) => f.id === id);
+    if (!baseFish) throw notFound('Fish species not found.');
+
+    return withTx(ctx.db, async (tx) => {
+      const r = await tx.query<{ value: unknown }>(
+        `SELECT value FROM settings WHERE key = 'fish_sizes' FOR UPDATE`,
+      );
+      const current = parseFishOverrides(r.rows[0]?.value);
+      const prev = current[id];
+      const updated = { ...current };
+      delete updated[id];
+
+      await tx.query(
+        `INSERT INTO settings (key, value, updated_at) VALUES ('fish_sizes', $1, now())
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now()`,
+        [JSON.stringify(updated)],
+      );
+
+      await audit(tx, admin.id, 'fish_size.reset', 'fish_species', id, prev ?? null, null);
+
+      return {
+        ...baseFish,
+        minSizeCm: baseFish.minSizeCm,
+        maxSizeCm: baseFish.maxSizeCm,
+        defaultMinSizeCm: baseFish.minSizeCm,
+        defaultMaxSizeCm: baseFish.maxSizeCm,
+        isOverridden: false,
+      };
+    });
+  });
+
+  app.put('/admin/fish/batch-size', async (req) => {
+    const admin = requireAdmin(req);
+    const b = z
+      .object({
+        updates: z
+          .array(
+            z
+              .object({
+                id: z.string().max(60),
+                minSizeCm: z.number().positive().max(10000),
+                maxSizeCm: z.number().positive().max(10000),
+              })
+              .refine((data) => data.maxSizeCm >= data.minSizeCm, {
+                message: 'maxSizeCm must be greater than or equal to minSizeCm',
+              }),
+          )
+          .min(1)
+          .max(200),
+      })
+      .parse(req.body);
+
+    for (const u of b.updates) {
+      if (!FISH.some((f) => f.id === u.id)) {
+        throw badRequest('invalid_species', `Unknown fish species ID: ${u.id}`);
+      }
+    }
+
+    return withTx(ctx.db, async (tx) => {
+      const r = await tx.query<{ value: unknown }>(
+        `SELECT value FROM settings WHERE key = 'fish_sizes' FOR UPDATE`,
+      );
+      const current = parseFishOverrides(r.rows[0]?.value);
+      const updated = { ...current };
+      for (const u of b.updates) {
+        updated[u.id] = { minSizeCm: u.minSizeCm, maxSizeCm: u.maxSizeCm };
+      }
+
+      await tx.query(
+        `INSERT INTO settings (key, value, updated_at) VALUES ('fish_sizes', $1, now())
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now()`,
+        [JSON.stringify(updated)],
+      );
+
+      await audit(tx, admin.id, 'fish_size.batch_update', 'fish_species', 'batch', null, {
+        count: b.updates.length,
+        speciesIds: b.updates.map((u) => u.id),
+      });
+
+      return FISH.map((f) => {
+        const o = updated[f.id];
+        return {
+          ...f,
+          minSizeCm: o?.minSizeCm ?? f.minSizeCm,
+          maxSizeCm: o?.maxSizeCm ?? f.maxSizeCm,
+          defaultMinSizeCm: f.minSizeCm,
+          defaultMaxSizeCm: f.maxSizeCm,
+          isOverridden: Boolean(o),
+        };
+      });
+    });
+  });
+
+  app.post('/admin/fish/batch-reset', async (req) => {
+    const admin = requireAdmin(req);
+    const b = z
+      .object({
+        ids: z.array(z.string().max(60)).min(1).max(200),
+      })
+      .parse(req.body);
+
+    return withTx(ctx.db, async (tx) => {
+      const r = await tx.query<{ value: unknown }>(
+        `SELECT value FROM settings WHERE key = 'fish_sizes' FOR UPDATE`,
+      );
+      const current = parseFishOverrides(r.rows[0]?.value);
+      const updated = { ...current };
+      for (const id of b.ids) {
+        delete updated[id];
+      }
+
+      await tx.query(
+        `INSERT INTO settings (key, value, updated_at) VALUES ('fish_sizes', $1, now())
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now()`,
+        [JSON.stringify(updated)],
+      );
+
+      await audit(tx, admin.id, 'fish_size.batch_reset', 'fish_species', 'batch', null, {
+        count: b.ids.length,
+        speciesIds: b.ids,
+      });
+
+      return FISH.map((f) => {
+        const o = updated[f.id];
+        return {
+          ...f,
+          minSizeCm: o?.minSizeCm ?? f.minSizeCm,
+          maxSizeCm: o?.maxSizeCm ?? f.maxSizeCm,
+          defaultMinSizeCm: f.minSizeCm,
+          defaultMaxSizeCm: f.maxSizeCm,
+          isOverridden: Boolean(o),
+        };
+      });
+    });
   });
 
   app.post('/admin/events/schedule', async (req) => {

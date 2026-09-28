@@ -1,5 +1,5 @@
 import { fameTitle } from '@cozy/economy';
-import { sanitizeAppearance } from '@cozy/game-data';
+import { FISH, sanitizeAppearance } from '@cozy/game-data';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { createSession, hashPassword, requireUser, verifyPassword } from '../auth.js';
@@ -12,6 +12,7 @@ import * as ai from '../services/ai.js';
 import * as events from '../services/events.js';
 import { completeOnboardingStep, createPlayerRecords, playerSummary } from '../services/players.js';
 import * as shop from '../services/shop.js';
+import * as backpack from '../services/backpack.js';
 
 const idem = (headers: Record<string, unknown>) => {
   const v = headers['idempotency-key'];
@@ -152,6 +153,34 @@ export function playerRoutes(app: FastifyInstance, ctx: AppContext) {
     const b = run.parse(req.body);
     return activities.completeFishing(ctx, requireUser(req).id, b.runId, b.nonce);
   });
+  app.get('/activities/fishing/journal', async (req) => activities.getFishJournal(ctx, requireUser(req).id));
+  app.get('/activities/fishing/species', async () => {
+    const r = await ctx.db.query<{ value: unknown }>(`SELECT value FROM settings WHERE key = 'fish_sizes'`);
+    const rawSizes = r.rows[0]?.value;
+    const overrides = (typeof rawSizes === 'string' ? JSON.parse(rawSizes) : rawSizes) as
+      Record<string, { minSizeCm: number; maxSizeCm: number }> | undefined;
+    return FISH.map((f) => {
+      const o = overrides?.[f.id];
+      return {
+        ...f,
+        minSizeCm: o?.minSizeCm ?? f.minSizeCm,
+        maxSizeCm: o?.maxSizeCm ?? f.maxSizeCm,
+      };
+    });
+  });
+
+  // ---------------------------------------------------------------- backpack
+  app.get('/backpack/fish', async (req) => backpack.getBackpackFish(ctx.db, requireUser(req).id));
+  app.post('/backpack/fish/:id/hold', async (req) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    return backpack.holdFish(ctx, requireUser(req).id, id);
+  });
+  app.post('/backpack/fish/unhold', async (req) => backpack.unholdFish(ctx, requireUser(req).id));
+  app.post('/backpack/fish/:id/sell', async (req) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    return backpack.sellFish(ctx, requireUser(req).id, id);
+  });
+  app.post('/backpack/fish/sell-all', async (req) => backpack.sellAllFish(ctx, requireUser(req).id));
   app.post('/activities/delivery/start', async (req) => activities.startDelivery(ctx, requireUser(req).id));
   app.post('/activities/delivery/complete', async (req) => {
     const b = run.parse(req.body);
@@ -196,7 +225,7 @@ export function playerRoutes(app: FastifyInstance, ctx: AppContext) {
   app.post('/inventory/equip', async (req) => {
     const user = requireUser(req);
     const b = z
-      .object({ itemId: z.string().max(60).nullable(), slot: z.enum(['hat', 'top', 'face']) })
+      .object({ itemId: z.string().max(60).nullable(), slot: z.enum(['hat', 'top', 'face', 'rod']) })
       .parse(req.body);
     return { appearance: await shop.equip(ctx, user.id, b.itemId, b.slot) };
   });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { clampInput, isWalkable, stepMovement, PLAYER_SPEED, PLAYER_RADIUS } from './movement.js';
-import { FISH, DEFAULT_ACTIVITY_CONFIG } from './activities.js';
-import { ITEM_SEEDS, STARTER_ITEMS } from './items.js';
+import { FISH, DEFAULT_ACTIVITY_CONFIG, SHADOW_TIER_CONFIG } from './activities.js';
+import { ITEM_SEEDS, STARTER_ITEMS, FISHING_RODS } from './items.js';
 import { MAP_WIDTH, MAP_HEIGHT, BLOCKERS, SPAWN, zoneAt, pointInRect, ZONES } from './map.js';
 
 describe('game-data movement', () => {
@@ -94,7 +94,7 @@ describe('game-data items catalog', () => {
       allIds.add(item.id);
       expect(item.coinPrice).toBeGreaterThan(0);
       expect(item.name.length).toBeGreaterThan(0);
-      expect(['clothing', 'furniture']).toContain(item.type);
+      expect(['clothing', 'furniture', 'rod']).toContain(item.type);
     }
   });
 
@@ -104,5 +104,27 @@ describe('game-data items catalog', () => {
       expect(seedIds.has(starter.itemId)).toBe(true);
       expect(starter.quantity).toBeGreaterThan(0);
     }
+  });
+
+  it('configures fishing rods and shadow tiers correctly', () => {
+    const rods = Object.values(FISHING_RODS);
+    expect(rods.length).toBeGreaterThanOrEqual(6);
+    for (const rod of rods) {
+      expect(rod.id).toMatch(/^rod_/);
+      expect(rod.coinPrice).toBeGreaterThanOrEqual(0);
+      expect(rod.shadowBonus).toBeGreaterThanOrEqual(0);
+      expect(rod.reactionBonusMs).toBeGreaterThanOrEqual(0);
+      expect(rod.biteSpeedBonus).toBeGreaterThanOrEqual(0);
+    }
+
+    // Shadow tiers 1-6
+    for (const tier of [1, 2, 3, 4, 5, 6] as const) {
+      const cfg = SHADOW_TIER_CONFIG[tier];
+      expect(cfg).toBeDefined();
+      expect(cfg.lengthPx).toBeGreaterThan(0);
+      expect(cfg.widthPx).toBeGreaterThan(0);
+      expect(cfg.swimSpeed).toBeGreaterThan(0);
+    }
+    expect(SHADOW_TIER_CONFIG[6].hasCrown).toBe(true);
   });
 });

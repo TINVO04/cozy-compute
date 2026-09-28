@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Check, MessageCircle, Send, UserPlus, Users } from 'lucide-react';
+import { Check, Compass, MessageCircle, Radio, Send, Sparkles, UserPlus, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { net } from '../game/net';
 import { api, type Friend, type Me } from '../lib/api';
@@ -47,7 +47,10 @@ function Onboarding({ me }: { me: Me }) {
   return (
     <section className="onboarding" aria-label="Nhiệm vụ tân thủ">
       <h3>
-        Nhiệm vụ tân thủ
+        <span className="row" style={{ gap: 6 }}>
+          <Compass size={15} style={{ color: 'var(--primary)' }} />
+          Nhiệm vụ tân thủ
+        </span>
         <span className="pill pill-primary">
           {done}/{total}
         </span>
@@ -59,14 +62,17 @@ function Onboarding({ me }: { me: Me }) {
         {me.onboarding.steps.map((s) => (
           <li key={s.id} className={s.done ? 'done' : ''}>
             <span className="check">{s.done ? <Check size={12} strokeWidth={3} /> : null}</span>
-            {s.label}
+            <span>{s.label}</span>
           </li>
         ))}
       </ul>
-      <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-        Hoàn thành tất cả các bước để nhận {me.onboarding.reward.coin} Xu và {me.onboarding.reward.fame} Danh
-        tiếng. Đồng thời giúp bạn đủ điều kiện nhận phần thưởng AI.
-      </p>
+      <div className="onboarding-reward-pill">
+        <Sparkles size={13} style={{ color: 'var(--gold)' }} />
+        <span>
+          Hoàn thành nhận <strong>{me.onboarding.reward.coin} Xu</strong> &{' '}
+          <strong>{me.onboarding.reward.fame} Danh tiếng</strong>
+        </span>
+      </div>
     </section>
   );
 }
@@ -87,15 +93,27 @@ function Chat() {
     <>
       <div className="chat-log" ref={log} aria-live="polite" aria-label={`Trò chuyện tại ${room.label}`}>
         {chat.length === 0 ? (
-          <p className="muted" style={{ fontSize: 13 }}>
-            Kênh trò chuyện đang yên tĩnh. Nhấn <span className="kbd">Enter</span> để gửi lời chào — người
-            chơi ở gần sẽ nhìn thấy bong bóng trò chuyện trên đầu bạn.
-          </p>
+          <div className="chat-empty">
+            <Radio
+              size={28}
+              className="muted"
+              style={{ margin: '0 auto 8px', display: 'block', opacity: 0.6 }}
+            />
+            <p className="muted" style={{ fontSize: 13, textAlign: 'center' }}>
+              Kênh trò chuyện đang yên tĩnh. Nhấn <span className="kbd">Enter</span> để gửi lời chào — người
+              chơi ở gần sẽ nhìn thấy bong bóng trò chuyện trên đầu bạn.
+            </p>
+          </div>
         ) : (
           chat.map((c) => (
             <div key={c.id} className="chat-line">
-              <time>{new Date(c.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
-              <button onClick={() => inspect(c.userId)}>{c.name}</button>: {c.text}
+              <div className="chat-line-header">
+                <button className="chat-sender" onClick={() => inspect(c.userId)}>
+                  {c.name}
+                </button>
+                <time>{new Date(c.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
+              </div>
+              <div className="chat-text">{c.text}</div>
             </div>
           ))
         )}
@@ -112,7 +130,7 @@ function Chat() {
         <input
           id="chat-input"
           className="input"
-          placeholder={online ? 'Nhập tin nhắn…' : 'Đang kết nối lại…'}
+          placeholder={online ? 'Nhắn điều gì đó… (Enter)' : 'Đang kết nối lại…'}
           value={text}
           maxLength={140}
           disabled={!online}
@@ -124,7 +142,7 @@ function Chat() {
         />
         <button
           className="btn btn-primary"
-          style={{ width: 40, padding: 0 }}
+          style={{ width: 42, padding: 0 }}
           aria-label="Gửi"
           disabled={!online || !text.trim()}
         >

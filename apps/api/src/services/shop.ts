@@ -8,7 +8,7 @@ import { completeOnboardingStep, resolvedAppearance } from './players.js';
 
 interface ItemRow {
   id: string;
-  type: 'clothing' | 'furniture';
+  type: 'clothing' | 'furniture' | 'rod';
   slot: string | null;
   name: string;
   description: string;
@@ -96,14 +96,14 @@ async function purchase(
     const item = await tx.query<ItemRow>('SELECT * FROM item_definitions WHERE id = $1', [itemId]);
     const def = item.rows[0];
     if (!def || !def.enabled) throw notFound('That item is not for sale.');
-    if (def.type === 'clothing' && quantity !== 1)
-      throw badRequest('invalid_quantity', 'Clothing is bought one at a time.');
+    if ((def.type === 'clothing' || def.type === 'rod') && quantity !== 1)
+      throw badRequest('invalid_quantity', 'Trang phục và cần câu chỉ mua từng cái một.');
     const owned = await tx.query<{ quantity: number }>(
       'SELECT quantity FROM inventory_items WHERE user_id = $1 AND item_id = $2',
       [userId, itemId],
     );
-    if (def.type === 'clothing' && (owned.rows[0]?.quantity ?? 0) > 0)
-      throw conflict('already_owned', 'You already own this. Check your wardrobe.');
+    if ((def.type === 'clothing' || def.type === 'rod') && (owned.rows[0]?.quantity ?? 0) > 0)
+      throw conflict('already_owned', 'Bạn đã sở hữu vật phẩm này rồi.');
     const total = def.coin_price * quantity;
     const ledger = await postLedger(tx, {
       userId,
@@ -140,7 +140,7 @@ export async function equip(
   ctx: AppContext,
   userId: string,
   itemId: string | null,
-  slot: 'hat' | 'top' | 'face',
+  slot: 'hat' | 'top' | 'face' | 'rod',
 ) {
   await withTx(ctx.db, async (tx) => {
     await tx.query(
@@ -148,10 +148,18 @@ export async function equip(
       [userId, slot],
     );
     if (itemId) {
+      if (itemId === 'rod_twig') {
+        await tx.query(
+          `INSERT INTO inventory_items (user_id, item_id, quantity)
+           VALUES ($1, 'rod_twig', 1)
+           ON CONFLICT (user_id, item_id) DO NOTHING`,
+          [userId],
+        );
+      }
       const r = await tx.query(
         `UPDATE inventory_items i SET equipped_slot = $3
            FROM item_definitions d
-          WHERE i.user_id = $1 AND i.item_id = $2 AND d.id = i.item_id AND d.type = 'clothing' AND d.slot = $3 AND i.quantity > 0`,
+          WHERE i.user_id = $1 AND i.item_id = $2 AND d.id = i.item_id AND (d.type = 'clothing' OR d.type = 'rod') AND d.slot = $3 AND i.quantity > 0`,
         [userId, itemId, slot],
       );
       if (!r.rowCount) throw notFound('You do not own that item.');

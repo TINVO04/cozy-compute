@@ -32,8 +32,30 @@ export async function buildApp(
   });
   const full: AppContext = { ...ctx, log: app.log };
 
+  const isOriginAllowed = (origin?: string): boolean => {
+    if (!origin) return true;
+    if (ctx.config.corsOrigins.includes(origin)) return true;
+    if (ctx.config.NODE_ENV !== 'production') {
+      try {
+        const u = new URL(origin);
+        const host = u.hostname;
+        return (
+          host === 'localhost' ||
+          host === '127.0.0.1' ||
+          host.startsWith('192.168.') ||
+          host.startsWith('10.') ||
+          host.startsWith('172.') ||
+          host.endsWith('.local')
+        );
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  };
+
   await app.register(cors, {
-    origin: (origin, cb) => cb(null, !origin || ctx.config.corsOrigins.includes(origin)),
+    origin: (origin, cb) => cb(null, isOriginAllowed(origin)),
     credentials: false,
     allowedHeaders: ['content-type', 'authorization', 'idempotency-key', 'x-request-id'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],

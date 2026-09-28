@@ -5,13 +5,17 @@ export type Panel =
   | null
   | 'shop-fashion'
   | 'shop-furniture'
+  | 'shop-rods'
   | 'wardrobe'
+  | 'backpack'
+  | 'tackle'
   | 'events'
   | 'ai'
   | 'friends'
   | 'apartments'
   | 'profile'
-  | 'ledger';
+  | 'ledger'
+  | 'fishdex';
 export type Activity = null | 'fishing' | 'delivery' | 'cafe';
 
 export interface Toast {

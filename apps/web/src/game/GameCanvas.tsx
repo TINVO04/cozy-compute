@@ -49,7 +49,9 @@ export function GameCanvas() {
     };
 
     if (game.isBooted) {
-      switchScene();
+      if (roomKind !== 'town' || !game.scene.isActive('town')) {
+        switchScene();
+      }
     } else {
       game.events.once('ready', () => {
         if (roomKind !== 'town') {

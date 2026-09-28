@@ -1,15 +1,15 @@
 import { fameTitle } from '@cozy/economy';
-import { sanitizeAppearance, STARTER_ITEMS, type Appearance } from '@cozy/game-data';
+import { normalizeRodId, sanitizeAppearance, STARTER_ITEMS, type Appearance } from '@cozy/game-data';
 import type { Queryable, Tx } from '../db.js';
 import { postLedger } from '../ledger.js';
 
 export const ONBOARDING_STEPS = [
-  { id: 'avatar', label: 'Style your avatar' },
-  { id: 'fishing', label: 'Catch something at the Wobbly Pier' },
-  { id: 'delivery', label: 'Finish a Parcel Panic delivery' },
-  { id: 'cafe', label: 'Serve a drink at Bean There Cafe' },
-  { id: 'purchase', label: 'Buy something from a shop' },
-  { id: 'apartment', label: 'Place furniture in your apartment' },
+  { id: 'avatar', label: 'Tùy chỉnh diện mạo nhân vật' },
+  { id: 'fishing', label: 'Câu chú cá đầu tiên tại Bến Cảng' },
+  { id: 'delivery', label: 'Giao một đơn hàng bưu kiện' },
+  { id: 'cafe', label: 'Pha chế một ly nước tại Quán Cà Phê' },
+  { id: 'purchase', label: 'Mua một món đồ trong cửa hàng' },
+  { id: 'apartment', label: 'Trang trí nội thất trong căn hộ' },
 ] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]['id'];
 export const ONBOARDING_REWARD = { coin: 250, fame: 10 };
@@ -72,8 +72,14 @@ export async function completeOnboardingStep(tx: Tx, userId: string, step: Onboa
 
 /** Appearance with equipped clothing resolved from inventory. Clients never supply equipped sprites. */
 export async function resolvedAppearance(q: Queryable, userId: string): Promise<Appearance> {
-  const r = await q.query<{ appearance: unknown; slot: string | null; sprite: string | null }>(
-    `SELECT p.appearance, i.equipped_slot AS slot, d.sprite
+  const r = await q.query<{
+    appearance: unknown;
+    slot: string | null;
+    sprite: string | null;
+    held_fish: unknown;
+    item_id: string | null;
+  }>(
+    `SELECT p.appearance, p.held_fish, i.equipped_slot AS slot, d.sprite, i.item_id
        FROM profiles p
        LEFT JOIN inventory_items i ON i.user_id = p.user_id AND i.equipped_slot IS NOT NULL
        LEFT JOIN item_definitions d ON d.id = i.item_id
@@ -81,9 +87,14 @@ export async function resolvedAppearance(q: Queryable, userId: string): Promise<
     [userId],
   );
   const base = sanitizeAppearance(r.rows[0]?.appearance);
-  const out: Appearance = { ...base, hat: null, top: null, face: null };
+  const heldFish = (r.rows[0]?.held_fish ?? null) as Appearance['heldFish'];
+  const out: Appearance = { ...base, hat: null, top: null, face: null, rod: null, heldFish };
   for (const row of r.rows) {
-    if (row.slot === 'hat' || row.slot === 'top' || row.slot === 'face') out[row.slot] = row.sprite;
+    if (row.slot === 'hat' || row.slot === 'top' || row.slot === 'face') {
+      out[row.slot] = row.sprite;
+    } else if (row.slot === 'rod') {
+      out.rod = row.item_id ?? (row.sprite ? normalizeRodId(row.sprite) : null);
+    }
   }
   return out;
 }

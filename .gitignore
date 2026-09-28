@@ -14,3 +14,4 @@ backups/
 gamevps/
 *.db
 *.db-*
+infra/postgres/local_data/

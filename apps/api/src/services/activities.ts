@@ -12,11 +12,17 @@ import {
   CAFE_INGREDIENTS,
   DELIVERY_DESTINATIONS,
   DELIVERY_PACKAGES,
+  FISH,
+  FISHING_RODS,
   PLAYER_SPEED,
   TILE,
   ZONES,
   zoneCenter,
+  calculateFishSize,
+  getFishShadowTier,
   type ActivityConfigMap,
+  type FishShadowTier,
+  type RodConfig,
   type ZoneId,
 } from '@cozy/game-data';
 import type { AppContext } from '../context.js';
@@ -25,7 +31,7 @@ import { AppError, badRequest, conflict, notFound } from '../errors.js';
 import { postLedger } from '../ledger.js';
 import { metrics } from '../metrics.js';
 import { checkTimingPatterns, raiseFlag } from './abuse.js';
-import { completeOnboardingStep } from './players.js';
+import { completeOnboardingStep, resolvedAppearance } from './players.js';
 
 export type JobSlug = 'fishing' | 'delivery' | 'cafe';
 
@@ -189,14 +195,71 @@ async function finishRun(
 export async function startFishing(ctx: AppContext, userId: string) {
   const cfg = await activityConfig(ctx.db, 'fishing');
   await requireAt(ctx, userId, 'pier');
-  const biteInMs = Math.round(cfg.biteMinMs + ctx.rng() * (cfg.biteMaxMs - cfg.biteMinMs));
+
+  // Authoritative check on equipped rod
+  const equippedRodRes = await ctx.db.query<{ item_id: string }>(
+    `SELECT item_id FROM inventory_items WHERE user_id = $1 AND equipped_slot = 'rod'`,
+    [userId],
+  );
+  const equippedRodId = equippedRodRes.rows[0]?.item_id ?? 'rod_twig';
+  const rod: RodConfig = FISHING_RODS[equippedRodId] ?? FISHING_RODS['rod_twig']!;
+
+  // Reaction window adjusted by rod quality
+  const reactionWindowMs = cfg.reactionWindowMs + (rod.reactionBonusMs ?? 0);
+
+  // Pre-roll fish candidate for authoritative shadow tier
+  const pendingFish = rollFish(ctx.rng, 0, reactionWindowMs, FISH, rod.shadowBonus);
+
+  // Read current size overrides from settings
+  const fishSizesRes = await ctx.db.query<{ value: unknown }>(
+    `SELECT value FROM settings WHERE key = 'fish_sizes'`,
+  );
+  const rawSizes = fishSizesRes.rows[0]?.value;
+  const sizeOverrides = (typeof rawSizes === 'string' ? JSON.parse(rawSizes) : rawSizes) as
+    Record<string, { minSizeCm: number; maxSizeCm: number }> | undefined;
+  const fishOverride = sizeOverrides?.[pendingFish.id];
+  const effectiveFish = fishOverride
+    ? { ...pendingFish, minSizeCm: fishOverride.minSizeCm, maxSizeCm: fishOverride.maxSizeCm }
+    : pendingFish;
+  const calculatedSize = calculateFishSize(ctx.rng, effectiveFish);
+  const shadowTier = getFishShadowTier(calculatedSize.sizeCm, pendingFish.rarity, pendingFish.habitat);
+
+  // Play Together bite sequence: random 7-12s wait before shadow appears, then 4 to 8 nibbles before BITE!
+  const nibbleCount = 4 + Math.floor(ctx.rng() * 5); // 4, 5, 6, 7, or 8 nibbles
+  const rawShadowDelayMs = 7000 + Math.floor(ctx.rng() * 5001); // 7000 to 12000 ms (7-12s)
+  const speedFactor = 1 - (rod.biteSpeedBonus ?? 0);
+  const shadowDelayMs = Math.round(rawShadowDelayMs * speedFactor);
+  const approachMs = 2200;
+  const nibblesDuration = (nibbleCount - 1) * 850 + 650;
+  const baseSequenceMs = shadowDelayMs + approachMs + nibblesDuration;
+  const jitterMs = Math.round((ctx.rng() - 0.5) * 400);
+  const biteInMs = Math.max(9000, Math.round(baseSequenceMs + jitterMs));
   const biteAt = ctx.now().getTime() + biteInMs;
-  const run = await startRun(ctx, userId, 'fishing', cfg.runTtlMs, { biteAt });
-  return { ...run, biteInMs, reactionWindowMs: cfg.reactionWindowMs };
+
+  const run = await startRun(ctx, userId, 'fishing', cfg.runTtlMs, {
+    biteAt,
+    pendingFishId: pendingFish.id,
+    shadowTier,
+    nibbleCount,
+    equippedRodId,
+    reactionWindowMs,
+  });
+
+  return {
+    ...run,
+    biteInMs,
+    reactionWindowMs,
+    shadowTier,
+    nibbleCount,
+    shadowDelayMs,
+    equippedRod: rod,
+  };
 }
 
 /** Network grace added to the reaction window so real players with latency are not punished. */
 const LATENCY_GRACE_MS = 400;
+/** Extra allowance for active tug-of-war space mash minigame. */
+const REELING_MASH_ALLOWANCE_MS = 2000;
 
 export async function completeFishing(ctx: AppContext, userId: string, runId: string, nonce: string) {
   const cfg = await activityConfig(ctx.db, 'fishing');
@@ -204,6 +267,7 @@ export async function completeFishing(ctx: AppContext, userId: string, runId: st
     const now = ctx.now();
     const run = await lockRun(ctx, tx, userId, 'fishing', runId, nonce, now);
     const biteAt = Number(run.state.biteAt);
+    const stateWindowMs = Number(run.state.reactionWindowMs) || cfg.reactionWindowMs;
     const reactionMs = now.getTime() - biteAt;
     if (reactionMs < 0) {
       await finishRun(tx, run, now, {
@@ -215,10 +279,10 @@ export async function completeFishing(ctx: AppContext, userId: string, runId: st
       });
       return {
         outcome: 'too_early' as const,
-        message: 'You yanked the line before anything bit. The fish are laughing.',
+        message: 'Bạn đã giật cần quá sớm khi cá mới chỉ rỉa mồi! Lũ cá đang cười khúc khích.',
       };
     }
-    if (reactionMs > cfg.reactionWindowMs + LATENCY_GRACE_MS) {
+    if (reactionMs > stateWindowMs + REELING_MASH_ALLOWANCE_MS + LATENCY_GRACE_MS) {
       await finishRun(tx, run, now, {
         status: 'failed',
         result: { outcome: 'got_away', reactionMs },
@@ -226,9 +290,106 @@ export async function completeFishing(ctx: AppContext, userId: string, runId: st
         fame: 0,
         reason: 'fishing',
       });
-      return { outcome: 'got_away' as const, message: 'It got away. It will tell its friends about you.' };
+      return {
+        outcome: 'got_away' as const,
+        message:
+          'Cá đã giằng co giật đứt dây trốn thoát! Lần sau hãy ấn Space liên tục nhanh và đều tay hơn nhé.',
+      };
     }
-    const fish = rollFish(ctx.rng, Math.max(0, reactionMs - LATENCY_GRACE_MS / 2), cfg.reactionWindowMs);
+
+    const pendingId = (run.state.pendingFishId as string | undefined) ?? null;
+    const fish =
+      (pendingId ? FISH.find((f) => f.id === pendingId) : null) ??
+      rollFish(ctx.rng, Math.max(0, reactionMs - LATENCY_GRACE_MS / 2), stateWindowMs);
+
+    const fishSizesRes = await tx.query<{ value: unknown }>(
+      `SELECT value FROM settings WHERE key = 'fish_sizes'`,
+    );
+    const rawSizes = fishSizesRes.rows[0]?.value;
+    const sizeOverrides = (typeof rawSizes === 'string' ? JSON.parse(rawSizes) : rawSizes) as
+      Record<string, { minSizeCm: number; maxSizeCm: number }> | undefined;
+    const fishOverride = sizeOverrides?.[fish.id];
+    const effectiveFish = fishOverride
+      ? { ...fish, minSizeCm: fishOverride.minSizeCm, maxSizeCm: fishOverride.maxSizeCm }
+      : fish;
+    const size = calculateFishSize(ctx.rng, effectiveFish);
+    const shadowTier =
+      (run.state.shadowTier as FishShadowTier | undefined) ??
+      getFishShadowTier(size.sizeCm, fish.rarity, fish.habitat);
+
+    // Dynamic catch chance: spamming space to 100% does not guarantee catch (can miss/escape)
+    const equippedRodId = (run.state.equippedRodId as string | undefined) ?? 'rod_twig';
+    const BASE_CATCH_RATES: Record<string, number> = {
+      rod_twig: 0.7, // 30% xịt
+      rod_wooden: 0.78, // 22% xịt
+      rod_fiberglass: 0.85, // 15% xịt
+      rod_pro_carbon: 0.92, // 8% xịt
+      rod_golden_legend: 0.96, // 4% xịt
+      rod_abyssal: 0.98, // 2% xịt
+    };
+    let catchRate = BASE_CATCH_RATES[equippedRodId] ?? 0.75;
+    if (shadowTier >= 5) catchRate -= 0.08;
+    else if (shadowTier >= 3) catchRate -= 0.04;
+    catchRate = Math.max(0.5, Math.min(0.98, catchRate));
+
+    if (ctx.rng() > catchRate) {
+      await finishRun(tx, run, now, {
+        status: 'failed',
+        result: { outcome: 'escaped', reactionMs },
+        coin: 0,
+        fame: 0,
+        reason: 'fishing',
+      });
+      return {
+        outcome: 'escaped' as const,
+        message: 'Câu xịt rồi! Dù đã cố gắng giật cần nhưng cá đã giãy mạnh và sẩy mất!',
+      };
+    }
+
+    // Track compendium entry and personal size records
+    const existing = await tx.query<{ max_size_cm: string }>(
+      `SELECT max_size_cm FROM fish_journal WHERE user_id = $1 AND species_id = $2`,
+      [userId, fish.id],
+    );
+    const isFirstCatch = existing.rows.length === 0;
+    const currentMax = isFirstCatch ? 0 : parseFloat(existing.rows[0]!.max_size_cm);
+    const isRecord = isFirstCatch || size.sizeCm > currentMax;
+
+    await tx.query(
+      `INSERT INTO fish_journal (user_id, species_id, count, max_size_cm, max_weight_kg, first_caught_at, last_caught_at)
+       VALUES ($1, $2, 1, $3, $4, $5, $5)
+       ON CONFLICT (user_id, species_id) DO UPDATE SET
+         count = fish_journal.count + 1,
+         max_size_cm = GREATEST(fish_journal.max_size_cm, EXCLUDED.max_size_cm),
+         max_weight_kg = GREATEST(fish_journal.max_weight_kg, EXCLUDED.max_weight_kg),
+         last_caught_at = EXCLUDED.last_caught_at`,
+      [userId, fish.id, size.sizeCm, size.weightKg, now],
+    );
+
+    // Unhold any other fish currently in backpack
+    await tx.query(`UPDATE user_fish_inventory SET is_held = false WHERE user_id = $1`, [userId]);
+
+    // Add caught fish to user's backpack and mark it as held on hands
+    const invRes = await tx.query<{ id: string }>(
+      `INSERT INTO user_fish_inventory (user_id, species_id, size_cm, weight_kg, size_category, is_held, caught_at)
+       VALUES ($1, $2, $3, $4, $5, true, $6) RETURNING id`,
+      [userId, fish.id, size.sizeCm, size.weightKg, size.sizeCategory, now],
+    );
+    const backpackFishId = invRes.rows[0]?.id;
+
+    // Set held fish on profile and publish appearance
+    const held = {
+      speciesId: fish.id,
+      sizeCm: size.sizeCm,
+    };
+    await tx.query(`UPDATE profiles SET held_fish = $2, updated_at = now() WHERE user_id = $1`, [
+      userId,
+      JSON.stringify(held),
+    ]);
+
+    const appearance = await resolvedAppearance(tx, userId);
+    await ctx.redis.publish('player:appearance', JSON.stringify({ userId, appearance, statusText: '' }));
+
     const mult = softCapMultiplier(
       await rewardedToday(tx, userId, 'fishing', now),
       cfg.dailySoftCap,
@@ -238,12 +399,42 @@ export async function completeFishing(ctx: AppContext, userId: string, runId: st
     const fame = mult < 1 ? 0 : fish.fame;
     await finishRun(tx, run, now, {
       status: 'completed',
-      result: { outcome: 'caught', fish: fish.id, reactionMs, coin, fame, tired: mult < 1 },
+      result: {
+        outcome: 'caught',
+        fish: fish.id,
+        reactionMs,
+        coin,
+        fame,
+        tired: mult < 1,
+        sizeCm: size.sizeCm,
+        weightKg: size.weightKg,
+        sizeCategory: size.sizeCategory,
+        shadowTier,
+        isFirstCatch,
+        isRecord,
+        backpackFishId,
+      },
       coin,
       fame,
       reason: 'fishing',
     });
-    return { outcome: 'caught' as const, fish, reactionMs, coin, fame, tired: mult < 1 };
+    return {
+      outcome: 'caught' as const,
+      fish,
+      reactionMs,
+      coin,
+      fame,
+      tired: mult < 1,
+      sizeCm: size.sizeCm,
+      weightKg: size.weightKg,
+      sizeCategory: size.sizeCategory,
+      shadowTier,
+      isFirstCatch,
+      isRecord,
+      backpackFishId,
+      appearance,
+      heldFish: held,
+    };
   });
 }
 
@@ -443,5 +634,39 @@ export async function activitySummary(ctx: AppContext, userId: string) {
     today: r.today,
     total: r.total,
     dailySoftCap: r.config.dailySoftCap ?? null,
+  }));
+}
+
+export interface FishJournalEntry {
+  speciesId: string;
+  count: number;
+  maxSizeCm: number;
+  maxWeightKg: number;
+  firstCaughtAt: string;
+  lastCaughtAt: string;
+}
+
+export async function getFishJournal(ctx: AppContext, userId: string): Promise<FishJournalEntry[]> {
+  const r = await ctx.db.query<{
+    species_id: string;
+    count: number;
+    max_size_cm: string;
+    max_weight_kg: string;
+    first_caught_at: Date;
+    last_caught_at: Date;
+  }>(
+    `SELECT species_id, count, max_size_cm, max_weight_kg, first_caught_at, last_caught_at
+       FROM fish_journal
+      WHERE user_id = $1
+      ORDER BY last_caught_at DESC`,
+    [userId],
+  );
+  return r.rows.map((row) => ({
+    speciesId: row.species_id,
+    count: row.count,
+    maxSizeCm: parseFloat(row.max_size_cm),
+    maxWeightKg: parseFloat(row.max_weight_kg),
+    firstCaughtAt: row.first_caught_at.toISOString(),
+    lastCaughtAt: row.last_caught_at.toISOString(),
   }));
 }

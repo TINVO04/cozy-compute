@@ -23,11 +23,19 @@ export interface Appearance {
   hat?: string | null;
   top?: string | null;
   face?: string | null;
+  rod?: string | null;
+  heldFish?: {
+    speciesId: string;
+    sizeCm: number;
+  } | null;
+  isFishing?: boolean;
 }
 
 export const DEFAULT_APPEARANCE: Appearance = { skin: 1, hairStyle: 'short', hairColor: 1, baseTop: 0 };
 
-export function sanitizeAppearance(input: unknown): Omit<Appearance, 'hat' | 'top' | 'face'> {
+export function sanitizeAppearance(
+  input: unknown,
+): Omit<Appearance, 'hat' | 'top' | 'face' | 'rod' | 'heldFish' | 'isFishing'> {
   const a = (input ?? {}) as Record<string, unknown>;
   const idx = (v: unknown, max: number, fallback: number) =>
     typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < max ? v : fallback;

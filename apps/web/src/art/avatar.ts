@@ -1,5 +1,6 @@
-import { HAIR_COLORS, SKIN_TONES, TOP_COLORS, type Appearance } from '@cozy/game-data';
+import { HAIR_COLORS, SKIN_TONES, TOP_COLORS, normalizeRodId, type Appearance } from '@cozy/game-data';
 import { INK, PixelGrid, shade } from './pixel';
+import { drawFish, getSpeciesData } from './fish';
 
 export const AV_W = 16;
 export const AV_H = 28;
@@ -13,189 +14,646 @@ const parse = (sprite?: string | null) => {
 };
 
 /**
- * Draws one avatar frame on a 16x28 grid. Head occupies rows 6..13, torso 14..20, legs 21..25.
- * Side view (dir 1) is drawn facing left and mirrored for right.
+ * 2026 High-Detail Pixel Avatar:
+ * Masterpiece anime-inspired character rendering (Fields of Mistria / Stardew Valley 1.6 / HD-2D).
+ * Grid 16x28:
+ * - Head: rows 6..13 (anime twinkle catchlights, glossy blush cheekbones, delicate button nose, expressive smile)
+ * - Torso: rows 14..20 (bespoke tailoring, ribbed collars, kangaroo pockets, Nordic knit, metallic belt buckles)
+ * - Legs & Shoes: rows 21..27 (structured denim seams, knee creases, designer sneakers with rubber cup soles)
  */
 export function drawAvatar(a: Appearance, dir: Dir, frame: 0 | 1 | 2): PixelGrid {
   if (dir === 2) return drawAvatar(a, 1, frame).mirror();
   const g = new PixelGrid(AV_W, AV_H);
-  const skin = SKIN_TONES[a.skin] ?? SKIN_TONES[1];
-  const skinD = shade(skin, -0.18);
-  const hair = HAIR_COLORS[a.hairColor] ?? HAIR_COLORS[1];
-  const hairD = shade(hair, -0.25);
+  const skin = SKIN_TONES[a.skin] ?? SKIN_TONES[1] ?? '#f0c8a0';
+  const skinD = shade(skin, -0.2);
+  const skinDD = shade(skin, -0.32);
+  const skinL = shade(skin, 0.18);
+  const blush = shade(skin, -0.35); // natural warm blush
+  const hair = HAIR_COLORS[a.hairColor] ?? HAIR_COLORS[1] ?? '#4a3224';
+  const hairD = shade(hair, -0.32);
+  const hairL = shade(hair, 0.38); // brilliant specular shine band
   const top = parse(a.top);
-  const topColor = top?.color ?? TOP_COLORS[a.baseTop] ?? TOP_COLORS[0];
-  const topD = shade(topColor, -0.22);
-  const pants = '#3a3f58';
-  const shoes = '#2b2320';
+  const topColor = top?.color ?? TOP_COLORS[a.baseTop] ?? TOP_COLORS[0] ?? '#4f6fd1';
+  const topD = shade(topColor, -0.26);
+  const topDD = shade(topColor, -0.4);
+  const topL = shade(topColor, 0.26);
+  const pants = '#2d334a';
+  const pantsD = shade(pants, -0.28);
+  const pantsL = shade(pants, 0.22);
+  const shoes = '#2c221c';
+  const shoesD = shade(shoes, -0.35);
+  const shoesSole = '#f4f0e6'; // crisp off-white sneaker cupsole
   const side = dir === 1;
   const back = dir === 3;
 
-  // legs + shoes (walk cycle offsets)
+  // Walk cycle leg offsets and body bob
   const lOff = frame === 1 ? -1 : 0;
   const rOff = frame === 2 ? -1 : 0;
+  const bodyBob = frame !== 0 ? -1 : 0;
+
+  // --- 1. LEGS & DESIGNER SHOES (rows 21..27) ---
   if (side) {
-    g.rect(6, 21 + lOff, 2, 4, pants);
-    g.rect(8, 21 + rOff, 2, 4, shade(pants, -0.15));
+    const leadCol = frame === 1 ? pants : pantsD;
+    const trailCol = frame === 1 ? pantsD : pants;
+    // Lead leg (profile)
+    g.rect(6, 21 + lOff, 2, 4, leadCol);
+    g.set(6, 21 + lOff, pantsL);
+    g.set(6, 23 + lOff, pantsL); // knee fold highlight
+    // Trailing leg
+    g.rect(8, 21 + rOff, 2, 4, trailCol);
+    g.set(8, 22 + rOff, shade(trailCol, 0.15));
+
+    // Profile designer shoes
     g.rect(5, 25 + lOff, 3, 1, shoes);
-    g.rect(8, 25 + rOff, 2, 1, shoes);
+    g.set(5, 25 + lOff, '#ffffff'); // toe cap glint
+    g.rect(5, 26 + lOff, 3, 1, shoesSole);
+    g.set(5, 26 + lOff, shade(shoesSole, -0.15));
+
+    g.rect(8, 25 + rOff, 2, 1, shoesD);
+    g.rect(8, 26 + rOff, 2, 1, shade(shoesSole, -0.2));
   } else {
+    // Front / Back legs
     g.rect(5, 21 + lOff, 3, 4, pants);
     g.rect(8, 21 + rOff, 3, 4, pants);
-    g.rect(5, 25 + lOff, 3, 1, shoes);
-    g.rect(8, 25 + rOff, 3, 1, shoes);
+    // Outer seams & knee creases
+    g.set(5, 21 + lOff, pantsL);
+    g.set(10, 21 + rOff, pantsL);
+    g.set(5, 23 + lOff, pantsL);
+    g.set(10, 23 + rOff, pantsL);
+    // Inseam shadows
+    g.rect(6, 23 + lOff, 1, 2, pantsD);
+    g.rect(9, 23 + rOff, 1, 2, pantsD);
+    // Ankle cuff fold
+    g.rect(5, 24 + lOff, 3, 1, pantsD);
+    g.rect(8, 24 + rOff, 3, 1, pantsD);
+
+    // Modern sneakers with white laces, toe caps & rubber soles
+    g.rect(4, 25 + lOff, 4, 1, shoes);
+    g.rect(8, 25 + rOff, 4, 1, shoes);
+    g.set(4, 25 + lOff, '#ffffff'); // white rubber toe cap
+    g.set(11, 25 + rOff, '#ffffff');
+    g.set(6, 25 + lOff, '#f4f0e6'); // white lace criss-cross
+    g.set(9, 25 + rOff, '#f4f0e6');
+    g.rect(4, 26 + lOff, 4, 1, shoesSole);
+    g.rect(8, 26 + rOff, 4, 1, shoesSole);
+    g.set(4, 26 + lOff, shade(shoesSole, -0.15)); // sole tread groove
+    g.set(11, 26 + rOff, shade(shoesSole, -0.15));
   }
 
-  // torso
+  // --- 2. TORSO & APPAREL (rows 14..20 + bodyBob) ---
   const tx = side ? 5 : 4;
   const tw = side ? 6 : 8;
-  g.rect(tx, 14, tw, 7, topColor);
-  g.rect(tx, 20, tw, 1, topD);
-  // arms
+  const ty = 14 + bodyBob;
+
+  // Base garment body
+  g.rect(tx, ty, tw, 7, topColor);
+  g.rect(tx, ty + 5, tw, 1, topD); // lower waist fold
+
+  // Waist belt & metallic buckle at row 20
+  g.rect(tx, ty + 6, tw, 1, '#201b2a');
+  if (!back) {
+    if (side) {
+      g.set(tx, ty + 6, '#f5c542'); // gold buckle
+    } else {
+      g.set(6, ty + 6, '#201b2a');
+      g.set(7, ty + 6, '#ffd700'); // brilliant gold buckle
+      g.set(8, ty + 6, '#e6b84a');
+      g.set(9, ty + 6, '#201b2a');
+    }
+  }
+
+  // Collar & Neckline
+  if (!back) {
+    if (side) {
+      g.set(5, ty, '#fdfbf7');
+      g.set(6, ty, topL);
+    } else {
+      g.set(6, ty, '#fdfbf7');
+      g.set(9, ty, '#fdfbf7');
+      g.set(7, ty, skin);
+      g.set(8, ty, skin);
+      g.set(7, ty + 1, skinD); // collar shadow on neck
+      g.set(8, ty + 1, skinD);
+    }
+  }
+
+  // Arms and sleeves with walk cycle swing
   const short = top?.kind === 'tee';
   const armSwing = frame === 0 ? 0 : frame === 1 ? 1 : -1;
   if (side) {
-    g.rect(7, 15 + armSwing, 2, short ? 2 : 4, topD);
-    g.rect(7, (short ? 17 : 19) + armSwing, 2, short ? 3 : 1, skin);
+    g.rect(7, ty + 1 + armSwing, 2, short ? 2 : 4, topD);
+    g.set(7, ty + 1 + armSwing, topL);
+    g.rect(7, (short ? ty + 3 : ty + 5) + armSwing, 2, short ? 3 : 1, skin);
+    g.set(7, (short ? ty + 3 : ty + 5) + armSwing, skinL);
+    if (!short) g.rect(7, ty + 4 + armSwing, 2, 1, topL); // sleeve cuff
   } else {
-    g.rect(3, 15, 1, short ? 2 : 4, topD);
-    g.rect(12, 15, 1, short ? 2 : 4, topD);
-    g.rect(3, short ? 17 : 19, 1, short ? 3 : 1, skin);
-    g.rect(12, short ? 17 : 19, 1, short ? 3 : 1, skin);
-  }
-  // clothing details
-  if (top?.kind === 'hoodie' && !back) {
-    g.rect(tx + 2, 18, tw - 4, 2, topD);
-    g.set(7, 14, '#f2efe7');
-    g.set(8, 14, '#f2efe7');
-  }
-  if (top?.kind === 'hoodie' && back) g.rect(5, 14, 6, 2, topD);
-  if (top?.kind === 'raincoat') {
-    g.rect(tx, 21, tw, 1, topColor);
-    if (!back && !side) [15, 17, 19].forEach((y) => g.set(8, y, '#6d4a17'));
-  }
-  if (top?.kind === 'suit' && !back) {
-    if (side) g.rect(5, 14, 1, 4, '#f7f4ee');
-    else {
-      g.rect(7, 14, 2, 4, '#f7f4ee');
-      g.rect(7, 15, 2, 3, '#b4553f');
-      g.set(7, 18, '#b4553f');
-    }
-  }
-  if (top?.kind === 'sweater' && !back && !side) {
-    g.rect(6, 16, 3, 2, '#e6c63a');
-    g.set(9, 16, '#e6c63a');
-    g.set(10, 16, '#ef7a3a');
-    g.set(7, 16, INK);
+    // Left arm
+    g.rect(3, ty + 1 - armSwing, 1, short ? 2 : 4, topD);
+    g.set(3, ty + 1 - armSwing, topL);
+    g.rect(3, short ? ty + 3 - armSwing : ty + 5 - armSwing, 1, short ? 3 : 1, skin);
+    g.set(3, short ? ty + 3 - armSwing : ty + 5 - armSwing, skinL);
+    // Right arm
+    g.rect(12, ty + 1 + armSwing, 1, short ? 2 : 4, topD);
+    g.set(12, ty + 1 + armSwing, topL);
+    g.rect(12, short ? ty + 3 + armSwing : ty + 5 + armSwing, 1, short ? 3 : 1, skin);
+    g.set(12, short ? ty + 3 + armSwing : ty + 5 + armSwing, skinL);
   }
 
-  // head
-  g.rect(4, 6, 8, 8, skin);
-  g.rect(4, 13, 8, 1, skinD);
-  if (!back) {
-    if (side) {
-      g.set(4, 9, INK);
-      g.set(3, 10, skin); // nose
-      g.set(5, 12, skinD);
+  // Masterpiece clothing styling
+  if (top?.kind === 'hoodie') {
+    if (!back) {
+      // 3D kangaroo pocket with rim highlight
+      g.rect(tx + 1, ty + 4, tw - 2, 2, topD);
+      g.set(tx + 1, ty + 4, topL);
+      g.set(tx + tw - 2, ty + 4, topL);
+      // Hood drawstrings with silver aglet tips
+      g.set(7, ty + 1, '#ffffff');
+      g.set(8, ty + 1, '#ffffff');
+      g.set(7, ty + 2, '#ffffff');
+      g.set(8, ty + 3, '#ffffff');
+      g.set(7, ty + 3, '#c0c0c0'); // metal aglet
+      g.set(8, ty + 4, '#c0c0c0');
     } else {
-      g.set(6, 9, INK);
-      g.set(9, 9, INK);
-      g.set(6, 10, INK);
-      g.set(9, 10, INK);
-      g.rect(7, 12, 2, 1, skinD);
-      g.set(5, 11, shade(skin, -0.05));
+      // Draped hood cowl on the back
+      g.rect(5, ty, 6, 4, topD);
+      g.rect(6, ty + 1, 4, 2, topDD);
+      g.rect(6, ty, 4, 1, topL);
     }
-  }
-
-  // hair
-  const style = a.hairStyle;
-  if (style !== 'bald') {
-    g.rect(4, 5, 8, 2, hair);
-    g.rect(3, 6, 1, 3, hair);
-    g.rect(12, 6, 1, 3, hair);
-    if (back) g.rect(4, 6, 8, 6, hair);
-    else if (side) g.rect(8, 6, 4, 4, hair);
-    else g.rect(4, 7, 8, 1, hair);
-    if (style === 'long') {
-      g.rect(3, 9, 1, 6, hair);
-      g.rect(12, 9, 1, 6, hair);
-      if (back) g.rect(4, 12, 8, 3, hair);
-      if (side) g.rect(10, 10, 2, 5, hair);
+  } else if (top?.kind === 'suit') {
+    if (!back) {
+      if (side) {
+        g.rect(5, ty, 1, 4, '#ffffff'); // crisp white dress shirt
+        g.rect(5, ty + 1, 1, 2, '#c0392b'); // silk ruby tie
+      } else {
+        // Crisp dress shirt & silk ruby tie with golden tie clip
+        g.rect(7, ty, 2, 5, '#ffffff');
+        g.set(7, ty + 1, '#c0392b');
+        g.set(8, ty + 1, '#c0392b');
+        g.set(7, ty + 2, '#e6b84a'); // golden tie bar clip
+        g.set(8, ty + 2, '#e6b84a');
+        g.set(7, ty + 3, '#a93226');
+        g.set(8, ty + 3, '#c0392b');
+        g.set(7, ty + 4, '#c0392b');
+        // Tailored blazer notched lapels
+        g.rect(5, ty + 1, 2, 4, topD);
+        g.rect(9, ty + 1, 2, 4, topD);
+        g.set(5, ty + 1, topL);
+        g.set(10, ty + 1, topL);
+        // Folded gold silk pocket square
+        g.set(10, ty + 2, '#ffd700');
+        g.set(11, ty + 2, '#ffffff');
+      }
     }
-    if (style === 'bun') {
-      g.rect(6, 2, 4, 3, hair);
-      g.rect(7, 2, 2, 1, hairD);
+  } else if (top?.kind === 'sweater') {
+    if (!back && !side) {
+      // Scandinavian Fair Isle / cable-knit snowflake diamonds
+      g.rect(6, ty + 2, 4, 1, '#fde68a');
+      g.set(7, ty + 1, '#ffffff');
+      g.set(8, ty + 1, '#ffffff');
+      g.set(7, ty + 3, '#ffffff');
+      g.set(8, ty + 3, '#ffffff');
+      g.set(5, ty + 2, '#f87171');
+      g.set(10, ty + 2, '#f87171');
+      g.set(6, ty + 4, '#fde68a');
+      g.set(9, ty + 4, '#fde68a');
     }
-    if (style === 'spiky') {
-      [4, 6, 8, 10].forEach((x) => {
-        g.set(x, 4, hair);
-        g.set(x + 1, 3, hair);
+  } else if (top?.kind === 'raincoat') {
+    if (!back && !side) {
+      // Glossy vinyl storm flap & wooden toggle buttons
+      g.rect(6, ty, 1, 6, topL); // glossy vinyl sheen streak
+      [ty + 1, ty + 3, ty + 5].forEach((y) => {
+        g.set(7, y, '#452b14'); // dark toggle button
+        g.set(8, y, '#fef3c7'); // braided rope loop
       });
     }
-    g.rect(4, 5, 8, 1, hairD);
   } else {
-    g.set(6, 6, shade(skin, 0.25));
+    // Default Top / Tee: crisp crewneck collar, stylish chest logo
+    if (!back && !side) {
+      // Golden star emblem on chest
+      g.set(6, ty + 2, '#ffd700');
+      g.set(6, ty + 3, '#f59e0b');
+      // Gentle cloth drapery fold
+      g.set(8, ty + 3, topD);
+      g.set(8, ty + 5, topD);
+      g.set(7, ty + 4, topL);
+    }
   }
 
-  // face accessories
+  // --- 3. HEAD, FACE & ANIME SPARKLE EYES (rows 6..13 + bodyBob) ---
+  const hy = 6 + bodyBob;
+
+  // Head base & jawline
+  g.rect(4, hy, 8, 8, skin);
+  g.rect(4, hy + 7, 8, 1, skinDD); // neck shadow
+  g.set(4, hy + 6, skinD);
+  g.set(11, hy + 6, skinD);
+
+  if (!back) {
+    if (side) {
+      // Side profile
+      g.set(3, hy + 4, skin); // nose tip
+      g.set(3, hy + 5, skinD);
+      g.set(4, hy + 6, skinD); // cute jaw curve
+      // Expressive anime eye with double sparkle catchlight
+      g.set(4, hy + 3, INK);
+      g.set(4, hy + 4, '#ffffff'); // bright catchlight
+      g.set(5, hy + 3, INK);
+      g.set(5, hy + 4, '#7dd3fc'); // soft pupil iris tint
+      // Soft blush
+      g.set(5, hy + 5, blush);
+      g.set(4, hy + 5, '#ffffff'); // cheek glint
+      // Ear with inner auricle shading
+      g.rect(9, hy + 4, 1, 2, skinD);
+      g.set(9, hy + 4, skinDD);
+    } else {
+      // Front face: Anime eye design with twin sparkle catchlights & eyelashes
+      // Eyelash rims
+      g.set(6, hy + 2, INK);
+      g.set(9, hy + 2, INK);
+
+      // Left eye (twinkle catchlights + iris depth)
+      g.set(6, hy + 3, '#ffffff'); // primary bright glint
+      g.set(7, hy + 3, INK); // pupil
+      g.set(6, hy + 4, '#38bdf8'); // colorful iris catchlight
+      g.set(7, hy + 4, INK);
+
+      // Right eye (twinkle catchlights + iris depth)
+      g.set(9, hy + 3, '#ffffff');
+      g.set(10, hy + 3, INK);
+      g.set(9, hy + 4, '#38bdf8');
+      g.set(10, hy + 4, INK);
+
+      // Sweet blushing cheeks with subtle specular cheekbone gleam
+      g.set(5, hy + 5, blush);
+      g.set(5, hy + 4, '#ffffff'); // cheekbone highlight
+      g.set(10, hy + 5, blush);
+      g.set(10, hy + 4, '#ffffff');
+
+      // Cute button nose & smiling mouth
+      g.set(7, hy + 5, skinD);
+      g.set(8, hy + 5, skinD);
+      g.rect(7, hy + 6, 2, 1, '#b94343'); // warm peach-rose smile
+
+      // Ears
+      g.set(3, hy + 4, skin);
+      g.set(3, hy + 5, skinD);
+      g.set(12, hy + 4, skin);
+      g.set(12, hy + 5, skinD);
+    }
+  }
+
+  // --- 4. HAIR STYLES & SPECULAR LUSTER ---
+  const style = a.hairStyle;
+  if (style !== 'bald') {
+    // Hair base crown
+    g.rect(4, hy - 1, 8, 2, hair);
+    g.rect(3, hy, 1, 4, hair);
+    g.rect(12, hy, 1, 4, hair);
+
+    // Specular shine band (anime halo)
+    g.rect(5, hy - 1, 6, 1, hairL);
+    g.set(6, hy - 1, '#ffffff'); // peak specular sparkle
+    g.rect(4, hy, 8, 1, hair);
+
+    if (back) {
+      g.rect(4, hy, 8, 7, hair);
+      g.rect(5, hy + 2, 6, 1, hairL); // back luster
+      g.rect(4, hy + 6, 8, 1, hairD);
+    } else if (side) {
+      g.rect(7, hy, 5, 5, hair);
+      g.rect(8, hy + 1, 3, 1, hairL);
+      g.rect(7, hy + 4, 5, 1, hairD);
+      g.set(5, hy + 1, hair);
+      g.set(4, hy + 2, hair);
+      g.set(4, hy + 3, hairD); // sideburn tuft
+    } else {
+      // Front bangs with cute tufts and shaded tips
+      g.set(4, hy + 1, hair);
+      g.set(5, hy + 1, hairL);
+      g.set(6, hy + 1, hair);
+      g.set(9, hy + 1, hair);
+      g.set(10, hy + 1, hairL);
+      g.set(11, hy + 1, hair);
+      // Bang tips shadow over forehead
+      g.set(5, hy + 2, hairD);
+      g.set(10, hy + 2, hairD);
+    }
+
+    if (style === 'long') {
+      // Flowing silky locks past shoulders to row 19
+      if (!side) {
+        g.rect(3, hy + 4, 1, 8, hair);
+        g.rect(12, hy + 4, 1, 8, hair);
+        g.set(3, hy + 6, hairL);
+        g.set(12, hy + 6, hairL);
+        g.set(3, hy + 7, '#ffffff'); // silky glint
+        g.set(12, hy + 7, '#ffffff');
+        g.set(3, hy + 11, hairD);
+        g.set(12, hy + 11, hairD);
+        if (back) {
+          g.rect(4, hy + 7, 8, 5, hair);
+          g.rect(5, hy + 8, 6, 1, hairL);
+          g.rect(4, hy + 11, 8, 1, hairD);
+        }
+      } else {
+        g.rect(9, hy + 4, 3, 8, hair);
+        g.set(10, hy + 6, hairL);
+        g.set(10, hy + 7, '#ffffff');
+        g.rect(9, hy + 11, 3, 1, hairD);
+      }
+    } else if (style === 'bun') {
+      // High bun with cute hair ribbon
+      g.rect(6, hy - 4, 4, 3, hair);
+      g.rect(7, hy - 4, 2, 1, hairL);
+      g.set(7, hy - 4, '#ffffff'); // bun specular glint
+      g.rect(6, hy - 2, 4, 1, '#f43f5e'); // vibrant coral-rose ribbon
+      g.set(5, hy - 1, '#f43f5e'); // ribbon tails
+      g.set(10, hy - 1, '#f43f5e');
+    } else if (style === 'spiky') {
+      // Dynamic anime spikes with highlighted tips
+      [4, 6, 8, 10].forEach((x) => {
+        g.set(x, hy - 2, hairL);
+        g.set(x + 1, hy - 3, hair);
+        g.set(x, hy - 3, '#ffffff'); // spike sparkle
+        g.set(x, hy - 1, hair);
+      });
+      g.set(3, hy + 2, hairD); // sideburn spikes
+      g.set(12, hy + 2, hairD);
+    }
+  } else {
+    // Bald: sleek shine highlight
+    g.set(6, hy + 1, skinL);
+    g.set(7, hy + 1, skinL);
+    g.set(7, hy + 1, '#ffffff'); // specular point
+    g.set(8, hy + 2, skinL);
+  }
+
+  // --- 5. FACE ACCESSORIES ---
   const face = parse(a.face);
   if (face && !back) {
     if (face.kind === 'glasses') {
-      if (side) g.rect(3, 8, 3, 1, face.color);
-      else {
-        g.rect(5, 8, 3, 1, face.color);
-        g.rect(8, 8, 3, 1, face.color);
-        g.set(5, 10, face.color);
-        g.set(10, 10, face.color);
+      const c = face.color;
+      if (side) {
+        g.rect(3, hy + 3, 3, 2, c);
+        g.set(4, hy + 3, '#ffffff'); // glass lens gleam
+      } else {
+        g.rect(5, hy + 2, 3, 3, c);
+        g.rect(8, hy + 2, 3, 3, c);
+        g.set(6, hy + 3, '#ffffff'); // specular glare
+        g.set(9, hy + 3, '#ffffff');
+        g.set(7, hy + 3, c); // nose bridge
+        g.set(7, hy + 2, '#ffffff');
       }
-    }
-    if (face.kind === 'shades') {
-      if (side) g.rect(3, 9, 3, 1, face.color);
-      else g.rect(5, 9, 6, 2, face.color);
-    }
-    if (face.kind === 'mustache') {
-      if (side) g.rect(3, 11, 2, 1, face.color);
-      else {
-        g.rect(6, 11, 4, 1, face.color);
-        g.set(5, 12, face.color);
-        g.set(10, 12, face.color);
+    } else if (face.kind === 'shades') {
+      const c = face.color;
+      if (side) {
+        g.rect(3, hy + 3, 4, 2, c);
+        g.set(4, hy + 3, '#38bdf8'); // polarized mirror reflection
+        g.set(5, hy + 4, '#818cf8');
+      } else {
+        g.rect(5, hy + 3, 6, 2, c);
+        g.set(6, hy + 3, '#38bdf8'); // cool gradient reflection
+        g.set(7, hy + 3, '#818cf8');
+        g.set(9, hy + 3, '#38bdf8');
+        g.set(10, hy + 3, '#818cf8');
+      }
+    } else if (face.kind === 'mustache') {
+      const c = face.color;
+      if (side) {
+        g.rect(3, hy + 5, 3, 2, c);
+        g.set(2, hy + 5, shade(c, 0.2)); // curled tip
+      } else {
+        g.rect(6, hy + 5, 4, 1, c);
+        g.set(5, hy + 5, shade(c, 0.2)); // upward curled handlebar tip
+        g.set(10, hy + 5, shade(c, 0.2));
+        g.set(5, hy + 6, c);
+        g.set(10, hy + 6, c);
       }
     }
   }
 
-  // hats
+  // --- 6. HATS & CROWNS ---
   const hat = parse(a.hat);
   if (hat) {
     const c = hat.color;
-    const d = shade(c, -0.22);
+    const d = shade(c, -0.28);
+    const l = shade(c, 0.3);
     if (hat.kind === 'beanie') {
-      g.rect(4, 3, 8, 4, c);
-      g.rect(3, 6, 10, 1, d);
-      g.rect(7, 2, 2, 1, shade(c, 0.3));
+      g.rect(4, hy - 3, 8, 4, c);
+      g.rect(3, hy + 1, 10, 1, d); // ribbed knit cuff
+      g.set(4, hy + 1, l);
+      g.set(6, hy + 1, l);
+      g.set(8, hy + 1, l);
+      g.set(10, hy + 1, l);
+      // Fluffy multi-tone pompom
+      g.rect(7, hy - 4, 2, 1, l);
+      g.set(7, hy - 5, '#ffffff');
     } else if (hat.kind === 'cap') {
-      g.rect(4, 3, 8, 3, c);
-      g.rect(4, 6, 8, 1, d);
-      if (side) g.rect(1, 6, 3, 1, d);
-      else if (!back) g.rect(4, 6, 8, 1, d);
+      g.rect(4, hy - 2, 8, 3, c);
+      g.rect(4, hy + 1, 8, 1, d);
+      g.set(7, hy - 2, '#ffffff'); // top crown button
+      if (side) {
+        g.rect(1, hy + 1, 4, 1, d); // curved bill
+        g.set(1, hy + 1, l);
+      } else if (!back) {
+        g.rect(4, hy + 1, 8, 1, d);
+        g.set(7, hy, l); // front embroidered eyelet
+      }
     } else if (hat.kind === 'chef') {
-      g.rect(4, 5, 8, 2, c);
-      g.rect(3, 0, 10, 5, c);
-      g.rect(4, 1, 1, 3, shade(c, -0.08));
-      g.rect(8, 1, 1, 3, shade(c, -0.08));
+      g.rect(4, hy, 8, 2, '#ffffff');
+      g.rect(3, hy - 5, 10, 5, '#ffffff');
+      // Fluffy crisp vertical pleats
+      g.set(4, hy - 4, '#e2e8f0');
+      g.set(6, hy - 4, '#e2e8f0');
+      g.set(8, hy - 4, '#e2e8f0');
+      g.set(10, hy - 4, '#e2e8f0');
+      g.rect(5, hy - 6, 6, 1, '#ffffff'); // billowing top
     } else if (hat.kind === 'cone') {
-      g.rect(3, 6, 10, 1, c);
-      g.rect(4, 4, 8, 2, c);
-      g.rect(5, 2, 6, 2, c);
-      g.rect(6, 0, 4, 2, c);
-      g.rect(5, 3, 6, 1, '#f7f4ee');
-      g.rect(3, 6, 10, 1, d);
+      g.rect(3, hy + 1, 10, 1, '#c2410c'); // sturdy rubber base
+      g.rect(4, hy - 1, 8, 2, c);
+      g.rect(5, hy - 3, 6, 2, '#ffffff'); // reflective white safety band
+      g.rect(6, hy - 5, 4, 2, c);
+      g.set(7, hy - 4, '#ffffff'); // reflective sheen
+      g.set(7, hy - 6, '#ffd700'); // golden star top
+      g.set(8, hy - 6, '#ffd700');
     } else if (hat.kind === 'crown') {
-      g.rect(4, 3, 8, 3, c);
-      [4, 7, 11].forEach((x) => g.set(x, 2, c));
-      g.set(8, 2, c);
-      g.set(6, 4, '#d2556a');
-      g.set(9, 4, '#4f6fd1');
-      g.rect(4, 5, 8, 1, d);
+      // Imperial golden crown with 5 peaks & precious gemstones
+      g.rect(4, hy - 2, 8, 3, '#f59e0b');
+      g.rect(4, hy - 1, 8, 2, '#f5c542');
+      [4, 6, 7, 9, 11].forEach((x) => g.set(x, hy - 3, '#f5c542'));
+      [4, 7, 11].forEach((x) => g.set(x, hy - 4, '#fef08a')); // crown finial points
+      // Inset precious jewels
+      g.set(5, hy - 1, '#ef4444'); // ruby
+      g.set(5, hy - 2, '#ffffff'); // ruby glint
+      g.set(8, hy - 1, '#3b82f6'); // sapphire
+      g.set(8, hy - 2, '#ffffff'); // sapphire glint
+      g.set(10, hy - 1, '#10b981'); // emerald
+      g.rect(4, hy, 8, 1, '#b45309'); // base shadow
+    }
+  }
+
+  // --- 5. HELD FISH ON HANDS (with dynamic pixel size scaling) ---
+  if (a.heldFish) {
+    const held = a.heldFish;
+    const fishGrid = drawFish(held.speciesId);
+    const cm = held.sizeCm;
+
+    // Calculate dynamic handheld pixel dimensions
+    let targetW = 12;
+    let targetH = 6;
+    if (cm < 35) {
+      targetW = 7;
+      targetH = 4;
+    } else if (cm < 80) {
+      targetW = 10;
+      targetH = 5;
+    } else if (cm < 180) {
+      targetW = 13;
+      targetH = 7;
+    } else if (cm < 450) {
+      targetW = 15;
+      targetH = 8;
+    } else {
+      // Colossal / Whale / Kraken / Leviathan
+      targetW = 16;
+      targetH = 10;
+    }
+
+    if (!back) {
+      if (side) {
+        // Facing side (profile): fish held projecting forward
+        const ox = 0;
+        const oy = 15 + bodyBob;
+        const sideW = Math.min(targetW, 11);
+        for (let dy = 0; dy < targetH; dy++) {
+          for (let dx = 0; dx < sideW; dx++) {
+            const srcX = Math.floor((dx / sideW) * fishGrid.w);
+            const srcY = Math.floor((dy / targetH) * fishGrid.h);
+            const col = fishGrid.get(srcX, srcY);
+            if (col && col !== INK) g.set(ox + dx, oy + dy, col);
+          }
+        }
+        // Hands holding fish from back
+        g.rect(sideW - 1, oy + Math.floor(targetH / 2), 2, 2, skin);
+      } else {
+        // Facing front (camera): fish held across the chest/torso
+        const ox = Math.floor((AV_W - targetW) / 2);
+        const oy = 15 + bodyBob;
+
+        for (let dy = 0; dy < targetH; dy++) {
+          for (let dx = 0; dx < targetW; dx++) {
+            const srcX = Math.floor((dx / targetW) * fishGrid.w);
+            const srcY = Math.floor((dy / targetH) * fishGrid.h);
+            const col = fishGrid.get(srcX, srcY);
+            if (col && col !== INK) g.set(ox + dx, oy + dy, col);
+          }
+        }
+
+        // Two hands clasping the fish firmly
+        const handY = oy + targetH - 2;
+        g.rect(Math.max(1, ox + 1), handY, 2, 2, skin);
+        g.rect(Math.min(AV_W - 3, ox + targetW - 3), handY, 2, 2, skin);
+        // Sleeves / arms forward
+        g.set(Math.max(1, ox + 1), handY - 1, topColor);
+        g.set(Math.min(AV_W - 3, ox + targetW - 3), handY - 1, topColor);
+
+        // Rare / Epic / Legendary prestige sparkles around held fish
+        const sp = getSpeciesData(held.speciesId);
+        if (sp?.rarity === 'legendary') {
+          g.set(Math.max(0, ox - 1), oy - 1, '#fbbf24');
+          g.set(Math.min(AV_W - 1, ox + targetW), oy - 1, '#ffffff');
+          g.set(Math.floor(AV_W / 2), oy - 2, '#fef08a');
+        } else if (sp?.rarity === 'epic') {
+          g.set(Math.max(0, ox - 1), oy - 1, '#c084fc');
+          g.set(Math.min(AV_W - 1, ox + targetW), oy, '#38bdf8');
+        } else if (sp?.rarity === 'rare') {
+          g.set(Math.max(0, ox - 1), oy - 1, '#38bdf8');
+        }
+      }
+    } else {
+      // Facing back (from behind): fish ends stick out left and right behind player
+      const ox = Math.floor((AV_W - targetW) / 2);
+      const oy = 15 + bodyBob;
+      for (let dy = 0; dy < targetH; dy++) {
+        for (let dx = 0; dx < targetW; dx++) {
+          const px = ox + dx;
+          // Only show pixels sticking out beyond the back (x < 5 or x > 10)
+          if (px < 5 || px > 10) {
+            const srcX = Math.floor((dx / targetW) * fishGrid.w);
+            const srcY = Math.floor((dy / targetH) * fishGrid.h);
+            const col = fishGrid.get(srcX, srcY);
+            if (col && col !== INK) g.set(px, oy + dy, col);
+          }
+        }
+      }
+    }
+  }
+
+  // --- 8. FISHING ROD (slung across back when equipped) ---
+  if (a.rod && !a.heldFish && !a.isFishing) {
+    const rodColors: Record<string, string> = {
+      rod_twig: '#854d0e',
+      rod_wooden: '#b45309',
+      rod_fiberglass: '#0284c7',
+      rod_pro_carbon: '#1e293b',
+      rod_golden_legend: '#f59e0b',
+      rod_abyssal: '#7c3aed',
+    };
+    const rodId = normalizeRodId(a.rod);
+    const rc = rodColors[rodId] ?? '#854d0e';
+    if (back) {
+      g.set(3, 20 + bodyBob, '#1e293b'); // grip
+      g.set(4, 18 + bodyBob, rc);
+      g.set(6, 15 + bodyBob, rc);
+      g.set(8, 12 + bodyBob, rc);
+      g.set(10, 9 + bodyBob, rc);
+      g.set(12, 6 + bodyBob, rc);
+      g.set(13, 3 + bodyBob, rc); // tip
+      g.set(14, 5 + bodyBob, '#ef4444'); // bobber
+      // Glowing tip accents for rare / epic / legendary rods
+      if (rodId === 'rod_golden_legend') {
+        g.set(13, 2 + bodyBob, '#fef08a');
+        g.set(14, 1 + bodyBob, '#ffffff');
+      } else if (rodId === 'rod_abyssal') {
+        g.set(13, 2 + bodyBob, '#06b6d4');
+        g.set(14, 1 + bodyBob, '#c084fc');
+      } else if (rodId === 'rod_pro_carbon') {
+        g.set(13, 2 + bodyBob, '#34d399');
+      } else if (rodId === 'rod_fiberglass') {
+        g.set(13, 2 + bodyBob, '#38bdf8');
+      }
+    } else if (side) {
+      g.set(8, 18 + bodyBob, '#1e293b');
+      g.set(9, 15 + bodyBob, rc);
+      g.set(11, 11 + bodyBob, rc);
+      g.set(12, 7 + bodyBob, rc);
+      g.set(13, 3 + bodyBob, rc);
+      g.set(14, 5 + bodyBob, '#ef4444');
+      if (rodId === 'rod_golden_legend') {
+        g.set(13, 2 + bodyBob, '#fef08a');
+      } else if (rodId === 'rod_abyssal') {
+        g.set(13, 2 + bodyBob, '#06b6d4');
+      } else if (rodId === 'rod_pro_carbon') {
+        g.set(13, 2 + bodyBob, '#34d399');
+      } else if (rodId === 'rod_fiberglass') {
+        g.set(13, 2 + bodyBob, '#38bdf8');
+      }
+    } else {
+      // Front view: tip peeking over right shoulder
+      g.set(11, 13 + bodyBob, rc);
+      g.set(12, 9 + bodyBob, rc);
+      g.set(13, 5 + bodyBob, rc);
+      g.set(14, 2 + bodyBob, rc);
+      g.set(14, 5 + bodyBob, '#ef4444');
+      if (rodId === 'rod_golden_legend') {
+        g.set(14, 1 + bodyBob, '#fef08a');
+      } else if (rodId === 'rod_abyssal') {
+        g.set(14, 1 + bodyBob, '#06b6d4');
+      } else if (rodId === 'rod_pro_carbon') {
+        g.set(14, 1 + bodyBob, '#34d399');
+      } else if (rodId === 'rod_fiberglass') {
+        g.set(14, 1 + bodyBob, '#38bdf8');
+      }
     }
   }
 
@@ -203,30 +661,55 @@ export function drawAvatar(a: Appearance, dir: Dir, frame: 0 | 1 | 2): PixelGrid
   return g;
 }
 
+import { drawChibiAvatar, chibiAvatarPortrait } from './chibi';
+
 export function appearanceKey(a: Appearance): string {
-  return [a.skin, a.hairStyle, a.hairColor, a.baseTop, a.hat ?? '', a.top ?? '', a.face ?? ''].join('|');
+  return [
+    a.skin,
+    a.hairStyle,
+    a.hairColor,
+    a.baseTop,
+    a.hat ?? '',
+    a.top ?? '',
+    a.face ?? '',
+    a.rod ?? '',
+    a.heldFish ? `${a.heldFish.speciesId}:${a.heldFish.sizeCm}` : '',
+    a.isFishing ? 'fishing' : '',
+  ].join('|');
 }
 
 /** Sprite sheet canvas: rows = dir (down, left, right, up), cols = frame (idle, stepA, stepB). */
 export function avatarSheet(a: Appearance, scale = AV_SCALE): HTMLCanvasElement {
   const c = document.createElement('canvas');
-  c.width = AV_W * scale * 3;
-  c.height = AV_H * scale * 4;
+  const fw = AV_W * scale;
+  const fh = AV_H * scale;
+  c.width = fw * 3;
+  c.height = fh * 4;
   const ctx = c.getContext('2d')!;
-  for (let d = 0 as Dir; d < 4; d = (d + 1) as Dir)
-    for (let f = 0; f < 3; f++)
-      drawAvatar(a, d, f as 0 | 1 | 2).drawTo(ctx, f * AV_W * scale, d * AV_H * scale, scale);
+
+  for (let d = 0 as Dir; d < 4; d = (d + 1) as Dir) {
+    for (let f = 0; f < 3; f++) {
+      ctx.save();
+      const cx = f * fw + fw / 2;
+      const cy = d * fh + 31;
+      const chibiScale = (fh / 56) * 0.42;
+
+      drawChibiAvatar(ctx, a, {
+        cx,
+        cy,
+        scale: chibiScale,
+        dir: d,
+        frame: f as 0 | 1 | 2,
+        showFish: false,
+      });
+      ctx.restore();
+    }
+  }
   return c;
 }
 
-const portraitCache = new Map<string, string>();
-
-/** Data URL portrait of an avatar facing down, for UI surfaces. */
+/** Data URL portrait of an avatar, for UI surfaces. */
 export function avatarPortrait(a: Appearance, scale = 4): string {
-  const key = appearanceKey(a) + '@' + scale;
-  const hit = portraitCache.get(key);
-  if (hit) return hit;
-  const url = drawAvatar(a, 0, 0).toCanvas(scale).toDataURL();
-  portraitCache.set(key, url);
-  return url;
+  const size = Math.max(64, scale * 24);
+  return chibiAvatarPortrait(a, size);
 }

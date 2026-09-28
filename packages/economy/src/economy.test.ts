@@ -146,9 +146,9 @@ describe('eligibility', () => {
 
 describe('misc', () => {
   it('titles by fame', () => {
-    expect(fameTitle(0)).toBe('New in Town');
-    expect(fameTitle(200)).toBe("Landlord's Favorite Tenant");
-    expect(fameTitle(99999)).toBe('Town Legend');
+    expect(fameTitle(0)).toBe('Cư Dân Mới Đến');
+    expect(fameTitle(200)).toBe('Khách Thuê Gương Mẫu');
+    expect(fameTitle(99999)).toBe('Huyền Thoại Thị Trấn');
   });
   it('scores apartments', () => {
     expect(apartmentScore([{ itemId: 'a' }, { itemId: 'a' }, { itemId: 'b' }], { a: 2, b: 5 })).toBe(9 + 4);
