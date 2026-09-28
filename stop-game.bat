@@ -1,7 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
 chcp 65001 > nul
-
 cd /d "%~dp0"
 
 echo ========================================================
@@ -26,4 +25,4 @@ if exist "%~dp0infra\postgres\local_data\postmaster.pid" (
 echo ========================================================
 echo   [HOAN TAT] He thong da duoc dung va don dep sach se!
 echo ========================================================
-timeout /t 3
+ping -n 3 127.0.0.1 > nul
