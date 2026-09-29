@@ -662,7 +662,6 @@ export function drawAvatar(a: Appearance, dir: Dir, frame: 0 | 1 | 2): PixelGrid
 }
 
 import { drawChibiAvatar, chibiAvatarPortrait } from './chibi';
-import { createLpcAvatarSheet, createLpcPortrait, hasLpcAssets } from './lpc';
 
 export function appearanceKey(a: Appearance): string {
   return [
@@ -681,14 +680,9 @@ export function appearanceKey(a: Appearance): string {
 
 /** Sprite sheet canvas: rows = dir (down, left, right, up), cols = frame (idle, stepA, stepB). */
 export function avatarSheet(a: Appearance, scale = AV_SCALE): HTMLCanvasElement {
+  const c = document.createElement('canvas');
   const fw = AV_W * scale;
   const fh = AV_H * scale;
-
-  if (hasLpcAssets()) {
-    return createLpcAvatarSheet(a, fw, fh);
-  }
-
-  const c = document.createElement('canvas');
   c.width = fw * 3;
   c.height = fh * 4;
   const ctx = c.getContext('2d')!;
@@ -717,8 +711,5 @@ export function avatarSheet(a: Appearance, scale = AV_SCALE): HTMLCanvasElement 
 /** Data URL portrait of an avatar, for UI surfaces. */
 export function avatarPortrait(a: Appearance, scale = 4): string {
   const size = Math.max(64, scale * 24);
-  if (hasLpcAssets()) {
-    return createLpcPortrait(a, size);
-  }
   return chibiAvatarPortrait(a, size);
 }

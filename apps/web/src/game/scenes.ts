@@ -174,50 +174,12 @@ export class TownScene extends WorldScene {
     return room.name === 'town';
   }
 
-  preload() {
-    this.load.image('sprout_grass', '/assets/tilesets/grass.png');
-    this.load.image('sprout_water', '/assets/tilesets/water.png');
-    this.load.image('sprout_grass_water', '/assets/tilesets/grass_water.png');
-    this.load.image('sprout_paths', '/assets/tilesets/paths.png');
-    this.load.image('sprout_stone_paths', '/assets/tilesets/stone_paths.png');
-    this.load.image('sprout_wooden_house', '/assets/tilesets/wooden_house.png');
-    this.load.image('sprout_wood_bridge', '/assets/tilesets/wood_bridge.png');
-    this.load.image('sprout_fences', '/assets/tilesets/fences.png');
-    this.load.image('sprout_decorations', '/assets/environment/decorations.png');
-    this.load.image('sprout_water_objects', '/assets/environment/water_objects.png');
-    this.load.image('sprout_boat', '/assets/environment/boat.png');
-  }
-
   protected buildWorld() {
-    const getImg = (k: string): HTMLImageElement | undefined => {
-      if (this.textures.exists(k)) {
-        const src = this.textures.get(k).getSourceImage();
-        if (src instanceof HTMLImageElement || src instanceof HTMLCanvasElement) {
-          return src as HTMLImageElement;
-        }
-      }
-      return undefined;
-    };
-
-    const tilesets = {
-      grass: getImg('sprout_grass'),
-      water: getImg('sprout_water'),
-      grassWater: getImg('sprout_grass_water'),
-      paths: getImg('sprout_paths'),
-      stonePaths: getImg('sprout_stone_paths'),
-      woodBridge: getImg('sprout_wood_bridge'),
-      fences: getImg('sprout_fences'),
-      decorations: getImg('sprout_decorations'),
-      waterObjects: getImg('sprout_water_objects'),
-      boat: getImg('sprout_boat'),
-      woodenHouse: getImg('sprout_wooden_house'),
-    };
-
-    if (!this.textures.exists('town-ground')) this.textures.addCanvas('town-ground', paintTown(tilesets));
+    if (!this.textures.exists('town-ground')) this.textures.addCanvas('town-ground', paintTown());
     this.add.image(0, 0, 'town-ground').setOrigin(0).setDepth(-10);
     for (const b of BUILDINGS) {
       const key = `bld:${b.id}`;
-      if (!this.textures.exists(key)) this.textures.addCanvas(key, paintBuilding(b, tilesets.woodenHouse));
+      if (!this.textures.exists(key)) this.textures.addCanvas(key, paintBuilding(b));
       this.add
         .image(b.rect.x - 4, b.rect.y - BUILDING_ROOF, key)
         .setOrigin(0)

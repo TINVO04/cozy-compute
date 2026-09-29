@@ -16,30 +16,15 @@ import { hex, INK, mulberry, shade } from './pixel';
 const inRect = (x: number, y: number, r: { x: number; y: number; w: number; h: number }) =>
   x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
 
-export interface TownTilesets {
-  grass?: HTMLImageElement | HTMLCanvasElement;
-  water?: HTMLImageElement | HTMLCanvasElement;
-  grassWater?: HTMLImageElement | HTMLCanvasElement;
-  paths?: HTMLImageElement | HTMLCanvasElement;
-  stonePaths?: HTMLImageElement | HTMLCanvasElement;
-  woodBridge?: HTMLImageElement | HTMLCanvasElement;
-  fences?: HTMLImageElement | HTMLCanvasElement;
-  decorations?: HTMLImageElement | HTMLCanvasElement;
-  waterObjects?: HTMLImageElement | HTMLCanvasElement;
-  woodenHouse?: HTMLImageElement | HTMLCanvasElement;
-  boat?: HTMLImageElement | HTMLCanvasElement;
-}
-
 /**
  * Paints the rich town ground layer:
- * - Sprout Lands lush grass tileset with wildflower & clover variations
- * - Sprout Lands gravel / dirt autotile paths
- * - Sprout Lands stone cobblestone plaza paving
- * - Sprout Lands shimmering pond with shoreline autotile, water lilies, and cattails
- * - Sprout Lands weathered wooden dock pier with mooring boat
- * - Natural tree perimeter and scattered decorative flora
+ * - Lush layered grass with wildflower patches (chamomile, lavender, buttercups, clovers)
+ * - Cobblestone-bordered gravel paths
+ * - Ornate paving stone plaza with mosaic details
+ * - Deep shimmering pond with lily pads and water blossoms
+ * - Weathered wooden pier with iron cleats and rope wraps
  */
-export function paintTown(tilesets?: TownTilesets): HTMLCanvasElement {
+export function paintTown(): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = MAP_COLS * TILE;
   c.height = MAP_ROWS * TILE;
@@ -47,337 +32,195 @@ export function paintTown(tilesets?: TownTilesets): HTMLCanvasElement {
   ctx.imageSmoothingEnabled = false;
   const rng = mulberry(42);
 
-  // --- 1. LUSH GRASS BASE (Sprout Lands or Fallback) ---
-  if (tilesets?.grass) {
-    for (let ty = 0; ty < MAP_ROWS; ty++) {
-      for (let tx = 0; tx < MAP_COLS; tx++) {
-        let sx = 16;
-        const sy = 16;
-        const vRoll = rng();
-        if (vRoll < 0.1) {
-          sx = 48; // flower / clover grass variant
-        } else if (vRoll < 0.18) {
-          sx = 80; // grass tuft variant
-        }
-        ctx.drawImage(tilesets.grass, sx, sy, 16, 16, tx * TILE, ty * TILE, TILE, TILE);
+  // --- 1. LUSH GRASS BASE WITH TONAL TEXTURE ---
+  const grassTones = ['#88c276', '#82bc70', '#8ec77c', '#7cb56a'];
+  for (let ty = 0; ty < MAP_ROWS; ty++) {
+    for (let tx = 0; tx < MAP_COLS; tx++) {
+      const idx = (tx * 11 + ty * 17) % grassTones.length;
+      ctx.fillStyle = grassTones[idx]!;
+      ctx.fillRect(tx * TILE, ty * TILE, TILE, TILE);
+
+      // Fine grass tufts
+      for (let i = 0; i < 4; i++) {
+        const gx = tx * TILE + Math.floor(rng() * (TILE - 3));
+        const gy = ty * TILE + Math.floor(rng() * (TILE - 4));
+        ctx.fillStyle = rng() > 0.5 ? '#6da55b' : '#9bd485';
+        ctx.fillRect(gx, gy, 1, 3);
+        ctx.fillRect(gx + 1, gy + 1, 1, 2);
       }
-    }
-  } else {
-    const grassTones = ['#88c276', '#82bc70', '#8ec77c', '#7cb56a'];
-    for (let ty = 0; ty < MAP_ROWS; ty++) {
-      for (let tx = 0; tx < MAP_COLS; tx++) {
-        const idx = (tx * 11 + ty * 17) % grassTones.length;
-        ctx.fillStyle = grassTones[idx]!;
-        ctx.fillRect(tx * TILE, ty * TILE, TILE, TILE);
 
-        for (let i = 0; i < 4; i++) {
-          const gx = tx * TILE + Math.floor(rng() * (TILE - 3));
-          const gy = ty * TILE + Math.floor(rng() * (TILE - 4));
-          ctx.fillStyle = rng() > 0.5 ? '#6da55b' : '#9bd485';
-          ctx.fillRect(gx, gy, 1, 3);
-          ctx.fillRect(gx + 1, gy + 1, 1, 2);
-        }
-
-        const flowerRoll = rng();
-        if (flowerRoll < 0.12) {
-          const fx = tx * TILE + 4 + Math.floor(rng() * (TILE - 8));
-          const fy = ty * TILE + 4 + Math.floor(rng() * (TILE - 8));
-          if (flowerRoll < 0.04) {
-            ctx.fillStyle = '#f8f6f0';
-            ctx.fillRect(fx - 1, fy, 4, 2);
-            ctx.fillRect(fx, fy - 1, 2, 4);
-            ctx.fillStyle = '#f5c542';
-            ctx.fillRect(fx, fy, 2, 2);
-          } else if (flowerRoll < 0.07) {
-            ctx.fillStyle = '#9c8ade';
-            ctx.fillRect(fx, fy - 2, 2, 4);
-            ctx.fillStyle = '#b8a8f0';
-            ctx.fillRect(fx, fy - 3, 2, 1);
-            ctx.fillStyle = '#5c8a4e';
-            ctx.fillRect(fx, fy + 2, 1, 2);
-          } else if (flowerRoll < 0.1) {
-            ctx.fillStyle = '#ffcc22';
-            ctx.fillRect(fx, fy, 3, 3);
-            ctx.fillStyle = '#ff8800';
-            ctx.fillRect(fx + 1, fy + 1, 1, 1);
-          } else {
-            ctx.fillStyle = '#559944';
-            ctx.fillRect(fx, fy, 2, 2);
-            ctx.fillRect(fx + 2, fy, 2, 2);
-            ctx.fillRect(fx + 1, fy + 2, 2, 2);
-          }
+      // Sprinkled wildflowers & clovers
+      const flowerRoll = rng();
+      if (flowerRoll < 0.12) {
+        const fx = tx * TILE + 4 + Math.floor(rng() * (TILE - 8));
+        const fy = ty * TILE + 4 + Math.floor(rng() * (TILE - 8));
+        if (flowerRoll < 0.04) {
+          // Chamomile daisy (white petals, yellow center)
+          ctx.fillStyle = '#f8f6f0';
+          ctx.fillRect(fx - 1, fy, 4, 2);
+          ctx.fillRect(fx, fy - 1, 2, 4);
+          ctx.fillStyle = '#f5c542';
+          ctx.fillRect(fx, fy, 2, 2);
+        } else if (flowerRoll < 0.07) {
+          // Lavender spike (soft purple/violet)
+          ctx.fillStyle = '#9c8ade';
+          ctx.fillRect(fx, fy - 2, 2, 4);
+          ctx.fillStyle = '#b8a8f0';
+          ctx.fillRect(fx, fy - 3, 2, 1);
+          ctx.fillStyle = '#5c8a4e';
+          ctx.fillRect(fx, fy + 2, 1, 2);
+        } else if (flowerRoll < 0.1) {
+          // Buttercup (bright sunny yellow)
+          ctx.fillStyle = '#ffcc22';
+          ctx.fillRect(fx, fy, 3, 3);
+          ctx.fillStyle = '#ff8800';
+          ctx.fillRect(fx + 1, fy + 1, 1, 1);
+        } else {
+          // Clover patch
+          ctx.fillStyle = '#559944';
+          ctx.fillRect(fx, fy, 2, 2);
+          ctx.fillRect(fx + 2, fy, 2, 2);
+          ctx.fillRect(fx + 1, fy + 2, 2, 2);
         }
       }
     }
   }
 
-  // --- 2. GRAVEL / DIRT PATHS (Sprout Lands or Fallback) ---
+  // --- 2. COBBLESTONE GRAVEL PATHS ---
   for (const r of PATHS) {
-    const x0 = Math.floor(r.x / TILE);
-    const y0 = Math.floor(r.y / TILE);
-    const x1 = Math.floor((r.x + r.w) / TILE);
-    const y1 = Math.floor((r.y + r.h) / TILE);
+    // Warm gravel foundation
+    ctx.fillStyle = '#dfcca4';
+    ctx.fillRect(r.x, r.y, r.w, r.h);
 
-    if (tilesets?.paths) {
-      for (let ty = y0; ty < y1; ty++) {
-        for (let tx = x0; tx < x1; tx++) {
-          const isTop = ty === y0;
-          const isBot = ty === y1 - 1;
-          const isLeft = tx === x0;
-          const isRight = tx === x1 - 1;
-
-          let col = 1;
-          let row = 1;
-          if (isLeft && isRight) col = 3;
-          else if (isLeft) col = 0;
-          else if (isRight) col = 2;
-
-          if (isTop && isBot) row = 3;
-          else if (isTop) row = 0;
-          else if (isBot) row = 2;
-
-          ctx.drawImage(tilesets.paths, col * 16, row * 16, 16, 16, tx * TILE, ty * TILE, TILE, TILE);
+    // Textured gravel flecks
+    for (let x = r.x; x < r.x + r.w; x += 6) {
+      for (let y = r.y; y < r.y + r.h; y += 6) {
+        if (rng() < 0.35) {
+          ctx.fillStyle = rng() > 0.5 ? '#cdb68a' : '#eddab4';
+          ctx.fillRect(x + Math.floor(rng() * 4), y + Math.floor(rng() * 4), 2, 2);
         }
       }
-    } else {
-      ctx.fillStyle = '#dfcca4';
-      ctx.fillRect(r.x, r.y, r.w, r.h);
+    }
 
-      for (let x = r.x; x < r.x + r.w; x += 6) {
-        for (let y = r.y; y < r.y + r.h; y += 6) {
-          if (rng() < 0.35) {
-            ctx.fillStyle = rng() > 0.5 ? '#cdb68a' : '#eddab4';
-            ctx.fillRect(x + Math.floor(rng() * 4), y + Math.floor(rng() * 4), 2, 2);
-          }
-        }
-      }
-
-      ctx.fillStyle = '#bda479';
-      for (let x = r.x; x < r.x + r.w; x += 4) {
-        ctx.fillRect(x, r.y, 3, 1);
-        ctx.fillRect(x, r.y + r.h - 1, 3, 1);
-      }
-      for (let y = r.y; y < r.y + r.h; y += 4) {
-        ctx.fillRect(r.x, y, 1, 3);
-        ctx.fillRect(r.x + r.w - 1, y, 1, 3);
-      }
+    // Cobblestone border trim along path edges
+    ctx.fillStyle = '#bda479';
+    for (let x = r.x; x < r.x + r.w; x += 4) {
+      ctx.fillRect(x, r.y, 3, 1);
+      ctx.fillRect(x, r.y + r.h - 1, 3, 1);
+    }
+    for (let y = r.y; y < r.y + r.h; y += 4) {
+      ctx.fillRect(r.x, y, 1, 3);
+      ctx.fillRect(r.x + r.w - 1, y, 1, 3);
     }
   }
 
-  // --- 3. ORNATE STONE PLAZA (Sprout Lands or Fallback) ---
-  const px0 = Math.floor(PLAZA.x / TILE);
-  const py0 = Math.floor(PLAZA.y / TILE);
-  const px1 = Math.floor((PLAZA.x + PLAZA.w) / TILE);
-  const py1 = Math.floor((PLAZA.y + PLAZA.h) / TILE);
+  // --- 3. ORNATE PLAZA PAVING WITH MOSAIC BORDER ---
+  for (let x = PLAZA.x; x < PLAZA.x + PLAZA.w; x += 16) {
+    for (let y = PLAZA.y; y < PLAZA.y + PLAZA.h; y += 16) {
+      const isAlt = ((x + y) / 16) % 2 === 0;
+      ctx.fillStyle = isAlt ? '#eee2cb' : '#e4d4b6';
+      ctx.fillRect(x, y, 16, 16);
 
-  if (tilesets?.stonePaths) {
-    for (let ty = py0; ty < py1; ty++) {
-      for (let tx = px0; tx < px1; tx++) {
-        const isTop = ty === py0;
-        const isBot = ty === py1 - 1;
-        const isLeft = tx === px0;
-        const isRight = tx === px1 - 1;
+      // Inner beveled stone highlight
+      ctx.fillStyle = '#f8f1e2';
+      ctx.fillRect(x + 1, y + 1, 14, 1);
+      ctx.fillRect(x + 1, y + 1, 1, 14);
 
-        let col = 1;
-        let row = 1;
-        if (isLeft && isRight) col = 3;
-        else if (isLeft) col = 0;
-        else if (isRight) col = 2;
-
-        if (isTop && isBot) row = 3;
-        else if (isTop) row = 0;
-        else if (isBot) row = 2;
-
-        ctx.drawImage(tilesets.stonePaths, col * 16, row * 16, 16, 16, tx * TILE, ty * TILE, TILE, TILE);
-      }
+      // Mortar grout line
+      ctx.fillStyle = '#c7b088';
+      ctx.fillRect(x, y + 15, 16, 1);
+      ctx.fillRect(x + 15, y, 1, 16);
     }
-  } else {
-    for (let x = PLAZA.x; x < PLAZA.x + PLAZA.w; x += 16) {
-      for (let y = PLAZA.y; y < PLAZA.y + PLAZA.h; y += 16) {
-        const isAlt = ((x + y) / 16) % 2 === 0;
-        ctx.fillStyle = isAlt ? '#eee2cb' : '#e4d4b6';
-        ctx.fillRect(x, y, 16, 16);
-
-        ctx.fillStyle = '#f8f1e2';
-        ctx.fillRect(x + 1, y + 1, 14, 1);
-        ctx.fillRect(x + 1, y + 1, 1, 14);
-
-        ctx.fillStyle = '#c7b088';
-        ctx.fillRect(x, y + 15, 16, 1);
-        ctx.fillRect(x + 15, y, 1, 16);
-      }
-    }
-
-    ctx.strokeStyle = '#bfa577';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(PLAZA.x + 1, PLAZA.y + 1, PLAZA.w - 2, PLAZA.h - 2);
-    ctx.strokeStyle = '#dfcca4';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(PLAZA.x + 3, PLAZA.y + 3, PLAZA.w - 6, PLAZA.h - 6);
   }
 
-  // --- 4. SHIMMERING LAKE WATER & SHORELINE AUTOTILE ---
+  // Ornamental border around the plaza
+  ctx.strokeStyle = '#bfa577';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(PLAZA.x + 1, PLAZA.y + 1, PLAZA.w - 2, PLAZA.h - 2);
+  ctx.strokeStyle = '#dfcca4';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(PLAZA.x + 3, PLAZA.y + 3, PLAZA.w - 6, PLAZA.h - 6);
+
+  // --- 4. SHIMMERING LAKE WATER & LILY PADS ---
   for (const w of WATER) {
-    const wx0 = Math.floor(w.x / TILE);
-    const wy0 = Math.floor(w.y / TILE);
-    const wx1 = Math.floor((w.x + w.w) / TILE);
-    const wy1 = Math.floor((w.y + w.h) / TILE);
+    // Deep lagoon gradient
+    ctx.fillStyle = '#58a8ce';
+    ctx.fillRect(w.x, w.y, w.w, w.h);
 
-    if (tilesets?.water) {
-      for (let ty = wy0; ty < wy1; ty++) {
-        for (let tx = wx0; tx < wx1; tx++) {
-          ctx.drawImage(tilesets.water, 0, 0, 16, 16, tx * TILE, ty * TILE, TILE, TILE);
-        }
-      }
-    } else {
-      ctx.fillStyle = '#58a8ce';
-      ctx.fillRect(w.x, w.y, w.w, w.h);
-      ctx.fillStyle = '#dfcca4';
-      ctx.fillRect(w.x, w.y - 4, w.w, 4);
-      ctx.fillStyle = '#4895bb';
-      ctx.fillRect(w.x, w.y, w.w, 3);
+    // Sandy shore transition
+    ctx.fillStyle = '#dfcca4';
+    ctx.fillRect(w.x, w.y - 4, w.w, 4);
+    ctx.fillStyle = '#4895bb';
+    ctx.fillRect(w.x, w.y, w.w, 3);
 
-      for (let i = 0; i < 110; i++) {
-        ctx.fillStyle = rng() > 0.5 ? '#7ecef0' : '#458aa8';
-        const x = w.x + Math.floor(rng() * (w.w - 10));
-        const y = w.y + 6 + Math.floor(rng() * (w.h - 10));
-        ctx.fillRect(x, y, 8, 1);
-      }
+    // Water ripple streaks
+    for (let i = 0; i < 110; i++) {
+      ctx.fillStyle = rng() > 0.5 ? '#7ecef0' : '#458aa8';
+      const x = w.x + Math.floor(rng() * (w.w - 10));
+      const y = w.y + 6 + Math.floor(rng() * (w.h - 10));
+      ctx.fillRect(x, y, 8, 1);
     }
 
-    // Shoreline transition edges (Sprout Lands autotile)
-    if (tilesets?.grassWater) {
-      for (let ty = wy0; ty < wy1; ty++) {
-        for (let tx = wx0; tx < wx1; tx++) {
-          const isTop = ty === wy0;
-          const isLeft = tx === wx0;
-          if (isTop && isLeft) {
-            ctx.drawImage(tilesets.grassWater, 0, 0, 16, 16, tx * TILE, ty * TILE, TILE, TILE);
-          } else if (isTop) {
-            ctx.drawImage(tilesets.grassWater, 16, 0, 16, 16, tx * TILE, ty * TILE, TILE, TILE);
-          } else if (isLeft) {
-            ctx.drawImage(tilesets.grassWater, 0, 16, 16, 16, tx * TILE, ty * TILE, TILE, TILE);
-          }
-        }
-      }
-    }
+    // Lily pads with pink water blossoms
+    const lilyPads = [
+      { x: w.x + 18, y: w.y + 26 },
+      { x: w.x + 28, y: w.y + 70 },
+      { x: w.x + w.w - 40, y: w.y + 32 },
+      { x: w.x + w.w - 24, y: w.y + 88 },
+      { x: w.x + 60, y: w.y + w.h - 40 },
+    ];
+    for (const lp of lilyPads) {
+      // Round leaf with notch
+      ctx.fillStyle = '#2f7547';
+      ctx.fillRect(lp.x - 4, lp.y - 4, 8, 8);
+      ctx.fillRect(lp.x - 5, lp.y - 2, 10, 4);
+      ctx.fillRect(lp.x - 2, lp.y - 5, 4, 10);
+      ctx.fillStyle = '#429e61';
+      ctx.fillRect(lp.x - 3, lp.y - 3, 6, 6);
+      ctx.fillStyle = '#58a8ce'; // notch cut
+      ctx.fillRect(lp.x + 1, lp.y, 3, 1);
 
-    // Lily pads and water objects
-    if (tilesets?.waterObjects) {
-      const lilies = [
-        { x: (wx0 + 1) * TILE + 4, y: (wy0 + 2) * TILE + 4 },
-        { x: (wx0 + 7) * TILE + 8, y: (wy0 + 3) * TILE },
-        { x: (wx0 + 9) * TILE + 12, y: (wy0 + 7) * TILE + 8 },
-        { x: (wx0 + 2) * TILE + 8, y: (wy0 + 8) * TILE + 4 },
-      ];
-      for (const lp of lilies) {
-        ctx.drawImage(tilesets.waterObjects, 0, 0, 16, 16, lp.x, lp.y, 24, 24);
-      }
-      // Reeds along shore
-      ctx.drawImage(tilesets.waterObjects, 48, 0, 16, 16, (wx0 + 1) * TILE, (wy0 + 1) * TILE, TILE, TILE);
-      ctx.drawImage(tilesets.waterObjects, 48, 0, 16, 16, (wx0 + 1) * TILE, (wy0 + 5) * TILE, TILE, TILE);
-    } else {
-      const lilyPads = [
-        { x: w.x + 18, y: w.y + 26 },
-        { x: w.x + 28, y: w.y + 70 },
-        { x: w.x + w.w - 40, y: w.y + 32 },
-        { x: w.x + w.w - 24, y: w.y + 88 },
-        { x: w.x + 60, y: w.y + w.h - 40 },
-      ];
-      for (const lp of lilyPads) {
-        ctx.fillStyle = '#2f7547';
-        ctx.fillRect(lp.x - 4, lp.y - 4, 8, 8);
-        ctx.fillRect(lp.x - 5, lp.y - 2, 10, 4);
-        ctx.fillRect(lp.x - 2, lp.y - 5, 4, 10);
-        ctx.fillStyle = '#429e61';
-        ctx.fillRect(lp.x - 3, lp.y - 3, 6, 6);
-        ctx.fillStyle = '#58a8ce';
-        ctx.fillRect(lp.x + 1, lp.y, 3, 1);
-
-        ctx.fillStyle = '#ff8fa3';
-        ctx.fillRect(lp.x - 1, lp.y - 1, 3, 3);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(lp.x, lp.y, 1, 1);
-      }
+      // Blossom
+      ctx.fillStyle = '#ff8fa3';
+      ctx.fillRect(lp.x - 1, lp.y - 1, 3, 3);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(lp.x, lp.y, 1, 1);
     }
   }
 
-  // --- 5. WEATHERED WOODEN PIER (Sprout Lands or Fallback) ---
-  const pX0 = Math.floor(PIER.x / TILE);
-  const pY0 = Math.floor(PIER.y / TILE);
-  const pX1 = Math.floor((PIER.x + PIER.w) / TILE);
-  const pY1 = Math.floor((PIER.y + PIER.h) / TILE);
+  // --- 5. WEATHERED WOODEN PIER ---
+  ctx.fillStyle = '#8f5f3a';
+  ctx.fillRect(PIER.x, PIER.y, PIER.w, PIER.h);
+  for (let y = PIER.y; y < PIER.y + PIER.h; y += 8) {
+    // Individual wood plank with highlight and shadow
+    ctx.fillStyle = '#a67347';
+    ctx.fillRect(PIER.x, y, PIER.w, 6);
+    ctx.fillStyle = '#ba8557';
+    ctx.fillRect(PIER.x, y, PIER.w, 1); // top plank highlight
+    ctx.fillStyle = '#6e4526';
+    ctx.fillRect(PIER.x, y + 6, PIER.w, 2); // deep gap between planks
 
-  if (tilesets?.woodBridge) {
-    for (let ty = pY0; ty < pY1; ty++) {
-      for (let tx = pX0; tx < pX1; tx++) {
-        const isTop = ty === pY0;
-        const isBot = ty === pY1 - 1;
-        const isLeft = tx === pX0;
-        const col = isLeft ? 0 : 2;
-        const row = isTop ? 0 : isBot ? 2 : 1;
-        ctx.drawImage(tilesets.woodBridge, col * 16, row * 16, 16, 16, tx * TILE, ty * TILE, TILE, TILE);
-      }
-    }
-  } else {
-    ctx.fillStyle = '#8f5f3a';
-    ctx.fillRect(PIER.x, PIER.y, PIER.w, PIER.h);
-    for (let y = PIER.y; y < PIER.y + PIER.h; y += 8) {
-      ctx.fillStyle = '#a67347';
-      ctx.fillRect(PIER.x, y, PIER.w, 6);
-      ctx.fillStyle = '#ba8557';
-      ctx.fillRect(PIER.x, y, PIER.w, 1);
-      ctx.fillStyle = '#6e4526';
-      ctx.fillRect(PIER.x, y + 6, PIER.w, 2);
-
-      ctx.fillStyle = '#3a2d24';
-      ctx.fillRect(PIER.x + 4, y + 3, 2, 2);
-      ctx.fillRect(PIER.x + PIER.w - 6, y + 3, 2, 2);
-    }
-
-    [PIER.y + 12, PIER.y + PIER.h - 16].forEach((y) => {
-      ctx.fillStyle = '#52341d';
-      ctx.fillRect(PIER.x - 4, y, 5, 10);
-      ctx.fillStyle = '#e8d5a8';
-      ctx.fillRect(PIER.x - 4, y + 3, 5, 2);
-      ctx.fillStyle = '#52341d';
-      ctx.fillRect(PIER.x + PIER.w - 1, y, 5, 10);
-      ctx.fillStyle = '#e8d5a8';
-      ctx.fillRect(PIER.x + PIER.w - 1, y + 3, 5, 2);
-    });
+    // Iron nails on each plank side
+    ctx.fillStyle = '#3a2d24';
+    ctx.fillRect(PIER.x + 4, y + 3, 2, 2);
+    ctx.fillRect(PIER.x + PIER.w - 6, y + 3, 2, 2);
   }
 
-  // --- 6. MOORED WOODEN BOAT ---
-  if (tilesets?.boat) {
-    ctx.drawImage(tilesets.boat, 0, 0, 48, 32, (pX1 + 1) * TILE, (pY0 + 4) * TILE, 48 * 1.5, 32 * 1.5);
-  }
+  // Pier mooring posts with rope coils
+  [PIER.y + 12, PIER.y + PIER.h - 16].forEach((y) => {
+    // Left post
+    ctx.fillStyle = '#52341d';
+    ctx.fillRect(PIER.x - 4, y, 5, 10);
+    ctx.fillStyle = '#e8d5a8'; // rope wrap
+    ctx.fillRect(PIER.x - 4, y + 3, 5, 2);
+    // Right post
+    ctx.fillStyle = '#52341d';
+    ctx.fillRect(PIER.x + PIER.w - 1, y, 5, 10);
+    ctx.fillStyle = '#e8d5a8';
+    ctx.fillRect(PIER.x + PIER.w - 1, y + 3, 5, 2);
+  });
 
-  // --- 7. DECORATIVE FLORA & BOULDERS ---
-  if (tilesets?.decorations) {
-    const deco = tilesets.decorations;
-    // Sunflowers (Row 0, col 0)
-    ctx.drawImage(deco, 0, 0, 16, 16, 2 * TILE, 10 * TILE, TILE, TILE);
-    ctx.drawImage(deco, 0, 0, 16, 16, 13 * TILE, 10 * TILE, TILE, TILE);
-    ctx.drawImage(deco, 0, 0, 16, 16, 44 * TILE, 10 * TILE, TILE, TILE);
-    // Daisies (Row 0, col 2)
-    ctx.drawImage(deco, 32, 0, 16, 16, 19 * TILE, 21 * TILE, TILE, TILE);
-    ctx.drawImage(deco, 32, 0, 16, 16, 27 * TILE, 21 * TILE, TILE, TILE);
-    // Mushrooms (Row 1, col 0)
-    ctx.drawImage(deco, 0, 16, 16, 16, 4 * TILE, 24 * TILE, TILE, TILE);
-    ctx.drawImage(deco, 16, 16, 16, 16, 32 * TILE, 25 * TILE, TILE, TILE);
-    // River Boulders (Row 2, col 0)
-    ctx.drawImage(deco, 0, 32, 16, 16, 10 * TILE, 20 * TILE, TILE, TILE);
-    ctx.drawImage(deco, 32, 32, 16, 16, 34 * TILE, 19 * TILE, TILE, TILE);
-  }
-
-  // --- 8. RUSTIC FENCES ---
-  if (tilesets?.fences) {
-    for (let tx = 8; tx <= 10; tx++) {
-      ctx.drawImage(tilesets.fences, 16, 0, 16, 16, tx * TILE, 19 * TILE, TILE, TILE);
-    }
-  }
-
-  // --- 9. NATURAL TREE BORDER ---
+  // --- 6. NATURAL TREE BORDER ---
   for (let tx = 0; tx < MAP_COLS; tx++) {
     for (let ty = 0; ty < MAP_ROWS; ty++) {
       const edge = tx === 0 || ty === 0 || tx === MAP_COLS - 1 || ty === MAP_ROWS - 1;
@@ -469,10 +312,7 @@ export const BUILDING_ROOF = 30;
  * - Heavy arched oak plank door with iron strap hinges, knocker and glowing lantern
  * - Hanging carved wooden sign on iron chains
  */
-export function paintBuilding(
-  b: Building,
-  houseImage?: HTMLImageElement | HTMLCanvasElement,
-): HTMLCanvasElement {
+export function paintBuilding(b: Building): HTMLCanvasElement {
   const roofH = BUILDING_ROOF;
   const c = document.createElement('canvas');
   c.width = b.rect.w + 8;
@@ -483,85 +323,6 @@ export function paintBuilding(
   const wall = hex(b.wall);
   const roof = hex(b.roof);
   const accent = hex(b.accent);
-
-  if (houseImage) {
-    // 1. Soft ground contact shadow
-    ctx.fillStyle = 'rgba(28, 24, 38, 0.35)';
-    ctx.fillRect(ox + 2, top + b.rect.h - 4, b.rect.w + 4, 8);
-
-    // 2. Base cottage sprite from Sprout Lands (96x80 scaled 2x -> 192x160)
-    const houseW = 96 * 2;
-    const houseH = 80 * 2;
-    const hx = ox + Math.floor((b.rect.w - houseW) / 2);
-    const hy = top + (b.rect.h - houseH);
-
-    // If building is wider than 192px, fill flanking extension walls
-    if (hx > ox) {
-      // Wall extensions
-      ctx.drawImage(houseImage, 16, 48, 16, 32, ox, hy + 48 * 2, hx - ox, 32 * 2);
-      ctx.drawImage(
-        houseImage,
-        64,
-        48,
-        16,
-        32,
-        hx + houseW,
-        hy + 48 * 2,
-        ox + b.rect.w - (hx + houseW),
-        32 * 2,
-      );
-      // Roof extensions
-      ctx.drawImage(houseImage, 16, 16, 16, 32, ox - 4, hy + 16 * 2, hx - ox + 4, 32 * 2);
-      ctx.drawImage(
-        houseImage,
-        64,
-        16,
-        16,
-        32,
-        hx + houseW,
-        hy + 16 * 2,
-        ox + b.rect.w + 4 - (hx + houseW),
-        32 * 2,
-      );
-    }
-
-    ctx.drawImage(houseImage, 0, 0, 96, 80, hx, hy, houseW, houseH);
-
-    // 3. Subtle tint overlay on roof with shop roof color
-    ctx.save();
-    ctx.globalCompositeOperation = 'source-atop';
-    ctx.fillStyle = roof;
-    ctx.globalAlpha = 0.35;
-    ctx.fillRect(ox - 6, 0, b.rect.w + 12, top + 44);
-    ctx.restore();
-
-    // 4. Hanging wooden shop sign
-    const signW = Math.min(140, b.rect.w - 24);
-    const signX = ox + Math.floor((b.rect.w - signW) / 2);
-    const signY = top + 10;
-
-    // Iron hanging chains
-    ctx.fillStyle = '#4a4857';
-    ctx.fillRect(signX + 16, signY - 8, 2, 8);
-    ctx.fillRect(signX + signW - 18, signY - 8, 2, 8);
-
-    // Carved wood sign plate
-    ctx.fillStyle = '#261b18';
-    ctx.fillRect(signX, signY, signW, 18);
-    ctx.fillStyle = '#6a472d';
-    ctx.fillRect(signX + 1, signY + 1, signW - 2, 16);
-    ctx.fillStyle = '#8f643e';
-    ctx.fillRect(signX + 2, signY + 2, signW - 4, 14);
-
-    // Sign label text
-    ctx.fillStyle = '#fff8e8';
-    ctx.font = 'bold 9px Pixelify Sans, monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(b.label, signX + signW / 2, signY + 9);
-
-    return c;
-  }
 
   // 1. Soft ground contact shadow
   ctx.fillStyle = 'rgba(28, 24, 38, 0.28)';

@@ -1,7 +1,6 @@
 import type { Appearance } from '@cozy/game-data';
 import type Phaser from 'phaser';
 import { appearanceKey, AV_H, AV_SCALE, AV_W, avatarSheet } from '../art/avatar';
-import { hasLpcAssets, preloadLpcAssets } from '../art/lpc';
 
 /** Registers (once) a spritesheet texture for an appearance and its walk animations. */
 export function ensureAvatarTexture(scene: Phaser.Scene, a: Appearance): string {
@@ -20,24 +19,6 @@ export function ensureAvatarTexture(scene: Phaser.Scene, a: Appearance): string 
       repeat: -1,
     });
   }
-
-  if (!hasLpcAssets()) {
-    preloadLpcAssets()
-      .then(() => {
-        if (scene.textures.exists(key)) {
-          const freshCanvas = avatarSheet(a, AV_SCALE);
-          const targetTex = scene.textures.get(key) as Phaser.Textures.CanvasTexture;
-          if (targetTex && typeof targetTex.getContext === 'function') {
-            const ctx = targetTex.getContext();
-            ctx.clearRect(0, 0, targetTex.width, targetTex.height);
-            ctx.drawImage(freshCanvas, 0, 0);
-            targetTex.update();
-          }
-        }
-      })
-      .catch(() => {});
-  }
-
   return key;
 }
 
