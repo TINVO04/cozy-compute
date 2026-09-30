@@ -1,5 +1,7 @@
 # Deploy game qua Cloudflare Tunnel và GitHub Actions
 
+**Máy Windows chạy bằng `.bat`, không dùng Docker:** xem [hướng dẫn Windows native](deployment-windows.md). Hướng dẫn dưới đây dành cho cách triển khai bằng Docker.
+
 Địa chỉ dự kiến: **https://play.devtizo.vip**. Cấu hình trong repo đã chuẩn bị cho domain này; domain chỉ hoạt động sau khi máy chủ, Tunnel và hostname trên Cloudflare được thiết lập.
 
 Cloudflare Tunnel nối máy chạy game với Cloudflare qua kết nối đi ra. Người chơi không cần IP của máy hay cổng 8787/2567. GitHub Actions thực hiện CI/CD: kiểm tra bản sửa, rồi triển khai bản đã merge vào `master`.

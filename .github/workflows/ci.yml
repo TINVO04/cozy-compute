@@ -141,10 +141,17 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
       - name: Back up and deploy through Cloudflare Tunnel
-        run: node infra/deploy/deploy.mjs
+        env:
+          COZY_DEPLOY_MODE: ${{ vars.COZY_DEPLOY_MODE }}
+        run: node infra/deploy/dispatch.mjs

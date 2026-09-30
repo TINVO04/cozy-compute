@@ -8,6 +8,7 @@ import { setDeps, type BaseRoom } from './rooms/base.js';
 import { TownRoom } from './rooms/town.js';
 
 const PORT = Number(process.env.REALTIME_PORT ?? 2567);
+const HOST = process.env.REALTIME_HOST ?? '0.0.0.0';
 const API = process.env.API_INTERNAL_URL ?? 'http://127.0.0.1:8787';
 const SECRET = process.env.INTERNAL_SECRET;
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
@@ -85,7 +86,7 @@ sub.on('message', async (channel, raw) => {
   }
 });
 
-await gameServer.listen(PORT);
+await gameServer.listen(PORT, HOST);
 log('info', 'realtime listening', { port: PORT });
 
 const shutdown = async () => {

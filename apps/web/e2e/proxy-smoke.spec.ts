@@ -6,7 +6,7 @@ test('production proxy serves the SPA, authenticated API and multiplayer over th
   page,
 }) => {
   const base = process.env.PROXY_SMOKE_URL;
-  test.skip(!base, 'Start the isolated Docker smoke stack and set PROXY_SMOKE_URL.');
+  test.skip(!base, 'Start an isolated production stack and set PROXY_SMOKE_URL.');
   const origin = base!;
   const ws = origin.replace(/^http/, 'ws');
   for (const path of ['/api/readyz', '/realtime/readyz']) {
@@ -14,7 +14,7 @@ test('production proxy serves the SPA, authenticated API and multiplayer over th
     expect(response.ok()).toBe(true);
   }
   const version = await page.request.get(`${origin}/version.txt`);
-  expect((await version.text()).trim()).toBe('ci-smoke');
+  expect((await version.text()).trim()).toBe(process.env.PROXY_SMOKE_VERSION ?? 'ci-smoke');
   for (const path of ['/internal/session', '/api/internal/session', '/api/metrics', '/realtime/metrics']) {
     expect((await page.request.get(`${origin}${path}`)).status()).toBe(404);
   }

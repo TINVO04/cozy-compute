@@ -16,7 +16,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test infra/deploy/deploy.test.mjs && pnpm -r --workspace-concurrency=1 test",
+    "test": "node --test infra/deploy/deploy.test.mjs infra/deploy/windows-common.test.mjs && pnpm -r --workspace-concurrency=1 test",
     "build": "pnpm --filter @cozy/realtime --filter @cozy/api --filter @cozy/web build",
     "e2e:gateway": "pnpm --filter @cozy/api e2e:gateway",
     "loadtest": "pnpm --filter @cozy/realtime loadtest",

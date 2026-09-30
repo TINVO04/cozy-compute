@@ -164,6 +164,9 @@ describe('eligibility and minting', () => {
   });
 
   it('enforces cooldown, monthly cap, pool and pause', async () => {
+    // Keep both mints in one UTC month even when this test runs on its last day.
+    const today = new Date();
+    h.clock.now = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
     const p = await register(h);
     await makeEligible(h, p.id, 500_000);
     expect(
