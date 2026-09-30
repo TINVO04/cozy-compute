@@ -524,67 +524,65 @@ function paintDntuBuilding(b: Building): HTMLCanvasElement {
   rect(ctx, '#431407', 0, 50, w + 4, 4);
   rect(ctx, '#fffbeb', 2, 53, w, 2);
 
-  // Flanking left & right gable dormers with round attic windows (y: 18..44)
-  // Left dormer
-  rect(ctx, '#7f1d1d', 16, 20, 24, 28);
-  rect(ctx, '#c2410c', 18, 22, 20, 24);
-  rect(ctx, '#fef3c7', 20, 32, 16, 14);
-  oval(ctx, '#1c1917', 28, 38, 5, 5);
-  oval(ctx, '#e0f2fe', 28, 38, 4, 4);
-  rect(ctx, '#1c1917', 27, 34, 2, 8);
-  rect(ctx, '#1c1917', 24, 37, 8, 2);
+  // Dormers with round attic windows across the wide roof
+  function drawDormer(dx: number) {
+    rect(ctx, '#7f1d1d', dx, 20, 24, 28);
+    rect(ctx, '#c2410c', dx + 2, 22, 20, 24);
+    rect(ctx, '#fef3c7', dx + 4, 32, 16, 14);
+    oval(ctx, '#1c1917', dx + 12, 38, 5, 5);
+    oval(ctx, '#e0f2fe', dx + 12, 38, 4, 4);
+    rect(ctx, '#1c1917', dx + 11, 34, 2, 8);
+    rect(ctx, '#1c1917', dx + 8, 37, 8, 2);
+  }
+  // Symmetrical dormers on left and right wings
+  drawDormer(28);
+  drawDormer(92);
+  drawDormer(w - 116);
+  drawDormer(w - 52);
 
-  // Right dormer
-  rect(ctx, '#7f1d1d', w - 40, 20, 24, 28);
-  rect(ctx, '#c2410c', w - 38, 22, 20, 24);
-  rect(ctx, '#fef3c7', w - 36, 32, 16, 14);
-  oval(ctx, '#1c1917', w - 28, 38, 5, 5);
-  oval(ctx, '#e0f2fe', w - 28, 38, 4, 4);
-  rect(ctx, '#1c1917', w - 29, 34, 2, 8);
-  rect(ctx, '#1c1917', w - 32, 37, 8, 2);
-
-  // Central Grand Triangular Pediment Dormer (Mái dốc tam giác trung tâm - y: 8..34)
-  const pedX = w / 2; // 96
+  // Central Grand Triangular Pediment Dormer (Mái dốc tam giác trung tâm - y: 8..36)
+  const pedX = w / 2; // 176
   ctx.fillStyle = '#7f1d1d';
   ctx.beginPath();
-  ctx.moveTo(pedX, 8);
-  ctx.lineTo(pedX - 32, 36);
-  ctx.lineTo(pedX + 32, 36);
+  ctx.moveTo(pedX, 6);
+  ctx.lineTo(pedX - 44, 38);
+  ctx.lineTo(pedX + 44, 38);
   ctx.closePath();
   ctx.fill();
 
   ctx.fillStyle = '#c2410c';
   ctx.beginPath();
-  ctx.moveTo(pedX, 11);
-  ctx.lineTo(pedX - 28, 34);
-  ctx.lineTo(pedX + 28, 34);
+  ctx.moveTo(pedX, 9);
+  ctx.lineTo(pedX - 40, 36);
+  ctx.lineTo(pedX + 40, 36);
   ctx.closePath();
   ctx.fill();
 
   ctx.fillStyle = '#fef3c7';
   ctx.beginPath();
-  ctx.moveTo(pedX, 18);
-  ctx.lineTo(pedX - 18, 33);
-  ctx.lineTo(pedX + 18, 33);
+  ctx.moveTo(pedX, 16);
+  ctx.lineTo(pedX - 26, 35);
+  ctx.lineTo(pedX + 26, 35);
   ctx.closePath();
   ctx.fill();
-  rect(ctx, '#7c2d12', pedX - 10, 26, 20, 6);
-  for (let vx = pedX - 8; vx <= pedX + 8; vx += 4) {
-    rect(ctx, '#fef3c7', vx, 27, 2, 4);
+
+  rect(ctx, '#7c2d12', pedX - 16, 26, 32, 8);
+  for (let vx = pedX - 14; vx <= pedX + 14; vx += 4) {
+    rect(ctx, '#fef3c7', vx, 27, 2, 6);
   }
 
   // 3. UPPER FLOORS: TẦNG 2 & 3 (y: 54..112)
-  const colXs = [10, 40, 70, w / 2 - 2, 122, 152, w - 10];
+  const colXs = [12, 44, 76, 108, 140, 172, 204, 236, 268, 300, w - 12];
   for (const cx of colXs) {
     rect(ctx, '#b91c1c', cx - 2, 54, 4, 58);
     rect(ctx, '#991b1b', cx - 2, 54, 1, 58);
   }
 
-  for (let bay = 0; bay < 6; bay++) {
-    const c1 = colXs[bay] ?? 10;
-    const c2 = colXs[bay + 1] ?? 40;
-    const wx = c1 + 6;
-    const ww = c2 - c1 - 12;
+  for (let bay = 0; bay < colXs.length - 1; bay++) {
+    const c1 = colXs[bay] ?? 12;
+    const c2 = colXs[bay + 1] ?? 44;
+    const wx = c1 + 5;
+    const ww = c2 - c1 - 10;
 
     // Floor 3 Window
     rect(ctx, '#1c1917', wx, 58, ww, 18);
@@ -614,11 +612,13 @@ function paintDntuBuilding(b: Building): HTMLCanvasElement {
   rect(ctx, '#7f1d1d', w - 10, 114, 4, bottom - 116);
 
   const arches = [
-    { x: 14, w: 22, h: 48, topH: 12 },
-    { x: 44, w: 22, h: 48, topH: 12 },
-    { x: 74, w: 48, h: 56, topH: 16 }, // Grand central entrance
-    { x: 130, w: 22, h: 48, topH: 12 },
-    { x: 160, w: 22, h: 48, topH: 12 },
+    { x: 18, w: 32, h: 48, topH: 12 },
+    { x: 58, w: 32, h: 48, topH: 12 },
+    { x: 98, w: 32, h: 48, topH: 12 },
+    { x: pedX - 30, w: 60, h: 58, topH: 16 }, // Grand central entrance
+    { x: pedX + 38, w: 32, h: 48, topH: 12 },
+    { x: pedX + 78, w: 32, h: 48, topH: 12 },
+    { x: pedX + 118, w: 32, h: 48, topH: 12 },
   ];
 
   for (const a of arches) {
@@ -645,8 +645,8 @@ function paintDntuBuilding(b: Building): HTMLCanvasElement {
     rect(ctx, '#ffffff', a.x + a.w / 2 - 2, ay - 2, 4, 4);
   }
 
-  // Central Entrance Double Doors inside Arch 3 (x: 74..122)
-  const cDoorX = 82;
+  // Central Entrance Double Doors inside Central Arch
+  const cDoorX = pedX - 16;
   const cDoorW = 32;
   const cDoorY = bottom - 36;
   rect(ctx, '#1c1917', cDoorX, cDoorY, cDoorW, 30);
@@ -656,55 +656,57 @@ function paintDntuBuilding(b: Building): HTMLCanvasElement {
   rect(ctx, '#e2e8f0', cDoorX + cDoorW / 2 + 1, cDoorY + 10, 1, 10);
 
   // Grand Entrance Steps (Polished stone stairs)
-  rect(ctx, '#d4af37', 70, bottom - 6, 56, 4);
-  rect(ctx, '#fef08a', 72, bottom - 4, 52, 2);
+  rect(ctx, '#d4af37', pedX - 38, bottom - 6, 76, 4);
+  rect(ctx, '#fef08a', pedX - 36, bottom - 4, 72, 2);
 
   // 5. 3 FLAGPOLES IN FRONT OF MAIN ARCH (y: 90..130)
   // Left Flag: DNTU Flag
   ctx.strokeStyle = '#e2e8f0';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(86, 126);
-  ctx.lineTo(86, 96);
+  ctx.moveTo(pedX - 16, 126);
+  ctx.lineTo(pedX - 16, 96);
   ctx.stroke();
-  rect(ctx, '#ffffff', 75, 98, 11, 7);
-  rect(ctx, '#b91c1c', 79, 100, 3, 4);
+  rect(ctx, '#ffffff', pedX - 27, 98, 11, 7);
+  rect(ctx, '#b91c1c', pedX - 23, 100, 3, 4);
 
   // Center Flag: Vietnam National Flag
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(98, 126);
-  ctx.lineTo(98, 90);
+  ctx.moveTo(pedX, 126);
+  ctx.lineTo(pedX, 90);
   ctx.stroke();
-  rect(ctx, '#dc2626', 99, 91, 14, 9);
-  rect(ctx, '#b91c1c', 99, 99, 14, 1);
-  rect(ctx, '#facc15', 103, 93, 5, 5);
-  rect(ctx, '#fde047', 104, 94, 3, 3);
+  rect(ctx, '#dc2626', pedX + 1, 91, 14, 9);
+  rect(ctx, '#b91c1c', pedX + 1, 99, 14, 1);
+  rect(ctx, '#facc15', pedX + 5, 93, 5, 5);
+  rect(ctx, '#fde047', pedX + 6, 94, 3, 3);
 
   // Right Flag: DNTU Flag
   ctx.strokeStyle = '#e2e8f0';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(110, 126);
-  ctx.lineTo(110, 96);
+  ctx.moveTo(pedX + 16, 126);
+  ctx.lineTo(pedX + 16, 96);
   ctx.stroke();
-  rect(ctx, '#ffffff', 110, 98, 11, 7);
-  rect(ctx, '#b91c1c', 114, 100, 3, 4);
+  rect(ctx, '#ffffff', pedX + 16, 98, 11, 7);
+  rect(ctx, '#b91c1c', pedX + 20, 100, 3, 4);
 
   // 6. TOP UNIVERSITY TITLE ON ARCH LEVEL
-  rect(ctx, '#991b1b', 62, 118, 72, 14);
-  rect(ctx, '#7f1d1d', 62, 118, 72, 1);
-  rect(ctx, '#fef08a', 63, 119, 70, 12);
-  ctx.font = '800 6.5px "Inter", sans-serif';
+  const signW = 160;
+  const signX = pedX - signW / 2;
+  rect(ctx, '#991b1b', signX, 118, signW, 14);
+  rect(ctx, '#7f1d1d', signX, 118, signW, 1);
+  rect(ctx, '#fef08a', signX + 1, 119, signW - 2, 12);
+  ctx.font = '800 7px "Inter", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#b91c1c';
-  ctx.fillText('ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', w / 2, 125);
+  ctx.fillText('TRƯỜNG ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', pedX, 125);
 
   // 7. GRAND CAMPUS STONE MONUMENT (Bia Đá Cổng Trường - y: 168..188)
-  const monX = w / 2 - 40;
-  const monW = 80;
+  const monW = 120;
+  const monX = pedX - monW / 2;
   const monY = bottom - 20;
   const monH = 18;
 
@@ -712,20 +714,20 @@ function paintDntuBuilding(b: Building): HTMLCanvasElement {
   rect(ctx, '#d4af37', monX - 1, monY - 1, monW + 2, monH + 2);
   rect(ctx, '#fef08a', monX, monY, monW, monH);
 
-  ctx.font = '800 5.5px "Inter", sans-serif';
+  ctx.font = '800 6px "Inter", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillStyle = '#991b1b';
-  ctx.fillText('ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', monX + monW / 2, monY + 2.5);
+  ctx.fillText('ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', pedX, monY + 2.5);
 
-  ctx.font = '600 4px sans-serif';
+  ctx.font = '600 4.5px sans-serif';
   ctx.fillStyle = '#78350f';
-  ctx.fillText('DONG NAI TECHNOLOGY UNIVERSITY', monX + monW / 2, monY + 9);
+  ctx.fillText('DONG NAI TECHNOLOGY UNIVERSITY', pedX, monY + 9);
 
   rect(ctx, '#991b1b', monX + 2, monY + monH - 4, monW - 4, 3);
-  ctx.font = '700 3px sans-serif';
+  ctx.font = '700 3.5px sans-serif';
   ctx.fillStyle = '#ffffff';
-  ctx.fillText('TRUNG THÀNH · TRÁCH NHIỆM · SÁNG TẠO', monX + monW / 2, monY + monH - 3.5);
+  ctx.fillText('TRUNG THÀNH · TRÁCH NHIỆM · SÁNG TẠO', pedX, monY + monH - 3.5);
 
   // 8. MANICURED CONICAL TOPIARIES & PALM GREENERY
   function drawCampusTopiary(tx: number, ty: number) {
@@ -746,10 +748,10 @@ function paintDntuBuilding(b: Building): HTMLCanvasElement {
     ctx.closePath();
     ctx.fill();
   }
-  drawCampusTopiary(38, bottom - 24);
-  drawCampusTopiary(68, bottom - 24);
-  drawCampusTopiary(118, bottom - 24);
-  drawCampusTopiary(148, bottom - 24);
+  drawCampusTopiary(pedX - 52, bottom - 24);
+  drawCampusTopiary(pedX + 42, bottom - 24);
+  drawCampusTopiary(50, bottom - 24);
+  drawCampusTopiary(w - 60, bottom - 24);
 
   return canvas;
 }

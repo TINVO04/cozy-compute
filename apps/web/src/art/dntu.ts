@@ -20,13 +20,12 @@ export interface DntuPerson {
 
 export const DNTU_PEOPLE: DntuPerson[] = [
   {
-    id: 'thay_truong_khoa',
-    name: 'Thầy TS. Trần Đức',
-    role: 'Trưởng Khoa CNTT - DNTU',
+    id: 'thay_tan',
+    name: 'Thầy Tân',
+    role: 'Giảng viên DNTU',
     x: 8 * TILE,
     y: 2.2 * TILE,
-    dialogue:
-      'Chào mừng bạn đến với Trường ĐH Công nghệ Đồng Nai! Triết lý của DNTU là "Xanh - Công nghệ - Hiện đại", gắn liền đào tạo với doanh nghiệp thực tiễn.',
+    dialogue: 'Các em ơi các em lớn rồi mà!',
     avatarStyle: {
       hairColor: '#1c1917',
       shirtColor: '#1e3a8a',

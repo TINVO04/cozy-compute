@@ -738,6 +738,7 @@ export class CompanyScene extends WorldScene {
 
 export class UniversityScene extends WorldScene {
   private activeBubble: Phaser.GameObjects.Container | null = null;
+  private personContainers = new Map<string, Phaser.GameObjects.Container>();
 
   constructor() {
     super('university');
@@ -764,6 +765,7 @@ export class UniversityScene extends WorldScene {
     this.add.image(0, 0, campusKey).setOrigin(0).setDepth(-10);
 
     // 2. Interactive Lecturers, Students, and AI Bot
+    this.personContainers.clear();
     for (const person of DNTU_PEOPLE) {
       const personTexKey = `dntu:${person.id}`;
       if (!this.textures.exists(personTexKey)) {
@@ -772,6 +774,7 @@ export class UniversityScene extends WorldScene {
 
       const container = this.add.container(person.x, person.y);
       container.setDepth(person.y + 12);
+      this.personContainers.set(person.id, container);
 
       // Character sprite
       const sprite = this.add.image(0, 0, personTexKey).setOrigin(0.5, 0.7);
@@ -804,6 +807,20 @@ export class UniversityScene extends WorldScene {
       // Interactive on click / tap
       sprite.setInteractive({ useHandCursor: true });
       sprite.on('pointerdown', () => this.showPersonDialogue(person, container));
+    }
+
+    // 2b. Auto-welcome quote when entering university: Thầy Tân welcomes player!
+    const thayTan = DNTU_PEOPLE.find((p) => p.id === 'thay_tan');
+    const thayTanContainer = this.personContainers.get('thay_tan');
+    if (thayTan && thayTanContainer) {
+      this.time.delayedCall(500, () => {
+        this.showPersonDialogue(thayTan, thayTanContainer);
+        useUi.getState().toast({
+          kind: 'info',
+          title: '👨‍🏫 Thầy Tân - Giảng viên DNTU',
+          body: 'Các em ơi các em lớn rồi mà!',
+        });
+      });
     }
 
     // 3. Ambient soft campus illumination glow
