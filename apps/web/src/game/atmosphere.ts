@@ -1,4 +1,4 @@
-import { BUILDINGS, MAP_HEIGHT, MAP_WIDTH, TILE } from '@cozy/game-data';
+import { BUILDINGS, MAP_HEIGHT, MAP_WIDTH, TILE, TOWN_LAMPS } from '@cozy/game-data';
 import Phaser from 'phaser';
 import { BUILDING_ROOF } from '../art/town';
 import { useUi } from '../lib/store';
@@ -149,30 +149,21 @@ export function setupTownLighting(scene: Phaser.Scene) {
   const reducedMotion = useUi.getState().reducedMotion;
 
   // 1. Streetlamp Halos (6 lamps)
-  const lampPositions = [
-    [12, 10],
-    [23, 10],
-    [33, 10],
-    [17, 19],
-    [31, 19],
-    [9, 21],
-  ];
-
-  lampPositions.forEach(([tx, ty]) => {
-    const lx = tx! * TILE;
-    const ly = ty! * TILE - 54; // Lamp lantern center
+  TOWN_LAMPS.forEach(({ x: tx, y: ty }) => {
+    const lx = tx * TILE;
+    const ly = ty * TILE - 54;
     const glow = scene.add
       .image(lx, ly, 'glow:streetlamp')
       .setOrigin(0.5, 0.5)
       .setDepth(ty! * TILE + 20)
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setAlpha(0.85);
+      .setAlpha(0.4);
 
     if (!reducedMotion) {
       const dur = 1600 + Math.random() * 800;
       scene.tweens.add({
         targets: glow,
-        alpha: { from: 0.72, to: 0.98 },
+        alpha: { from: 0.3, to: 0.45 },
         scale: { from: 0.96, to: 1.05 },
         duration: dur,
         yoyo: true,
@@ -192,12 +183,12 @@ export function setupTownLighting(scene: Phaser.Scene) {
       .setOrigin(0.5, 0.5)
       .setDepth(b.rect.y + b.rect.h + 2)
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setAlpha(0.78);
+      .setAlpha(0.4);
 
     if (!reducedMotion) {
       scene.tweens.add({
         targets: glow,
-        alpha: { from: 0.65, to: 0.88 },
+        alpha: { from: 0.3, to: 0.45 },
         duration: 1800 + Math.random() * 600,
         yoyo: true,
         repeat: -1,
@@ -299,7 +290,7 @@ export function setupTownParticles(scene: Phaser.Scene) {
   });
 
   // 2. Ambient Floating Golden Fireflies / Pollen
-  const FIREFLY_COUNT = 22;
+  const FIREFLY_COUNT = 12;
   for (let i = 0; i < FIREFLY_COUNT; i++) {
     const startX = Math.random() * (MAP_WIDTH - 200) + 100;
     const startY = Math.random() * (MAP_HEIGHT - 180) + 90;

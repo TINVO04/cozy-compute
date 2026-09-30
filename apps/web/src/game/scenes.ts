@@ -8,6 +8,8 @@ import {
   MAP_WIDTH,
   t,
   TILE,
+  TOWN_PROPS,
+  TOWN_TREES,
   ZONES,
   zoneAt,
   type FishShadowTier,
@@ -59,7 +61,9 @@ abstract class WorldScene extends Phaser.Scene {
     ) as typeof this.keys;
     this.buildWorld();
     this.offRoom = net.onRoom((room) => this.bindRoom(room));
+    const onResize = () => this.fitCamera();
     const teardown = () => {
+      this.scale.off('resize', onResize);
       if (this.offRoom) {
         this.offRoom();
         this.offRoom = null;
@@ -69,7 +73,7 @@ abstract class WorldScene extends Phaser.Scene {
     };
     this.events.once('shutdown', teardown);
     this.events.once('destroy', teardown);
-    this.scale.on('resize', () => this.fitCamera());
+    this.scale.on('resize', onResize);
     this.fitCamera();
   }
 
@@ -84,7 +88,7 @@ abstract class WorldScene extends Phaser.Scene {
     const cam = this.cameras.main;
     const zoom = Math.max(
       1,
-      Math.min(3, Math.floor(Math.min(this.scale.width / 520, this.scale.height / 360) * 2) / 2),
+      Math.min(3, Math.round(Math.min(this.scale.width / 520, this.scale.height / 360))),
     );
     cam.setZoom(zoom);
     const vw = this.scale.width / zoom;
@@ -190,51 +194,27 @@ export class TownScene extends WorldScene {
       if (!this.textures.exists(key)) this.textures.addCanvas(key, paintProp(kind));
       return this.add.image(x, y, key).setOrigin(0.5, 1).setDepth(depthY);
     };
-    prop('fountain', 24 * TILE, 17 * TILE + 4, 17 * TILE);
-    prop('board', 33 * TILE, 14 * TILE + 2, 14 * TILE);
-    prop('kiosk', 14 * TILE, 24 * TILE + 4, 24 * TILE);
-    prop('bench', 20 * TILE, 13 * TILE, 13 * TILE);
-    prop('bench', 28 * TILE, 13 * TILE, 13 * TILE);
-    prop('bench', 21 * TILE, 21 * TILE, 21 * TILE);
-    [
-      [12, 10],
-      [23, 10],
-      [33, 10],
-      [17, 19],
-      [31, 19],
-      [9, 21],
-    ].forEach(([x, y]) => prop('lamp', x! * TILE, y! * TILE, y! * TILE));
-    // decorative trees inside town
+    for (const p of TOWN_PROPS) prop(p.kind, p.x * TILE, p.y * TILE, p.y * TILE);
     const g = document.createElement('canvas');
-    g.width = 40;
-    g.height = 50;
-    drawTree(g.getContext('2d')!, 20, 48, 1);
+    g.width = 48;
+    g.height = 60;
+    drawTree(g.getContext('2d')!, 24, 58);
     if (!this.textures.exists('tree')) this.textures.addCanvas('tree', g);
-    [
-      [3, 12],
-      [5, 25],
-      [3, 29],
-      [22, 25],
-      [26, 28],
-      [33, 24],
-      [45, 13],
-      [44, 17],
-      [12, 29],
-    ].forEach(([x, y]) =>
+    for (const p of TOWN_TREES) {
       this.add
-        .image(x! * TILE, y! * TILE, 'tree')
+        .image(p.x * TILE, p.y * TILE, 'tree')
         .setOrigin(0.5, 1)
-        .setDepth(y! * TILE),
-    );
+        .setDepth(p.y * TILE);
+    }
     // zone labels on the ground
     for (const z of ZONES) {
       if (z.id === 'plaza') continue;
       this.add
         .text(z.rect.x + z.rect.w / 2, z.rect.y + z.rect.h - 2, z.label, {
-          fontFamily: 'Pixelify Sans, monospace',
-          fontSize: '10px',
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '11px',
           color: '#2a2438',
-          backgroundColor: 'rgba(247,243,236,0.7)',
+          backgroundColor: '#f3e7cb',
           padding: { x: 3, y: 1 },
           resolution: 2,
         })
