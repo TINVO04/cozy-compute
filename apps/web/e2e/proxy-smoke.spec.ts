@@ -57,4 +57,22 @@ test('production proxy serves the SPA, authenticated API and multiplayer over th
   } finally {
     await peer.leave();
   }
+  // New interiors must authenticate and synchronize peers through the production proxy too.
+  for (const name of ['company', 'university']) {
+    const client = new Client(ws + '/realtime');
+    const first = await client.joinOrCreate<{ players: { size: number }; kind: string }>(name, {
+      token: owner.token,
+    });
+    let second: typeof first | undefined;
+    first.onMessage('*', () => undefined);
+    try {
+      second = await client.joinOrCreate(name, { token: visitor.token });
+      second.onMessage('*', () => undefined);
+      await expect.poll(() => first.state.players?.size ?? 0, { timeout: 20_000 }).toBe(2);
+      expect(first.state.kind).toBe(name);
+    } finally {
+      await second?.leave();
+      await first.leave();
+    }
+  }
 });

@@ -5,7 +5,9 @@ import { Redis } from 'ioredis';
 import { ApiClient } from './api.js';
 import { ApartmentRoom } from './rooms/apartment.js';
 import { setDeps, type BaseRoom } from './rooms/base.js';
+import { CompanyRoom } from './rooms/company.js';
 import { TownRoom } from './rooms/town.js';
+import { UniversityRoom } from './rooms/university.js';
 
 const PORT = Number(process.env.REALTIME_PORT ?? 2567);
 const HOST = process.env.REALTIME_HOST ?? '0.0.0.0';
@@ -60,6 +62,8 @@ const gameServer = new Server({
 });
 gameServer.define('town', TownRoom);
 gameServer.define('apartment', ApartmentRoom).filterBy(['ownerId']);
+gameServer.define('company', CompanyRoom);
+gameServer.define('university', UniversityRoom);
 
 await sub.subscribe('player:appearance', 'player:kick', 'apartment:updated', 'events');
 sub.on('message', async (channel, raw) => {

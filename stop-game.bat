@@ -22,10 +22,13 @@ if exist "%COZY_DEPLOY_DIR%/runtime.json" (
     echo [POSTGRES] Giu PostgreSQL cho production.
     goto :done
 )
-"C:\Program Files\PostgreSQL\17\bin\pg_ctl.exe" -D "%~dp0infra\postgres\local_data" stop > nul 2>&1
-if exist "%~dp0infra\postgres\local_data\postmaster.pid" (
-    del /f /q "%~dp0infra\postgres\local_data\postmaster.pid" > nul 2>&1
+call "%~dp0infra\postgres\find-local.bat"
+if errorlevel 1 (
+    echo [LOI] Khong tim thay PostgreSQL phu hop. Database khong bi thay doi.
+    exit /b 1
 )
+"!PG_CTL!" -D "%~dp0infra\postgres\local_data" stop
+if errorlevel 1 exit /b 1
 
 :done
 echo ========================================================

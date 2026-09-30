@@ -15,3 +15,4 @@ gamevps/
 *.db
 *.db-*
 infra/postgres/local_data/
+infra/redis/

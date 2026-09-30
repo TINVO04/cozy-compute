@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { useEffect, useRef } from 'react';
 import { useUi } from '../lib/store';
-import { ApartmentScene, TownScene } from './scenes';
+import { ApartmentScene, CompanyScene, TownScene, UniversityScene } from './scenes';
 
 export let game: Phaser.Game | null = null;
 
@@ -21,7 +21,7 @@ export function GameCanvas() {
       input: { keyboard: true, mouse: { preventDefaultWheel: false } },
       audio: { noAudio: true },
       banner: false,
-      scene: [TownScene, ApartmentScene],
+      scene: [TownScene, ApartmentScene, CompanyScene, UniversityScene],
     });
     game.canvas?.setAttribute(
       'aria-label',
@@ -37,7 +37,7 @@ export function GameCanvas() {
     if (!game) return;
     const switchScene = () => {
       if (!game) return;
-      const target = roomKind === 'town' ? 'town' : 'apartment';
+      const target = roomKind;
       const activeScenes = game.scene.getScenes(true);
       const isTargetActive = activeScenes.some((s) => s.scene.key === target);
       if (isTargetActive) return;

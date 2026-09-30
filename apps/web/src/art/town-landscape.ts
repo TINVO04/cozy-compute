@@ -255,7 +255,513 @@ const SIGNS: Record<string, string> = {
   fishing_shop: 'NGƯ CỤ BÁC BA',
 };
 
+/**
+ * Paints the authentic VietProDev modern 3-story townhouse headquarters,
+ * matching real-world architectural facade:
+ * - Warm sand-beige / cream columns & walls
+ * - 3rd floor / attic horizontal slate louvers & rooftop greens
+ * - 2nd floor modern glass window, chrome/glass balcony railing
+ * - Characteristic terracotta / warm wood louvers directly under the 2nd floor balcony
+ * - Vietnamese national red flag with yellow star mounted on balcony
+ * - Large white signboard: "CÔNG TY TNHH PHẦN MỀM" + tree logo + "Viet" (charcoal) "Pro" (green) "Dev" (blue)
+ * - 3 service pillars: "DỰ ÁN PHẦN MỀM · ĐÀO TẠO · CLOUD & AI"
+ * - Deep navy blue info strip at the bottom of the sign
+ * - Dark scalloped / ripple awning canopy over the entrance
+ * - Ground floor modern glass sliding doors with chrome handles and entrance step
+ */
+function paintVietProDevTownhouse(b: Building): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = b.rect.w + 8; // 168
+  canvas.height = b.rect.h + BUILDING_ROOF; // 192
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  const w = b.rect.w; // 160
+  const bottom = canvas.height - 2; // 190
+
+  // 0. Base ground shadow
+  rect(ctx, 'rgba(54, 48, 36, 0.25)', 4, bottom - 6, w + 4, 8);
+
+  // 1. Structural Townhouse Backdrop (Beige cream center with slate grey flanking columns)
+  rect(ctx, '#64748b', 4, 12, 18, bottom - 12);
+  rect(ctx, '#475569', 20, 12, 2, bottom - 12);
+  rect(ctx, '#64748b', w - 14, 12, 18, bottom - 12);
+  rect(ctx, '#334155', w - 16, 12, 2, bottom - 12);
+
+  // Main townhouse body (Warm beige / sand cream)
+  rect(ctx, '#f5efe6', 22, 10, w - 38, bottom - 10);
+  rect(ctx, '#ede5d8', 22, 10, 4, bottom - 10);
+  rect(ctx, '#e4dcd0', w - 26, 10, 4, bottom - 10);
+
+  // 2. FLOOR 3 / ATTIC & ROOF TERRACE (y: 10 to 60)
+  for (let px = 28; px < w - 24; px += 14) {
+    oval(ctx, '#15803d', px + 2, 8, 5, 5);
+    oval(ctx, '#22c55e', px + 5, 6, 4, 4);
+    rect(ctx, '#a15238', px + 1, 10, 7, 4);
+  }
+
+  // Attic center block with modern horizontal slate louvers
+  const atticX = 46;
+  const atticW = w - 84; // 76px
+  const atticY = 14;
+  const atticH = 46;
+  rect(ctx, '#e8dfd5', atticX - 3, atticY - 2, atticW + 6, atticH + 4);
+  rect(ctx, '#334155', atticX, atticY, atticW, atticH);
+  for (let ly = atticY + 4; ly < atticY + atticH - 2; ly += 5) {
+    rect(ctx, '#1e293b', atticX + 2, ly, atticW - 4, 2);
+    rect(ctx, '#475569', atticX + 2, ly + 2, atticW - 4, 1);
+  }
+  rect(ctx, '#d6cbbe', atticX - 4, atticY - 3, atticW + 8, 3);
+
+  // Side balconies / window cutouts on Floor 3
+  rect(ctx, '#94a3b8', 26, 26, 16, 28);
+  rect(ctx, '#ffffff', 28, 28, 12, 24);
+  rect(ctx, '#e2e8f0', 29, 29, 10, 22);
+  rect(ctx, '#cbd5e1', 26, 48, 16, 6);
+
+  rect(ctx, '#94a3b8', w - 42, 26, 16, 28);
+  rect(ctx, '#ffffff', w - 40, 28, 12, 24);
+  rect(ctx, '#e2e8f0', w - 39, 29, 10, 22);
+  rect(ctx, '#cbd5e1', w - 42, 48, 16, 6);
+
+  // 3. FLOOR 2 (y: 60 to 118)
+  rect(ctx, '#dfd5c6', 22, 60, w - 38, 4);
+
+  const f2WinX = 38;
+  const f2WinW = w - 68; // 92px
+  const f2WinY = 64;
+  const f2WinH = 34;
+
+  rect(ctx, '#cbd5e1', f2WinX, f2WinY, f2WinW, f2WinH);
+  rect(ctx, '#ffffff', f2WinX + 2, f2WinY + 2, f2WinW - 4, f2WinH - 4);
+  rect(ctx, '#f1f5f9', f2WinX + 4, f2WinY + 4, f2WinW - 8, f2WinH - 8);
+  for (let bx = f2WinX + 8; bx < f2WinX + f2WinW - 8; bx += 14) {
+    rect(ctx, '#e2e8f0', bx, f2WinY + 4, 10, f2WinH - 8);
+    rect(ctx, '#ffffff', bx + 2, f2WinY + 5, 6, 4);
+  }
+  rect(ctx, '#cbd5e1', f2WinX + Math.floor(f2WinW / 3), f2WinY + 2, 2, f2WinH - 4);
+  rect(ctx, '#cbd5e1', f2WinX + Math.floor((f2WinW * 2) / 3), f2WinY + 2, 2, f2WinH - 4);
+
+  // Modern glass & stainless steel balcony railing
+  const railX = f2WinX - 2;
+  const railW = f2WinW + 4;
+  const railY = f2WinY + 22;
+  const railH = 14;
+  rect(ctx, 'rgba(224, 242, 254, 0.75)', railX, railY, railW, railH);
+  rect(ctx, '#e2e8f0', railX - 1, railY, railW + 2, 2);
+  rect(ctx, '#94a3b8', railX, railY + railH - 2, railW, 2);
+  for (let rx = railX + 4; rx <= railX + railW - 4; rx += 20) {
+    rect(ctx, '#cbd5e1', rx, railY, 2, railH);
+  }
+
+  // --- KEY ARCHITECTURAL FEATURE: TERRACOTTA / WOODEN SLATS (Lam gỗ đỏ) ---
+  const slatX = f2WinX - 1;
+  const slatW = f2WinW + 2;
+  const slatY = railY + railH + 2;
+  const slatH = 16;
+  rect(ctx, '#7c2d12', slatX - 1, slatY - 1, slatW + 2, slatH + 2);
+  rect(ctx, '#431407', slatX, slatY, slatW, slatH);
+  for (let lx = slatX + 2; lx < slatX + slatW - 2; lx += 4) {
+    rect(ctx, '#b45309', lx, slatY, 2, slatH);
+    rect(ctx, '#d97706', lx, slatY, 1, slatH);
+  }
+
+  // --- VIETNAM NATIONAL FLAG (Cờ đỏ sao vàng) on Floor 2 ---
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(slatX + 8, slatY + 12);
+  ctx.lineTo(slatX - 4, slatY - 4);
+  ctx.stroke();
+  const flagX = slatX - 16;
+  const flagY = slatY - 10;
+  rect(ctx, '#dc2626', flagX, flagY, 13, 9);
+  rect(ctx, '#b91c1c', flagX, flagY + 8, 13, 1);
+  rect(ctx, '#facc15', flagX + 4, flagY + 2, 5, 5);
+  rect(ctx, '#fde047', flagX + 5, flagY + 3, 3, 3);
+
+  // 4. SIGNBOARD (Biển hiệu VietProDev Nền Trắng Sáng Chuẩn 100% Theo Ảnh Thực Tế)
+  const signX = 8;
+  const signW = w - 8; // 152px
+  const signY = 118;
+  const signH = 34;
+
+  rect(ctx, 'rgba(0, 0, 0, 0.25)', signX - 1, signY - 1, signW + 2, signH + 4);
+  rect(ctx, '#cbd5e1', signX - 1, signY - 1, signW + 2, signH + 2);
+  rect(ctx, '#ffffff', signX, signY, signW, signH);
+
+  // 4.1 Top line: "CÔNG TY TNHH PHẦN MỀM"
+  ctx.font = '700 6px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#1e3a8a';
+  ctx.fillText('CÔNG TY TNHH PHẦN MỀM', signX + signW / 2 + 10, signY + 3);
+
+  // 4.2 Tree logo on the left of "VietProDev"
+  const logoPx = signX + 12;
+  const logoPy = signY + 14;
+  rect(ctx, '#16a34a', logoPx + 4, logoPy + 2, 2, 8);
+  rect(ctx, '#22c55e', logoPx + 2, logoPy + 1, 6, 2);
+  rect(ctx, '#16a34a', logoPx, logoPy + 3, 10, 2);
+  rect(ctx, '#15803d', logoPx + 2, logoPy + 5, 6, 2);
+
+  // 4.3 MAIN LOGO: "Viet" (Charcoal), "Pro" (Green), "Dev" (Blue)
+  const brandY = signY + 11;
+  const centerX = signX + signW / 2 + 8;
+  ctx.font = '800 13px "Inter", "Segoe UI", sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#1e293b';
+  ctx.fillText('Viet', centerX - 8, brandY);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#16a34a';
+  ctx.fillText('Pro', centerX + 4, brandY);
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#1d4ed8';
+  ctx.fillText('Dev', centerX + 16, brandY);
+
+  // 4.4 3 Pillars underneath
+  ctx.font = '600 5px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#475569';
+  ctx.fillText('DỰ ÁN PHẦN MỀM  ·  ĐÀO TẠO  ·  CLOUD & AI', signX + signW / 2, signY + 23);
+
+  // 4.5 Bottom blue band: info & website
+  rect(ctx, '#1e40af', signX, signY + signH - 5, signW, 5);
+  ctx.font = '700 4px sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('BIÊN HÒA, ĐỒNG NAI  ·  VIETPRODEV.VN', signX + signW / 2, signY + signH - 4.5);
+
+  // 5. GROUND FLOOR AWNING (Mái hiên di động lượn sóng màu than đen)
+  const awnX = signX - 2;
+  const awnW = signW + 4;
+  const awnY = signY + signH;
+  const awnH = 12;
+
+  // Additional red flag at ground floor entrance
+  rect(ctx, '#dc2626', 14, awnY + 8, 8, 6);
+  rect(ctx, '#facc15', 16, awnY + 10, 3, 2);
+
+  // 6. GROUND FLOOR ENTRANCE & GLASS DOORS (y: 160 to bottom)
+  const gy = awnY + awnH - 2;
+  const gh = bottom - gy;
+  rect(ctx, '#f1ede4', 22, gy, w - 38, gh);
+  rect(ctx, '#e4dcd0', 22, gy, 4, gh);
+  rect(ctx, '#e4dcd0', w - 26, gy, 4, gh);
+
+  const doorX = 4 + b.door.x * TILE - b.rect.x; // 36
+  const doorW = b.door.w * TILE; // 64
+  const dy = bottom - 34;
+
+  rect(ctx, '#cbd5e1', doorX + 4, dy - 2, doorW - 8, 36);
+  rect(ctx, '#94a3b8', doorX + 6, dy, doorW - 12, 34);
+
+  const halfW = (doorW - 16) / 2;
+  rect(ctx, '#e0f2fe', doorX + 7, dy + 1, halfW, 32);
+  rect(ctx, '#bae6fd', doorX + 9, dy + 3, halfW - 4, 16);
+  rect(ctx, 'rgba(255, 255, 255, 0.7)', doorX + 11, dy + 4, 4, 26);
+  rect(ctx, '#e2e8f0', doorX + 7 + halfW - 3, dy + 10, 2, 14);
+
+  rect(ctx, '#e0f2fe', doorX + 9 + halfW, dy + 1, halfW, 32);
+  rect(ctx, '#bae6fd', doorX + 11 + halfW, dy + 3, halfW - 4, 16);
+  rect(ctx, 'rgba(255, 255, 255, 0.7)', doorX + 13 + halfW, dy + 4, 4, 26);
+  rect(ctx, '#e2e8f0', doorX + 9 + halfW + 1, dy + 10, 2, 14);
+
+  rect(ctx, '#cbd5e1', doorX + 2, bottom - 4, doorW - 4, 4);
+  rect(ctx, '#f8fafc', doorX + 4, bottom - 4, doorW - 8, 1);
+
+  // The canopy sits in front of the glass doors, not behind them.
+  rect(ctx, '#0f172a', awnX, awnY, awnW, 3);
+  rect(ctx, '#1e293b', awnX, awnY + 2, awnW, awnH - 4);
+  for (let wx = awnX; wx < awnX + awnW; wx += 6) {
+    rect(ctx, '#334155', wx, awnY + 2, 4, awnH - 4);
+    rect(ctx, '#0f172a', wx + 4, awnY + 2, 2, awnH - 4);
+    rect(ctx, '#1e293b', wx, awnY + awnH - 2, 5, 2);
+  }
+  rect(ctx, 'rgba(0, 0, 0, 0.35)', awnX, awnY + awnH, awnW, 3);
+
+  return canvas;
+}
+
+/**
+ * Paints Dong Nai Technology University (DNTU) grand Indochine campus building,
+ * matching real-world architectural facade:
+ * - Traditional Vietnamese multi-tiered terracotta red tile roof with central triangular dormer pediment
+ * - Flanking roof gables with round attic arched windows
+ * - Upper floors in warm French Indochine cream yellow with dark brown multi-pane windows and white balustrades
+ * - Ground floor in bold terracotta-red with 5 monumental Roman/Indochine arched entrance gates
+ * - 3 Flagpoles in front of central arch: Vietnam National Flag flanked by DNTU flags
+ * - Grand polished granite campus monument engraved: "ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI"
+ * - Manicured conical topiaries and palm greenery flanking the colonnade
+ */
+function paintDntuBuilding(b: Building): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = b.rect.w + 8; // 200
+  canvas.height = b.rect.h + BUILDING_ROOF; // 192
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  const w = b.rect.w; // 192
+  const bottom = canvas.height - 2; // 190
+
+  // 0. Base ground shadow
+  rect(ctx, 'rgba(54, 48, 36, 0.28)', 4, bottom - 6, w + 4, 8);
+
+  // 1. Structural Backdrop & Wall Base (French Indochine Cream Yellow upper body)
+  rect(ctx, '#fef3c7', 6, 44, w - 8, bottom - 44);
+  rect(ctx, '#fde68a', 6, 44, 6, bottom - 44);
+  rect(ctx, '#fde68a', w - 12, 44, 6, bottom - 44);
+
+  // 2. ROOF (Terracotta Red Multi-tiered Hip & Gable Roof - y: 8..54)
+  rect(ctx, '#7f1d1d', 2, 28, w, 24);
+  rect(ctx, '#c2410c', 4, 30, w - 4, 20);
+  for (let ry = 32; ry < 50; ry += 4) {
+    rect(ctx, '#9a3412', 4, ry, w - 4, 2);
+    rect(ctx, '#ea580c', 4, ry + 2, w - 4, 1);
+  }
+  rect(ctx, '#431407', 0, 50, w + 4, 4);
+  rect(ctx, '#fffbeb', 2, 53, w, 2);
+
+  // Dormers with round attic windows across the wide roof
+  function drawDormer(dx: number) {
+    rect(ctx, '#7f1d1d', dx, 20, 24, 28);
+    rect(ctx, '#c2410c', dx + 2, 22, 20, 24);
+    rect(ctx, '#fef3c7', dx + 4, 32, 16, 14);
+    oval(ctx, '#1c1917', dx + 12, 38, 5, 5);
+    oval(ctx, '#e0f2fe', dx + 12, 38, 4, 4);
+    rect(ctx, '#1c1917', dx + 11, 34, 2, 8);
+    rect(ctx, '#1c1917', dx + 8, 37, 8, 2);
+  }
+  // Symmetrical dormers on left and right wings
+  drawDormer(28);
+  drawDormer(92);
+  drawDormer(w - 116);
+  drawDormer(w - 52);
+
+  // Central Grand Triangular Pediment Dormer (Mái dốc tam giác trung tâm - y: 8..36)
+  const pedX = w / 2; // 176
+  ctx.fillStyle = '#7f1d1d';
+  ctx.beginPath();
+  ctx.moveTo(pedX, 6);
+  ctx.lineTo(pedX - 44, 38);
+  ctx.lineTo(pedX + 44, 38);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#c2410c';
+  ctx.beginPath();
+  ctx.moveTo(pedX, 9);
+  ctx.lineTo(pedX - 40, 36);
+  ctx.lineTo(pedX + 40, 36);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#fef3c7';
+  ctx.beginPath();
+  ctx.moveTo(pedX, 16);
+  ctx.lineTo(pedX - 26, 35);
+  ctx.lineTo(pedX + 26, 35);
+  ctx.closePath();
+  ctx.fill();
+
+  rect(ctx, '#7c2d12', pedX - 16, 26, 32, 8);
+  for (let vx = pedX - 14; vx <= pedX + 14; vx += 4) {
+    rect(ctx, '#fef3c7', vx, 27, 2, 6);
+  }
+
+  // 3. UPPER FLOORS: TẦNG 2 & 3 (y: 54..112)
+  const colXs = [12, 44, 76, 108, 140, 172, 204, 236, 268, 300, w - 12];
+  for (const cx of colXs) {
+    rect(ctx, '#b91c1c', cx - 2, 54, 4, 58);
+    rect(ctx, '#991b1b', cx - 2, 54, 1, 58);
+  }
+
+  for (let bay = 0; bay < colXs.length - 1; bay++) {
+    const c1 = colXs[bay] ?? 12;
+    const c2 = colXs[bay + 1] ?? 44;
+    const wx = c1 + 5;
+    const ww = c2 - c1 - 10;
+
+    // Floor 3 Window
+    rect(ctx, '#1c1917', wx, 58, ww, 18);
+    rect(ctx, '#e0f2fe', wx + 1, 59, ww - 2, 16);
+    for (let wy = 61; wy < 74; wy += 4) {
+      rect(ctx, '#1c1917', wx + 1, wy, ww - 2, 1);
+    }
+
+    // Floor 2 Window with white balustrade
+    rect(ctx, '#1c1917', wx, 82, ww, 22);
+    rect(ctx, '#e0f2fe', wx + 1, 83, ww - 2, 20);
+    for (let wy = 85; wy < 100; wy += 4) {
+      rect(ctx, '#1c1917', wx + 1, wy, ww - 2, 1);
+    }
+    rect(ctx, '#ffffff', wx - 1, 98, ww + 2, 6);
+    for (let bx = wx + 1; bx < wx + ww; bx += 3) {
+      rect(ctx, '#cbd5e1', bx, 99, 1, 5);
+    }
+  }
+
+  rect(ctx, '#ffffff', 6, 110, w - 8, 4);
+  rect(ctx, '#fef3c7', 6, 113, w - 8, 2);
+
+  // 4. GROUND FLOOR: MONUMENTAL RED ARCHED COLONNADE (y: 114..186)
+  rect(ctx, '#b91c1c', 6, 114, w - 8, bottom - 116);
+  rect(ctx, '#991b1b', 6, 114, 4, bottom - 116);
+  rect(ctx, '#7f1d1d', w - 10, 114, 4, bottom - 116);
+
+  const arches = [
+    { x: pedX - 150, w: 32, h: 48, topH: 12 },
+    { x: pedX - 110, w: 32, h: 48, topH: 12 },
+    { x: pedX - 70, w: 32, h: 48, topH: 12 },
+    { x: pedX - 30, w: 60, h: 58, topH: 16 }, // Grand central entrance
+    { x: pedX + 38, w: 32, h: 48, topH: 12 },
+    { x: pedX + 78, w: 32, h: 48, topH: 12 },
+    { x: pedX + 118, w: 32, h: 48, topH: 12 },
+  ];
+
+  for (const a of arches) {
+    const ay = bottom - a.h - 6;
+
+    rect(ctx, '#450a0a', a.x, ay, a.w, a.h);
+
+    ctx.fillStyle = '#450a0a';
+    ctx.beginPath();
+    ctx.arc(a.x + a.w / 2, ay + a.topH, a.w / 2, Math.PI, 0);
+    ctx.fill();
+
+    rect(ctx, 'rgba(254, 240, 138, 0.45)', a.x + 3, ay + a.topH, a.w - 6, a.h - a.topH - 4);
+    rect(ctx, '#e0f2fe', a.x + 4, ay + a.topH + 4, a.w - 8, a.h - a.topH - 12);
+    rect(ctx, 'rgba(255, 255, 255, 0.6)', a.x + 6, ay + a.topH + 6, 3, a.h - a.topH - 16);
+
+    ctx.strokeStyle = '#fef3c7';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(a.x + a.w / 2, ay + a.topH, a.w / 2, Math.PI, 0);
+    ctx.stroke();
+    rect(ctx, '#fef3c7', a.x - 1, ay + a.topH, 2, a.h - a.topH);
+    rect(ctx, '#fef3c7', a.x + a.w - 1, ay + a.topH, 2, a.h - a.topH);
+    rect(ctx, '#ffffff', a.x + a.w / 2 - 2, ay - 2, 4, 4);
+  }
+
+  // Central Entrance Double Doors inside Central Arch
+  const cDoorX = pedX - 16;
+  const cDoorW = 32;
+  const cDoorY = bottom - 36;
+  rect(ctx, '#1c1917', cDoorX, cDoorY, cDoorW, 30);
+  rect(ctx, '#e0f2fe', cDoorX + 2, cDoorY + 2, cDoorW / 2 - 3, 26);
+  rect(ctx, '#e0f2fe', cDoorX + cDoorW / 2 + 1, cDoorY + 2, cDoorW / 2 - 3, 26);
+  rect(ctx, '#e2e8f0', cDoorX + cDoorW / 2 - 2, cDoorY + 10, 1, 10);
+  rect(ctx, '#e2e8f0', cDoorX + cDoorW / 2 + 1, cDoorY + 10, 1, 10);
+
+  // Grand Entrance Steps (Polished stone stairs)
+  rect(ctx, '#d4af37', pedX - 38, bottom - 6, 76, 4);
+  rect(ctx, '#fef08a', pedX - 36, bottom - 4, 72, 2);
+
+  // 5. 3 FLAGPOLES IN FRONT OF MAIN ARCH (y: 90..130)
+  // Left Flag: DNTU Flag
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pedX - 16, 126);
+  ctx.lineTo(pedX - 16, 96);
+  ctx.stroke();
+  rect(ctx, '#ffffff', pedX - 27, 98, 11, 7);
+  rect(ctx, '#b91c1c', pedX - 23, 100, 3, 4);
+
+  // Center Flag: Vietnam National Flag
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(pedX, 126);
+  ctx.lineTo(pedX, 90);
+  ctx.stroke();
+  rect(ctx, '#dc2626', pedX + 1, 91, 14, 9);
+  rect(ctx, '#b91c1c', pedX + 1, 99, 14, 1);
+  rect(ctx, '#facc15', pedX + 5, 93, 5, 5);
+  rect(ctx, '#fde047', pedX + 6, 94, 3, 3);
+
+  // Right Flag: DNTU Flag
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pedX + 16, 126);
+  ctx.lineTo(pedX + 16, 96);
+  ctx.stroke();
+  rect(ctx, '#ffffff', pedX + 16, 98, 11, 7);
+  rect(ctx, '#b91c1c', pedX + 20, 100, 3, 4);
+
+  // 6. TOP UNIVERSITY TITLE ON ARCH LEVEL
+  const signW = 160;
+  const signX = pedX - signW / 2;
+  rect(ctx, '#991b1b', signX, 118, signW, 14);
+  rect(ctx, '#7f1d1d', signX, 118, signW, 1);
+  rect(ctx, '#fef08a', signX + 1, 119, signW - 2, 12);
+  ctx.font = '800 7px "Inter", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#b91c1c';
+  ctx.fillText('TRƯỜNG ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', pedX, 125, signW - 8);
+
+  // 7. GRAND CAMPUS STONE MONUMENT (Bia Đá Cổng Trường - y: 168..188)
+  const monW = 120;
+  const monX = pedX - monW / 2;
+  const monY = bottom - 20;
+  const monH = 18;
+
+  rect(ctx, 'rgba(0, 0, 0, 0.25)', monX - 2, monY - 1, monW + 4, monH + 3);
+  rect(ctx, '#d4af37', monX - 1, monY - 1, monW + 2, monH + 2);
+  rect(ctx, '#fef08a', monX, monY, monW, monH);
+
+  ctx.font = '800 6px "Inter", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#991b1b';
+  ctx.fillText('ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', pedX, monY + 2.5, monW - 8);
+
+  ctx.font = '600 4.5px sans-serif';
+  ctx.fillStyle = '#78350f';
+  ctx.fillText('DONG NAI TECHNOLOGY UNIVERSITY', pedX, monY + 9, monW - 8);
+
+  rect(ctx, '#991b1b', monX + 2, monY + monH - 4, monW - 4, 3);
+  ctx.font = '700 3.5px sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('TRUNG THÀNH · TRÁCH NHIỆM · SÁNG TẠO', pedX, monY + monH - 3.5, monW - 8);
+
+  // 8. MANICURED CONICAL TOPIARIES & PALM GREENERY
+  function drawCampusTopiary(tx: number, ty: number) {
+    rect(ctx, '#7f1d1d', tx + 2, ty + 10, 8, 8);
+    rect(ctx, '#b91c1c', tx + 3, ty + 11, 6, 6);
+    ctx.fillStyle = '#15803d';
+    ctx.beginPath();
+    ctx.moveTo(tx + 6, ty);
+    ctx.lineTo(tx, ty + 11);
+    ctx.lineTo(tx + 12, ty + 11);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#22c55e';
+    ctx.beginPath();
+    ctx.moveTo(tx + 6, ty + 2);
+    ctx.lineTo(tx + 2, ty + 10);
+    ctx.lineTo(tx + 10, ty + 10);
+    ctx.closePath();
+    ctx.fill();
+  }
+  drawCampusTopiary(pedX - 52, bottom - 24);
+  drawCampusTopiary(pedX + 42, bottom - 24);
+  drawCampusTopiary(50, bottom - 24);
+  drawCampusTopiary(w - 60, bottom - 24);
+
+  return canvas;
+}
+
 export function paintBuilding(b: Building): HTMLCanvasElement {
+  if (b.id === 'vietprodev') {
+    return paintVietProDevTownhouse(b);
+  }
+  if (b.id === 'dntu') {
+    return paintDntuBuilding(b);
+  }
   const canvas = document.createElement('canvas');
   canvas.width = b.rect.w + 8;
   canvas.height = b.rect.h + BUILDING_ROOF;
