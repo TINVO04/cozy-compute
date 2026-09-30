@@ -179,24 +179,17 @@ export function FishingActivity() {
         biteInMs: number;
         reactionWindowMs: number;
         shadowTier?: FishShadowTier;
-        nibbleCount?: number;
-        shadowDelayMs?: number;
+        nibbleCount: number;
+        nibbleOffsetsMs: number[];
+        nibbleOrbitTurns: number[];
+        shadowDelayMs: number;
         equippedRod?: RodConfig;
       }>('/activities/fishing/start', { body: {} });
 
       const now = Date.now();
       const biteAt = now + r.biteInMs;
-      const nibbleCount = r.nibbleCount ?? 4 + Math.floor(Math.random() * 5);
-      const shadowDelayMs = r.shadowDelayMs ?? 7000 + Math.floor(Math.random() * 5001);
-      const nibbleTimes: number[] = [];
-
-      // Shadow appears after 7-12s, swims in (~2.2s), then 4-8 nibbles before bite
-      const startNibble = now + shadowDelayMs + 2200;
-      const endNibble = biteAt - 400;
-      const step = (endNibble - startNibble) / Math.max(1, nibbleCount);
-      for (let i = 0; i < nibbleCount; i++) {
-        nibbleTimes.push(Math.round(startNibble + i * step));
-      }
+      const { nibbleCount, shadowDelayMs, nibbleOrbitTurns } = r;
+      const nibbleTimes = r.nibbleOffsetsMs.map((offsetMs) => now + offsetMs);
 
       const equippedRod = r.equippedRod ?? FISHING_RODS['rod_twig']!;
       const shadowTier = r.shadowTier ?? 1;
@@ -214,7 +207,8 @@ export function FishingActivity() {
         shadowDelayMs,
         equippedRodId: equippedRod.id,
         nibbleCount,
-        nibbleTimes,
+        nibbleOffsetsMs: r.nibbleOffsetsMs,
+        nibbleOrbitTurns,
       });
 
       townFishingController?.startCast({
@@ -223,6 +217,7 @@ export function FishingActivity() {
         shadowTier,
         nibbleCount,
         nibbleTimes,
+        nibbleOrbitTurns,
         biteInMs: r.biteInMs,
         shadowDelayMs,
         equippedRod,

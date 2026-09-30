@@ -68,6 +68,35 @@ describe('auth', () => {
 });
 
 describe('fishing', () => {
+  it('keeps the longest nibble sequence valid through the catch window', async () => {
+    const p = await register(h);
+    at(p.id, 'pier');
+    const originalRng = h.ctx.rng;
+    h.ctx.rng = () => 0.999999;
+    let start;
+    try {
+      start = await api(h, 'POST', '/activities/fishing/start', { token: p.token });
+    } finally {
+      h.ctx.rng = originalRng;
+    }
+    expect(start.status).toBe(200);
+    expect(start.body.nibbleCount).toBe(8);
+    expect(start.body.nibbleOffsetsMs).toHaveLength(8);
+    expect(start.body.nibbleOrbitTurns).toHaveLength(8);
+    expect(start.body.biteInMs).toBe(57560);
+    const latestReactionMs = start.body.reactionWindowMs + 2000 + 400;
+    expect(Date.parse(start.body.expiresAt) - Date.parse(start.body.startedAt)).toBeGreaterThan(
+      start.body.biteInMs + latestReactionMs,
+    );
+    h.clock.now += start.body.biteInMs + latestReactionMs;
+    const done = await api(h, 'POST', '/activities/fishing/complete', {
+      token: p.token,
+      body: { runId: start.body.runId, nonce: start.body.nonce },
+    });
+    expect(done.status).toBe(200);
+    expect(done.body.outcome).toBe('caught');
+  });
+
   it('requires being at the pier', async () => {
     const p = await register(h);
     expect((await api(h, 'POST', '/activities/fishing/start', { token: p.token })).body.error.code).toBe(

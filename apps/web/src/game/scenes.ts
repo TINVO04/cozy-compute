@@ -346,6 +346,8 @@ export class TownScene extends WorldScene {
         equippedRodId?: string;
         nibbleCount?: number;
         nibbleTimes?: number[];
+        nibbleOffsetsMs?: number[];
+        nibbleOrbitTurns?: number[];
       }) => {
         if (!msg?.sessionId) return;
         this.remoteFishingControllers.get(msg.sessionId)?.cleanup();
@@ -358,7 +360,8 @@ export class TownScene extends WorldScene {
           selfY: msg.selfY,
           shadowTier: msg.shadowTier ?? 1,
           nibbleCount: msg.nibbleCount ?? 5,
-          nibbleTimes: msg.nibbleTimes ?? [],
+          nibbleTimes: msg.nibbleOffsetsMs?.map((offsetMs) => Date.now() + offsetMs) ?? msg.nibbleTimes ?? [],
+          nibbleOrbitTurns: msg.nibbleOrbitTurns,
           biteInMs: msg.biteInMs ?? 15000,
           shadowDelayMs: msg.shadowDelayMs ?? 8000,
           equippedRod,
