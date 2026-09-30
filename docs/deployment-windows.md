@@ -47,6 +47,8 @@ Trong Cloudflare, chọn đúng account chứa `devtizo.vip` và Tunnel đang ch
 
 Deploy production cần code đã commit và checkout sạch. Không sửa trực tiếp release đang chạy. Nếu release mới lỗi, script kích hoạt lại release đã chạy trước đó; migration database không tự đảo ngược. Backup nằm ngoài release. Người chơi có thể mất kết nối khi đổi phiên bản và cần tải lại web.
 
+Chạy lại deploy của commit đã thành công sẽ kiểm tra/kích hoạt release đó và xác minh domain, không build lại hoặc tạo thêm migration.
+
 Sau lần deploy đầu tiên, có thể cài task tự bật khi đăng nhập Windows và backup mỗi ngày lúc 03:00:
 
 ```powershell

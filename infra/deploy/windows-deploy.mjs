@@ -98,6 +98,13 @@ export async function deployWindows({ source = process.cwd(), local = false } = 
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }
+    if (!local && previous?.version === version) {
+      const runtime = await startSupervisor(config);
+      if (runtime.version !== version) await control(config, '/activate', { version });
+      await ready(`https://${config.values.GAME_DOMAIN}`, version);
+      console.log(`Release ${version} is already deployed and publicly healthy.`);
+      return;
+    }
     try {
       await lstat(release);
       throw new Error('Release already exists; restore it through the supervisor.');
