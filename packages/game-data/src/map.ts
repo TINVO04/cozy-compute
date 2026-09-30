@@ -333,6 +333,7 @@ export const DNTU_ROWS = 11;
 export const DNTU_SPAWN = { x: 8 * TILE, y: 9.5 * TILE };
 export const DNTU_BLOCKERS: Rect[] = [
   t(0, 0, DNTU_COLS, 2), // North stage wall with Smart Board & stage
+  t(7.5, 2, 1, 0.6), // Podium extends below the back wall; keep the side aisle open.
   t(3, 4, 10, 3), // Central smart lecture hall desk row & computer lab
   t(1, 1, 2, 3), // Digital library shelf in top-left
   t(13, 1, 2, 3), // Awards & accreditation showcase in top-right

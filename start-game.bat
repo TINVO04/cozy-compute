@@ -98,7 +98,7 @@ echo.
 echo   (Nhan Ctrl+C de dung game, hoac chay stop-game.bat)
 echo ========================================================
 
-start /b "" cmd /c "ping -n 4 127.0.0.1 > nul & start http://localhost:5173"
+start /b "" powershell -NoProfile -WindowStyle Hidden -File "%~dp0infra\open-dev-browser.ps1"
 pnpm dev
 goto :eof
 

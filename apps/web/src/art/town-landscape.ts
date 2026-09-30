@@ -253,8 +253,6 @@ const SIGNS: Record<string, string> = {
   apartments: 'CHUNG CƯ',
   delivery: 'BƯU TRẠM',
   fishing_shop: 'NGƯ CỤ BÁC BA',
-  vietprodev: 'VIETPRODEV',
-  dntu: 'ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI',
 };
 
 /**
@@ -441,15 +439,6 @@ function paintVietProDevTownhouse(b: Building): HTMLCanvasElement {
   const awnY = signY + signH;
   const awnH = 12;
 
-  rect(ctx, '#0f172a', awnX, awnY, awnW, 3);
-  rect(ctx, '#1e293b', awnX, awnY + 2, awnW, awnH - 4);
-  for (let wx = awnX; wx < awnX + awnW; wx += 6) {
-    rect(ctx, '#334155', wx, awnY + 2, 4, awnH - 4);
-    rect(ctx, '#0f172a', wx + 4, awnY + 2, 2, awnH - 4);
-    rect(ctx, '#1e293b', wx, awnY + awnH - 2, 5, 2);
-  }
-  rect(ctx, 'rgba(0, 0, 0, 0.35)', awnX, awnY + awnH, awnW, 3);
-
   // Additional red flag at ground floor entrance
   rect(ctx, '#dc2626', 14, awnY + 8, 8, 6);
   rect(ctx, '#facc15', 16, awnY + 10, 3, 2);
@@ -481,6 +470,16 @@ function paintVietProDevTownhouse(b: Building): HTMLCanvasElement {
 
   rect(ctx, '#cbd5e1', doorX + 2, bottom - 4, doorW - 4, 4);
   rect(ctx, '#f8fafc', doorX + 4, bottom - 4, doorW - 8, 1);
+
+  // The canopy sits in front of the glass doors, not behind them.
+  rect(ctx, '#0f172a', awnX, awnY, awnW, 3);
+  rect(ctx, '#1e293b', awnX, awnY + 2, awnW, awnH - 4);
+  for (let wx = awnX; wx < awnX + awnW; wx += 6) {
+    rect(ctx, '#334155', wx, awnY + 2, 4, awnH - 4);
+    rect(ctx, '#0f172a', wx + 4, awnY + 2, 2, awnH - 4);
+    rect(ctx, '#1e293b', wx, awnY + awnH - 2, 5, 2);
+  }
+  rect(ctx, 'rgba(0, 0, 0, 0.35)', awnX, awnY + awnH, awnW, 3);
 
   return canvas;
 }
@@ -612,9 +611,9 @@ function paintDntuBuilding(b: Building): HTMLCanvasElement {
   rect(ctx, '#7f1d1d', w - 10, 114, 4, bottom - 116);
 
   const arches = [
-    { x: 18, w: 32, h: 48, topH: 12 },
-    { x: 58, w: 32, h: 48, topH: 12 },
-    { x: 98, w: 32, h: 48, topH: 12 },
+    { x: pedX - 150, w: 32, h: 48, topH: 12 },
+    { x: pedX - 110, w: 32, h: 48, topH: 12 },
+    { x: pedX - 70, w: 32, h: 48, topH: 12 },
     { x: pedX - 30, w: 60, h: 58, topH: 16 }, // Grand central entrance
     { x: pedX + 38, w: 32, h: 48, topH: 12 },
     { x: pedX + 78, w: 32, h: 48, topH: 12 },
@@ -702,7 +701,7 @@ function paintDntuBuilding(b: Building): HTMLCanvasElement {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#b91c1c';
-  ctx.fillText('TRƯỜNG ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', pedX, 125);
+  ctx.fillText('TRƯỜNG ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', pedX, 125, signW - 8);
 
   // 7. GRAND CAMPUS STONE MONUMENT (Bia Đá Cổng Trường - y: 168..188)
   const monW = 120;
@@ -718,16 +717,16 @@ function paintDntuBuilding(b: Building): HTMLCanvasElement {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillStyle = '#991b1b';
-  ctx.fillText('ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', pedX, monY + 2.5);
+  ctx.fillText('ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', pedX, monY + 2.5, monW - 8);
 
   ctx.font = '600 4.5px sans-serif';
   ctx.fillStyle = '#78350f';
-  ctx.fillText('DONG NAI TECHNOLOGY UNIVERSITY', pedX, monY + 9);
+  ctx.fillText('DONG NAI TECHNOLOGY UNIVERSITY', pedX, monY + 9, monW - 8);
 
   rect(ctx, '#991b1b', monX + 2, monY + monH - 4, monW - 4, 3);
   ctx.font = '700 3.5px sans-serif';
   ctx.fillStyle = '#ffffff';
-  ctx.fillText('TRUNG THÀNH · TRÁCH NHIỆM · SÁNG TẠO', pedX, monY + monH - 3.5);
+  ctx.fillText('TRUNG THÀNH · TRÁCH NHIỆM · SÁNG TẠO', pedX, monY + monH - 3.5, monW - 8);
 
   // 8. MANICURED CONICAL TOPIARIES & PALM GREENERY
   function drawCampusTopiary(tx: number, ty: number) {

@@ -852,6 +852,7 @@ export class CompanyScene extends InteriorScene {
 }
 
 export class UniversityScene extends InteriorScene {
+  private welcomeShown = false;
   private personContainers = new Map<string, Phaser.GameObjects.Container>();
 
   constructor() {
@@ -929,9 +930,10 @@ export class UniversityScene extends InteriorScene {
     // 2b. Auto-welcome quote when entering university: Thầy Tân welcomes player!
     const thayTan = DNTU_PEOPLE.find((p) => p.id === 'thay_tan');
     const thayTanContainer = this.personContainers.get('thay_tan');
-    if (thayTan && thayTanContainer) {
+    if (thayTan && thayTanContainer && !this.welcomeShown) {
       this.time.delayedCall(500, () => {
         if (this.activeBubble || this.exiting) return;
+        this.welcomeShown = true;
         this.showPersonDialogue(thayTan, thayTanContainer);
       });
     }
