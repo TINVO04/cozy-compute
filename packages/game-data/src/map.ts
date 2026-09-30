@@ -29,7 +29,8 @@ export type ZoneId =
   | 'events'
   | 'ai_kiosk'
   | 'pier'
-  | 'fishing_shop';
+  | 'fishing_shop'
+  | 'vietprodev';
 
 export interface Zone {
   id: ZoneId;
@@ -58,6 +59,15 @@ export const BUILDINGS: Building[] = [
     roof: 0xb4553f,
     accent: 0x6b3b2a,
     door: { x: 6, w: 2 },
+  },
+  {
+    id: 'vietprodev',
+    label: 'Công Ty Công Nghệ VietProDev',
+    rect: t(11, 3, 5, 5),
+    wall: 0x222831,
+    roof: 0x0f172a,
+    accent: 0x0ea5e9,
+    door: { x: 12, w: 2 },
   },
   {
     id: 'fashion',
@@ -114,6 +124,12 @@ export const ZONES: Zone[] = [
     rect: t(4, 8, 6, 2),
   },
   {
+    id: 'vietprodev',
+    label: 'Công Ty VietProDev',
+    prompt: 'Bước vào văn phòng công ty',
+    rect: t(11, 8, 5, 2),
+  },
+  {
     id: 'fashion',
     label: 'Tiệm Thời Trang Threadbare',
     prompt: 'Xem và thử trang phục',
@@ -146,7 +162,7 @@ export const ZONES: Zone[] = [
 
 /** Shared art anchors keep scenery, lighting and server collision aligned. */
 export const TOWN_LAMPS = [
-  { x: 12, y: 10 },
+  { x: 10, y: 10 },
   { x: 23, y: 10 },
   { x: 35, y: 12 },
   { x: 16, y: 19 },
@@ -157,7 +173,7 @@ export const TOWN_LAMPS = [
 ];
 export const TOWN_TREES = [
   { x: 2, y: 5 },
-  { x: 13, y: 5 },
+  { x: 10, y: 2 },
   { x: 24, y: 4 },
   { x: 34, y: 6 },
   { x: 3, y: 12 },
@@ -235,6 +251,7 @@ export const PATHS: Rect[] = [
   t(22, 10, 3, 2),
   t(22, 20, 3, 8),
   t(4, 8, 7, 2),
+  t(11, 8, 5, 2),
   t(16, 7, 6, 3),
   t(26, 9, 6, 1),
   t(38, 10, 6, 2),
@@ -288,6 +305,22 @@ export const DELIVERY_DESTINATIONS: ZoneId[] = [
   'ai_kiosk',
   'pier',
   'fishing_shop',
+  'vietprodev',
+];
+
+/** VietDevPro office interior grid & constants */
+export const COMPANY_COLS = 16;
+export const COMPANY_ROWS = 11;
+export const COMPANY_SPAWN = { x: 8 * TILE, y: 9.5 * TILE };
+export const COMPANY_BLOCKERS: Rect[] = [
+  t(0, 0, COMPANY_COLS, 2), // Back wall with whiteboard, monitors, etc.
+  t(3, 4, 10, 2), // The long conference table with sleeping employees
+  t(1, 1, 2, 2), // Server rack in top-left corner
+  t(13, 1, 2, 2), // Coffee & water station in top-right corner
+  t(0, 0, 1, COMPANY_ROWS), // Left wall
+  t(COMPANY_COLS - 1, 0, 1, COMPANY_ROWS), // Right wall
+  t(0, COMPANY_ROWS - 1, 6, 1), // Bottom left wall
+  t(10, COMPANY_ROWS - 1, 6, 1), // Bottom right wall
 ];
 
 /** Apartment interior grid. */

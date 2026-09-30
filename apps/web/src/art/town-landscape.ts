@@ -253,6 +253,7 @@ const SIGNS: Record<string, string> = {
   apartments: 'CHUNG CƯ',
   delivery: 'BƯU TRẠM',
   fishing_shop: 'NGƯ CỤ BÁC BA',
+  vietprodev: 'VIETPRODEV',
 };
 
 export function paintBuilding(b: Building): HTMLCanvasElement {
@@ -358,7 +359,9 @@ export function paintBuilding(b: Building): HTMLCanvasElement {
         ? '#a17f9a'
         : b.id === 'delivery'
           ? '#ba9454'
-          : '#648578';
+          : b.id === 'vietprodev'
+            ? '#0284c7'
+            : '#648578';
   if (b.id !== 'apartments') {
     const aw = Math.min(w - 20, doorW + 36),
       ax = doorX + doorW / 2 - aw / 2;
@@ -372,19 +375,41 @@ export function paintBuilding(b: Building): HTMLCanvasElement {
   const sw = Math.min(w - 20, sign.length * 7 + 20),
     sx = 4 + (w - sw) / 2,
     sy = eave + 5;
-  rect(ctx, '#6e5842', sx - 1, sy - 1, sw + 2, 18);
-  rect(ctx, '#f2e5c5', sx, sy, sw, 16);
-  ctx.font = '700 11px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#4d5140';
-  ctx.fillText(sign, sx + sw / 2, sy + 8);
+  if (b.id === 'vietprodev') {
+    rect(ctx, '#0f172a', sx - 2, sy - 2, sw + 4, 20);
+    rect(ctx, '#1e293b', sx - 1, sy - 1, sw + 2, 18);
+    rect(ctx, '#0f172a', sx, sy, sw, 16);
+    ctx.font = '800 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText(sign, sx + sw / 2, sy + 8);
+  } else {
+    rect(ctx, '#6e5842', sx - 1, sy - 1, sw + 2, 18);
+    rect(ctx, '#f2e5c5', sx, sy, sw, 16);
+    ctx.font = '700 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#4d5140';
+    ctx.fillText(sign, sx + sw / 2, sy + 8);
+  }
   rect(ctx, '#4c5142', doorX + 2, dy + 7, 4, 9);
   rect(ctx, '#edcb87', doorX + 3, dy + 8, 2, 6);
   if (b.id === 'delivery') {
     rect(ctx, '#667b76', 15, bottom - 22, 18, 15);
     rect(ctx, '#d7c49b', 17, bottom - 20, 14, 3);
     rect(ctx, '#435953', 20, bottom - 17, 8, 2);
+  }
+  if (b.id === 'vietprodev') {
+    // Tech building LED indicator box & mini terminal
+    rect(ctx, '#0f172a', 14, bottom - 34, 20, 26);
+    rect(ctx, '#1e293b', 15, bottom - 33, 18, 24);
+    rect(ctx, '#0369a1', 17, bottom - 31, 14, 10);
+    rect(ctx, '#38bdf8', 18, bottom - 29, 6, 2);
+    rect(ctx, '#38bdf8', 18, bottom - 25, 10, 2);
+    rect(ctx, '#22c55e', 17, bottom - 16, 3, 3);
+    rect(ctx, '#0ea5e9', 22, bottom - 16, 3, 3);
+    rect(ctx, '#f59e0b', 27, bottom - 16, 3, 3);
   }
   if (b.id === 'fishing_shop') {
     oval(ctx, '#eee1bb', 17, bottom - 33, 8, 8);

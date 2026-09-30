@@ -3,6 +3,9 @@ import {
   APARTMENT_ROWS,
   BLOCKERS,
   BUILDINGS,
+  COMPANY_BLOCKERS,
+  COMPANY_COLS,
+  COMPANY_ROWS,
   FISHING_RODS,
   MAP_HEIGHT,
   MAP_WIDTH,
@@ -18,6 +21,13 @@ import {
 import { getStateCallbacks, type Room } from 'colyseus.js';
 import Phaser from 'phaser';
 import { duckGrid, drawFurniture } from '../art/items';
+import {
+  drawSleepingEmployee,
+  drawZzzBubble,
+  paintCompanyOffice,
+  SLEEPING_EMPLOYEES,
+  type SleepingEmployee,
+} from '../art/company';
 import {
   APT_TILE,
   BUILDING_ROOF,
@@ -531,5 +541,193 @@ export class ApartmentScene extends WorldScene {
 
   protected override onBind(room: Room) {
     room.onMessage('layout', () => this.game.events.emit('apartment:layout-changed'));
+  }
+}
+
+export class CompanyScene extends WorldScene {
+  private activeBubble: Phaser.GameObjects.Container | null = null;
+
+  constructor() {
+    super('company');
+  }
+
+  protected worldSize() {
+    return { width: COMPANY_COLS * TILE, height: COMPANY_ROWS * TILE };
+  }
+
+  protected blockers() {
+    return COMPANY_BLOCKERS;
+  }
+
+  protected matchesRoom(room: Room) {
+    return room.name === 'company';
+  }
+
+  protected buildWorld() {
+    // 1. Office background texture
+    const officeKey = 'vietprodev:office';
+    if (!this.textures.exists(officeKey)) {
+      this.textures.addCanvas(officeKey, paintCompanyOffice());
+    }
+    this.add.image(0, 0, officeKey).setOrigin(0).setDepth(-10);
+
+    // 2. Sleeping Employees with floating Zzz animations & click dialogues
+    const zzzKey = 'vietprodev:zzz';
+    if (!this.textures.exists(zzzKey)) {
+      this.textures.addCanvas(zzzKey, drawZzzBubble());
+    }
+
+    for (const emp of SLEEPING_EMPLOYEES) {
+      const empTexKey = `emp:${emp.id}`;
+      if (!this.textures.exists(empTexKey)) {
+        this.textures.addCanvas(empTexKey, drawSleepingEmployee(emp));
+      }
+
+      const container = this.add.container(emp.x, emp.y);
+      container.setDepth(emp.y + 12);
+
+      // Character sprite
+      const sprite = this.add.image(0, 0, empTexKey).setOrigin(0.5, 0.7);
+      container.add(sprite);
+
+      // Floating Zzz bubble
+      const zzz = this.add.image(14, -26, zzzKey).setOrigin(0.5, 0.5);
+      container.add(zzz);
+
+      // Gentle snoring / floating animation
+      this.tweens.add({
+        targets: zzz,
+        y: '-=10',
+        alpha: { from: 1, to: 0.25 },
+        duration: 1800 + Math.random() * 400,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+
+      // Subtle breathing motion
+      this.tweens.add({
+        targets: sprite,
+        scaleY: 0.96,
+        duration: 1200 + Math.random() * 300,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+
+      // Name & role badge above employee
+      const badgeText = this.add
+        .text(0, -38, `${emp.name} · ${emp.role}`, {
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '10px',
+          fontStyle: 'bold',
+          color: '#38bdf8',
+          backgroundColor: 'rgba(15, 23, 42, 0.85)',
+          padding: { x: 5, y: 2 },
+          resolution: 2,
+        })
+        .setOrigin(0.5, 0.5);
+      container.add(badgeText);
+
+      // Interactive on click / tap
+      sprite.setInteractive({ useHandCursor: true });
+      sprite.on('pointerdown', () => this.showEmployeeDialogue(emp, container));
+    }
+
+    // 3. Ambient soft office glow
+    ensureAtmosphereTextures(this);
+    this.add
+      .image((COMPANY_COLS * TILE) / 2, (COMPANY_ROWS * TILE) / 2, 'glow:indoor')
+      .setScale(2.5)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0.3)
+      .setDepth(2000);
+
+    // 4. Interactive Whiteboard Zone
+    const wbHit = this.add
+      .zone(4.5 * TILE, 1.2 * TILE, 70, 44)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    wbHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '📋 Sprint Backlog VietProDev',
+        body: 'Sprint 99: Fix 1 bug -> sinh ra 5 bug mới. Deadline: Hôm qua. Đang giải quyết bằng 42 ly cà phê!',
+      });
+    });
+
+    // 5. Interactive Coffee Machine Zone
+    const coffeeHit = this.add
+      .zone(14 * TILE, 1.2 * TILE, 44, 38)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    coffeeHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '☕ Cà Phê VietProDev Đậm Đặc',
+        body: 'Bạn đã nhấp một ngụm cà phê phin đậm đặc. Hồi phục 100% năng lượng lập trình viên!',
+      });
+    });
+
+    // 6. Interactive Server Rack Zone
+    const srvHit = this.add
+      .zone(1.8 * TILE, 1.2 * TILE, 44, 52)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    srvHit.on('pointerdown', () => {
+      play('click');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '🖥️ VietProDev Server Rack',
+        body: 'CPU: 99.8% | RAM: 63.9/64GB | Kubernetes: 14 Pods CrashLoopBackOff. Đang chờ dev thức dậy!',
+      });
+    });
+  }
+
+  private showEmployeeDialogue(emp: SleepingEmployee, container: Phaser.GameObjects.Container) {
+    play('pop');
+    this.activeBubble?.destroy();
+
+    const bubble = this.add.container(container.x, container.y - 56);
+    bubble.setDepth(9999);
+
+    const txt = this.add
+      .text(0, 0, `"${emp.dialogue}"`, {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '11px',
+        color: '#f8fafc',
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        padding: { x: 8, y: 5 },
+        wordWrap: { width: 180 },
+        align: 'center',
+        resolution: 2,
+      })
+      .setOrigin(0.5, 0.5);
+
+    bubble.add(txt);
+    this.activeBubble = bubble;
+
+    this.time.delayedCall(4500, () => {
+      if (this.activeBubble === bubble) {
+        this.tweens.add({
+          targets: bubble,
+          alpha: 0,
+          duration: 300,
+          onComplete: () => {
+            bubble.destroy();
+            if (this.activeBubble === bubble) this.activeBubble = null;
+          },
+        });
+      }
+    });
+  }
+
+  protected override onSelfMove(x: number, y: number) {
+    // Stepping on exit mat at bottom (cols 7 to 9, row >= 10)
+    if (y >= 9.8 * TILE && x >= 6.5 * TILE && x <= 9.5 * TILE) {
+      net.goTown();
+    }
   }
 }
