@@ -64,9 +64,9 @@ export const BUILDINGS: Building[] = [
     id: 'vietprodev',
     label: 'Công Ty Công Nghệ VietProDev',
     rect: t(11, 3, 5, 5),
-    wall: 0x222831,
-    roof: 0x0f172a,
-    accent: 0x0ea5e9,
+    wall: 0xf5efe6,
+    roof: 0x334155,
+    accent: 0xb45309,
     door: { x: 12, w: 2 },
   },
   {

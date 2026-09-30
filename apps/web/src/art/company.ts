@@ -81,128 +81,157 @@ export function paintCompanyOffice(): HTMLCanvasElement {
   const ctx = c.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
 
-  // 1. CARPET FLOOR (Modern Tech Slate Tiles)
+  // 1. FLOOR (Bright Modern Polished Porcelain Tiles)
   for (let r = 1; r < COMPANY_ROWS; r++) {
     for (let col = 0; col < COMPANY_COLS; col++) {
       const isAlt = (r + col) % 2 === 0;
-      ctx.fillStyle = isAlt ? '#1e2532' : '#232b3a';
+      ctx.fillStyle = isAlt ? '#f8fafc' : '#f1f5f9';
       ctx.fillRect(col * TILE, r * TILE, TILE, TILE);
 
-      // Subtle seam grid lines
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.4)';
+      // Subtle tile grout lines
+      ctx.fillStyle = '#e2e8f0';
       ctx.fillRect(col * TILE, r * TILE + TILE - 1, TILE, 1);
       ctx.fillRect(col * TILE + TILE - 1, r * TILE, 1, TILE);
 
-      // Tiny carpet fleck texture
-      if ((col * 7 + r * 13) % 5 === 0) {
-        ctx.fillStyle = 'rgba(56, 189, 248, 0.08)';
-        ctx.fillRect(col * TILE + 8, r * TILE + 12, 2, 2);
+      // Soft porcelain sheen / daylight reflection
+      if ((col * 3 + r * 5) % 4 === 0) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.fillRect(col * TILE + 4, r * TILE + 4, 14, 4);
       }
     }
   }
 
-  // 2. BACK WALL (Rows 0 to 1) - Dark Tech Acoustic Paneling
-  ctx.fillStyle = '#0f172a';
+  // 2. BACK WALL (Warm Sand-Beige with Terracotta / Wood Slat Louvers matching Townhouse Facade)
+  ctx.fillStyle = '#f8fafc';
   ctx.fillRect(0, 0, COMP_W, 2 * TILE);
 
-  // Acoustic wooden slat accents on wall
-  ctx.fillStyle = '#1e293b';
-  for (let x = 8; x < COMP_W - 8; x += 16) {
-    ctx.fillRect(x, 4, 10, 2 * TILE - 10);
+  // Modern wood slat acoustic louvers on wall
+  for (let x = 8; x < COMP_W - 8; x += 14) {
+    ctx.fillStyle = '#b45309'; // Terracotta / warm wood
+    ctx.fillRect(x, 4, 6, 2 * TILE - 10);
+    ctx.fillStyle = '#d97706';
+    ctx.fillRect(x, 4, 2, 2 * TILE - 10);
   }
 
   // Sleek baseboard trim between wall and floor
-  ctx.fillStyle = '#334155';
+  ctx.fillStyle = '#cbd5e1';
   ctx.fillRect(0, 2 * TILE - 6, COMP_W, 6);
-  ctx.fillStyle = '#0284c7'; // Cyan LED floor trim
-  ctx.fillRect(0, 2 * TILE - 2, COMP_W, 2);
+  // VietProDev brand accent strip (Green & Blue)
+  ctx.fillStyle = '#16a34a';
+  ctx.fillRect(0, 2 * TILE - 2, COMP_W / 2, 2);
+  ctx.fillStyle = '#1d4ed8';
+  ctx.fillRect(COMP_W / 2, 2 * TILE - 2, COMP_W / 2, 2);
 
-  // 3. ILLUMINATED NEON LOGO: "VIETPRODEV" (Center top wall)
-  const logoX = COMP_W / 2 - 110;
+  // 3. OFFICIAL BRAND SIGNBOARD: "VietProDev" (Center top wall)
+  const logoX = COMP_W / 2 - 120;
   const logoY = 8;
-  const logoW = 220;
-  const logoH = 34;
+  const logoW = 240;
+  const logoH = 36;
 
-  // Sign backing plaque
-  ctx.fillStyle = '#090d16';
-  ctx.fillRect(logoX - 2, logoY - 2, logoW + 4, logoH + 4);
-  ctx.fillStyle = '#1e293b';
+  // Clean white plaque with soft drop shadow & silver border
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+  ctx.fillRect(logoX - 2, logoY - 2, logoW + 4, logoH + 6);
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fillRect(logoX - 1, logoY - 1, logoW + 2, logoH + 2);
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(logoX, logoY, logoW, logoH);
-  ctx.strokeStyle = '#0284c7';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(logoX + 2, logoY + 2, logoW - 4, logoH - 4);
 
-  // Neon glowing text
-  ctx.font = '900 15px "Courier New", monospace, sans-serif';
+  // Tree logo icon on the left
+  const tX = logoX + 16;
+  const tY = logoY + 18;
+  ctx.fillStyle = '#16a34a';
+  ctx.fillRect(tX + 4, tY - 6, 3, 14);
+  ctx.fillStyle = '#22c55e';
+  ctx.fillRect(tX + 1, tY - 9, 9, 4);
+  ctx.fillStyle = '#16a34a';
+  ctx.fillRect(tX - 2, tY - 5, 15, 3);
+  ctx.fillStyle = '#15803d';
+  ctx.fillRect(tX + 2, tY - 1, 7, 3);
+
+  // Three-color authentic brand name: "Viet" (Charcoal), "Pro" (Green), "Dev" (Blue)
+  const titleY = logoY + 13;
+  const brandCenterX = COMP_W / 2 + 8;
+  ctx.font = '800 16px "Inter", "Segoe UI", sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#1e293b';
+  ctx.fillText('Viet', brandCenterX - 10, titleY);
+
   ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#38bdf8';
-  ctx.shadowColor = '#0284c7';
-  ctx.shadowBlur = 8;
-  ctx.fillText('⚡ VIETPRODEV ⚡', COMP_W / 2, logoY + 12);
-  ctx.shadowBlur = 0; // reset shadow
+  ctx.fillStyle = '#16a34a';
+  ctx.fillText('Pro', brandCenterX + 4, titleY);
 
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#1d4ed8';
+  ctx.fillText('Dev', brandCenterX + 18, titleY);
+
+  // Slogan underneath
   ctx.font = '700 8px sans-serif';
-  ctx.fillStyle = '#94a3b8';
-  ctx.fillText('THỰC HỌC · THỰC CHIẾN · DỰ ÁN THỰC THỤ', COMP_W / 2, logoY + 24);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#1e3a8a';
+  ctx.fillText('THỰC HỌC · THỰC CHIẾN · DỰ ÁN THỰC THỤ', COMP_W / 2 + 8, logoY + 27);
 
-  // 4. SERVER RACK IN TOP-LEFT (Cols 1-2, Rows 0.5-2)
+  // Bottom decorative brand stripes (Green & Blue)
+  ctx.fillStyle = '#16a34a';
+  ctx.fillRect(logoX, logoY + logoH - 3, logoW / 2, 3);
+  ctx.fillStyle = '#1d4ed8';
+  ctx.fillRect(logoX + logoW / 2, logoY + logoH - 3, logoW / 2, 3);
+
+  // 4. MODERN OFFICE SERVER RACK (Cols 1-2, Rows 0.5-2)
   const srvX = 1 * TILE;
   const srvY = 14;
-  ctx.fillStyle = '#090d16';
+  ctx.fillStyle = '#e2e8f0';
   ctx.fillRect(srvX, srvY, 48, 54);
-  ctx.strokeStyle = '#334155';
+  ctx.strokeStyle = '#94a3b8';
   ctx.strokeRect(srvX, srvY, 48, 54);
 
-  // Server units with blinking LEDs
+  // Server units with status lights
   for (let u = 0; u < 5; u++) {
     const uy = srvY + 4 + u * 10;
-    ctx.fillStyle = '#1e293b';
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(srvX + 4, uy, 40, 8);
     // Green, blue, amber lights
-    ctx.fillStyle = u === 2 ? '#ef4444' : '#22c55e';
+    ctx.fillStyle = u === 2 ? '#ef4444' : '#16a34a';
     ctx.fillRect(srvX + 8, uy + 2, 4, 3);
     ctx.fillStyle = '#0284c7';
     ctx.fillRect(srvX + 16, uy + 2, 4, 3);
     ctx.fillStyle = '#f59e0b';
     ctx.fillRect(srvX + 24, uy + 2, 4, 3);
     // Ventilation louvers
-    ctx.fillStyle = '#0f172a';
+    ctx.fillStyle = '#cbd5e1';
     ctx.fillRect(srvX + 32, uy + 2, 8, 3);
   }
 
   // 5. COFFEE & REFRESHMENT BAR (Cols 13-14, Top-Right)
   const barX = 13 * TILE + 4;
   const barY = 24;
-  // Wooden Countertop
-  ctx.fillStyle = '#451a03';
+  // Warm wooden countertop
+  ctx.fillStyle = '#b45309';
   ctx.fillRect(barX, barY + 20, 56, 26);
-  ctx.fillStyle = '#78350f';
+  ctx.fillStyle = '#d97706';
   ctx.fillRect(barX + 2, barY + 22, 52, 22);
 
-  // Espresso Machine
+  // Stainless steel espresso / coffee machine
   ctx.fillStyle = '#cbd5e1';
   ctx.fillRect(barX + 6, barY + 4, 22, 18);
-  ctx.fillStyle = '#334155';
+  ctx.fillStyle = '#f1f5f9';
   ctx.fillRect(barX + 8, barY + 6, 18, 8);
-  ctx.fillStyle = '#ef4444'; // Power light
+  ctx.fillStyle = '#ef4444';
   ctx.fillRect(barX + 24, barY + 16, 2, 2);
 
-  // Water Cooler (blue bottle)
-  ctx.fillStyle = '#e2e8f0';
+  // Water cooler
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(barX + 34, barY + 10, 16, 14);
-  // Translucent water jug
   ctx.fillStyle = '#38bdf8';
   ctx.fillRect(barX + 36, barY - 6, 12, 16);
   ctx.fillStyle = '#bae6fd';
-  ctx.fillRect(barX + 38, barY - 4, 4, 12); // water highlight
+  ctx.fillRect(barX + 38, barY - 4, 4, 12);
 
   // 6. SPRINT WHITEBOARD (Wall Left of Center, cols 3.5 to 5.5)
   const wbX = 3.5 * TILE;
   const wbY = 16;
   const wbW = 60;
   const wbH = 40;
-  ctx.fillStyle = '#cbd5e1';
+  ctx.fillStyle = '#94a3b8';
   ctx.fillRect(wbX - 2, wbY - 2, wbW + 4, wbH + 4);
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(wbX, wbY, wbW, wbH);
@@ -211,22 +240,20 @@ export function paintCompanyOffice(): HTMLCanvasElement {
   ctx.fillRect(wbX + 6, wbY + 6, 12, 10);
   ctx.fillStyle = '#fbcfe8'; // pink sticky
   ctx.fillRect(wbX + 22, wbY + 6, 12, 10);
-  ctx.fillStyle = '#bae6fd'; // blue sticky
+  ctx.fillStyle = '#bbf7d0'; // green sticky
   ctx.fillRect(wbX + 38, wbY + 6, 12, 10);
   // Dry-erase marker scribbles
-  ctx.fillStyle = '#ef4444';
+  ctx.fillStyle = '#1e3a8a';
   ctx.fillRect(wbX + 8, wbY + 22, 30, 2);
-  ctx.fillStyle = '#22c55e';
+  ctx.fillStyle = '#16a34a';
   ctx.fillRect(wbX + 8, wbY + 28, 20, 2);
 
-  // 7. POTTED PLANTS AT CORNERS
+  // 7. POTTED PLANTS AT CORNERS (White ceramic pots)
   function drawPlant(px: number, py: number) {
-    // Ceramic pot
-    ctx.fillStyle = '#b45309';
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(px + 4, py + 14, 16, 16);
-    ctx.fillStyle = '#d97706';
+    ctx.fillStyle = '#e2e8f0';
     ctx.fillRect(px + 6, py + 16, 12, 12);
-    // Foliage
     ctx.fillStyle = '#15803d';
     ctx.beginPath();
     ctx.arc(px + 12, py + 8, 12, 0, Math.PI * 2);
@@ -246,42 +273,43 @@ export function paintCompanyOffice(): HTMLCanvasElement {
   const tableW = 10 * TILE; // 320px
   const tableH = 2 * TILE; // 64px
 
-  // Contact shadow under the big table
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  // Contact shadow under the table
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
   ctx.fillRect(tableX - 4, tableY + tableH - 4, tableW + 8, 14);
 
-  // Sturdy metallic legs
-  ctx.fillStyle = '#0f172a';
+  // Clean silver/white modern metallic legs
+  ctx.fillStyle = '#64748b';
   ctx.fillRect(tableX + 10, tableY + tableH, 10, 10);
   ctx.fillRect(tableX + tableW - 20, tableY + tableH, 10, 10);
   ctx.fillRect(tableX + tableW / 2 - 5, tableY + tableH, 10, 10);
 
-  // Table surface (Rich dark walnut with warm chamfer)
-  ctx.fillStyle = '#3e2723';
+  // Table surface (Light Oak wood finish with chamfer)
+  ctx.fillStyle = '#b45309';
   ctx.fillRect(tableX, tableY, tableW, tableH);
-  ctx.fillStyle = '#4e342e';
+  ctx.fillStyle = '#d97706';
+  ctx.fillRect(tableX + 1, tableY + 1, tableW - 2, tableH - 2);
+  ctx.fillStyle = '#e2b17a';
   ctx.fillRect(tableX + 2, tableY + 2, tableW - 4, tableH - 4);
   // Wood grain highlights
-  ctx.fillStyle = '#5d4037';
+  ctx.fillStyle = '#f5d0a9';
   ctx.fillRect(tableX + 6, tableY + 8, tableW - 12, 2);
   ctx.fillRect(tableX + 16, tableY + 28, tableW - 32, 2);
   ctx.fillRect(tableX + 8, tableY + 48, tableW - 16, 2);
 
-  // Cable management tray running down the center of table
-  ctx.fillStyle = '#1e293b';
+  // Cable management tray running down the center of table (anodized aluminum)
+  ctx.fillStyle = '#cbd5e1';
   ctx.fillRect(tableX + 16, tableY + 28, tableW - 32, 8);
-  ctx.fillStyle = '#0ea5e9'; // Cable glow
+  ctx.fillStyle = '#94a3b8';
   ctx.fillRect(tableX + 20, tableY + 31, tableW - 40, 2);
 
   // Workstation Setups on the Long Table:
   for (let s = 0; s < 4; s++) {
     const wsX = tableX + 28 + s * 72;
 
-    // Dual Monitors / Laptops
-    // Monitor 1 (Main code editor)
-    ctx.fillStyle = '#090d16';
+    // Dual Monitors / Laptops (Modern Silver Aluminum)
+    ctx.fillStyle = '#94a3b8';
     ctx.fillRect(wsX, tableY + 6, 26, 18);
-    ctx.fillStyle = '#1e293b';
+    ctx.fillStyle = '#0f172a';
     ctx.fillRect(wsX + 1, tableY + 7, 24, 16);
     // Glowing code lines on screen
     ctx.fillStyle = s === 2 ? '#ef4444' : '#22c55e';
@@ -290,24 +318,28 @@ export function paintCompanyOffice(): HTMLCanvasElement {
     ctx.fillRect(wsX + 3, tableY + 17, 8, 2);
 
     // Keyboard & Mouse
-    ctx.fillStyle = '#334155';
+    ctx.fillStyle = '#f8fafc';
     ctx.fillRect(wsX + 2, tableY + 38, 22, 10);
-    ctx.fillStyle = '#64748b';
-    ctx.fillRect(wsX + 27, tableY + 40, 5, 7); // mouse
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(wsX + 27, tableY + 40, 5, 7);
 
-    // Coffee Mug / Energy Drink Can
+    // Coffee Mug / VietProDev Green Notebook
     if (s % 2 === 0) {
-      // White coffee mug with coffee inside
-      ctx.fillStyle = '#f8fafc';
+      // White ceramic coffee mug with logo band
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(wsX - 10, tableY + 18, 8, 10);
-      ctx.fillStyle = '#3e2723'; // dark coffee
+      ctx.fillStyle = '#16a34a';
+      ctx.fillRect(wsX - 10, tableY + 22, 8, 2);
+      ctx.fillStyle = '#78350f';
       ctx.fillRect(wsX - 8, tableY + 19, 4, 3);
     } else {
-      // Energy drink can (Monster / Red Bull style)
-      ctx.fillStyle = '#065f46';
-      ctx.fillRect(wsX - 10, tableY + 16, 7, 12);
-      ctx.fillStyle = '#34d399';
-      ctx.fillRect(wsX - 9, tableY + 20, 5, 4);
+      // VietProDev Green Notebook
+      ctx.fillStyle = '#16a34a';
+      ctx.fillRect(wsX - 12, tableY + 16, 9, 13);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(wsX - 11, tableY + 17, 7, 11);
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(wsX - 10, tableY + 19, 5, 2);
     }
   }
 
@@ -317,18 +349,18 @@ export function paintCompanyOffice(): HTMLCanvasElement {
   const exitW = 2 * TILE;
   const exitH = TILE - 8;
 
-  ctx.fillStyle = '#090d16';
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
   ctx.fillRect(exitX - 2, exitY - 2, exitW + 4, exitH + 4);
-  ctx.fillStyle = '#1e293b';
+  ctx.fillStyle = '#f1f5f9';
   ctx.fillRect(exitX, exitY, exitW, exitH);
-  ctx.strokeStyle = '#22c55e';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = '#16a34a';
+  ctx.lineWidth = 1.5;
   ctx.strokeRect(exitX + 2, exitY + 2, exitW - 4, exitH - 4);
 
   ctx.font = '700 9px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#4ade80';
+  ctx.fillStyle = '#15803d';
   ctx.fillText('🚪 LỐI RA THỊ TRẤN', exitX + exitW / 2, exitY + exitH / 2);
 
   return c;

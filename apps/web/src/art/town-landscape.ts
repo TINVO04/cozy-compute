@@ -256,7 +256,238 @@ const SIGNS: Record<string, string> = {
   vietprodev: 'VIETPRODEV',
 };
 
+/**
+ * Paints the authentic VietProDev modern 3-story townhouse headquarters,
+ * matching real-world architectural facade:
+ * - Warm sand-beige / cream columns & walls
+ * - 3rd floor / attic horizontal slate louvers & rooftop greens
+ * - 2nd floor modern glass window, chrome/glass balcony railing
+ * - Characteristic terracotta / warm wood louvers directly under the 2nd floor balcony
+ * - Vietnamese national red flag with yellow star mounted on balcony
+ * - Large white signboard: "CÔNG TY TNHH PHẦN MỀM" + tree logo + "Viet" (charcoal) "Pro" (green) "Dev" (blue)
+ * - 3 service pillars: "DỰ ÁN PHẦN MỀM · ĐÀO TẠO · CLOUD & AI"
+ * - Deep navy blue info strip at the bottom of the sign
+ * - Dark scalloped / ripple awning canopy over the entrance
+ * - Ground floor modern glass sliding doors with chrome handles and entrance step
+ */
+function paintVietProDevTownhouse(b: Building): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = b.rect.w + 8; // 168
+  canvas.height = b.rect.h + BUILDING_ROOF; // 192
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  const w = b.rect.w; // 160
+  const bottom = canvas.height - 2; // 190
+
+  // 0. Base ground shadow
+  rect(ctx, 'rgba(54, 48, 36, 0.25)', 4, bottom - 6, w + 4, 8);
+
+  // 1. Structural Townhouse Backdrop (Beige cream center with slate grey flanking columns)
+  rect(ctx, '#64748b', 4, 12, 18, bottom - 12);
+  rect(ctx, '#475569', 20, 12, 2, bottom - 12);
+  rect(ctx, '#64748b', w - 14, 12, 18, bottom - 12);
+  rect(ctx, '#334155', w - 16, 12, 2, bottom - 12);
+
+  // Main townhouse body (Warm beige / sand cream)
+  rect(ctx, '#f5efe6', 22, 10, w - 38, bottom - 10);
+  rect(ctx, '#ede5d8', 22, 10, 4, bottom - 10);
+  rect(ctx, '#e4dcd0', w - 26, 10, 4, bottom - 10);
+
+  // 2. FLOOR 3 / ATTIC & ROOF TERRACE (y: 10 to 60)
+  for (let px = 28; px < w - 24; px += 14) {
+    oval(ctx, '#15803d', px + 2, 8, 5, 5);
+    oval(ctx, '#22c55e', px + 5, 6, 4, 4);
+    rect(ctx, '#a15238', px + 1, 10, 7, 4);
+  }
+
+  // Attic center block with modern horizontal slate louvers
+  const atticX = 46;
+  const atticW = w - 84; // 76px
+  const atticY = 14;
+  const atticH = 46;
+  rect(ctx, '#e8dfd5', atticX - 3, atticY - 2, atticW + 6, atticH + 4);
+  rect(ctx, '#334155', atticX, atticY, atticW, atticH);
+  for (let ly = atticY + 4; ly < atticY + atticH - 2; ly += 5) {
+    rect(ctx, '#1e293b', atticX + 2, ly, atticW - 4, 2);
+    rect(ctx, '#475569', atticX + 2, ly + 2, atticW - 4, 1);
+  }
+  rect(ctx, '#d6cbbe', atticX - 4, atticY - 3, atticW + 8, 3);
+
+  // Side balconies / window cutouts on Floor 3
+  rect(ctx, '#94a3b8', 26, 26, 16, 28);
+  rect(ctx, '#ffffff', 28, 28, 12, 24);
+  rect(ctx, '#e2e8f0', 29, 29, 10, 22);
+  rect(ctx, '#cbd5e1', 26, 48, 16, 6);
+
+  rect(ctx, '#94a3b8', w - 42, 26, 16, 28);
+  rect(ctx, '#ffffff', w - 40, 28, 12, 24);
+  rect(ctx, '#e2e8f0', w - 39, 29, 10, 22);
+  rect(ctx, '#cbd5e1', w - 42, 48, 16, 6);
+
+  // 3. FLOOR 2 (y: 60 to 118)
+  rect(ctx, '#dfd5c6', 22, 60, w - 38, 4);
+
+  const f2WinX = 38;
+  const f2WinW = w - 68; // 92px
+  const f2WinY = 64;
+  const f2WinH = 34;
+
+  rect(ctx, '#cbd5e1', f2WinX, f2WinY, f2WinW, f2WinH);
+  rect(ctx, '#ffffff', f2WinX + 2, f2WinY + 2, f2WinW - 4, f2WinH - 4);
+  rect(ctx, '#f1f5f9', f2WinX + 4, f2WinY + 4, f2WinW - 8, f2WinH - 8);
+  for (let bx = f2WinX + 8; bx < f2WinX + f2WinW - 8; bx += 14) {
+    rect(ctx, '#e2e8f0', bx, f2WinY + 4, 10, f2WinH - 8);
+    rect(ctx, '#ffffff', bx + 2, f2WinY + 5, 6, 4);
+  }
+  rect(ctx, '#cbd5e1', f2WinX + Math.floor(f2WinW / 3), f2WinY + 2, 2, f2WinH - 4);
+  rect(ctx, '#cbd5e1', f2WinX + Math.floor((f2WinW * 2) / 3), f2WinY + 2, 2, f2WinH - 4);
+
+  // Modern glass & stainless steel balcony railing
+  const railX = f2WinX - 2;
+  const railW = f2WinW + 4;
+  const railY = f2WinY + 22;
+  const railH = 14;
+  rect(ctx, 'rgba(224, 242, 254, 0.75)', railX, railY, railW, railH);
+  rect(ctx, '#e2e8f0', railX - 1, railY, railW + 2, 2);
+  rect(ctx, '#94a3b8', railX, railY + railH - 2, railW, 2);
+  for (let rx = railX + 4; rx <= railX + railW - 4; rx += 20) {
+    rect(ctx, '#cbd5e1', rx, railY, 2, railH);
+  }
+
+  // --- KEY ARCHITECTURAL FEATURE: TERRACOTTA / WOODEN SLATS (Lam gỗ đỏ) ---
+  const slatX = f2WinX - 1;
+  const slatW = f2WinW + 2;
+  const slatY = railY + railH + 2;
+  const slatH = 16;
+  rect(ctx, '#7c2d12', slatX - 1, slatY - 1, slatW + 2, slatH + 2);
+  rect(ctx, '#431407', slatX, slatY, slatW, slatH);
+  for (let lx = slatX + 2; lx < slatX + slatW - 2; lx += 4) {
+    rect(ctx, '#b45309', lx, slatY, 2, slatH);
+    rect(ctx, '#d97706', lx, slatY, 1, slatH);
+  }
+
+  // --- VIETNAM NATIONAL FLAG (Cờ đỏ sao vàng) on Floor 2 ---
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(slatX + 8, slatY + 12);
+  ctx.lineTo(slatX - 4, slatY - 4);
+  ctx.stroke();
+  const flagX = slatX - 16;
+  const flagY = slatY - 10;
+  rect(ctx, '#dc2626', flagX, flagY, 13, 9);
+  rect(ctx, '#b91c1c', flagX, flagY + 8, 13, 1);
+  rect(ctx, '#facc15', flagX + 4, flagY + 2, 5, 5);
+  rect(ctx, '#fde047', flagX + 5, flagY + 3, 3, 3);
+
+  // 4. SIGNBOARD (Biển hiệu VietProDev Nền Trắng Sáng Chuẩn 100% Theo Ảnh Thực Tế)
+  const signX = 8;
+  const signW = w - 8; // 152px
+  const signY = 118;
+  const signH = 34;
+
+  rect(ctx, 'rgba(0, 0, 0, 0.25)', signX - 1, signY - 1, signW + 2, signH + 4);
+  rect(ctx, '#cbd5e1', signX - 1, signY - 1, signW + 2, signH + 2);
+  rect(ctx, '#ffffff', signX, signY, signW, signH);
+
+  // 4.1 Top line: "CÔNG TY TNHH PHẦN MỀM"
+  ctx.font = '700 6px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#1e3a8a';
+  ctx.fillText('CÔNG TY TNHH PHẦN MỀM', signX + signW / 2 + 10, signY + 3);
+
+  // 4.2 Tree logo on the left of "VietProDev"
+  const logoPx = signX + 12;
+  const logoPy = signY + 14;
+  rect(ctx, '#16a34a', logoPx + 4, logoPy + 2, 2, 8);
+  rect(ctx, '#22c55e', logoPx + 2, logoPy + 1, 6, 2);
+  rect(ctx, '#16a34a', logoPx, logoPy + 3, 10, 2);
+  rect(ctx, '#15803d', logoPx + 2, logoPy + 5, 6, 2);
+
+  // 4.3 MAIN LOGO: "Viet" (Charcoal), "Pro" (Green), "Dev" (Blue)
+  const brandY = signY + 11;
+  const centerX = signX + signW / 2 + 8;
+  ctx.font = '800 13px "Inter", "Segoe UI", sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#1e293b';
+  ctx.fillText('Viet', centerX - 8, brandY);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#16a34a';
+  ctx.fillText('Pro', centerX + 4, brandY);
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#1d4ed8';
+  ctx.fillText('Dev', centerX + 16, brandY);
+
+  // 4.4 3 Pillars underneath
+  ctx.font = '600 5px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#475569';
+  ctx.fillText('DỰ ÁN PHẦN MỀM  ·  ĐÀO TẠO  ·  CLOUD & AI', signX + signW / 2, signY + 23);
+
+  // 4.5 Bottom blue band: info & website
+  rect(ctx, '#1e40af', signX, signY + signH - 5, signW, 5);
+  ctx.font = '700 4px sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('BIÊN HÒA, ĐỒNG NAI  ·  VIETPRODEV.VN', signX + signW / 2, signY + signH - 4.5);
+
+  // 5. GROUND FLOOR AWNING (Mái hiên di động lượn sóng màu than đen)
+  const awnX = signX - 2;
+  const awnW = signW + 4;
+  const awnY = signY + signH;
+  const awnH = 12;
+
+  rect(ctx, '#0f172a', awnX, awnY, awnW, 3);
+  rect(ctx, '#1e293b', awnX, awnY + 2, awnW, awnH - 4);
+  for (let wx = awnX; wx < awnX + awnW; wx += 6) {
+    rect(ctx, '#334155', wx, awnY + 2, 4, awnH - 4);
+    rect(ctx, '#0f172a', wx + 4, awnY + 2, 2, awnH - 4);
+    rect(ctx, '#1e293b', wx, awnY + awnH - 2, 5, 2);
+  }
+  rect(ctx, 'rgba(0, 0, 0, 0.35)', awnX, awnY + awnH, awnW, 3);
+
+  // Additional red flag at ground floor entrance
+  rect(ctx, '#dc2626', 14, awnY + 8, 8, 6);
+  rect(ctx, '#facc15', 16, awnY + 10, 3, 2);
+
+  // 6. GROUND FLOOR ENTRANCE & GLASS DOORS (y: 160 to bottom)
+  const gy = awnY + awnH - 2;
+  const gh = bottom - gy;
+  rect(ctx, '#f1ede4', 22, gy, w - 38, gh);
+  rect(ctx, '#e4dcd0', 22, gy, 4, gh);
+  rect(ctx, '#e4dcd0', w - 26, gy, 4, gh);
+
+  const doorX = 4 + b.door.x * TILE - b.rect.x; // 36
+  const doorW = b.door.w * TILE; // 64
+  const dy = bottom - 34;
+
+  rect(ctx, '#cbd5e1', doorX + 4, dy - 2, doorW - 8, 36);
+  rect(ctx, '#94a3b8', doorX + 6, dy, doorW - 12, 34);
+
+  const halfW = (doorW - 16) / 2;
+  rect(ctx, '#e0f2fe', doorX + 7, dy + 1, halfW, 32);
+  rect(ctx, '#bae6fd', doorX + 9, dy + 3, halfW - 4, 16);
+  rect(ctx, 'rgba(255, 255, 255, 0.7)', doorX + 11, dy + 4, 4, 26);
+  rect(ctx, '#e2e8f0', doorX + 7 + halfW - 3, dy + 10, 2, 14);
+
+  rect(ctx, '#e0f2fe', doorX + 9 + halfW, dy + 1, halfW, 32);
+  rect(ctx, '#bae6fd', doorX + 11 + halfW, dy + 3, halfW - 4, 16);
+  rect(ctx, 'rgba(255, 255, 255, 0.7)', doorX + 13 + halfW, dy + 4, 4, 26);
+  rect(ctx, '#e2e8f0', doorX + 9 + halfW + 1, dy + 10, 2, 14);
+
+  rect(ctx, '#cbd5e1', doorX + 2, bottom - 4, doorW - 4, 4);
+  rect(ctx, '#f8fafc', doorX + 4, bottom - 4, doorW - 8, 1);
+
+  return canvas;
+}
+
 export function paintBuilding(b: Building): HTMLCanvasElement {
+  if (b.id === 'vietprodev') {
+    return paintVietProDevTownhouse(b);
+  }
   const canvas = document.createElement('canvas');
   canvas.width = b.rect.w + 8;
   canvas.height = b.rect.h + BUILDING_ROOF;
@@ -359,9 +590,7 @@ export function paintBuilding(b: Building): HTMLCanvasElement {
         ? '#a17f9a'
         : b.id === 'delivery'
           ? '#ba9454'
-          : b.id === 'vietprodev'
-            ? '#0284c7'
-            : '#648578';
+          : '#648578';
   if (b.id !== 'apartments') {
     const aw = Math.min(w - 20, doorW + 36),
       ax = doorX + doorW / 2 - aw / 2;
@@ -375,41 +604,19 @@ export function paintBuilding(b: Building): HTMLCanvasElement {
   const sw = Math.min(w - 20, sign.length * 7 + 20),
     sx = 4 + (w - sw) / 2,
     sy = eave + 5;
-  if (b.id === 'vietprodev') {
-    rect(ctx, '#0f172a', sx - 2, sy - 2, sw + 4, 20);
-    rect(ctx, '#1e293b', sx - 1, sy - 1, sw + 2, 18);
-    rect(ctx, '#0f172a', sx, sy, sw, 16);
-    ctx.font = '800 11px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#38bdf8';
-    ctx.fillText(sign, sx + sw / 2, sy + 8);
-  } else {
-    rect(ctx, '#6e5842', sx - 1, sy - 1, sw + 2, 18);
-    rect(ctx, '#f2e5c5', sx, sy, sw, 16);
-    ctx.font = '700 11px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#4d5140';
-    ctx.fillText(sign, sx + sw / 2, sy + 8);
-  }
+  rect(ctx, '#6e5842', sx - 1, sy - 1, sw + 2, 18);
+  rect(ctx, '#f2e5c5', sx, sy, sw, 16);
+  ctx.font = '700 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#4d5140';
+  ctx.fillText(sign, sx + sw / 2, sy + 8);
   rect(ctx, '#4c5142', doorX + 2, dy + 7, 4, 9);
   rect(ctx, '#edcb87', doorX + 3, dy + 8, 2, 6);
   if (b.id === 'delivery') {
     rect(ctx, '#667b76', 15, bottom - 22, 18, 15);
     rect(ctx, '#d7c49b', 17, bottom - 20, 14, 3);
     rect(ctx, '#435953', 20, bottom - 17, 8, 2);
-  }
-  if (b.id === 'vietprodev') {
-    // Tech building LED indicator box & mini terminal
-    rect(ctx, '#0f172a', 14, bottom - 34, 20, 26);
-    rect(ctx, '#1e293b', 15, bottom - 33, 18, 24);
-    rect(ctx, '#0369a1', 17, bottom - 31, 14, 10);
-    rect(ctx, '#38bdf8', 18, bottom - 29, 6, 2);
-    rect(ctx, '#38bdf8', 18, bottom - 25, 10, 2);
-    rect(ctx, '#22c55e', 17, bottom - 16, 3, 3);
-    rect(ctx, '#0ea5e9', 22, bottom - 16, 3, 3);
-    rect(ctx, '#f59e0b', 27, bottom - 16, 3, 3);
   }
   if (b.id === 'fishing_shop') {
     oval(ctx, '#eee1bb', 17, bottom - 33, 8, 8);
