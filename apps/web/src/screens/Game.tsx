@@ -30,6 +30,7 @@ import { useUi, type Panel } from '../lib/store';
 import { CafeActivity, DeliveryHud, FishingActivity, startDelivery } from './activities';
 import { AiPanel } from './panels/AiPanel';
 import { ApartmentEditor } from './panels/ApartmentEditor';
+import { ApartmentGuestView } from './panels/ApartmentGuestView';
 import { ApartmentsPanel } from './panels/ApartmentsPanel';
 import { EventsPanel } from './panels/EventsPanel';
 import { LedgerPanel } from './panels/LedgerPanel';
@@ -99,6 +100,9 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
           {activity === 'cafe' ? <CafeActivity /> : null}
           <ConnectionOverlay />
           {room.kind === 'apartment' && room.ownerId === me.id ? <ApartmentEditor /> : null}
+          {room.kind === 'apartment' && room.ownerId && room.ownerId !== me.id ? (
+            <ApartmentGuestView key={room.ownerId} ownerId={room.ownerId} />
+          ) : null}
           {panel === 'shop-fashion' ? <ShopPanel kind="clothing" onClose={() => setPanel(null)} /> : null}
           {panel === 'shop-furniture' ? <ShopPanel kind="furniture" onClose={() => setPanel(null)} /> : null}
           {panel === 'shop-rods' ? <FishingShopPanel me={me} onClose={() => setPanel(null)} /> : null}

@@ -1,3 +1,4 @@
+import { GEN_Z_FURNITURE_IDS } from '@cozy/game-data';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Armchair, Check, Heart, PackageOpen, Shirt } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -26,6 +27,7 @@ const FILTERS = {
   ],
   furniture: [
     ['all', 'Tất cả'],
+    ['genz', 'Góc Gen Z'],
     ['common', 'Phổ thông'],
     ['rare', 'Hiếm có'],
     ['epic', 'Sử thi+'],
@@ -48,9 +50,11 @@ export function ShopPanel({ kind, onClose }: { kind: 'clothing' | 'furniture'; o
       list = list.filter((i) =>
         kind === 'clothing'
           ? i.slot === filter
-          : filter === 'epic'
-            ? i.rarity === 'epic' || i.rarity === 'legendary'
-            : i.rarity === filter,
+          : filter === 'genz'
+            ? GEN_Z_FURNITURE_IDS.has(i.id)
+            : filter === 'epic'
+              ? i.rarity === 'epic' || i.rarity === 'legendary'
+              : i.rarity === filter,
       );
     if (onlyWished) list = list.filter((i) => i.wished);
     return list;
@@ -115,6 +119,12 @@ export function ShopPanel({ kind, onClose }: { kind: 'clothing' | 'furniture'; o
         </div>
       }
     >
+      {kind === 'furniture' ? (
+        <p className="shop-collection-note">
+          Góc chill có cá tính: nội thất pastel, capy không vội và vài món hơi hề. Mua xong, về căn hộ và chọn
+          Trang trí để đặt.
+        </p>
+      ) : null}
       <div className="row between wrap" style={{ marginBottom: 16 }}>
         <div className="tabs" role="tablist" aria-label="Bộ lọc">
           {FILTERS[kind].map(([id, label]) => (

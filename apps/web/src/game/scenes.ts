@@ -17,7 +17,9 @@ import {
 } from '@cozy/game-data';
 import { getStateCallbacks, type Room } from 'colyseus.js';
 import Phaser from 'phaser';
-import { duckGrid, drawFurniture } from '../art/items';
+import { duckGrid } from '../art/items';
+import { APT_ART_SIDE, APT_ART_TOP } from '../art/apartment';
+import { drawRotatedFurniture } from '../art/furniture';
 import {
   APT_TILE,
   BUILDING_ROOF,
@@ -410,6 +412,8 @@ export class ApartmentScene extends WorldScene {
   private ghost: Phaser.GameObjects.Image | null = null;
   private furnitureBlockers: Rect[] = [];
   private roomGlow: Phaser.GameObjects.Image | null = null;
+  private placementMarker: Phaser.GameObjects.Graphics | null = null;
+  private editorHeight = 230;
 
   constructor() {
     super('apartment');
@@ -417,6 +421,33 @@ export class ApartmentScene extends WorldScene {
 
   protected worldSize() {
     return { width: APARTMENT_COLS * APT_TILE, height: APARTMENT_ROWS * APT_TILE };
+  }
+
+  protected override fitCamera() {
+    const cam = this.cameras.main;
+    const width = APARTMENT_COLS * APT_TILE + APT_ART_SIDE * 2;
+    const height = APARTMENT_ROWS * APT_TILE + APT_ART_TOP + 16;
+    const editorSpace = useUi.getState().editingApartment ? this.editorHeight : 0;
+    const availableHeight = Math.max(180, this.scale.height - editorSpace - (editorSpace ? 16 : 64));
+    const zoom = Math.max(
+      1,
+      Math.min(3, Math.floor(Math.min((this.scale.width - 48) / width, availableHeight / height))),
+    );
+    cam.stopFollow();
+    cam.setZoom(zoom);
+    const vw = this.scale.width / cam.zoom,
+      vh = this.scale.height / cam.zoom;
+    // Fixed room view keeps all placement cells visible above the editor toolbar.
+    cam.setBounds(
+      -APT_ART_SIDE - Math.max(0, (vw - width) / 2),
+      -APT_ART_TOP - Math.max(0, (vh - height) / 2) + editorSpace / (2 * zoom),
+      Math.max(width, vw),
+      Math.max(height, vh),
+    );
+    cam.centerOn(
+      (APARTMENT_COLS * APT_TILE) / 2,
+      (APARTMENT_ROWS * APT_TILE - APT_ART_TOP) / 2 + editorSpace / (2 * zoom),
+    );
   }
 
   protected blockers() {
@@ -431,9 +462,19 @@ export class ApartmentScene extends WorldScene {
     this.renderRoom('cozy', []);
     this.game.events.on('apartment:render', this.onRender, this);
     this.game.events.on('apartment:ghost', this.onGhost, this);
+    this.game.events.on('apartment:cursor', this.onCursor, this);
+    this.game.events.on('apartment:editor-height', this.onEditorHeight, this);
     this.events.once('shutdown', () => {
       this.game.events.off('apartment:render', this.onRender, this);
       this.game.events.off('apartment:ghost', this.onGhost, this);
+      this.game.events.off('apartment:cursor', this.onCursor, this);
+      this.game.events.off('apartment:editor-height', this.onEditorHeight, this);
+      this.floor = null;
+      this.furniture = [];
+      this.grid = null;
+      this.ghost = null;
+      this.roomGlow = null;
+      this.placementMarker = null;
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       if (!useUi.getState().editingApartment) return;
@@ -458,6 +499,8 @@ export class ApartmentScene extends WorldScene {
   private onRender = (payload: { themeId: string; objects: EditorObject[]; editing: boolean }) => {
     this.renderRoom(payload.themeId, payload.objects);
     this.grid?.setVisible(payload.editing);
+    if (!payload.editing) this.placementMarker?.setVisible(false);
+    this.fitCamera();
   };
 
   private onGhost = (g: null | { obj: EditorObject; valid: boolean }) => {
@@ -468,13 +511,26 @@ export class ApartmentScene extends WorldScene {
     this.ghost.setTint(g.valid ? 0xffffff : 0xff7a7a);
   };
 
+  private onEditorHeight = (height: number) => {
+    this.editorHeight = height;
+    this.fitCamera();
+  };
+
+  private onCursor = (p: null | { x: number; y: number }) => {
+    this.placementMarker?.clear();
+    if (!p || !useUi.getState().editingApartment) return;
+    this.placementMarker ??= this.add.graphics().setDepth(9001);
+    this.placementMarker.setVisible(true).lineStyle(2, 0xffe3a6, 1);
+    this.placementMarker.strokeRect(p.x * APT_TILE + 2, p.y * APT_TILE + 2, APT_TILE - 4, APT_TILE - 4);
+  };
+
   private furnitureImage(o: EditorObject) {
     const rotated = o.rotation === 90 || o.rotation === 270;
     const size = rotated ? { w: o.size.h, h: o.size.w } : o.size;
-    const key = `furn:${o.sprite}:${size.w}x${size.h}`;
-    if (!this.textures.exists(key)) this.textures.addCanvas(key, drawFurniture(o.sprite, size).toCanvas(2));
+    const key = `furn:${o.sprite}:${o.size.w}x${o.size.h}:${o.rotation}`;
+    if (!this.textures.exists(key))
+      this.textures.addCanvas(key, drawRotatedFurniture(o.sprite, o.size, o.rotation).toCanvas(2));
     const img = this.add.image(o.x * APT_TILE, (o.y + size.h) * APT_TILE, key).setOrigin(0, 1);
-    if (o.rotation === 180 || o.rotation === 270) img.setFlipX(true);
     return img;
   }
 
@@ -482,7 +538,7 @@ export class ApartmentScene extends WorldScene {
     const key = `apt-floor:${themeId}`;
     if (!this.textures.exists(key)) this.textures.addCanvas(key, paintApartment(themeId));
     this.floor?.destroy();
-    this.floor = this.add.image(0, 0, key).setOrigin(0).setDepth(-10);
+    this.floor = this.add.image(-APT_ART_SIDE, -APT_ART_TOP, key).setOrigin(0).setDepth(-10);
     this.furniture.forEach((f) => f.destroy());
     this.furniture = objects.map((o) => {
       const img = this.furnitureImage(o);
@@ -506,12 +562,12 @@ export class ApartmentScene extends WorldScene {
         .image((APARTMENT_COLS * APT_TILE) / 2, (APARTMENT_ROWS * APT_TILE) / 2 + 10, 'glow:indoor')
         .setScale(2.2)
         .setBlendMode(Phaser.BlendModes.ADD)
-        .setAlpha(0.35)
+        .setAlpha(0.12)
         .setDepth(2000);
       if (!useUi.getState().reducedMotion) {
         this.tweens.add({
           targets: this.roomGlow,
-          alpha: { from: 0.3, to: 0.42 },
+          alpha: { from: 0.09, to: 0.15 },
           duration: 3200,
           yoyo: true,
           repeat: -1,
@@ -530,6 +586,7 @@ export class ApartmentScene extends WorldScene {
   }
 
   protected override onBind(room: Room) {
+    this.fitCamera();
     room.onMessage('layout', () => this.game.events.emit('apartment:layout-changed'));
   }
 }

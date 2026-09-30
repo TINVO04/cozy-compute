@@ -1,3 +1,6 @@
+import { GEN_Z_FURNITURE } from './furniture.js';
+export { GEN_Z_FURNITURE, GEN_Z_FURNITURE_IDS } from './furniture.js';
+
 export type ItemType = 'clothing' | 'furniture' | 'rod';
 export type ClothingSlot = 'hat' | 'top' | 'face' | 'rod';
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
@@ -400,10 +403,11 @@ export const ITEM_SEEDS: ItemDefinitionSeed[] = [
     description: 'Khẩu trang mềm mại in hình mũi gấu bông siêu dễ thương.',
   },
   // furniture
+  ...GEN_Z_FURNITURE,
   {
     id: 'furn_chair',
     type: 'furniture',
-    sprite: 'chair:#b4553f',
+    sprite: 'chair:#b7b890',
     size: { w: 1, h: 1 },
     decor: 2,
     name: 'Ghế Gỗ Mộc Mạc',
@@ -428,7 +432,7 @@ export const ITEM_SEEDS: ItemDefinitionSeed[] = [
     sprite: 'plant:#3e9b7a',
     size: { w: 1, h: 1 },
     decor: 3,
-    name: 'Chậu Cây Dương Xỉ Xanh',
+    name: 'Chậu Monstera Góc Chill',
     rarity: 'common',
     coinPrice: 110,
     description: 'Mang hơi thở thiên nhiên tươi mát vào không gian sống.',
@@ -436,18 +440,18 @@ export const ITEM_SEEDS: ItemDefinitionSeed[] = [
   {
     id: 'furn_rug',
     type: 'furniture',
-    sprite: 'rug:#7a4b8c',
+    sprite: 'rug:#b6a3bd',
     size: { w: 2, h: 2 },
     decor: 4,
-    name: 'Thảm Nhung Mận Chín',
+    name: 'Thảm Caro Lilac',
     rarity: 'common',
     coinPrice: 200,
-    description: 'Thảm trải sàn êm ái tạo điểm nhấn sang trọng cho căn phòng.',
+    description: 'Thảm caro tím lilac và kem, trải dưới bàn hoặc ghế cho góc chill mềm mại.',
   },
   {
     id: 'furn_lamp',
     type: 'furniture',
-    sprite: 'lamp:#e6b84a',
+    sprite: 'lamp:#dcc79a',
     size: { w: 1, h: 1 },
     decor: 3,
     name: 'Đèn Cây Nghệ Thuật',
@@ -458,7 +462,7 @@ export const ITEM_SEEDS: ItemDefinitionSeed[] = [
   {
     id: 'furn_bed',
     type: 'furniture',
-    sprite: 'bed:#6f9fe0',
+    sprite: 'bed:#9caec9',
     size: { w: 2, h: 2 },
     decor: 5,
     name: 'Giường Ngủ Êm Ái',
@@ -469,7 +473,7 @@ export const ITEM_SEEDS: ItemDefinitionSeed[] = [
   {
     id: 'furn_sofa',
     type: 'furniture',
-    sprite: 'sofa:#e0735b',
+    sprite: 'sofa:#c69d90',
     size: { w: 2, h: 1 },
     decor: 5,
     name: 'Sofa Thư Giãn',
@@ -524,29 +528,29 @@ export const ITEM_SEEDS: ItemDefinitionSeed[] = [
   {
     id: 'furn_gaming_chair',
     type: 'furniture',
-    sprite: 'gamingchair:#06b6d4',
+    sprite: 'gamingchair:#a0b8bd',
     size: { w: 1, h: 1 },
     decor: 6,
-    name: 'Ghế Gaming RGB Neon',
+    name: 'Ghế Setup Pastel',
     rarity: 'epic',
     coinPrice: 1400,
-    description: 'Ghế công thái học thể thao bọc da cao cấp viền LED cyan phát sáng.',
+    description: 'Ghế công thái học xanh khói, gối tựa êm và chân xoay gọn gàng cho góc setup.',
   },
   {
     id: 'furn_arcade_machine',
     type: 'furniture',
-    sprite: 'arcade:#a855f7',
+    sprite: 'arcade:#ae9dbc',
     size: { w: 1, h: 2 },
     decor: 9,
     name: 'Máy Game Thùng Retro 1980',
     rarity: 'epic',
     coinPrice: 2400,
-    description: 'Máy arcade cổ điển phát sáng màn hình pixel và âm thanh 8-bit rộn rã.',
+    description: 'Tủ arcade trang trí màu lilac, màn hình pixel và nút bấm nhiều màu gợi thời 8-bit.',
   },
   {
     id: 'furn_cat_tree',
     type: 'furniture',
-    sprite: 'cattree:#f59e0b',
+    sprite: 'cattree:#c9ad8e',
     size: { w: 1, h: 2 },
     decor: 7,
     name: 'Nhà Cây Mèo Chibi 3 Tầng',

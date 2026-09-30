@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Apartment rendering fixture</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #252331;
+      }
+      canvas {
+        display: block;
+        image-rendering: pixelated;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import Phaser from 'phaser';
+      import { ApartmentScene } from '/src/game/scenes.ts';
+      import { ITEM_SEEDS } from '@cozy/game-data';
+      import { useUi } from '/src/lib/store.ts';
+      useUi.setState({ muted: true, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
+      const placements = [
+        ['furn_bookshelf', 0, 1],
+        ['furn_desk', 3, 1],
+        ['furn_mirror', 6, 1],
+        ['furn_bed', 8, 1],
+        ['furn_plant', 11, 1],
+        ['furn_rug_checker', 1, 4],
+        ['furn_sofa', 1, 4],
+        ['furn_mushroom', 0, 4],
+        ['furn_table', 1, 6],
+        ['furn_duck_plush', 0, 6],
+        ['furn_snack_cart', 5, 3],
+        ['furn_cloud', 5, 6],
+        ['furn_rug_smile', 8, 5],
+        ['furn_capybara', 8, 5],
+        ['furn_boba', 10, 6],
+        ['furn_touch_grass', 7, 3],
+        ['furn_aquarium', 10, 3],
+      ];
+      window.apartmentObjects = placements.map(([id, x, y]) => {
+        const item = ITEM_SEEDS.find((i) => i.id === id);
+        return { itemId: id, x, y, rotation: 0, sprite: item.sprite, size: item.size };
+      });
+      window.apartmentPreview = new Phaser.Game({
+        type: Phaser.CANVAS,
+        pixelArt: true,
+        roundPixels: true,
+        scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
+        audio: { noAudio: true },
+        banner: false,
+        scene: [ApartmentScene],
+      });
+      window.apartmentPreview.events.on('apartment:ready', () => {
+        window.apartmentPreview.events.emit('apartment:render', {
+          themeId: 'lilac',
+          objects: window.apartmentObjects,
+          editing: false,
+        });
+      });
+    </script>
+  </body>
+</html>
