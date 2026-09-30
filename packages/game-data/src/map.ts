@@ -30,7 +30,8 @@ export type ZoneId =
   | 'ai_kiosk'
   | 'pier'
   | 'fishing_shop'
-  | 'vietprodev';
+  | 'vietprodev'
+  | 'dntu';
 
 export interface Zone {
   id: ZoneId;
@@ -72,16 +73,25 @@ export const BUILDINGS: Building[] = [
   {
     id: 'fashion',
     label: 'Tiệm Thời Trang Threadbare',
-    rect: t(16, 2, 6, 5),
+    rect: t(16, 2, 5, 5),
     wall: 0xf4e3ea,
     roof: 0x7a4b8c,
     accent: 0x4a2c5a,
-    door: { x: 18, w: 2 },
+    door: { x: 17, w: 2 },
+  },
+  {
+    id: 'dntu',
+    label: 'Trường Đại Học Công Nghệ Đồng Nai',
+    rect: t(21, 3, 6, 5),
+    wall: 0xfef3c7,
+    roof: 0xc2410c,
+    accent: 0x991b1b,
+    door: { x: 23, w: 2 },
   },
   {
     id: 'furniture',
     label: 'Nội Thất Sofa So Good',
-    rect: t(26, 4, 6, 5),
+    rect: t(27, 4, 5, 5),
     wall: 0xe7ecd9,
     roof: 0x3f7a64,
     accent: 0x274a3d,
@@ -133,9 +143,15 @@ export const ZONES: Zone[] = [
     id: 'fashion',
     label: 'Tiệm Thời Trang Threadbare',
     prompt: 'Xem và thử trang phục',
-    rect: t(16, 7, 6, 3),
+    rect: t(16, 7, 5, 3),
   },
-  { id: 'furniture', label: 'Nội Thất Sofa So Good', prompt: 'Xem và mua nội thất', rect: t(26, 9, 6, 1) },
+  {
+    id: 'dntu',
+    label: 'Đại Học Công Nghệ Đồng Nai',
+    prompt: 'Bước vào khuôn viên trường',
+    rect: t(21, 8, 6, 2),
+  },
+  { id: 'furniture', label: 'Nội Thất Sofa So Good', prompt: 'Xem và mua nội thất', rect: t(27, 9, 5, 1) },
   {
     id: 'apartments',
     label: 'Khu Căn Hộ Chung Cư',
@@ -163,7 +179,7 @@ export const ZONES: Zone[] = [
 /** Shared art anchors keep scenery, lighting and server collision aligned. */
 export const TOWN_LAMPS = [
   { x: 10, y: 10 },
-  { x: 23, y: 10 },
+  { x: 21, y: 10 },
   { x: 35, y: 12 },
   { x: 16, y: 19 },
   { x: 31, y: 19 },
@@ -174,7 +190,7 @@ export const TOWN_LAMPS = [
 export const TOWN_TREES = [
   { x: 2, y: 5 },
   { x: 10, y: 2 },
-  { x: 24, y: 4 },
+  { x: 21, y: 1 },
   { x: 34, y: 6 },
   { x: 3, y: 12 },
   { x: 6, y: 26 },
@@ -207,7 +223,8 @@ export const TOWN_PROPS: { kind: TownPropKind; x: number; y: number }[] = [
   { kind: 'crate', x: 3, y: 21 },
   { kind: 'crate', x: 8, y: 19 },
   { kind: 'planter', x: 17, y: 8 },
-  { kind: 'planter', x: 21, y: 8 },
+  { kind: 'planter', x: 21, y: 10 },
+  { kind: 'planter', x: 27, y: 10 },
   { kind: 'planter', x: 38, y: 11 },
   { kind: 'planter', x: 44, y: 11 },
   { kind: 'sign', x: 35, y: 18 },
@@ -252,8 +269,9 @@ export const PATHS: Rect[] = [
   t(22, 20, 3, 8),
   t(4, 8, 7, 2),
   t(11, 8, 5, 2),
-  t(16, 7, 6, 3),
-  t(26, 9, 6, 1),
+  t(16, 7, 5, 3),
+  t(21, 8, 6, 2),
+  t(27, 9, 5, 1),
   t(38, 10, 6, 2),
   t(3, 20, 9, 2),
   t(11, 22, 6, 4),
@@ -306,6 +324,22 @@ export const DELIVERY_DESTINATIONS: ZoneId[] = [
   'pier',
   'fishing_shop',
   'vietprodev',
+  'dntu',
+];
+
+/** DNTU University interior grid & constants */
+export const DNTU_COLS = 16;
+export const DNTU_ROWS = 11;
+export const DNTU_SPAWN = { x: 8 * TILE, y: 9.5 * TILE };
+export const DNTU_BLOCKERS: Rect[] = [
+  t(0, 0, DNTU_COLS, 2), // North stage wall with Smart Board & stage
+  t(3, 4, 10, 3), // Central smart lecture hall desk row & computer lab
+  t(1, 1, 2, 3), // Digital library shelf in top-left
+  t(13, 1, 2, 3), // Awards & accreditation showcase in top-right
+  t(0, 0, 1, DNTU_ROWS), // Left wall
+  t(DNTU_COLS - 1, 0, 1, DNTU_ROWS), // Right wall
+  t(0, DNTU_ROWS - 1, 6, 1), // Bottom left wall
+  t(10, DNTU_ROWS - 1, 6, 1), // Bottom right wall
 ];
 
 /** VietDevPro office interior grid & constants */

@@ -7,6 +7,7 @@ import { ApartmentRoom } from './rooms/apartment.js';
 import { setDeps, type BaseRoom } from './rooms/base.js';
 import { CompanyRoom } from './rooms/company.js';
 import { TownRoom } from './rooms/town.js';
+import { UniversityRoom } from './rooms/university.js';
 
 const PORT = Number(process.env.REALTIME_PORT ?? 2567);
 const API = process.env.API_INTERNAL_URL ?? 'http://127.0.0.1:8787';
@@ -61,6 +62,7 @@ const gameServer = new Server({
 gameServer.define('town', TownRoom);
 gameServer.define('apartment', ApartmentRoom).filterBy(['ownerId']);
 gameServer.define('company', CompanyRoom);
+gameServer.define('university', UniversityRoom);
 
 await sub.subscribe('player:appearance', 'player:kick', 'apartment:updated', 'events');
 sub.on('message', async (channel, raw) => {

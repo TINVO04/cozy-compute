@@ -857,6 +857,8 @@ export const DELIVERY_PACKAGES = [
   'Một bức thư xin lỗi',
   'Thùng cà phê & nước tăng lực thức đêm VietProDev',
   'Bàn phím cơ switch xanh dự phòng',
+  'Tập đề án tốt nghiệp & tài liệu NCKH sinh viên DNTU',
+  'Hộp bằng cử nhân & nón tốt nghiệp danh giá DNTU',
 ];
 
 /** Default admin-tunable activity configuration. Stored in the activities table. */

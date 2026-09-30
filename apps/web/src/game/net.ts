@@ -27,9 +27,11 @@ class Net {
   private client = new Client(WS);
   room: Room | null = null;
   private listeners = new Set<Listener>();
-  private target: { name: 'town' } | { name: 'apartment'; ownerId: string } | { name: 'company' } = {
-    name: 'town',
-  };
+  private target:
+    { name: 'town' } | { name: 'apartment'; ownerId: string } | { name: 'company' } | { name: 'university' } =
+    {
+      name: 'town',
+    };
   private retry = 0;
   private retryTimer: number | undefined;
   private closedByUs = false;
@@ -69,7 +71,9 @@ class Net {
           ? await this.client.joinOrCreate('town', { token })
           : target.name === 'company'
             ? await this.client.joinOrCreate('company', { token })
-            : await this.client.joinOrCreate('apartment', { token, ownerId: target.ownerId });
+            : target.name === 'university'
+              ? await this.client.joinOrCreate('university', { token })
+              : await this.client.joinOrCreate('apartment', { token, ownerId: target.ownerId });
       if (gen !== this.generation) {
         await room.leave(true).catch(() => undefined);
         return;
@@ -155,6 +159,11 @@ class Net {
   goCompany(label = 'Văn Phòng VietDevPro') {
     useUi.getState().setRoom({ kind: 'company', label });
     return this.connect({ name: 'company' });
+  }
+
+  goUniversity(label = 'Đại Học Công Nghệ Đồng Nai (DNTU)') {
+    useUi.getState().setRoom({ kind: 'university', label });
+    return this.connect({ name: 'university' });
   }
 
   send(type: string, msg: unknown) {

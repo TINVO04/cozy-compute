@@ -49,7 +49,7 @@ interface UiState {
   activity: Activity;
   zone: ZoneId | null;
   connection: 'connecting' | 'online' | 'reconnecting' | 'offline';
-  room: { kind: 'town' | 'apartment' | 'company'; ownerId?: string; label: string };
+  room: { kind: 'town' | 'apartment' | 'company' | 'university'; ownerId?: string; label: string };
   toasts: Toast[];
   chat: ChatLine[];
   delivery: DeliveryJob | null;

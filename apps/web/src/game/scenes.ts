@@ -6,6 +6,9 @@ import {
   COMPANY_BLOCKERS,
   COMPANY_COLS,
   COMPANY_ROWS,
+  DNTU_BLOCKERS,
+  DNTU_COLS,
+  DNTU_ROWS,
   FISHING_RODS,
   MAP_HEIGHT,
   MAP_WIDTH,
@@ -28,6 +31,7 @@ import {
   SLEEPING_EMPLOYEES,
   type SleepingEmployee,
 } from '../art/company';
+import { DNTU_PEOPLE, drawDntuPerson, paintDntuCampus, type DntuPerson } from '../art/dntu';
 import {
   APT_TILE,
   BUILDING_ROOF,
@@ -701,6 +705,174 @@ export class CompanyScene extends WorldScene {
         backgroundColor: 'rgba(15, 23, 42, 0.95)',
         padding: { x: 8, y: 5 },
         wordWrap: { width: 180 },
+        align: 'center',
+        resolution: 2,
+      })
+      .setOrigin(0.5, 0.5);
+
+    bubble.add(txt);
+    this.activeBubble = bubble;
+
+    this.time.delayedCall(4500, () => {
+      if (this.activeBubble === bubble) {
+        this.tweens.add({
+          targets: bubble,
+          alpha: 0,
+          duration: 300,
+          onComplete: () => {
+            bubble.destroy();
+            if (this.activeBubble === bubble) this.activeBubble = null;
+          },
+        });
+      }
+    });
+  }
+
+  protected override onSelfMove(x: number, y: number) {
+    // Stepping on exit mat at bottom (cols 7 to 9, row >= 10)
+    if (y >= 9.8 * TILE && x >= 6.5 * TILE && x <= 9.5 * TILE) {
+      net.goTown();
+    }
+  }
+}
+
+export class UniversityScene extends WorldScene {
+  private activeBubble: Phaser.GameObjects.Container | null = null;
+
+  constructor() {
+    super('university');
+  }
+
+  protected worldSize() {
+    return { width: DNTU_COLS * TILE, height: DNTU_ROWS * TILE };
+  }
+
+  protected blockers() {
+    return DNTU_BLOCKERS;
+  }
+
+  protected matchesRoom(room: Room) {
+    return room.name === 'university';
+  }
+
+  protected buildWorld() {
+    // 1. DNTU Grand Campus Interior Background
+    const campusKey = 'dntu:campus';
+    if (!this.textures.exists(campusKey)) {
+      this.textures.addCanvas(campusKey, paintDntuCampus());
+    }
+    this.add.image(0, 0, campusKey).setOrigin(0).setDepth(-10);
+
+    // 2. Interactive Lecturers, Students, and AI Bot
+    for (const person of DNTU_PEOPLE) {
+      const personTexKey = `dntu:${person.id}`;
+      if (!this.textures.exists(personTexKey)) {
+        this.textures.addCanvas(personTexKey, drawDntuPerson(person));
+      }
+
+      const container = this.add.container(person.x, person.y);
+      container.setDepth(person.y + 12);
+
+      // Character sprite
+      const sprite = this.add.image(0, 0, personTexKey).setOrigin(0.5, 0.7);
+      container.add(sprite);
+
+      // Subtle breathing / idle motion
+      this.tweens.add({
+        targets: sprite,
+        scaleY: 0.96,
+        duration: 1200 + Math.random() * 300,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+
+      // Name & role badge
+      const badgeText = this.add
+        .text(0, -38, `${person.name} · ${person.role}`, {
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '10px',
+          fontStyle: 'bold',
+          color: '#fbbf24',
+          backgroundColor: 'rgba(15, 23, 42, 0.85)',
+          padding: { x: 5, y: 2 },
+          resolution: 2,
+        })
+        .setOrigin(0.5, 0.5);
+      container.add(badgeText);
+
+      // Interactive on click / tap
+      sprite.setInteractive({ useHandCursor: true });
+      sprite.on('pointerdown', () => this.showPersonDialogue(person, container));
+    }
+
+    // 3. Ambient soft campus illumination glow
+    ensureAtmosphereTextures(this);
+    this.add
+      .image((DNTU_COLS * TILE) / 2, (DNTU_ROWS * TILE) / 2, 'glow:indoor')
+      .setScale(2.5)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0.28)
+      .setDepth(2000);
+
+    // 4. Interactive Smart Board Zone (center top)
+    const smartBoardHit = this.add
+      .zone(8 * TILE, 1.2 * TILE, 140, 50)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    smartBoardHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '🖥️ Màn Hình Cảm Ứng Thông Minh DNTU',
+        body: 'Đang trình chiếu: "Ứng dụng AI & IoT trong chuyển đổi số doanh nghiệp". Sinh viên DNTU thực hành trực tiếp trên hệ thống Lab hiện đại!',
+      });
+    });
+
+    // 5. Interactive Digital Library Zone (left top)
+    const libHit = this.add
+      .zone(2.2 * TILE, 1.2 * TILE, 80, 50)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    libHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '📚 Thư Viện Số & Tài Nguyên Học Liệu DNTU',
+        body: 'Truy cập hơn 100,000+ tài liệu, giáo trình điện tử, đề án tốt nghiệp xuất sắc và cơ sở dữ liệu NCKH quốc tế IEEE/Scopus.',
+      });
+    });
+
+    // 6. Interactive Awards & Accreditation Showcase (right top)
+    const trophyHit = this.add
+      .zone(13.8 * TILE, 1.2 * TILE, 80, 50)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    trophyHit.on('pointerdown', () => {
+      play('coin');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🏆 Tủ Huy Chương & Kiểm Định Chất Lượng',
+        body: 'Trường ĐH Công nghệ Đồng Nai đạt chuẩn Kiểm định Quốc gia MOET, Top trường đào tạo ứng dụng hàng đầu vùng kinh tế trọng điểm phía Nam!',
+      });
+    });
+  }
+
+  private showPersonDialogue(person: DntuPerson, container: Phaser.GameObjects.Container) {
+    play('pop');
+    this.activeBubble?.destroy();
+
+    const bubble = this.add.container(container.x, container.y - 56);
+    bubble.setDepth(9999);
+
+    const txt = this.add
+      .text(0, 0, `"${person.dialogue}"`, {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '11px',
+        color: '#f8fafc',
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        padding: { x: 8, y: 5 },
+        wordWrap: { width: 200 },
         align: 'center',
         resolution: 2,
       })

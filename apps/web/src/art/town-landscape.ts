@@ -254,6 +254,7 @@ const SIGNS: Record<string, string> = {
   delivery: 'BƯU TRẠM',
   fishing_shop: 'NGƯ CỤ BÁC BA',
   vietprodev: 'VIETPRODEV',
+  dntu: 'ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI',
 };
 
 /**
@@ -484,9 +485,281 @@ function paintVietProDevTownhouse(b: Building): HTMLCanvasElement {
   return canvas;
 }
 
+/**
+ * Paints Dong Nai Technology University (DNTU) grand Indochine campus building,
+ * matching real-world architectural facade:
+ * - Traditional Vietnamese multi-tiered terracotta red tile roof with central triangular dormer pediment
+ * - Flanking roof gables with round attic arched windows
+ * - Upper floors in warm French Indochine cream yellow with dark brown multi-pane windows and white balustrades
+ * - Ground floor in bold terracotta-red with 5 monumental Roman/Indochine arched entrance gates
+ * - 3 Flagpoles in front of central arch: Vietnam National Flag flanked by DNTU flags
+ * - Grand polished granite campus monument engraved: "ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI"
+ * - Manicured conical topiaries and palm greenery flanking the colonnade
+ */
+function paintDntuBuilding(b: Building): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = b.rect.w + 8; // 200
+  canvas.height = b.rect.h + BUILDING_ROOF; // 192
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  const w = b.rect.w; // 192
+  const bottom = canvas.height - 2; // 190
+
+  // 0. Base ground shadow
+  rect(ctx, 'rgba(54, 48, 36, 0.28)', 4, bottom - 6, w + 4, 8);
+
+  // 1. Structural Backdrop & Wall Base (French Indochine Cream Yellow upper body)
+  rect(ctx, '#fef3c7', 6, 44, w - 8, bottom - 44);
+  rect(ctx, '#fde68a', 6, 44, 6, bottom - 44);
+  rect(ctx, '#fde68a', w - 12, 44, 6, bottom - 44);
+
+  // 2. ROOF (Terracotta Red Multi-tiered Hip & Gable Roof - y: 8..54)
+  rect(ctx, '#7f1d1d', 2, 28, w, 24);
+  rect(ctx, '#c2410c', 4, 30, w - 4, 20);
+  for (let ry = 32; ry < 50; ry += 4) {
+    rect(ctx, '#9a3412', 4, ry, w - 4, 2);
+    rect(ctx, '#ea580c', 4, ry + 2, w - 4, 1);
+  }
+  rect(ctx, '#431407', 0, 50, w + 4, 4);
+  rect(ctx, '#fffbeb', 2, 53, w, 2);
+
+  // Flanking left & right gable dormers with round attic windows (y: 18..44)
+  // Left dormer
+  rect(ctx, '#7f1d1d', 16, 20, 24, 28);
+  rect(ctx, '#c2410c', 18, 22, 20, 24);
+  rect(ctx, '#fef3c7', 20, 32, 16, 14);
+  oval(ctx, '#1c1917', 28, 38, 5, 5);
+  oval(ctx, '#e0f2fe', 28, 38, 4, 4);
+  rect(ctx, '#1c1917', 27, 34, 2, 8);
+  rect(ctx, '#1c1917', 24, 37, 8, 2);
+
+  // Right dormer
+  rect(ctx, '#7f1d1d', w - 40, 20, 24, 28);
+  rect(ctx, '#c2410c', w - 38, 22, 20, 24);
+  rect(ctx, '#fef3c7', w - 36, 32, 16, 14);
+  oval(ctx, '#1c1917', w - 28, 38, 5, 5);
+  oval(ctx, '#e0f2fe', w - 28, 38, 4, 4);
+  rect(ctx, '#1c1917', w - 29, 34, 2, 8);
+  rect(ctx, '#1c1917', w - 32, 37, 8, 2);
+
+  // Central Grand Triangular Pediment Dormer (Mái dốc tam giác trung tâm - y: 8..34)
+  const pedX = w / 2; // 96
+  ctx.fillStyle = '#7f1d1d';
+  ctx.beginPath();
+  ctx.moveTo(pedX, 8);
+  ctx.lineTo(pedX - 32, 36);
+  ctx.lineTo(pedX + 32, 36);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#c2410c';
+  ctx.beginPath();
+  ctx.moveTo(pedX, 11);
+  ctx.lineTo(pedX - 28, 34);
+  ctx.lineTo(pedX + 28, 34);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#fef3c7';
+  ctx.beginPath();
+  ctx.moveTo(pedX, 18);
+  ctx.lineTo(pedX - 18, 33);
+  ctx.lineTo(pedX + 18, 33);
+  ctx.closePath();
+  ctx.fill();
+  rect(ctx, '#7c2d12', pedX - 10, 26, 20, 6);
+  for (let vx = pedX - 8; vx <= pedX + 8; vx += 4) {
+    rect(ctx, '#fef3c7', vx, 27, 2, 4);
+  }
+
+  // 3. UPPER FLOORS: TẦNG 2 & 3 (y: 54..112)
+  const colXs = [10, 40, 70, w / 2 - 2, 122, 152, w - 10];
+  for (const cx of colXs) {
+    rect(ctx, '#b91c1c', cx - 2, 54, 4, 58);
+    rect(ctx, '#991b1b', cx - 2, 54, 1, 58);
+  }
+
+  for (let bay = 0; bay < 6; bay++) {
+    const c1 = colXs[bay] ?? 10;
+    const c2 = colXs[bay + 1] ?? 40;
+    const wx = c1 + 6;
+    const ww = c2 - c1 - 12;
+
+    // Floor 3 Window
+    rect(ctx, '#1c1917', wx, 58, ww, 18);
+    rect(ctx, '#e0f2fe', wx + 1, 59, ww - 2, 16);
+    for (let wy = 61; wy < 74; wy += 4) {
+      rect(ctx, '#1c1917', wx + 1, wy, ww - 2, 1);
+    }
+
+    // Floor 2 Window with white balustrade
+    rect(ctx, '#1c1917', wx, 82, ww, 22);
+    rect(ctx, '#e0f2fe', wx + 1, 83, ww - 2, 20);
+    for (let wy = 85; wy < 100; wy += 4) {
+      rect(ctx, '#1c1917', wx + 1, wy, ww - 2, 1);
+    }
+    rect(ctx, '#ffffff', wx - 1, 98, ww + 2, 6);
+    for (let bx = wx + 1; bx < wx + ww; bx += 3) {
+      rect(ctx, '#cbd5e1', bx, 99, 1, 5);
+    }
+  }
+
+  rect(ctx, '#ffffff', 6, 110, w - 8, 4);
+  rect(ctx, '#fef3c7', 6, 113, w - 8, 2);
+
+  // 4. GROUND FLOOR: MONUMENTAL RED ARCHED COLONNADE (y: 114..186)
+  rect(ctx, '#b91c1c', 6, 114, w - 8, bottom - 116);
+  rect(ctx, '#991b1b', 6, 114, 4, bottom - 116);
+  rect(ctx, '#7f1d1d', w - 10, 114, 4, bottom - 116);
+
+  const arches = [
+    { x: 14, w: 22, h: 48, topH: 12 },
+    { x: 44, w: 22, h: 48, topH: 12 },
+    { x: 74, w: 48, h: 56, topH: 16 }, // Grand central entrance
+    { x: 130, w: 22, h: 48, topH: 12 },
+    { x: 160, w: 22, h: 48, topH: 12 },
+  ];
+
+  for (const a of arches) {
+    const ay = bottom - a.h - 6;
+
+    rect(ctx, '#450a0a', a.x, ay, a.w, a.h);
+
+    ctx.fillStyle = '#450a0a';
+    ctx.beginPath();
+    ctx.arc(a.x + a.w / 2, ay + a.topH, a.w / 2, Math.PI, 0);
+    ctx.fill();
+
+    rect(ctx, 'rgba(254, 240, 138, 0.45)', a.x + 3, ay + a.topH, a.w - 6, a.h - a.topH - 4);
+    rect(ctx, '#e0f2fe', a.x + 4, ay + a.topH + 4, a.w - 8, a.h - a.topH - 12);
+    rect(ctx, 'rgba(255, 255, 255, 0.6)', a.x + 6, ay + a.topH + 6, 3, a.h - a.topH - 16);
+
+    ctx.strokeStyle = '#fef3c7';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(a.x + a.w / 2, ay + a.topH, a.w / 2, Math.PI, 0);
+    ctx.stroke();
+    rect(ctx, '#fef3c7', a.x - 1, ay + a.topH, 2, a.h - a.topH);
+    rect(ctx, '#fef3c7', a.x + a.w - 1, ay + a.topH, 2, a.h - a.topH);
+    rect(ctx, '#ffffff', a.x + a.w / 2 - 2, ay - 2, 4, 4);
+  }
+
+  // Central Entrance Double Doors inside Arch 3 (x: 74..122)
+  const cDoorX = 82;
+  const cDoorW = 32;
+  const cDoorY = bottom - 36;
+  rect(ctx, '#1c1917', cDoorX, cDoorY, cDoorW, 30);
+  rect(ctx, '#e0f2fe', cDoorX + 2, cDoorY + 2, cDoorW / 2 - 3, 26);
+  rect(ctx, '#e0f2fe', cDoorX + cDoorW / 2 + 1, cDoorY + 2, cDoorW / 2 - 3, 26);
+  rect(ctx, '#e2e8f0', cDoorX + cDoorW / 2 - 2, cDoorY + 10, 1, 10);
+  rect(ctx, '#e2e8f0', cDoorX + cDoorW / 2 + 1, cDoorY + 10, 1, 10);
+
+  // Grand Entrance Steps (Polished stone stairs)
+  rect(ctx, '#d4af37', 70, bottom - 6, 56, 4);
+  rect(ctx, '#fef08a', 72, bottom - 4, 52, 2);
+
+  // 5. 3 FLAGPOLES IN FRONT OF MAIN ARCH (y: 90..130)
+  // Left Flag: DNTU Flag
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(86, 126);
+  ctx.lineTo(86, 96);
+  ctx.stroke();
+  rect(ctx, '#ffffff', 75, 98, 11, 7);
+  rect(ctx, '#b91c1c', 79, 100, 3, 4);
+
+  // Center Flag: Vietnam National Flag
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(98, 126);
+  ctx.lineTo(98, 90);
+  ctx.stroke();
+  rect(ctx, '#dc2626', 99, 91, 14, 9);
+  rect(ctx, '#b91c1c', 99, 99, 14, 1);
+  rect(ctx, '#facc15', 103, 93, 5, 5);
+  rect(ctx, '#fde047', 104, 94, 3, 3);
+
+  // Right Flag: DNTU Flag
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(110, 126);
+  ctx.lineTo(110, 96);
+  ctx.stroke();
+  rect(ctx, '#ffffff', 110, 98, 11, 7);
+  rect(ctx, '#b91c1c', 114, 100, 3, 4);
+
+  // 6. TOP UNIVERSITY TITLE ON ARCH LEVEL
+  rect(ctx, '#991b1b', 62, 118, 72, 14);
+  rect(ctx, '#7f1d1d', 62, 118, 72, 1);
+  rect(ctx, '#fef08a', 63, 119, 70, 12);
+  ctx.font = '800 6.5px "Inter", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#b91c1c';
+  ctx.fillText('ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', w / 2, 125);
+
+  // 7. GRAND CAMPUS STONE MONUMENT (Bia Đá Cổng Trường - y: 168..188)
+  const monX = w / 2 - 40;
+  const monW = 80;
+  const monY = bottom - 20;
+  const monH = 18;
+
+  rect(ctx, 'rgba(0, 0, 0, 0.25)', monX - 2, monY - 1, monW + 4, monH + 3);
+  rect(ctx, '#d4af37', monX - 1, monY - 1, monW + 2, monH + 2);
+  rect(ctx, '#fef08a', monX, monY, monW, monH);
+
+  ctx.font = '800 5.5px "Inter", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#991b1b';
+  ctx.fillText('ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', monX + monW / 2, monY + 2.5);
+
+  ctx.font = '600 4px sans-serif';
+  ctx.fillStyle = '#78350f';
+  ctx.fillText('DONG NAI TECHNOLOGY UNIVERSITY', monX + monW / 2, monY + 9);
+
+  rect(ctx, '#991b1b', monX + 2, monY + monH - 4, monW - 4, 3);
+  ctx.font = '700 3px sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('TRUNG THÀNH · TRÁCH NHIỆM · SÁNG TẠO', monX + monW / 2, monY + monH - 3.5);
+
+  // 8. MANICURED CONICAL TOPIARIES & PALM GREENERY
+  function drawCampusTopiary(tx: number, ty: number) {
+    rect(ctx, '#7f1d1d', tx + 2, ty + 10, 8, 8);
+    rect(ctx, '#b91c1c', tx + 3, ty + 11, 6, 6);
+    ctx.fillStyle = '#15803d';
+    ctx.beginPath();
+    ctx.moveTo(tx + 6, ty);
+    ctx.lineTo(tx, ty + 11);
+    ctx.lineTo(tx + 12, ty + 11);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#22c55e';
+    ctx.beginPath();
+    ctx.moveTo(tx + 6, ty + 2);
+    ctx.lineTo(tx + 2, ty + 10);
+    ctx.lineTo(tx + 10, ty + 10);
+    ctx.closePath();
+    ctx.fill();
+  }
+  drawCampusTopiary(38, bottom - 24);
+  drawCampusTopiary(68, bottom - 24);
+  drawCampusTopiary(118, bottom - 24);
+  drawCampusTopiary(148, bottom - 24);
+
+  return canvas;
+}
+
 export function paintBuilding(b: Building): HTMLCanvasElement {
   if (b.id === 'vietprodev') {
     return paintVietProDevTownhouse(b);
+  }
+  if (b.id === 'dntu') {
+    return paintDntuBuilding(b);
   }
   const canvas = document.createElement('canvas');
   canvas.width = b.rect.w + 8;

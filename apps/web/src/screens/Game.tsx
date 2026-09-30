@@ -348,6 +348,7 @@ const ZONE_ACTIONS: Partial<Record<ZoneId, { cta: string; hint: string }>> = {
   events: { cta: 'Mở bảng sự kiện', hint: 'Tham gia sự kiện tiếp theo' },
   ai_kiosk: { cta: 'Mở Trạm thưởng AI', hint: 'Đổi Xu lấy hạn mức API AI' },
   vietprodev: { cta: 'Vào công ty', hint: 'Công ty công nghệ VietProDev' },
+  dntu: { cta: 'Vào trường ĐH', hint: 'Trường Đại học Công nghệ Đồng Nai' },
 };
 
 function WorldHud({ me }: { me: Me }) {
@@ -398,6 +399,8 @@ function WorldHud({ me }: { me: Me }) {
         return setPanel('ai');
       case 'vietprodev':
         return void net.goCompany('Văn Phòng VietProDev');
+      case 'dntu':
+        return void net.goUniversity('Đại Học Công Nghệ Đồng Nai (DNTU)');
     }
   }
 
@@ -433,10 +436,12 @@ function WorldHud({ me }: { me: Me }) {
                 ? room.label
                 : room.kind === 'company'
                   ? 'Công Ty VietProDev'
-                  : (zoneLabel ?? 'Thị trấn')}
+                  : room.kind === 'university'
+                    ? 'Đại Học Công Nghệ Đồng Nai (DNTU)'
+                    : (zoneLabel ?? 'Thị trấn')}
             </span>
           </div>
-          {room.kind === 'apartment' || room.kind === 'company' ? (
+          {room.kind === 'apartment' || room.kind === 'company' || room.kind === 'university' ? (
             <Button size="sm" onClick={() => void net.goTown()}>
               <MapIcon size={15} /> Về thị trấn
             </Button>
