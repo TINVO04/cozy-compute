@@ -59,3 +59,36 @@ export function stepMovement(
 export function isWalkable(x: number, y: number, blockers: Rect[] = BLOCKERS): boolean {
   return !collides(x, y, blockers);
 }
+
+/** Server-side input tracking. Only server simulation time advances positions, never packet count or client time. */
+export class AuthoritativeMovement {
+  input: MoveInput = { x: 0, y: 0 };
+  private receivedSeq = 0;
+  private appliedSeq = 0;
+  private elapsedMs = 0;
+
+  accept(message: { x?: number; y?: number; seq?: number }) {
+    const seq = message?.seq;
+    if (!Number.isSafeInteger(seq) || seq! <= this.receivedSeq || seq! > 0xffffffff) return;
+    this.receivedSeq = seq!;
+    this.input = clampInput({ x: Number(message.x), y: Number(message.y) });
+  }
+
+  stop() {
+    this.input = { x: 0, y: 0 };
+  }
+
+  advance(position: { x: number; y: number }, dtMs: number, world: Parameters<typeof stepMovement>[3]) {
+    if (this.appliedSeq !== this.receivedSeq) {
+      this.appliedSeq = this.receivedSeq;
+      this.elapsedMs = 0;
+    }
+    const elapsed = Number.isFinite(dtMs) ? Math.max(0, Math.min(250, dtMs)) : 0;
+    if (this.input.x || this.input.y) this.elapsedMs += elapsed;
+    return {
+      ...stepMovement(position, this.input, elapsed / 1000, world),
+      seq: this.appliedSeq,
+      inputElapsedMs: this.elapsedMs,
+    };
+  }
+}

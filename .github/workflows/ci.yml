@@ -106,7 +106,7 @@ jobs:
             -f compose.production.yaml -f compose.smoke.yaml up -d --no-build --wait --wait-timeout 180
           PROXY_SMOKE_URL="http://$(docker compose --project-name cozy-ci-smoke --env-file infra/deploy/smoke.env \
             -f compose.production.yaml -f compose.smoke.yaml port caddy 80)" \
-            pnpm --filter @cozy/web e2e e2e/proxy-smoke.spec.ts
+            pnpm --filter @cozy/web e2e e2e/proxy-smoke.spec.ts e2e/movement-network.spec.ts
 
       - name: Stop isolated smoke services
         if: always()

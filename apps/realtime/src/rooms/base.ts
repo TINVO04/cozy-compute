@@ -1,5 +1,5 @@
 import { Room, type Client } from '@colyseus/core';
-import { clampInput, stepMovement, TICK_RATE, type MoveInput, type Rect } from '@cozy/game-data';
+import { AuthoritativeMovement, TICK_RATE, type Rect } from '@cozy/game-data';
 import type { Redis } from 'ioredis';
 import type { ApiClient, SessionInfo } from '../api.js';
 import { cleanChat, EMOTES, type Emote } from '../chat.js';
@@ -20,7 +20,7 @@ export function getDeps(): Deps {
 
 interface ClientData {
   session: SessionInfo;
-  input: MoveInput;
+  movement: AuthoritativeMovement;
   lastChatAt: number[];
   lastMoveAt: number;
   inputCount: number;
@@ -57,9 +57,7 @@ export abstract class BaseRoom extends Room<RoomState> {
         d.inputCount = 0;
       }
       if (++d.inputCount > 60) return; // flood protection
-      d.input = clampInput({ x: Number(msg?.x), y: Number(msg?.y) });
-      const p = this.state.players.get(client.sessionId);
-      if (p && typeof msg?.seq === 'number' && Number.isInteger(msg.seq)) p.seq = msg.seq >>> 0;
+      d.movement.accept(msg);
     });
 
     this.onMessage('chat', (client, msg: { text?: string }) => {
@@ -125,7 +123,7 @@ export abstract class BaseRoom extends Room<RoomState> {
     this.state.players.set(client.sessionId, p);
     this.data.set(client.sessionId, {
       session,
-      input: { x: 0, y: 0 },
+      movement: new AuthoritativeMovement(),
       lastChatAt: [],
       lastMoveAt: 0,
       inputCount: 0,
@@ -144,7 +142,7 @@ export abstract class BaseRoom extends Room<RoomState> {
     if (!consented) {
       p.connected = false;
       const d = this.data.get(client.sessionId);
-      if (d) d.input = { x: 0, y: 0 };
+      d?.movement.stop();
       try {
         await this.allowReconnection(client, 20);
         p.connected = true;
@@ -192,24 +190,25 @@ export abstract class BaseRoom extends Room<RoomState> {
 
   protected tick(dtMs: number) {
     const w = this.world();
-    const dt = dtMs / 1000;
     const now = Date.now();
     const positions: Record<string, string> = {};
     const presence: Record<string, string> = {};
     this.state.players.forEach((p, sid) => {
       const d = this.data.get(sid);
       if (!d) return;
-      const next = stepMovement({ x: p.x, y: p.y }, d.input, dt, {
+      const next = d.movement.advance({ x: p.x, y: p.y }, dtMs, {
         blockers: w.blockers,
         width: w.width,
         height: w.height,
       });
+      p.seq = next.seq;
+      p.inputElapsedMs = next.inputElapsedMs;
       const moved = next.x !== p.x || next.y !== p.y;
       if (moved) {
-        if (d.input.x < 0) p.dir = 1;
-        else if (d.input.x > 0) p.dir = 2;
-        else if (d.input.y < 0) p.dir = 3;
-        else if (d.input.y > 0) p.dir = 0;
+        if (d.movement.input.x < 0) p.dir = 1;
+        else if (d.movement.input.x > 0) p.dir = 2;
+        else if (d.movement.input.y < 0) p.dir = 3;
+        else if (d.movement.input.y > 0) p.dir = 0;
         p.x = Math.round(next.x * 10) / 10;
         p.y = Math.round(next.y * 10) / 10;
       }

@@ -1,17 +1,11 @@
-import {
-  DEFAULT_APPEARANCE,
-  stepMovement,
-  type Appearance,
-  type MoveInput,
-  type Rect,
-} from '@cozy/game-data';
+import { DEFAULT_APPEARANCE, type Appearance, type MoveInput, type Rect } from '@cozy/game-data';
 import { getStateCallbacks, type Room } from 'colyseus.js';
 import type Phaser from 'phaser';
 import { AVATAR_FEET_OFFSET, ensureAvatarTexture } from './avatars';
 import { spawnFootstepDust } from './atmosphere';
-import { net } from './net';
 import { useUi } from '../lib/store';
 import { getHDFishCanvas, FISH_3D_ASSETS, getSpeciesData } from '../art/fish';
+import { MovementPrediction, smoothMovement } from './movement-prediction';
 
 function ensureFishTexture(scene: Phaser.Scene, speciesId: string): string {
   const key = `fish_tx_hd:${speciesId}`;
@@ -55,6 +49,7 @@ interface PlayerSnapshot {
   dir: number;
   moving: boolean;
   seq: number;
+  inputElapsedMs: number;
   emote: string;
   connected: boolean;
   inEvent: boolean;
@@ -753,7 +748,7 @@ export class PlayerLayer {
   selfSessionId = '';
   private input: MoveInput = { x: 0, y: 0 };
   private seq = 0;
-  private pending: { seq: number; input: MoveInput; dt: number }[] = [];
+  private prediction: MovementPrediction | null = null;
   private sendAcc = 0;
   private lastSent: MoveInput = { x: 0, y: 0 };
   private cleanup: (() => void)[] = [];
@@ -780,6 +775,10 @@ export class PlayerLayer {
     this.cleanup.push(players.onAdd((p, sid) => this.add(p, sid), true));
     this.cleanup.push(
       players.onRemove((_p, sid) => {
+        if (this.avatars.get(sid) === this.self) {
+          this.self = null;
+          this.prediction = null;
+        }
         this.avatars.get(sid)?.destroy();
         this.avatars.delete(sid);
       }),
@@ -848,20 +847,17 @@ export class PlayerLayer {
       this.avatars.set(sid, av);
       if (isSelf) {
         this.self = av;
+        this.prediction = new MovementPrediction({ x: p.x, y: p.y });
+        this.seq = p.seq;
+        this.lastSent = { x: 0, y: 0 };
+        this.sendAcc = 50;
         this.scene.cameras.main.startFollow(av.container, true, 0.12, 0.12);
       }
       const $p = this.$(p as never) as unknown as Callbacks;
       this.cleanup.push(
         $p.onChange(() => {
           if (isSelf) {
-            // Reconcile: start from the server position and replay unacknowledged inputs.
-            this.pending = this.pending.filter((i) => i.seq > p.seq);
-            let pos = { x: p.x, y: p.y };
-            for (const i of this.pending) pos = stepMovement(pos, i.input, i.dt, this.world);
-            const dx = pos.x - av.container.x;
-            const dy = pos.y - av.container.y;
-            if (Math.hypot(dx, dy) > 48) av.container.setPosition(pos.x, pos.y);
-            else av.target = pos;
+            this.prediction?.reconcile(p, this.world);
           } else {
             av.target = { x: p.x, y: p.y };
             av.dir = p.dir;
@@ -884,46 +880,42 @@ export class PlayerLayer {
   }
 
   update(dtMs: number, time = 0) {
+    if (!this.room.connection.isOpen) return;
     const dt = dtMs / 1000;
+    // Assign a sequence before predicting its frames. Moving: 20 Hz; idle keepalive: 1 Hz.
+    this.sendAcc += dtMs;
+    const changed = this.input.x !== this.lastSent.x || this.input.y !== this.lastSent.y;
+    const sendInterval = this.input.x || this.input.y ? 50 : 1000;
+    if (this.self && (this.seq === 0 || changed || this.sendAcc >= sendInterval)) {
+      this.sendAcc = 0;
+      this.seq++;
+      this.lastSent = { ...this.input };
+      this.room.send('input', { ...this.input, seq: this.seq });
+    }
     // local prediction
-    if (this.self) {
+    if (this.self && this.prediction) {
       const av = this.self;
       const moving = this.input.x !== 0 || this.input.y !== 0;
+      const before = this.prediction.position;
+      const next = this.prediction.predict(this.seq, this.input, dtMs, this.world);
+      const display = smoothMovement(av.container, before, next, dtMs);
+      av.container.setPosition(display.x, display.y);
       if (moving) {
-        const next = stepMovement({ x: av.container.x, y: av.container.y }, this.input, dt, this.world);
-        av.container.setPosition(next.x, next.y);
-        av.target = next;
         if (this.input.x < 0) av.dir = 1;
         else if (this.input.x > 0) av.dir = 2;
         else if (this.input.y < 0) av.dir = 3;
         else av.dir = 0;
-      } else {
-        // settle toward reconciled position
-        av.container.x += (av.target.x - av.container.x) * Math.min(1, dt * 12);
-        av.container.y += (av.target.y - av.container.y) * Math.min(1, dt * 12);
       }
       if (av.moving !== moving) {
         av.moving = moving;
         av.updateAnim();
       } else if (moving) av.updateAnim();
-      this.pending.push({ seq: this.seq + 1, input: this.input, dt });
-      if (this.pending.length > 120) this.pending.shift();
-      this.onSelfMove?.(av.container.x, av.container.y);
-    }
-    // send input at 20 Hz, immediately on change
-    this.sendAcc += dtMs;
-    const changed = this.input.x !== this.lastSent.x || this.input.y !== this.lastSent.y;
-    if (changed || this.sendAcc >= 50) {
-      this.sendAcc = 0;
-      this.seq++;
-      this.lastSent = this.input;
-      if (changed || this.input.x || this.input.y)
-        net.send('input', { x: this.input.x, y: this.input.y, seq: this.seq });
+      this.onSelfMove?.(next.x, next.y);
     }
     // interpolate remote players, run micro-animations, and depth-sort everyone by feet position
     for (const [sid, av] of this.avatars) {
       if (sid !== this.selfSessionId) {
-        const k = Math.min(1, dt * 10);
+        const k = 1 - Math.exp(-dt * 10);
         av.container.x += (av.target.x - av.container.x) * k;
         av.container.y += (av.target.y - av.container.y) * k;
       }

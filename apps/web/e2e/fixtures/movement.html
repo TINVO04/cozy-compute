@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Real multiplayer movement regression</title>
+  </head>
+  <body style="margin: 0">
+    <script type="module">
+      import Phaser from 'phaser';
+      import { Client } from 'colyseus.js';
+      import { PlayerLayer } from '/src/game/players.ts';
+      import { useUi } from '/src/lib/store.ts';
+      import { COMPANY_BLOCKERS, COMPANY_COLS, COMPANY_ROWS, TILE } from '@cozy/game-data';
+      const config = window.movementConfig;
+      useUi.setState({ reducedMotion: true, muted: true });
+      const room = await new Client(config.ws).joinOrCreate('company', { token: config.token });
+      room.onMessage('*', () => {});
+      window.movementRoom = room;
+      // Delay actual WebSocket patches and input packets, preserving their wire order.
+      let packet = 0,
+        lastSendAt = 0,
+        lastReceiveAt = 0;
+      const delay = () => 80 + (packet++ % 4) * 15;
+      const send = room.send.bind(room);
+      room.send = (type, message) => {
+        if (type !== 'input') return send(type, message);
+        lastSendAt = Math.max(performance.now() + delay(), lastSendAt + 1);
+        setTimeout(() => {
+          if (room.connection.isOpen) send(type, message);
+        }, lastSendAt - performance.now());
+      };
+      const socket = room.connection.transport.ws;
+      const receive = socket.onmessage;
+      socket.onmessage = (event) => {
+        lastReceiveAt = Math.max(performance.now() + delay(), lastReceiveAt + 1);
+        setTimeout(() => receive.call(socket, event), lastReceiveAt - performance.now());
+      };
+      window.movementFrames = [];
+      window.movementInput = { x: 0, y: 0 };
+      class MovementScene extends Phaser.Scene {
+        create() {
+          this.layer = new PlayerLayer(this, room, {
+            width: COMPANY_COLS * TILE,
+            height: COMPANY_ROWS * TILE,
+            blockers: COMPANY_BLOCKERS,
+          });
+          window.movementLayer = this.layer;
+          this.events.once('shutdown', () => this.layer.destroy());
+        }
+        update(time, delta) {
+          this.layer.setInput(window.movementInput);
+          this.layer.update(delta, time);
+          if (this.layer.self)
+            window.movementFrames.push({
+              x: this.layer.self.container.x,
+              y: this.layer.self.container.y,
+              direction: window.movementInput.x,
+            });
+        }
+      }
+      window.movementGame = new Phaser.Game({
+        type: Phaser.CANVAS,
+        width: 640,
+        height: 480,
+        banner: false,
+        audio: { noAudio: true },
+        scene: [MovementScene],
+      });
+    </script>
+  </body>
+</html>

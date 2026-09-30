@@ -11,6 +11,7 @@ export class PlayerState extends Schema {
   @type('int8') dir = 0; // 0 down, 1 left, 2 right, 3 up
   @type('boolean') moving = false;
   @type('uint32') seq = 0;
+  @type('number') inputElapsedMs = 0;
   @type('string') emote = '';
   @type('number') emoteAt = 0;
   @type('boolean') connected = true;
