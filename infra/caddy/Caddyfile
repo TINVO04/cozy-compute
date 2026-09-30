@@ -1,19 +1,44 @@
-# Production reverse proxy. Set GAME_DOMAIN before starting Caddy.
-{$GAME_DOMAIN} {
+# Use a domain for direct HTTPS, or :80 behind Cloudflare Tunnel.
+{$CADDY_SITE_ADDRESS} {
   encode zstd gzip
 
-  @api path /api/* /auth/* /me /events* /shop* /activities* /inventory* /apartments* /ai* /internal/* /admin/*
-  handle @api { reverse_proxy api:8787 }
-
-  @realtime {
-    header Connection *Upgrade*
-    header Upgrade websocket
+  @private path /internal /internal/* /api/internal /api/internal/* /metrics /api/metrics /realtime/metrics
+  handle @private {
+    respond 404
   }
-  handle @realtime { reverse_proxy realtime:2567 }
+
+  handle_path /api/* {
+    reverse_proxy api:8787
+  }
+
+  # Colyseus uses POST matchmaking before opening its WebSocket.
+  handle_path /realtime/* {
+    reverse_proxy realtime:2567
+  }
+
+  handle /v1/* {
+    reverse_proxy litellm:4000
+  }
+
+  # Preserve older API URLs and desktop clients.
+  @legacyApi {
+    path /auth/* /me /me/* /events* /shop* /activities* /inventory* /apartments* /ai* /admin/* /backpack/* /players/* /friends* /mutes* /reports* /healthz /readyz
+    not header Accept *text/html*
+  }
+  handle @legacyApi {
+    reverse_proxy api:8787
+  }
+
+  handle /matchmake/* {
+    reverse_proxy realtime:2567
+  }
+
+  @websocket header Upgrade websocket
+  handle @websocket {
+    reverse_proxy realtime:2567
+  }
 
   handle {
-    root * /srv/web
-    try_files {path} /index.html
-    file_server
+    reverse_proxy web:80
   }
 }

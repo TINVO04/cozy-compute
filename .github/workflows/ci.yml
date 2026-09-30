@@ -2,13 +2,38 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   quality-gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: cozy
+          POSTGRES_PASSWORD: cozy_ci_password
+          POSTGRES_DB: cozy_test
+        ports: ['55432:5432']
+        options: >-
+          --health-cmd "pg_isready -U cozy -d cozy_test"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ['56379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgres://cozy:cozy_ci_password@127.0.0.1:55432/cozy_test
+      REDIS_URL: redis://127.0.0.1:56379
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,6 +52,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Start test upstream
+        run: |
+          docker run --detach --rm --name cozy-ci-upstream --network host \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/infra/mock-upstream,target=/app,readonly" \
+            --workdir /app node:24-alpine node server.mjs
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4010/healthz > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+
       - name: Format Check
         run: pnpm format:check
 
@@ -36,8 +72,79 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Unit Tests
+      - name: Unit and integration tests
         run: pnpm test
 
       - name: Build Web & Services
         run: pnpm build
+
+      - name: Install browser
+        run: pnpm --filter @cozy/web exec playwright install --with-deps chromium
+
+      - name: Browser smoke tests
+        env:
+          E2E_BASE_URL: http://127.0.0.1:5173
+        run: |
+          pnpm --filter @cozy/web dev --host 127.0.0.1 > "$RUNNER_TEMP/cozy-vite.log" 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:5173 > /dev/null; then break; fi
+            sleep 1
+          done
+          pnpm --filter @cozy/web e2e e2e/town-render.spec.ts e2e/apartment-render.spec.ts
+
+      - name: Build production containers
+        env:
+          POSTGRES_PASSWORD: build-only
+          INTERNAL_SECRET: build-only
+          LITELLM_MASTER_KEY: build-only
+          LITELLM_SALT_KEY: build-only
+        run: docker compose --env-file infra/deploy/smoke.env -f compose.production.yaml build api realtime web
+
+      - name: Production proxy and multiplayer smoke test
+        run: |
+          docker compose --project-name cozy-ci-smoke --env-file infra/deploy/smoke.env \
+            -f compose.production.yaml -f compose.smoke.yaml up -d --no-build --wait --wait-timeout 180
+          PROXY_SMOKE_URL="http://$(docker compose --project-name cozy-ci-smoke --env-file infra/deploy/smoke.env \
+            -f compose.production.yaml -f compose.smoke.yaml port caddy 80)" \
+            pnpm --filter @cozy/web e2e e2e/proxy-smoke.spec.ts
+
+      - name: Stop isolated smoke services
+        if: always()
+        run: |
+          docker compose --project-name cozy-ci-smoke --env-file infra/deploy/smoke.env \
+            -f compose.production.yaml -f compose.smoke.yaml down --volumes
+
+      - name: Save browser failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failure
+          path: apps/web/test-results
+          if-no-files-found: ignore
+          retention-days: 3
+
+  deploy:
+    needs: quality-gate
+    # Never execute PR code on the machine holding the live database and Tunnel token.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.AUTO_DEPLOY == 'true'
+    runs-on: [self-hosted, cozy-production]
+    timeout-minutes: 45
+    concurrency:
+      group: cozy-production
+      cancel-in-progress: false
+    env:
+      COZY_DEPLOY_DIR: ${{ vars.COZY_DEPLOY_DIR }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout the tested commit
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Back up and deploy through Cloudflare Tunnel
+        run: node infra/deploy/deploy.mjs
