@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Interior interaction regression fixture</title>
+    <style>
+      body {
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import Phaser from 'phaser';
+      import { CompanyScene, UniversityScene } from '/src/game/scenes.ts';
+      import { useUi } from '/src/lib/store.ts';
+      import { net } from '/src/game/net.ts';
+      useUi.setState({ reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
+      window.exitRequests = 0;
+      net.goTown = async () => {
+        window.exitRequests++;
+      };
+      window.interiorUi = useUi;
+      window.interiorPreview = new Phaser.Game({
+        type: Phaser.CANVAS,
+        pixelArt: true,
+        scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
+        audio: { noAudio: true },
+        banner: false,
+        scene: [CompanyScene, UniversityScene],
+      });
+    </script>
+  </body>
+</html>

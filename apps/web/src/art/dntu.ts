@@ -37,7 +37,7 @@ export const DNTU_PEOPLE: DntuPerson[] = [
     name: 'Minh Khang',
     role: 'Thủ Khoa CNTT K22',
     x: 4.8 * TILE,
-    y: 4.5 * TILE,
+    y: 7.5 * TILE,
     dialogue:
       'Mình đang hoàn thiện đồ án Trí tuệ Nhân tạo kết nối trực tiếp với server doanh nghiệp. Phòng máy DNTU cấu hình cao chạy model AI cực mượt!',
     avatarStyle: {
@@ -51,7 +51,7 @@ export const DNTU_PEOPLE: DntuPerson[] = [
     name: 'Thùy Dương',
     role: 'Sinh viên Truyền thông & Thiết kế',
     x: 10.8 * TILE,
-    y: 4.5 * TILE,
+    y: 7.5 * TILE,
     dialogue:
       'Tại DNTU có hơn 20 Câu lạc bộ từ nghệ thuật, thể thao đến nghiên cứu sáng tạo. Tụi mình đang chuẩn bị cho sự kiện DNTU AURA sắp tới!',
     avatarStyle: {

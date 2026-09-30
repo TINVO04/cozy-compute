@@ -2274,6 +2274,38 @@ img.pixel,
   gap: var(--s2);
   min-width: 220px;
 }
+.shop-collection-note {
+  color: var(--ink-2);
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.editor-selection {
+  font-size: 12px;
+}
+.editor-inv .inv-slot {
+  width: 96px;
+  height: 104px;
+  padding: 4px 4px 36px;
+}
+.inv-name {
+  position: absolute;
+  bottom: 5px;
+  left: 4px;
+  right: 4px;
+  font-size: 12px;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  color: var(--ink);
+  text-align: center;
+}
+.editor-inv .inv-count {
+  top: 3px;
+  bottom: auto;
+}
 
 /* ---------------------------------------------------------------- auth */
 .auth {

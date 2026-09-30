@@ -1,17 +1,10 @@
 export type { Appearance } from '@cozy/game-data';
 import type { Appearance } from '@cozy/game-data';
+import { resolveEndpoint } from './endpoints';
 
 function resolveApiBase(): string {
   const env = import.meta.env.VITE_API_URL as string | undefined;
-  if (typeof window !== 'undefined' && window.location.hostname) {
-    const host = window.location.hostname;
-    if (host !== 'localhost' && (!env || env.includes('localhost') || env.includes('127.0.0.1'))) {
-      const port = env ? new URL(env, window.location.origin).port || '8787' : '8787';
-      const proto = window.location.protocol === 'https:' ? 'https:' : 'http:';
-      return `${proto}//${host}:${port}`;
-    }
-  }
-  return env ?? 'http://localhost:8787';
+  return resolveEndpoint(env, typeof window === 'undefined' ? undefined : window.location, 'api');
 }
 
 const BASE = resolveApiBase();

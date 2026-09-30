@@ -1,6 +1,13 @@
-import { FISHING_RODS, SHADOW_TIER_CONFIG, type FishShadowTier, type RodConfig } from '@cozy/game-data';
+import {
+  FISHING_NIBBLE_DURATION_MS,
+  FISHING_RODS,
+  SHADOW_TIER_CONFIG,
+  type FishShadowTier,
+  type RodConfig,
+} from '@cozy/game-data';
 import type Phaser from 'phaser';
 import { play } from '../lib/sound';
+import { fishNibblePose } from './fishing-motion';
 
 export interface FishingSessionParams {
   selfX: number;
@@ -8,6 +15,7 @@ export interface FishingSessionParams {
   shadowTier: FishShadowTier;
   nibbleCount: number;
   nibbleTimes: number[];
+  nibbleOrbitTurns?: number[];
   biteInMs: number;
   shadowDelayMs?: number;
   equippedRod?: RodConfig;
@@ -56,6 +64,7 @@ export class InWorldFishingController {
   private fishCurrentY = 0;
   private fishAngle = 0;
   private approachAngle = 0;
+  private nibbleApproachAngles: number[] = [];
 
   private isBite = false;
   private isReeling = false;
@@ -84,7 +93,7 @@ export class InWorldFishingController {
   }
 
   triggerRemoteNibble(index: number) {
-    if (!this.active) return;
+    if (!this.active || this.playedNibbles.has(index)) return;
     this.bobberJitter = (Math.random() - 0.5) * 8;
     this.spawnRipple(this.bobberCurrentX, this.bobberCurrentY, 1.15);
     if (!this.playedNibbles.has(index)) {
@@ -169,6 +178,12 @@ export class InWorldFishingController {
 
     this.facingDir = facingDir;
     this.approachAngle = Math.atan2(approachDy, approachDx);
+    let nibbleAngle = this.approachAngle;
+    this.nibbleApproachAngles = params.nibbleTimes.map((_, index) => {
+      const startAngle = nibbleAngle;
+      nibbleAngle += (params.nibbleOrbitTurns?.[index] ?? 1.5) * Math.PI * 2;
+      return startAngle;
+    });
 
     // Make character face the water and adopt the fishing stance with rod in hand
     if (!this.isRemote) {
@@ -350,7 +365,7 @@ export class InWorldFishingController {
     if (!this.params) return;
 
     const now = Date.now();
-    const { selfX, selfY, nibbleCount, nibbleTimes, shadowTier } = this.params;
+    const { selfX, selfY, nibbleTimes, shadowTier } = this.params;
     const rod = this.params.equippedRod ?? FISHING_RODS['rod_twig']!;
     const tierCfg = SHADOW_TIER_CONFIG[shadowTier] ?? SHADOW_TIER_CONFIG[1];
 
@@ -460,96 +475,74 @@ export class InWorldFishingController {
         if (Math.random() < 0.008) {
           this.spawnRipple(this.bobberCurrentX, this.bobberCurrentY, 0.7);
         }
-        return;
-      }
-
-      if (!this.shadowSpawnedRipple) {
-        this.shadowSpawnedRipple = true;
-        // Water ripple where fish shadow emerges from depths
-        this.spawnRipple(this.fishStartX, this.fishStartY, 1.4);
-      }
-
-      // Base idle hover point ~22px from bobber along the approach line
-      const hoverDist = 22;
-      const hoverTargetX = this.bobberBaseX + Math.cos(this.approachAngle) * hoverDist;
-      const hoverTargetY = this.bobberBaseY + Math.sin(this.approachAngle) * hoverDist;
-
-      if (now < firstNibble) {
-        // Approaching phase: fish swims smoothly from lake depths to bobber hover point
-        const approachDuration = Math.max(1, firstNibble - this.shadowAppearAt);
-        const t = Math.min(1, Math.max(0, (now - this.shadowAppearAt) / approachDuration));
-        const ease = 1 - Math.pow(1 - t, 3);
-        this.fishCurrentX = this.fishStartX + (hoverTargetX - this.fishStartX) * ease;
-        this.fishCurrentY = this.fishStartY + (hoverTargetY - this.fishStartY) * ease;
-        this.fishAngle = Math.atan2(
-          this.bobberBaseY - this.fishCurrentY,
-          this.bobberBaseX - this.fishCurrentX,
-        );
       } else {
-        // Nibbling phase (4 to 8 distinct, lifelike nibbles)
-        let activeNibbleIdx = -1;
-        let nibbleProgress = 0; // 0 to 1
-
-        const nibbleDuration = 420; // ms for each dynamic dart & recoil
-        for (let i = 0; i < nibblesCountSafe(nibbleCount); i++) {
-          const nt = nibbleTimes[i]!;
-          if (now >= nt && now < nt + nibbleDuration) {
-            activeNibbleIdx = i;
-            nibbleProgress = (now - nt) / nibbleDuration;
-            if (!this.playedNibbles.has(i)) {
-              this.playedNibbles.add(i);
-              if (!this.isRemote) {
-                play('nibble');
-              }
-              this.bobberJitter = (Math.random() - 0.5) * 8;
-              this.spawnRipple(this.bobberCurrentX, this.bobberCurrentY, 1.15);
-              this.params.onNibble?.(i);
-            }
-            break;
-          }
+        if (!this.shadowSpawnedRipple) {
+          this.shadowSpawnedRipple = true;
+          // Water ripple where fish shadow emerges from depths
+          this.spawnRipple(this.fishStartX, this.fishStartY, 1.4);
         }
 
-        if (activeNibbleIdx >= 0) {
-          // Snappy aquatic strike curve:
-          // 0.00..0.15: Coil / anticipation (-2.5px)
-          // 0.15..0.38: Fast aggressive dart forward towards bobber (+18px)
-          // 0.38..0.72: Snappy recoil backward with fin flare (-14px)
-          // 0.72..1.00: Smooth settling back to hover
-          let distFromHover = 0;
-          if (nibbleProgress < 0.15) {
-            const sub = nibbleProgress / 0.15;
-            distFromHover = -2.5 * Math.sin(sub * Math.PI);
-          } else if (nibbleProgress < 0.38) {
-            const sub = (nibbleProgress - 0.15) / 0.23;
-            // Snappy strike forward towards bobber
-            distFromHover = sub * 18;
-          } else if (nibbleProgress < 0.72) {
-            isRecoil = true;
-            const sub = (nibbleProgress - 0.38) / 0.34;
-            distFromHover = 18 * (1 - Math.sin(sub * Math.PI * 0.5));
-          } else {
-            distFromHover = 0;
-          }
+        // Base idle hover point ~22px from bobber along the approach line
+        const hoverDist = 22;
+        const hoverTargetX = this.bobberBaseX + Math.cos(this.approachAngle) * hoverDist;
+        const hoverTargetY = this.bobberBaseY + Math.sin(this.approachAngle) * hoverDist;
 
-          // Advance towards bobber along the approach line
-          const dirX = Math.cos(this.approachAngle);
-          const dirY = Math.sin(this.approachAngle);
-          this.fishCurrentX = hoverTargetX - dirX * distFromHover;
-          this.fishCurrentY = hoverTargetY - dirY * distFromHover;
+        if (now < firstNibble) {
+          // Approaching phase: fish swims smoothly from lake depths to bobber hover point
+          const approachDuration = Math.max(1, firstNibble - this.shadowAppearAt);
+          const t = Math.min(1, Math.max(0, (now - this.shadowAppearAt) / approachDuration));
+          const ease = 1 - Math.pow(1 - t, 3);
+          this.fishCurrentX = this.fishStartX + (hoverTargetX - this.fishStartX) * ease;
+          this.fishCurrentY = this.fishStartY + (hoverTargetY - this.fishStartY) * ease;
           this.fishAngle = Math.atan2(
             this.bobberBaseY - this.fishCurrentY,
             this.bobberBaseX - this.fishCurrentX,
           );
         } else {
-          // Hovering between nibbles: attentive hovering facing bobber with gentle water drift
-          const sway = Math.sin(time * 0.003 * tierCfg.swimSpeed) * 2.5;
-          const breathe = Math.cos(time * 0.004) * 1.5;
-          this.fishCurrentX = hoverTargetX + Math.cos(this.approachAngle + Math.PI / 2) * sway;
-          this.fishCurrentY = hoverTargetY + Math.sin(this.approachAngle + Math.PI / 2) * sway + breathe;
-          this.fishAngle = Math.atan2(
-            this.bobberBaseY - this.fishCurrentY,
-            this.bobberBaseX - this.fishCurrentX,
-          );
+          // Nibbling phase (4 to 8 distinct, lifelike nibbles)
+          let activeNibbleIdx = -1;
+          for (let i = 0; i < nibbleTimes.length; i++) {
+            const nt = nibbleTimes[i]!;
+            if (now >= nt) {
+              activeNibbleIdx = i;
+              if (now < nt + FISHING_NIBBLE_DURATION_MS && !this.playedNibbles.has(i)) {
+                this.playedNibbles.add(i);
+                if (!this.isRemote) {
+                  play('nibble');
+                }
+                this.bobberJitter = (Math.random() - 0.5) * 8;
+                this.spawnRipple(this.bobberCurrentX, this.bobberCurrentY, 1.15);
+                this.params.onNibble?.(i);
+              }
+            } else {
+              break;
+            }
+          }
+
+          if (activeNibbleIdx >= 0) {
+            const nibbleAt = nibbleTimes[activeNibbleIdx]!;
+            const nextStrikeAt = nibbleTimes[activeNibbleIdx + 1] ?? this.biteAt;
+            const pose = fishNibblePose(
+              now - nibbleAt,
+              nextStrikeAt - nibbleAt - FISHING_NIBBLE_DURATION_MS,
+              this.nibbleApproachAngles[activeNibbleIdx] ?? this.approachAngle,
+              this.params.nibbleOrbitTurns?.[activeNibbleIdx] ?? 1.5,
+            );
+            this.fishCurrentX = this.bobberBaseX + pose.x;
+            this.fishCurrentY = this.bobberBaseY + pose.y;
+            this.fishAngle = pose.angle;
+            isRecoil = pose.isRecoil;
+          } else {
+            // Hovering between nibbles: attentive hovering facing bobber with gentle water drift
+            const sway = Math.sin(time * 0.003 * tierCfg.swimSpeed) * 2.5;
+            const breathe = Math.cos(time * 0.004) * 1.5;
+            this.fishCurrentX = hoverTargetX + Math.cos(this.approachAngle + Math.PI / 2) * sway;
+            this.fishCurrentY = hoverTargetY + Math.sin(this.approachAngle + Math.PI / 2) * sway + breathe;
+            this.fishAngle = Math.atan2(
+              this.bobberBaseY - this.fishCurrentY,
+              this.bobberBaseX - this.fishCurrentX,
+            );
+          }
         }
       }
     } else {
@@ -564,7 +557,7 @@ export class InWorldFishingController {
     }
 
     // 5. Render Real Water Fish Shadow
-    if (this.shadowGraphics) {
+    if (this.shadowGraphics && (now >= this.shadowAppearAt || this.isBite || this.isReeling)) {
       this.shadowGraphics.clear();
       const fadeProgress = Math.min(1, Math.max(0.1, (now - this.shadowAppearAt) / 600));
       drawOrganicFishShadow(
@@ -848,10 +841,6 @@ export class InWorldFishingController {
     this.rodGraphics = null;
     this.cleanupVisuals();
   }
-}
-
-function nibblesCountSafe(n: number): number {
-  return Math.max(4, Math.min(8, n));
 }
 
 /**

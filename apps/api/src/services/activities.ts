@@ -20,6 +20,7 @@ import {
   zoneCenter,
   calculateFishSize,
   getFishShadowTier,
+  rollFishingSequence,
   type ActivityConfigMap,
   type FishShadowTier,
   type RodConfig,
@@ -229,18 +230,24 @@ export async function startFishing(ctx: AppContext, userId: string) {
   const rawShadowDelayMs = 7000 + Math.floor(ctx.rng() * 5001); // 7000 to 12000 ms (7-12s)
   const speedFactor = 1 - (rod.biteSpeedBonus ?? 0);
   const shadowDelayMs = Math.round(rawShadowDelayMs * speedFactor);
-  const approachMs = 2200;
-  const nibblesDuration = (nibbleCount - 1) * 850 + 650;
-  const baseSequenceMs = shadowDelayMs + approachMs + nibblesDuration;
-  const jitterMs = Math.round((ctx.rng() - 0.5) * 400);
-  const biteInMs = Math.max(9000, Math.round(baseSequenceMs + jitterMs));
+  const { nibbleOffsetsMs, nibbleOrbitTurns, biteInMs } = rollFishingSequence(
+    ctx.rng,
+    shadowDelayMs,
+    nibbleCount,
+  );
   const biteAt = ctx.now().getTime() + biteInMs;
 
-  const run = await startRun(ctx, userId, 'fishing', cfg.runTtlMs, {
+  const runTtlMs = Math.max(
+    cfg.runTtlMs,
+    biteInMs + reactionWindowMs + REELING_MASH_ALLOWANCE_MS + LATENCY_GRACE_MS + 1000,
+  );
+  const run = await startRun(ctx, userId, 'fishing', runTtlMs, {
     biteAt,
     pendingFishId: pendingFish.id,
     shadowTier,
     nibbleCount,
+    nibbleOffsetsMs,
+    nibbleOrbitTurns,
     equippedRodId,
     reactionWindowMs,
   });
@@ -252,6 +259,8 @@ export async function startFishing(ctx: AppContext, userId: string) {
     shadowTier,
     nibbleCount,
     shadowDelayMs,
+    nibbleOffsetsMs,
+    nibbleOrbitTurns,
     equippedRod: rod,
   };
 }

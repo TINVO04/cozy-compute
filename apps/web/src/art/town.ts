@@ -1,5 +1,5 @@
-import { APARTMENT_COLS, APARTMENT_ROWS, APARTMENT_THEMES, type TownPropKind } from '@cozy/game-data';
-import { hex, INK, shade } from './pixel';
+import type { TownPropKind } from '@cozy/game-data';
+import { INK } from './pixel';
 export { BUILDING_ROOF, drawTree, paintBuilding, paintTown } from './town-landscape';
 
 /**
@@ -361,86 +361,4 @@ export function paintProp(kind: TownPropKind): HTMLCanvasElement {
   return c;
 }
 
-export const APT_TILE = 32;
-
-/** High-detail apartment interior: rich wood parquet floor, wainscoting trim, sunlit window. */
-export function paintApartment(themeId: string): HTMLCanvasElement {
-  const theme = APARTMENT_THEMES.find((t) => t.id === themeId) ?? APARTMENT_THEMES[0]!;
-  const c = document.createElement('canvas');
-  c.width = APARTMENT_COLS * APT_TILE;
-  c.height = APARTMENT_ROWS * APT_TILE;
-  const ctx = c.getContext('2d')!;
-
-  // 1. Parquet wooden floor tiles with alternating grain
-  for (let y = 1; y < APARTMENT_ROWS; y++) {
-    for (let x = 0; x < APARTMENT_COLS; x++) {
-      const isAlt = (x + y) % 2 === 1;
-      const baseCol = hex(isAlt ? theme.floor : theme.floorAlt);
-      ctx.fillStyle = baseCol;
-      ctx.fillRect(x * APT_TILE, y * APT_TILE, APT_TILE, APT_TILE);
-
-      // Wood plank seams
-      ctx.fillStyle = shade(baseCol, -0.12);
-      ctx.fillRect(x * APT_TILE, y * APT_TILE + APT_TILE - 1, APT_TILE, 1);
-      ctx.fillRect(x * APT_TILE + APT_TILE - 1, y * APT_TILE, 1, APT_TILE);
-
-      // Woodgrain striations
-      ctx.fillStyle = shade(baseCol, 0.1);
-      ctx.fillRect(x * APT_TILE + 2, y * APT_TILE + 8, APT_TILE - 4, 1);
-      ctx.fillRect(x * APT_TILE + 4, y * APT_TILE + 20, APT_TILE - 8, 1);
-    }
-  }
-
-  // 2. Wallpaper & Wall Paneling
-  const wallCol = hex(theme.wall);
-  ctx.fillStyle = wallCol;
-  ctx.fillRect(0, 0, c.width, APT_TILE);
-
-  // Elegant vertical wallpaper stripes
-  ctx.fillStyle = shade(wallCol, -0.06);
-  for (let x = 0; x < c.width; x += 16) {
-    ctx.fillRect(x, 0, 8, APT_TILE - 8);
-  }
-
-  // Crown moulding and baseboard trim
-  const trimCol = hex(theme.trim);
-  ctx.fillStyle = shade(trimCol, 0.2);
-  ctx.fillRect(0, 0, c.width, 3); // ceiling moulding
-  ctx.fillStyle = trimCol;
-  ctx.fillRect(0, APT_TILE - 8, c.width, 8); // baseboard
-  ctx.fillStyle = shade(trimCol, -0.2);
-  ctx.fillRect(0, APT_TILE - 2, c.width, 2);
-
-  // 3. Large Arched Window with Daylight & Countryside view
-  const winW = 84;
-  const winH = 22;
-  const winX = Math.floor((c.width - winW) / 2);
-  const winY = 2;
-
-  // Outer wooden casing
-  ctx.fillStyle = INK;
-  ctx.fillRect(winX - 1, winY - 1, winW + 2, winH + 2);
-
-  // Sunny sky view
-  ctx.fillStyle = '#8fd7f2';
-  ctx.fillRect(winX, winY, winW, winH);
-
-  // Green hill silhouette in the distance
-  ctx.fillStyle = '#65bd6e';
-  ctx.beginPath();
-  ctx.ellipse(winX + 30, winY + winH, 36, 10, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Fluffy white cloud
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(winX + winW - 32, winY + 4, 14, 4);
-  ctx.fillRect(winX + winW - 28, winY + 2, 8, 3);
-
-  // Window mullions (crossbars)
-  ctx.fillStyle = trimCol;
-  ctx.fillRect(winX + Math.floor(winW / 3), winY, 2, winH);
-  ctx.fillRect(winX + Math.floor((winW * 2) / 3), winY, 2, winH);
-  ctx.fillRect(winX, winY + Math.floor(winH / 2), winW, 2);
-
-  return c;
-}
+export { APT_TILE, paintApartment } from './apartment';

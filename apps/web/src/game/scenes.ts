@@ -23,7 +23,9 @@ import {
 } from '@cozy/game-data';
 import { getStateCallbacks, type Room } from 'colyseus.js';
 import Phaser from 'phaser';
-import { duckGrid, drawFurniture } from '../art/items';
+import { duckGrid } from '../art/items';
+import { APT_ART_SIDE, APT_ART_TOP } from '../art/apartment';
+import { drawRotatedFurniture } from '../art/furniture';
 import {
   drawSleepingEmployee,
   drawZzzBubble,
@@ -358,6 +360,8 @@ export class TownScene extends WorldScene {
         equippedRodId?: string;
         nibbleCount?: number;
         nibbleTimes?: number[];
+        nibbleOffsetsMs?: number[];
+        nibbleOrbitTurns?: number[];
       }) => {
         if (!msg?.sessionId) return;
         this.remoteFishingControllers.get(msg.sessionId)?.cleanup();
@@ -370,7 +374,8 @@ export class TownScene extends WorldScene {
           selfY: msg.selfY,
           shadowTier: msg.shadowTier ?? 1,
           nibbleCount: msg.nibbleCount ?? 5,
-          nibbleTimes: msg.nibbleTimes ?? [],
+          nibbleTimes: msg.nibbleOffsetsMs?.map((offsetMs) => Date.now() + offsetMs) ?? msg.nibbleTimes ?? [],
+          nibbleOrbitTurns: msg.nibbleOrbitTurns,
           biteInMs: msg.biteInMs ?? 15000,
           shadowDelayMs: msg.shadowDelayMs ?? 8000,
           equippedRod,
@@ -424,6 +429,8 @@ export class ApartmentScene extends WorldScene {
   private ghost: Phaser.GameObjects.Image | null = null;
   private furnitureBlockers: Rect[] = [];
   private roomGlow: Phaser.GameObjects.Image | null = null;
+  private placementMarker: Phaser.GameObjects.Graphics | null = null;
+  private editorHeight = 230;
 
   constructor() {
     super('apartment');
@@ -431,6 +438,33 @@ export class ApartmentScene extends WorldScene {
 
   protected worldSize() {
     return { width: APARTMENT_COLS * APT_TILE, height: APARTMENT_ROWS * APT_TILE };
+  }
+
+  protected override fitCamera() {
+    const cam = this.cameras.main;
+    const width = APARTMENT_COLS * APT_TILE + APT_ART_SIDE * 2;
+    const height = APARTMENT_ROWS * APT_TILE + APT_ART_TOP + 16;
+    const editorSpace = useUi.getState().editingApartment ? this.editorHeight : 0;
+    const availableHeight = Math.max(180, this.scale.height - editorSpace - (editorSpace ? 16 : 64));
+    const zoom = Math.max(
+      1,
+      Math.min(3, Math.floor(Math.min((this.scale.width - 48) / width, availableHeight / height))),
+    );
+    cam.stopFollow();
+    cam.setZoom(zoom);
+    const vw = this.scale.width / cam.zoom,
+      vh = this.scale.height / cam.zoom;
+    // Fixed room view keeps all placement cells visible above the editor toolbar.
+    cam.setBounds(
+      -APT_ART_SIDE - Math.max(0, (vw - width) / 2),
+      -APT_ART_TOP - Math.max(0, (vh - height) / 2) + editorSpace / (2 * zoom),
+      Math.max(width, vw),
+      Math.max(height, vh),
+    );
+    cam.centerOn(
+      (APARTMENT_COLS * APT_TILE) / 2,
+      (APARTMENT_ROWS * APT_TILE - APT_ART_TOP) / 2 + editorSpace / (2 * zoom),
+    );
   }
 
   protected blockers() {
@@ -445,9 +479,19 @@ export class ApartmentScene extends WorldScene {
     this.renderRoom('cozy', []);
     this.game.events.on('apartment:render', this.onRender, this);
     this.game.events.on('apartment:ghost', this.onGhost, this);
+    this.game.events.on('apartment:cursor', this.onCursor, this);
+    this.game.events.on('apartment:editor-height', this.onEditorHeight, this);
     this.events.once('shutdown', () => {
       this.game.events.off('apartment:render', this.onRender, this);
       this.game.events.off('apartment:ghost', this.onGhost, this);
+      this.game.events.off('apartment:cursor', this.onCursor, this);
+      this.game.events.off('apartment:editor-height', this.onEditorHeight, this);
+      this.floor = null;
+      this.furniture = [];
+      this.grid = null;
+      this.ghost = null;
+      this.roomGlow = null;
+      this.placementMarker = null;
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       if (!useUi.getState().editingApartment) return;
@@ -472,6 +516,8 @@ export class ApartmentScene extends WorldScene {
   private onRender = (payload: { themeId: string; objects: EditorObject[]; editing: boolean }) => {
     this.renderRoom(payload.themeId, payload.objects);
     this.grid?.setVisible(payload.editing);
+    if (!payload.editing) this.placementMarker?.setVisible(false);
+    this.fitCamera();
   };
 
   private onGhost = (g: null | { obj: EditorObject; valid: boolean }) => {
@@ -482,13 +528,26 @@ export class ApartmentScene extends WorldScene {
     this.ghost.setTint(g.valid ? 0xffffff : 0xff7a7a);
   };
 
+  private onEditorHeight = (height: number) => {
+    this.editorHeight = height;
+    this.fitCamera();
+  };
+
+  private onCursor = (p: null | { x: number; y: number }) => {
+    this.placementMarker?.clear();
+    if (!p || !useUi.getState().editingApartment) return;
+    this.placementMarker ??= this.add.graphics().setDepth(9001);
+    this.placementMarker.setVisible(true).lineStyle(2, 0xffe3a6, 1);
+    this.placementMarker.strokeRect(p.x * APT_TILE + 2, p.y * APT_TILE + 2, APT_TILE - 4, APT_TILE - 4);
+  };
+
   private furnitureImage(o: EditorObject) {
     const rotated = o.rotation === 90 || o.rotation === 270;
     const size = rotated ? { w: o.size.h, h: o.size.w } : o.size;
-    const key = `furn:${o.sprite}:${size.w}x${size.h}`;
-    if (!this.textures.exists(key)) this.textures.addCanvas(key, drawFurniture(o.sprite, size).toCanvas(2));
+    const key = `furn:${o.sprite}:${o.size.w}x${o.size.h}:${o.rotation}`;
+    if (!this.textures.exists(key))
+      this.textures.addCanvas(key, drawRotatedFurniture(o.sprite, o.size, o.rotation).toCanvas(2));
     const img = this.add.image(o.x * APT_TILE, (o.y + size.h) * APT_TILE, key).setOrigin(0, 1);
-    if (o.rotation === 180 || o.rotation === 270) img.setFlipX(true);
     return img;
   }
 
@@ -496,7 +555,7 @@ export class ApartmentScene extends WorldScene {
     const key = `apt-floor:${themeId}`;
     if (!this.textures.exists(key)) this.textures.addCanvas(key, paintApartment(themeId));
     this.floor?.destroy();
-    this.floor = this.add.image(0, 0, key).setOrigin(0).setDepth(-10);
+    this.floor = this.add.image(-APT_ART_SIDE, -APT_ART_TOP, key).setOrigin(0).setDepth(-10);
     this.furniture.forEach((f) => f.destroy());
     this.furniture = objects.map((o) => {
       const img = this.furnitureImage(o);
@@ -520,12 +579,12 @@ export class ApartmentScene extends WorldScene {
         .image((APARTMENT_COLS * APT_TILE) / 2, (APARTMENT_ROWS * APT_TILE) / 2 + 10, 'glow:indoor')
         .setScale(2.2)
         .setBlendMode(Phaser.BlendModes.ADD)
-        .setAlpha(0.35)
+        .setAlpha(0.12)
         .setDepth(2000);
       if (!useUi.getState().reducedMotion) {
         this.tweens.add({
           targets: this.roomGlow,
-          alpha: { from: 0.3, to: 0.42 },
+          alpha: { from: 0.09, to: 0.15 },
           duration: 3200,
           yoyo: true,
           repeat: -1,
@@ -544,13 +603,81 @@ export class ApartmentScene extends WorldScene {
   }
 
   protected override onBind(room: Room) {
+    this.fitCamera();
     room.onMessage('layout', () => this.game.events.emit('apartment:layout-changed'));
   }
 }
 
-export class CompanyScene extends WorldScene {
-  private activeBubble: Phaser.GameObjects.Container | null = null;
+abstract class InteriorScene extends WorldScene {
+  protected activeBubble: Phaser.GameObjects.Container | null = null;
+  protected exiting = false;
+  private interactions: { x: number; y: number; run: () => void }[] = [];
 
+  override create() {
+    this.exiting = false;
+    this.activeBubble = null;
+    this.interactions = [];
+    super.create();
+    const onKey = (event: KeyboardEvent) => {
+      const ui = useUi.getState();
+      if (event.repeat || typing() || ui.panel || ui.activity || document.querySelector('.backdrop')) return;
+      if (event.key === 'Escape') {
+        this.activeBubble?.destroy();
+        this.activeBubble = null;
+      }
+      if (event.key.toLowerCase() !== 'e' || this.exiting || !this.layer?.self) return;
+      const { x, y } = this.layer.self.container;
+      const nearest = this.interactions.reduce<(typeof this.interactions)[number] | undefined>(
+        (best, action) =>
+          !best || Math.hypot(action.x - x, action.y - y) < Math.hypot(best.x - x, best.y - y)
+            ? action
+            : best,
+        undefined,
+      );
+      if (nearest && Math.hypot(nearest.x - x, nearest.y - y) <= 2 * TILE) nearest.run();
+    };
+    window.addEventListener('keydown', onKey);
+    this.events.once('shutdown', () => {
+      window.removeEventListener('keydown', onKey);
+      this.activeBubble?.destroy();
+      this.activeBubble = null;
+      this.interactions = [];
+    });
+  }
+
+  protected interactAt(x: number, y: number, run: () => void) {
+    this.interactions.push({ x, y, run });
+  }
+
+  protected expireBubble(bubble: Phaser.GameObjects.Container) {
+    this.time.delayedCall(4500, () => {
+      if (this.activeBubble !== bubble) return;
+      if (useUi.getState().reducedMotion) {
+        bubble.destroy();
+        this.activeBubble = null;
+        return;
+      }
+      this.tweens.add({
+        targets: bubble,
+        alpha: 0,
+        duration: 300,
+        onComplete: () => {
+          bubble.destroy();
+          if (this.activeBubble === bubble) this.activeBubble = null;
+        },
+      });
+    });
+  }
+
+  protected override onSelfMove(x: number, y: number) {
+    if (!this.exiting && y >= 9.8 * TILE && x >= 6.5 * TILE && x <= 9.5 * TILE) {
+      this.exiting = true;
+      void net.goTown();
+    }
+  }
+}
+
+export class CompanyScene extends InteriorScene {
   constructor() {
     super('company');
   }
@@ -599,27 +726,29 @@ export class CompanyScene extends WorldScene {
       container.add(zzz);
 
       // Gentle snoring / floating animation
-      this.tweens.add({
-        targets: zzz,
-        y: '-=10',
-        alpha: { from: 1, to: 0.25 },
-        duration: 1800 + Math.random() * 400,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
+      if (!useUi.getState().reducedMotion) {
+        this.tweens.add({
+          targets: zzz,
+          y: '-=10',
+          alpha: { from: 1, to: 0.25 },
+          duration: 1800 + Math.random() * 400,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
 
-      // Subtle breathing motion
-      this.tweens.add({
-        targets: sprite,
-        scaleY: 0.96,
-        duration: 1200 + Math.random() * 300,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
+        // Subtle breathing motion
+        this.tweens.add({
+          targets: sprite,
+          scaleY: 0.96,
+          duration: 1200 + Math.random() * 300,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
 
-      // Name & role badge above employee
+        // Name & role badge above employee
+      }
       const badgeText = this.add
         .text(0, -38, `${emp.name} · ${emp.role}`, {
           fontFamily: 'Inter, sans-serif',
@@ -636,6 +765,7 @@ export class CompanyScene extends WorldScene {
       // Interactive on click / tap
       sprite.setInteractive({ useHandCursor: true });
       sprite.on('pointerdown', () => this.showEmployeeDialogue(emp, container));
+      this.interactAt(emp.x, 6.5 * TILE, () => this.showEmployeeDialogue(emp, container));
     }
 
     // 3. Ambient soft office glow
@@ -660,6 +790,7 @@ export class CompanyScene extends WorldScene {
         body: 'Sprint 99: Fix 1 bug -> sinh ra 5 bug mới. Deadline: Hôm qua. Đang giải quyết bằng 42 ly cà phê!',
       });
     });
+    this.interactAt(4.5 * TILE, 2.8 * TILE, () => wbHit.emit('pointerdown'));
 
     // 5. Interactive Coffee Machine Zone
     const coffeeHit = this.add
@@ -674,6 +805,7 @@ export class CompanyScene extends WorldScene {
         body: 'Bạn đã nhấp một ngụm cà phê phin đậm đặc. Hồi phục 100% năng lượng lập trình viên!',
       });
     });
+    this.interactAt(14 * TILE, 3.6 * TILE, () => coffeeHit.emit('pointerdown'));
 
     // 6. Interactive Server Rack Zone
     const srvHit = this.add
@@ -688,10 +820,12 @@ export class CompanyScene extends WorldScene {
         body: 'CPU: 99.8% | RAM: 63.9/64GB | Kubernetes: 14 Pods CrashLoopBackOff. Đang chờ dev thức dậy!',
       });
     });
+    this.interactAt(1.8 * TILE, 3.6 * TILE, () => srvHit.emit('pointerdown'));
   }
 
   private showEmployeeDialogue(emp: SleepingEmployee, container: Phaser.GameObjects.Container) {
     play('pop');
+    useUi.getState().toast({ kind: 'info', title: emp.name, body: emp.dialogue });
     this.activeBubble?.destroy();
 
     const bubble = this.add.container(container.x, container.y - 56);
@@ -713,31 +847,11 @@ export class CompanyScene extends WorldScene {
     bubble.add(txt);
     this.activeBubble = bubble;
 
-    this.time.delayedCall(4500, () => {
-      if (this.activeBubble === bubble) {
-        this.tweens.add({
-          targets: bubble,
-          alpha: 0,
-          duration: 300,
-          onComplete: () => {
-            bubble.destroy();
-            if (this.activeBubble === bubble) this.activeBubble = null;
-          },
-        });
-      }
-    });
-  }
-
-  protected override onSelfMove(x: number, y: number) {
-    // Stepping on exit mat at bottom (cols 7 to 9, row >= 10)
-    if (y >= 9.8 * TILE && x >= 6.5 * TILE && x <= 9.5 * TILE) {
-      net.goTown();
-    }
+    this.expireBubble(bubble);
   }
 }
 
-export class UniversityScene extends WorldScene {
-  private activeBubble: Phaser.GameObjects.Container | null = null;
+export class UniversityScene extends InteriorScene {
   private personContainers = new Map<string, Phaser.GameObjects.Container>();
 
   constructor() {
@@ -781,16 +895,18 @@ export class UniversityScene extends WorldScene {
       container.add(sprite);
 
       // Subtle breathing / idle motion
-      this.tweens.add({
-        targets: sprite,
-        scaleY: 0.96,
-        duration: 1200 + Math.random() * 300,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
+      if (!useUi.getState().reducedMotion) {
+        this.tweens.add({
+          targets: sprite,
+          scaleY: 0.96,
+          duration: 1200 + Math.random() * 300,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
 
-      // Name & role badge
+        // Name & role badge
+      }
       const badgeText = this.add
         .text(0, -38, `${person.name} · ${person.role}`, {
           fontFamily: 'Inter, sans-serif',
@@ -807,6 +923,7 @@ export class UniversityScene extends WorldScene {
       // Interactive on click / tap
       sprite.setInteractive({ useHandCursor: true });
       sprite.on('pointerdown', () => this.showPersonDialogue(person, container));
+      this.interactAt(person.x, person.y, () => this.showPersonDialogue(person, container));
     }
 
     // 2b. Auto-welcome quote when entering university: Thầy Tân welcomes player!
@@ -814,12 +931,8 @@ export class UniversityScene extends WorldScene {
     const thayTanContainer = this.personContainers.get('thay_tan');
     if (thayTan && thayTanContainer) {
       this.time.delayedCall(500, () => {
+        if (this.activeBubble || this.exiting) return;
         this.showPersonDialogue(thayTan, thayTanContainer);
-        useUi.getState().toast({
-          kind: 'info',
-          title: '👨‍🏫 Thầy Tân - Giảng viên DNTU',
-          body: 'Các em ơi các em lớn rồi mà!',
-        });
       });
     }
 
@@ -845,6 +958,7 @@ export class UniversityScene extends WorldScene {
         body: 'Đang trình chiếu: "Ứng dụng AI & IoT trong chuyển đổi số doanh nghiệp". Sinh viên DNTU thực hành trực tiếp trên hệ thống Lab hiện đại!',
       });
     });
+    this.interactAt(8 * TILE, 3.2 * TILE, () => smartBoardHit.emit('pointerdown'));
 
     // 5. Interactive Digital Library Zone (left top)
     const libHit = this.add
@@ -859,6 +973,7 @@ export class UniversityScene extends WorldScene {
         body: 'Truy cập hơn 100,000+ tài liệu, giáo trình điện tử, đề án tốt nghiệp xuất sắc và cơ sở dữ liệu NCKH quốc tế IEEE/Scopus.',
       });
     });
+    this.interactAt(2.2 * TILE, 4.5 * TILE, () => libHit.emit('pointerdown'));
 
     // 6. Interactive Awards & Accreditation Showcase (right top)
     const trophyHit = this.add
@@ -873,10 +988,12 @@ export class UniversityScene extends WorldScene {
         body: 'Trường ĐH Công nghệ Đồng Nai đạt chuẩn Kiểm định Quốc gia MOET, Top trường đào tạo ứng dụng hàng đầu vùng kinh tế trọng điểm phía Nam!',
       });
     });
+    this.interactAt(13.8 * TILE, 4.5 * TILE, () => trophyHit.emit('pointerdown'));
   }
 
   private showPersonDialogue(person: DntuPerson, container: Phaser.GameObjects.Container) {
     play('pop');
+    useUi.getState().toast({ kind: 'info', title: person.name, body: person.dialogue });
     this.activeBubble?.destroy();
 
     const bubble = this.add.container(container.x, container.y - 56);
@@ -898,25 +1015,6 @@ export class UniversityScene extends WorldScene {
     bubble.add(txt);
     this.activeBubble = bubble;
 
-    this.time.delayedCall(4500, () => {
-      if (this.activeBubble === bubble) {
-        this.tweens.add({
-          targets: bubble,
-          alpha: 0,
-          duration: 300,
-          onComplete: () => {
-            bubble.destroy();
-            if (this.activeBubble === bubble) this.activeBubble = null;
-          },
-        });
-      }
-    });
-  }
-
-  protected override onSelfMove(x: number, y: number) {
-    // Stepping on exit mat at bottom (cols 7 to 9, row >= 10)
-    if (y >= 9.8 * TILE && x >= 6.5 * TILE && x <= 9.5 * TILE) {
-      net.goTown();
-    }
+    this.expireBubble(bubble);
   }
 }

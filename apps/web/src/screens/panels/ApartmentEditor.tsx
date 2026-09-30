@@ -1,4 +1,4 @@
-import { APARTMENT_COLS, APARTMENT_ROWS, APARTMENT_THEMES } from '@cozy/game-data';
+import { APARTMENT_COLS, APARTMENT_ROWS, APARTMENT_THEMES, GEN_Z_FURNITURE_IDS } from '@cozy/game-data';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BookOpen, Hammer, Redo2, RotateCw, Trash2, Undo2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -9,7 +9,7 @@ import { api, type Apartment, type Me, type ShopItem } from '../../lib/api';
 import { qk } from '../../lib/queries';
 import { play } from '../../lib/sound';
 import { useUi } from '../../lib/store';
-import { Button, ConfirmDialog, Switch, toastError } from '../../ui/primitives';
+import { Button, ConfirmDialog, ErrorState, LoadingState, Switch, toastError } from '../../ui/primitives';
 import { Guestbook } from './Guestbook';
 
 type Rot = 0 | 90 | 180 | 270;
@@ -53,6 +53,9 @@ export function ApartmentEditor() {
   const [rotation, setRotation] = useState<Rot>(0);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [guestbook, setGuestbook] = useState(false);
+  const [collection, setCollection] = useState<'all' | 'genz'>('all');
+  const placementCursor = useRef({ x: 5, y: 4 });
+  const editorBar = useRef<HTMLDivElement>(null);
   const layout = history[cursor];
   const saved = useRef<string>('');
 
@@ -108,10 +111,30 @@ export function ApartmentEditor() {
 
   const selectedItem = inventory.find((x) => x.item.id === selected);
 
+  useEffect(() => {
+    if (!editing || !editorBar.current) return;
+    const bar = editorBar.current;
+    const measure = () =>
+      game?.events.emit('apartment:editor-height', bar.getBoundingClientRect().height + 24);
+    const observer = new ResizeObserver(measure);
+    observer.observe(bar);
+    measure();
+    game?.events.on('apartment:ready', measure);
+    return () => {
+      observer.disconnect();
+      game?.events.off('apartment:ready', measure);
+    };
+  }, [editing]);
+
   // Pointer interactions from the scene.
   useEffect(() => {
     if (!editing || !game || !layout) return;
     const onHover = (p: { x: number; y: number }) => {
+      placementCursor.current = p;
+      game?.events.emit(
+        'apartment:cursor',
+        p.x >= 0 && p.x < APARTMENT_COLS && p.y >= 1 && p.y < APARTMENT_ROWS ? p : null,
+      );
       if (!selectedItem) return game?.events.emit('apartment:ghost', null);
       const obj: EditorObject = {
         itemId: selectedItem.item.id,
@@ -127,10 +150,14 @@ export function ApartmentEditor() {
       });
     };
     const onClick = (p: { x: number; y: number; right: boolean }) => {
-      const hitIndex = layout.objects.findIndex((o) => {
-        const fp = footprint(o);
-        return p.x >= o.x && p.x < o.x + fp.w && p.y >= o.y && p.y < o.y + fp.h;
-      });
+      // Prefer solid furniture above a rug when picking an object up.
+      const hits = layout.objects
+        .map((o, i) => ({ o, i }))
+        .filter(({ o }) => {
+          const fp = footprint(o);
+          return p.x >= o.x && p.x < o.x + fp.w && p.y >= o.y && p.y < o.y + fp.h;
+        });
+      const hitIndex = hits.reverse().find(({ o }) => !o.itemId.includes('rug'))?.i ?? hits[0]?.i ?? -1;
       if (p.right || (!selectedItem && hitIndex >= 0)) {
         // pick up: remove from room and select it for re-placement
         if (hitIndex < 0) return;
@@ -162,6 +189,11 @@ export function ApartmentEditor() {
       };
       if (!fits(layout.objects, obj)) {
         play('error');
+        useUi.getState().toast({
+          kind: 'info',
+          title: 'Chưa đặt được ở đây',
+          body: 'Chọn ô trong phòng còn trống; thảm có thể nằm dưới bàn và ghế.',
+        });
         return;
       }
       play('pop');
@@ -170,10 +202,12 @@ export function ApartmentEditor() {
     };
     game.events.on('apartment:hover', onHover);
     game.events.on('apartment:click', onClick);
+    onHover(placementCursor.current);
     return () => {
       game?.events.off('apartment:hover', onHover);
       game?.events.off('apartment:click', onClick);
       game?.events.emit('apartment:ghost', null);
+      game?.events.emit('apartment:cursor', null);
     };
   }, [editing, layout, selectedItem, rotation, commit]);
 
@@ -207,7 +241,32 @@ export function ApartmentEditor() {
   useEffect(() => {
     if (!editing) return;
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === 'INPUT') return;
+      const el = e.target as HTMLElement;
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || el.isContentEditable) return;
+      if (document.querySelector('.backdrop')) return;
+      const directions: Record<string, { x: number; y: number }> = {
+        ArrowLeft: { x: -1, y: 0 },
+        ArrowRight: { x: 1, y: 0 },
+        ArrowUp: { x: 0, y: -1 },
+        ArrowDown: { x: 0, y: 1 },
+      };
+      const direction = directions[e.key];
+      if (direction) {
+        e.preventDefault();
+        const fp = footprint({ rotation, size: selectedItem?.item.size ?? { w: 1, h: 1 } });
+        const next = {
+          x: Math.max(0, Math.min(APARTMENT_COLS - fp.w, placementCursor.current.x + direction.x)),
+          y: Math.max(1, Math.min(APARTMENT_ROWS - fp.h, placementCursor.current.y + direction.y)),
+        };
+        game?.events.emit('apartment:hover', next);
+      }
+      if (e.key === 'e' || e.key === 'E' || e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        game?.events.emit('apartment:click', {
+          ...placementCursor.current,
+          right: e.key === 'Delete' || e.key === 'Backspace',
+        });
+      }
       if (e.key === 'r' || e.key === 'R') setRotation((r) => ((r + 90) % 360) as Rot);
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
@@ -218,11 +277,22 @@ export function ApartmentEditor() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [editing, history.length]);
+  }, [editing, history.length, selectedItem, rotation]);
 
   useEffect(() => () => setEditing(false), [setEditing]);
 
-  if (!layout) return null;
+  if (apt.isError)
+    return (
+      <div className="hud-bottom">
+        <ErrorState error={apt.error} onRetry={() => void apt.refetch()} />
+      </div>
+    );
+  if (!layout)
+    return (
+      <div className="hud-bottom">
+        <LoadingState rows={1} />
+      </div>
+    );
 
   if (!editing) {
     return (
@@ -247,16 +317,10 @@ export function ApartmentEditor() {
   }
 
   return (
-    <div className="editor-bar" role="region" aria-label="Chỉnh sửa căn hộ">
+    <div ref={editorBar} className="editor-bar" role="region" aria-label="Chỉnh sửa căn hộ">
       <div className="stack" style={{ gap: 10, minWidth: 0 }}>
         <div className="row between wrap">
-          <div className="row">
-            <strong>Nội thất</strong>
-            <span className="muted" style={{ fontSize: 12 }}>
-              Bấm chọn món đồ, rồi bấm sàn nhà để đặt. Bấm đồ đã đặt để thu lại.{' '}
-              <span className="kbd">R</span> xoay
-            </span>
-          </div>
+          <strong>Góc chill của bạn</strong>
           <div className="row">
             <Button
               size="sm"
@@ -289,27 +353,63 @@ export function ApartmentEditor() {
             </Button>
           </div>
         </div>
+        <span className="muted" style={{ fontSize: 12 }}>
+          Chọn đồ, bấm sàn để đặt. Mũi tên chọn ô · <span className="kbd">E</span> đặt/thu ·{' '}
+          <span className="kbd">R</span> xoay · <span className="kbd">Delete</span> cất
+        </span>
+        <div className="row between wrap">
+          <div className="tabs" role="tablist" aria-label="Bộ sưu tập nội thất">
+            <button
+              className="tab"
+              role="tab"
+              aria-selected={collection === 'all'}
+              onClick={() => setCollection('all')}
+            >
+              Tất cả đồ của bạn
+            </button>
+            <button
+              className="tab"
+              role="tab"
+              aria-selected={collection === 'genz'}
+              onClick={() => setCollection('genz')}
+            >
+              Góc Gen Z
+            </button>
+          </div>
+          <span className="muted editor-selection" role="status">
+            {selectedItem
+              ? `${selectedItem.item.name} · ${selectedItem.item.size.w}×${selectedItem.item.size.h} ô`
+              : 'Chọn một món để bắt đầu'}
+          </span>
+        </div>
         <div className="editor-inv">
-          {inventory.length === 0 ? (
+          {inventory.filter(({ item }) => collection === 'all' || GEN_Z_FURNITURE_IDS.has(item.id)).length ===
+          0 ? (
             <span className="muted" style={{ fontSize: 13, padding: 12 }}>
-              Bạn chưa sở hữu nội thất nào. Hãy ghé tiệm Sofa So Good trong thị trấn.
+              {collection === 'genz'
+                ? 'Chưa có món Gen Z nào. Ghé Sofa So Good và chọn Góc Gen Z để sắm nhé.'
+                : 'Bạn chưa sở hữu nội thất nào. Hãy ghé tiệm Sofa So Good trong thị trấn.'}
             </span>
           ) : (
-            inventory.map(({ item, placed }) => (
-              <button
-                key={item.id}
-                className="inv-slot"
-                aria-pressed={selected === item.id}
-                disabled={placed >= item.owned && selected !== item.id}
-                title={`${item.name} (còn ${item.owned - placed})`}
-                onClick={() => setSelected(selected === item.id ? null : item.id)}
-              >
-                <img src={itemIcon(item.sprite, 'furniture', item.size, 2)} alt={item.name} />
-                <span className="inv-count">
-                  {item.owned - placed}/{item.owned}
-                </span>
-              </button>
-            ))
+            inventory
+              .filter(({ item }) => collection === 'all' || GEN_Z_FURNITURE_IDS.has(item.id))
+              .map(({ item, placed }) => (
+                <button
+                  key={item.id}
+                  className="inv-slot"
+                  aria-pressed={selected === item.id}
+                  aria-label={`${item.name}, còn ${item.owned - placed} trên ${item.owned}`}
+                  disabled={placed >= item.owned && selected !== item.id}
+                  title={`${item.name} (còn ${item.owned - placed})`}
+                  onClick={() => setSelected(selected === item.id ? null : item.id)}
+                >
+                  <img src={itemIcon(item.sprite, 'furniture', item.size, 2)} alt="" />
+                  <span className="inv-name">{item.name}</span>
+                  <span className="inv-count">
+                    {item.owned - placed}/{item.owned}
+                  </span>
+                </button>
+              ))
           )}
         </div>
       </div>

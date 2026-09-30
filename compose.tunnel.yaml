@@ -1,0 +1,26 @@
+# Docker Compose >= 2.24.4. Public traffic arrives through the named Tunnel.
+services:
+  caddy:
+    ports: !override
+      - '127.0.0.1:${TUNNEL_LOCAL_PORT:-8082}:80'
+    environment:
+      CADDY_SITE_ADDRESS: ':80'
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.7.3
+    # File-based Compose secrets retain host permissions; read an owner-only token file.
+    user: '0:0'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    restart: always
+    command: ['tunnel', '--no-autoupdate', 'run', '--token-file', '/run/secrets/tunnel-token']
+    secrets:
+      - tunnel-token
+    depends_on:
+      caddy:
+        condition: service_healthy
+
+secrets:
+  tunnel-token:
+    file: ${CLOUDFLARE_TUNNEL_TOKEN_FILE:?Set the absolute path to the Tunnel token file}

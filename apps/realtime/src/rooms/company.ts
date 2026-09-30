@@ -21,6 +21,6 @@ export class CompanyRoom extends BaseRoom {
   override onCreate() {
     this.setup();
     this.state.kind = 'company';
-    this.state.label = 'Văn Phòng VietDevPro';
+    this.state.label = 'Văn Phòng VietProDev';
   }
 }

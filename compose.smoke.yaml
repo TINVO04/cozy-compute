@@ -1,0 +1,19 @@
+# CI only. Uses an isolated Compose project and a test upstream in place of LiteLLM.
+services:
+  caddy:
+    ports: !override ['127.0.0.1::80']
+    environment:
+      CADDY_SITE_ADDRESS: ':80'
+  litellm:
+    image: node:24-alpine
+    working_dir: /app
+    command: ['node', 'server.mjs']
+    environment:
+      PORT: 4000
+    volumes: !override
+      - ./infra/mock-upstream:/app:ro
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4000/healthz']
+      start_period: 1s
+      interval: 2s
+      retries: 20

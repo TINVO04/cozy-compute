@@ -117,7 +117,56 @@ describe('eligibility and minting', () => {
     expect(replay.body.replayed).toBe(true);
   });
 
+  it('enforces cooldown when different mint requests are queued concurrently', async () => {
+    const p = await register(h);
+    await makeEligible(h, p.id, 50_000);
+    const before = await balances(p.id);
+    const blocker = await h.ctx.db.connect();
+    await blocker.query('BEGIN');
+    await blocker.query(`SELECT pg_advisory_xact_lock(hashtext('ai_reward_pool'))`);
+    const pending = Promise.all(
+      Array.from({ length: 3 }, (_, i) =>
+        api(h, 'POST', '/ai/mint', {
+          token: p.token,
+          body: { cents: 100 },
+          headers: { 'idempotency-key': `mint-concurrent-${i}` },
+        }),
+      ),
+    );
+    let waiting = 0;
+    try {
+      const deadline = Date.now() + 5000;
+      while (waiting < 3 && Date.now() < deadline) {
+        const locks = await h.ctx.db.query<{ n: number }>(
+          `SELECT count(*)::int AS n FROM pg_locks
+           WHERE locktype = 'advisory' AND NOT granted
+             AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`,
+        );
+        waiting = locks.rows[0]!.n;
+        if (waiting < 3) await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    } finally {
+      await blocker.query('COMMIT');
+      blocker.release();
+    }
+    const results = await pending;
+    expect(waiting).toBe(3);
+    expect(results.filter((r) => r.status === 200)).toHaveLength(1);
+    const rejected = results.filter((r) => r.status !== 200);
+    expect(rejected).toHaveLength(2);
+    for (const r of rejected) {
+      expect(r.status).toBe(403);
+      expect(r.body.error.code).toBe('not_eligible');
+    }
+    const after = await balances(p.id);
+    expect(before.coin - after.coin).toBe(12000);
+    expect(after.ai_credit_cents).toBe(100);
+  });
+
   it('enforces cooldown, monthly cap, pool and pause', async () => {
+    // Keep both mints in one UTC month even when this test runs on its last day.
+    const today = new Date();
+    h.clock.now = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
     const p = await register(h);
     await makeEligible(h, p.id, 500_000);
     expect(

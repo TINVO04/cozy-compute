@@ -1,18 +1,11 @@
 import { Client, type Room } from 'colyseus.js';
 import { session } from '../lib/api';
 import { useUi } from '../lib/store';
+import { resolveEndpoint } from '../lib/endpoints';
 
 function resolveWsUrl(): string {
   const env = import.meta.env.VITE_REALTIME_URL as string | undefined;
-  if (typeof window !== 'undefined' && window.location.hostname) {
-    const host = window.location.hostname;
-    if (host !== 'localhost' && (!env || env.includes('localhost') || env.includes('127.0.0.1'))) {
-      const port = env ? new URL(env.replace(/^ws/, 'http'), window.location.origin).port || '2567' : '2567';
-      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${proto}//${host}:${port}`;
-    }
-  }
-  return env ?? 'ws://localhost:2567';
+  return resolveEndpoint(env, typeof window === 'undefined' ? undefined : window.location, 'realtime');
 }
 
 const WS = resolveWsUrl();
@@ -156,7 +149,7 @@ class Net {
     return this.connect({ name: 'apartment', ownerId });
   }
 
-  goCompany(label = 'Văn Phòng VietDevPro') {
+  goCompany(label = 'Văn Phòng VietProDev') {
     useUi.getState().setRoom({ kind: 'company', label });
     return this.connect({ name: 'company' });
   }

@@ -30,6 +30,7 @@ import { useUi, type Panel } from '../lib/store';
 import { CafeActivity, DeliveryHud, FishingActivity, startDelivery } from './activities';
 import { AiPanel } from './panels/AiPanel';
 import { ApartmentEditor } from './panels/ApartmentEditor';
+import { ApartmentGuestView } from './panels/ApartmentGuestView';
 import { ApartmentsPanel } from './panels/ApartmentsPanel';
 import { EventsPanel } from './panels/EventsPanel';
 import { LedgerPanel } from './panels/LedgerPanel';
@@ -99,6 +100,9 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
           {activity === 'cafe' ? <CafeActivity /> : null}
           <ConnectionOverlay />
           {room.kind === 'apartment' && room.ownerId === me.id ? <ApartmentEditor /> : null}
+          {room.kind === 'apartment' && room.ownerId && room.ownerId !== me.id ? (
+            <ApartmentGuestView key={room.ownerId} ownerId={room.ownerId} />
+          ) : null}
           {panel === 'shop-fashion' ? <ShopPanel kind="clothing" onClose={() => setPanel(null)} /> : null}
           {panel === 'shop-furniture' ? <ShopPanel kind="furniture" onClose={() => setPanel(null)} /> : null}
           {panel === 'shop-rods' ? <FishingShopPanel me={me} onClose={() => setPanel(null)} /> : null}
@@ -431,15 +435,7 @@ function WorldHud({ me }: { me: Me }) {
           <div className="location-chip">
             <span className="dot" />
             <Compass size={14} style={{ color: 'var(--primary)', flex: 'none' }} />
-            <span>
-              {room.kind === 'apartment'
-                ? room.label
-                : room.kind === 'company'
-                  ? 'Công Ty VietProDev'
-                  : room.kind === 'university'
-                    ? 'Đại Học Công Nghệ Đồng Nai (DNTU)'
-                    : (zoneLabel ?? 'Thị trấn')}
-            </span>
+            <span>{room.kind === 'town' ? (zoneLabel ?? 'Thị trấn') : room.label}</span>
           </div>
           {room.kind === 'apartment' || room.kind === 'company' || room.kind === 'university' ? (
             <Button size="sm" onClick={() => void net.goTown()}>

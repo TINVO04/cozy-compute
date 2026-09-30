@@ -252,14 +252,17 @@ export async function mintCredit(ctx: AppContext, userId: string, cents: number,
       `Choose between $${(policy.minMintCents / 100).toFixed(2)} and $${(policy.maxMintCents / 100).toFixed(2)}.`,
     );
   }
-  const eligibility = await eligibilityFor(ctx.db, userId, policy, now);
-  if (!eligibility.eligible)
-    throw new AppError(403, 'not_eligible', 'You are not eligible to redeem yet.', eligibility);
   const coinCost = coinCostForCents(cents, policy.coinPerUsd);
   try {
     return await withTx(ctx.db, async (tx) => {
       // Serialize pool accounting across all players.
       await tx.query(`SELECT pg_advisory_xact_lock(hashtext('ai_reward_pool'))`);
+      // A waiting request must see the winner before checking cooldown or caps.
+      const replay = await replayRedemption(tx, userId, idempotencyKey);
+      if (replay) return replay;
+      const eligibility = await eligibilityFor(tx, userId, policy, now);
+      if (!eligibility.eligible)
+        throw new AppError(403, 'not_eligible', 'You are not eligible to redeem yet.', eligibility);
       const monthUsed = await mintedThisMonth(tx, userId, now);
       if (monthUsed + cents > policy.perUserMonthlyCapCents) {
         throw conflict(

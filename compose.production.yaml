@@ -8,26 +8,35 @@ services:
       - '80:80'
       - '443:443'
     environment:
-      GAME_DOMAIN: ${GAME_DOMAIN:-localhost}
+      CADDY_SITE_ADDRESS: ${CADDY_SITE_ADDRESS:-${GAME_DOMAIN:-localhost}}
     volumes:
-      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - web-static:/srv/web:ro
+      - ${COZY_CONFIG_DIR:-./infra}/caddy:/etc/caddy:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
-      - api
-      - realtime
-      - web
+      api:
+        condition: service_healthy
+      realtime:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO', '/dev/null', 'http://127.0.0.1:2019/config/']
+      interval: 10s
+      timeout: 3s
+      retries: 12
 
   web:
+    image: cozy-compute/web:${COZY_IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-    restart: 'no'
-    volumes:
-      - web-static:/srv/web
+      args:
+        COZY_RELEASE_SHA: ${COZY_IMAGE_TAG:-local}
+    restart: always
 
   api:
+    image: cozy-compute/api:${COZY_IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -44,6 +53,18 @@ services:
       LITELLM_URL: http://litellm:4000
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
       PUBLIC_GATEWAY_URL: https://${GAME_DOMAIN:-localhost}/v1
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:8787/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,13 +74,14 @@ services:
         condition: service_healthy
 
   realtime:
+    image: cozy-compute/realtime:${COZY_IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: apps/realtime/Dockerfile
     restart: always
     environment:
       NODE_ENV: production
-      PORT: 2567
+      REALTIME_PORT: 2567
       REDIS_URL: redis://redis:6379
       API_INTERNAL_URL: http://api:8787
       INTERNAL_SECRET: ${INTERNAL_SECRET}
@@ -67,7 +89,18 @@ services:
       redis:
         condition: service_healthy
       api:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:2567/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 12
 
   postgres:
     image: postgres:17-alpine
@@ -78,7 +111,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-cozy}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ${COZY_CONFIG_DIR:-./infra}/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-cozy} -d ${POSTGRES_DB:-cozy}']
       interval: 5s
@@ -100,7 +133,7 @@ services:
   litellm:
     image: ghcr.io/berriai/litellm:main-stable
     restart: always
-    command: ['--config', '/app/config.yaml', '--port', '4000']
+    command: ['--config', '/etc/cozy-litellm/config.yaml', '--port', '4000']
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-cozy}:${POSTGRES_PASSWORD}@postgres:5432/litellm
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
@@ -109,8 +142,9 @@ services:
       UPSTREAM_KEY_1: ${UPSTREAM_KEY_1:-}
       UPSTREAM_KEY_2: ${UPSTREAM_KEY_2:-}
       UPSTREAM_KEY_3: ${UPSTREAM_KEY_3:-}
+      UPSTREAM_KEY_NEWAPI: ${UPSTREAM_KEY_NEWAPI:-}
     volumes:
-      - ./infra/litellm/config.yaml:/app/config.yaml:ro
+      - ${COZY_CONFIG_DIR:-./infra}/litellm:/etc/cozy-litellm:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -126,6 +160,5 @@ services:
 volumes:
   pgdata:
   redisdata:
-  web-static:
   caddy-data:
   caddy-config:

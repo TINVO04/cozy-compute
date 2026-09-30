@@ -37,14 +37,7 @@ export function GameCanvas() {
     if (!game) return;
     const switchScene = () => {
       if (!game) return;
-      const target =
-        roomKind === 'town'
-          ? 'town'
-          : roomKind === 'company'
-            ? 'company'
-            : roomKind === 'university'
-              ? 'university'
-              : 'apartment';
+      const target = roomKind;
       const activeScenes = game.scene.getScenes(true);
       const isTargetActive = activeScenes.some((s) => s.scene.key === target);
       if (isTargetActive) return;
