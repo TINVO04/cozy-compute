@@ -31,7 +31,10 @@ export type ZoneId =
   | 'pier'
   | 'fishing_shop'
   | 'vietprodev'
-  | 'dntu';
+  | 'dntu'
+  | 'comga'
+  | 'cybernet'
+  | 'bida';
 
 export interface Zone {
   id: ZoneId;
@@ -116,6 +119,24 @@ export const BUILDINGS: Building[] = [
     door: { x: 5, w: 2 },
   },
   {
+    id: 'comga',
+    label: 'Cơm Gà Xối Mỡ 68 Biên Hòa',
+    rect: t(12, 12, 5, 4),
+    wall: 0xfef08a,
+    roof: 0xd97706,
+    accent: 0xb45309,
+    door: { x: 13, w: 2 },
+  },
+  {
+    id: 'bida',
+    label: 'CLB Bida H2S Trảng Dài Biên Hòa',
+    rect: t(12, 18, 5, 4),
+    wall: 0x1e293b,
+    roof: 0x0f172a,
+    accent: 0x10b981,
+    door: { x: 13, w: 2 },
+  },
+  {
     id: 'fishing_shop',
     label: 'Tiệm Ngư Cụ Bác Ba',
     rect: t(29, 22, 5, 3),
@@ -164,8 +185,20 @@ export const ZONES: Zone[] = [
     prompt: 'Nhận đơn hàng cần giao',
     rect: t(3, 20, 5, 2),
   },
+  {
+    id: 'comga',
+    label: 'Cơm Gà Xối Mỡ 68',
+    prompt: 'Bước vào quán cơm gà xối mỡ',
+    rect: t(12, 16, 5, 2),
+  },
+  {
+    id: 'bida',
+    label: 'CLB Bida H2S Biên Hòa',
+    prompt: 'Bước vào quán bida giao lưu thi đấu',
+    rect: t(12, 22, 5, 1),
+  },
   { id: 'events', label: 'Bảng Sự Kiện', prompt: 'Xem sự kiện hôm nay', rect: t(30, 12, 5, 5) },
-  { id: 'ai_kiosk', label: 'Trạm Thưởng AI', prompt: 'Mở trạm đổi thưởng AI', rect: t(11, 21, 6, 5) },
+  { id: 'ai_kiosk', label: 'Trạm Thưởng AI', prompt: 'Mở trạm đổi thưởng AI', rect: t(19, 15, 3, 2) },
   { id: 'pier', label: 'Cầu Tàu Lắc Lư', prompt: 'Thả cần câu cá', rect: t(37, 26, 4, 4) },
   {
     id: 'fishing_shop',
@@ -181,7 +214,7 @@ export const TOWN_LAMPS = [
   { x: 10, y: 10 },
   { x: 21, y: 10 },
   { x: 35, y: 12 },
-  { x: 16, y: 19 },
+  { x: 10, y: 19 },
   { x: 31, y: 19 },
   { x: 10, y: 25 },
   { x: 26, y: 28 },
@@ -212,7 +245,7 @@ export type TownPropKind =
 export const TOWN_PROPS: { kind: TownPropKind; x: number; y: number }[] = [
   { kind: 'fountain', x: 24, y: 17 },
   { kind: 'board', x: 33, y: 14 },
-  { kind: 'kiosk', x: 14, y: 24 },
+  { kind: 'kiosk', x: 20, y: 16 },
   { kind: 'bench', x: 19, y: 13 },
   { kind: 'bench', x: 28, y: 13 },
   { kind: 'bench', x: 19, y: 19 },
@@ -235,7 +268,7 @@ export const BLOCKERS: Rect[] = [
   ...BUILDINGS.map((b) => b.rect),
   t(23, 15, 2, 2), // fountain
   t(32, 13, 2, 1), // event board
-  t(13, 23, 2, 1), // AI kiosk
+  t(19, 15, 2, 1), // AI kiosk
   ...TOWN_TREES.map((p) => ({ x: p.x * TILE - 5, y: p.y * TILE - 10, w: 10, h: 10 })),
   ...TOWN_FENCES.map((p) => ({ x: p.x * TILE, y: p.y * TILE - 5, w: (p.segments - 1) * 16 + 4, h: 11 })),
   ...TOWN_PROPS.filter((p) => ['bench', 'table', 'crate', 'planter', 'sign'].includes(p.kind)).map((p) => ({
@@ -299,7 +332,7 @@ export function zoneCenter(id: ZoneId): { x: number; y: number } {
 /** Event spawns stay in open spaces and on the connected promenade. */
 export const DUCK_SPOTS: { x: number; y: number }[] = [
   { x: 5, y: 11 },
-  { x: 12, y: 12 },
+  { x: 10, y: 12 },
   { x: 20, y: 11 },
   { x: 33, y: 11 },
   { x: 44, y: 12 },
@@ -325,22 +358,98 @@ export const DELIVERY_DESTINATIONS: ZoneId[] = [
   'fishing_shop',
   'vietprodev',
   'dntu',
+  'comga',
+  'cybernet',
+  'bida',
 ];
 
-/** DNTU University interior grid & constants */
-export const DNTU_COLS = 16;
-export const DNTU_ROWS = 11;
-export const DNTU_SPAWN = { x: 8 * TILE, y: 9.5 * TILE };
+/** Cơm Gà Xối Mỡ 68 Biên Hòa interior grid & constants */
+export const COMGA_COLS = 14;
+export const COMGA_ROWS = 10;
+export const COMGA_SPAWN = { x: 7 * TILE, y: 8.5 * TILE };
+export const COMGA_BLOCKERS: Rect[] = [
+  t(0, 0, COMGA_COLS, 2), // Back kitchen wall with stainless counter & glass chicken warmer
+  t(1, 1, 3, 2), // Chicken fryer & boiling soup cauldrons
+  t(10, 1, 3, 2), // Sauce, rice & drink prep station
+  t(2, 4, 3, 2), // Stainless dining table 1
+  t(8, 4, 4, 2), // Stainless dining table 2
+  t(0, 0, 1, COMGA_ROWS), // Left wall
+  t(COMGA_COLS - 1, 0, 1, COMGA_ROWS), // Right wall
+  t(0, COMGA_ROWS - 1, 5, 1), // Bottom left wall
+  t(9, COMGA_ROWS - 1, 5, 1), // Bottom right wall
+];
+
+/** CLB Bida H2S Trảng Dài (Biên Hòa) interior grid & constants */
+export const BIDA_COLS = 16;
+export const BIDA_ROWS = 12;
+export const BIDA_SPAWN = { x: 8 * TILE, y: 9.6 * TILE };
+export const BIDA_BLOCKERS: Rect[] = [
+  t(0, 0, BIDA_COLS, 2), // Back wall with cue racks, scoreboard & beverage bar
+  t(1, 1, 4, 1.8), // Reception & refreshment bar counter
+  t(11, 1, 4, 1.8), // Professional carbon cue locker & trophy display
+  t(1.8, 3.8, 4.8, 2.5), // Bida Table 1 (Pool 8-Ball - Left Upper)
+  t(9.4, 3.8, 4.8, 2.5), // Bida Table 2 (Carom 3 Băng - Right Upper)
+  t(1.8, 7.2, 4.8, 2.5), // Bida Table 3 (VIP Arena Table - Left Lower)
+  t(10.2, 7.6, 4.8, 2.0), // Spectator lounge sofas & VIP seating (Right Lower)
+  t(0, 0, 1, BIDA_ROWS), // Left wall
+  t(BIDA_COLS - 1, 0, 1, BIDA_ROWS), // Right wall
+  t(0, BIDA_ROWS - 1, 6.5, 1), // Bottom left wall
+  t(9.5, BIDA_ROWS - 1, 6.5, 1), // Bottom right wall
+];
+
+/** Backward compatibility aliases for CyberNet */
+export const CYBERNET_COLS = BIDA_COLS;
+export const CYBERNET_ROWS = BIDA_ROWS;
+export const CYBERNET_SPAWN = BIDA_SPAWN;
+export const CYBERNET_BLOCKERS = BIDA_BLOCKERS;
+
+/** DNTU University campus map grid & constants (48x32 master campus) */
+export const DNTU_COLS = 48;
+export const DNTU_ROWS = 32;
+export const DNTU_SPAWN = { x: 43 * TILE, y: 18.5 * TILE };
 export const DNTU_BLOCKERS: Rect[] = [
-  t(0, 0, DNTU_COLS, 2), // North stage wall with Smart Board & stage
-  t(7.5, 2, 1, 0.6), // Podium extends below the back wall; keep the side aisle open.
-  t(3, 4, 10, 3), // Central smart lecture hall desk row & computer lab
-  t(1, 1, 2, 3), // Digital library shelf in top-left
-  t(13, 1, 2, 3), // Awards & accreditation showcase in top-right
-  t(0, 0, 1, DNTU_ROWS), // Left wall
-  t(DNTU_COLS - 1, 0, 1, DNTU_ROWS), // Right wall
-  t(0, DNTU_ROWS - 1, 6, 1), // Bottom left wall
-  t(10, DNTU_ROWS - 1, 6, 1), // Bottom right wall
+  // Outer perimeter fence & walls with openings at Cổng 1, Cổng 2, Cổng sau
+  t(0, 0, DNTU_COLS, 1), // Top boundary fence
+  t(0, DNTU_ROWS - 1, DNTU_COLS, 1), // Bottom boundary wall
+  t(0, 0, 1, 7), // West wall (above back gate)
+  t(0, 10, 1, DNTU_ROWS - 10), // West wall (below back gate)
+  t(DNTU_COLS - 1, 0, 1, 12), // East wall (above Gate 2)
+  t(DNTU_COLS - 1, 15, 1, 2), // East wall (between Gate 1 & Gate 2)
+  t(DNTU_COLS - 1, 24, 1, DNTU_ROWS - 24), // East wall (below Gate 1)
+
+  // Khu G (Trung Tâm Tích Hợp & Smart Labs & DNTU Gym)
+  t(2, 1, 11, 3.2),
+
+  // Khu F (Trung Tâm Thực Hành Kỹ Thuật Ô Tô & Cơ Khí)
+  t(2, 5.5, 11, 3.5),
+
+  // Khu C (Trung Tâm Thông Tin - Thư Viện)
+  t(14, 9, 9, 6),
+
+  // Khu B (Nguyễn Khuyến - Khoa CNTT & Kinh Tế)
+  t(14, 18, 9, 9),
+
+  // Khu A (Hành Chính - U-shaped building wings & Grand Archway Entrance)
+  t(25, 10, 13, 3), // Khu A North Wing
+  t(25, 23, 13, 3), // Khu A South Wing (Trường Quay)
+  t(35, 10, 3, 4), // Khu A East North Wing (Trụ Sở Chính - Tháp Bắc)
+  t(35, 21, 3, 3.5), // Khu A East South Wing (Trụ Sở Chính - Tháp Nam)
+  t(35, 14, 3.5, 2.2), // Khu A Archway North Pier
+  t(35, 19.6, 3.5, 1.4), // Khu A Archway South Pier
+  // Rows 16.2..19.6 are open for the Grand Archway (Cổng Vòm Khải Hoàn Trụ Sở Chính)!
+
+  // Cổng 1 Guardhouse & Gate Pylons
+  t(43.8, 16, 3.2, 1.8), // Cổng 1 Guardhouse & North Pylon
+  t(45, 22.8, 2, 1.2), // Cổng 1 South Pylon
+
+  // Ký Túc Xá & Căng Tin (South-West)
+  t(2, 28, 11, 3),
+
+  // Trung Tâm Tuyển Sinh (North-East)
+  t(40, 3, 6, 6),
+
+  // Khu Sáng Tạo Khởi Nghiệp (North)
+  t(24, 1, 10, 5),
 ];
 
 /** VietDevPro office interior grid & constants */

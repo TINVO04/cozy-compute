@@ -12,7 +12,7 @@
   <body>
     <script type="module">
       import Phaser from 'phaser';
-      import { CompanyScene, UniversityScene } from '/src/game/scenes.ts';
+      import { CompanyScene, UniversityScene, ComGaScene, BidaScene } from '/src/game/scenes.ts';
       import { useUi } from '/src/lib/store.ts';
       import { net } from '/src/game/net.ts';
       useUi.setState({ reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
@@ -27,7 +27,7 @@
         scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
         audio: { noAudio: true },
         banner: false,
-        scene: [CompanyScene, UniversityScene],
+        scene: [CompanyScene, UniversityScene, ComGaScene, BidaScene],
       });
     </script>
   </body>

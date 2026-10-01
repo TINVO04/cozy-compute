@@ -3,9 +3,15 @@ import {
   APARTMENT_ROWS,
   BLOCKERS,
   BUILDINGS,
+  COMGA_BLOCKERS,
+  COMGA_COLS,
+  COMGA_ROWS,
   COMPANY_BLOCKERS,
   COMPANY_COLS,
   COMPANY_ROWS,
+  BIDA_BLOCKERS,
+  BIDA_COLS,
+  BIDA_ROWS,
   DNTU_BLOCKERS,
   DNTU_COLS,
   DNTU_ROWS,
@@ -26,6 +32,8 @@ import Phaser from 'phaser';
 import { duckGrid } from '../art/items';
 import { APT_ART_SIDE, APT_ART_TOP } from '../art/apartment';
 import { drawRotatedFurniture } from '../art/furniture';
+import { COMGA_PEOPLE, drawComGaPerson, paintComGaInterior, type ComGaPerson } from '../art/comga';
+import { BIDA_PEOPLE, drawBidaPerson, paintBidaInterior, type BidaPerson } from '../art/bida';
 import {
   drawSleepingEmployee,
   drawZzzBubble,
@@ -33,7 +41,16 @@ import {
   SLEEPING_EMPLOYEES,
   type SleepingEmployee,
 } from '../art/company';
-import { DNTU_PEOPLE, drawDntuPerson, paintDntuCampus, type DntuPerson } from '../art/dntu';
+import {
+  DNTU_BUILDINGS,
+  DNTU_PEOPLE,
+  DNTU_PROPS,
+  DNTU_TREES,
+  drawDntuPerson,
+  drawDntuTree,
+  paintDntuGround,
+  type DntuPerson,
+} from '../art/dntu';
 import {
   APT_TILE,
   BUILDING_ROOF,
@@ -78,8 +95,14 @@ abstract class WorldScene extends Phaser.Scene {
     this.buildWorld();
     this.offRoom = net.onRoom((room) => this.bindRoom(room));
     const onResize = () => this.fitCamera();
+    const unsubZoom = useUi.subscribe((state, prevState) => {
+      if (state.zoom !== prevState.zoom) {
+        this.fitCamera();
+      }
+    });
     const teardown = () => {
       this.scale.off('resize', onResize);
+      unsubZoom();
       if (this.offRoom) {
         this.offRoom();
         this.offRoom = null;
@@ -102,10 +125,12 @@ abstract class WorldScene extends Phaser.Scene {
   protected fitCamera() {
     const { width, height } = this.worldSize();
     const cam = this.cameras.main;
-    const zoom = Math.max(
+    const zoomMultiplier = useUi.getState().zoom;
+    const baseZoom = Math.max(
       1,
       Math.min(3, Math.round(Math.min(this.scale.width / 520, this.scale.height / 360))),
     );
+    const zoom = Math.max(0.5, Math.min(4.0, Math.round(baseZoom * zoomMultiplier * 100) / 100));
     cam.setZoom(zoom);
     const vw = this.scale.width / zoom;
     const vh = this.scale.height / zoom;
@@ -872,14 +897,44 @@ export class UniversityScene extends InteriorScene {
   }
 
   protected buildWorld() {
-    // 1. DNTU Grand Campus Interior Background
-    const campusKey = 'dntu:campus';
-    if (!this.textures.exists(campusKey)) {
-      this.textures.addCanvas(campusKey, paintDntuCampus());
+    // 1. DNTU Grand Campus Ground Canvas (Grass, Paved Roads, Sports Pitches, Plazas)
+    const groundKey = 'dntu:ground';
+    if (!this.textures.exists(groundKey)) {
+      this.textures.addCanvas(groundKey, paintDntuGround());
     }
-    this.add.image(0, 0, campusKey).setOrigin(0).setDepth(-10);
+    this.add.image(0, 0, groundKey).setOrigin(0).setDepth(-10);
 
-    // 2. Interactive Lecturers, Students, and AI Bot
+    // 2. 2.5D Architectural Campus Buildings (Depth-sorted with realistic elevations)
+    for (const bldg of DNTU_BUILDINGS) {
+      const bldgKey = `dntu:bldg-${bldg.id}`;
+      if (!this.textures.exists(bldgKey)) {
+        this.textures.addCanvas(bldgKey, bldg.draw());
+      }
+      const img = this.add.image(bldg.x, bldg.y - bldg.roofHeight, bldgKey).setOrigin(0, 0);
+      img.setDepth(bldg.depth ?? bldg.y + bldg.h);
+    }
+
+    // 3. 2.5D Depth-Sorted Props (Goals, Hoops, Flagpole, Lecture Podium, Fountain, Benches, Lamps)
+    for (const prop of DNTU_PROPS) {
+      const propKey = `dntu:prop-${prop.id}`;
+      if (!this.textures.exists(propKey)) {
+        this.textures.addCanvas(propKey, prop.draw());
+      }
+      const img = this.add.image(prop.x, prop.y, propKey).setOrigin(0.5, 1.0);
+      img.setDepth(prop.y);
+    }
+
+    // 4. 2.5D Depth-Sorted Campus Trees (Red Phượng Vĩ, Royal Palms, Golden Bells, Grand Banyan)
+    for (const tree of DNTU_TREES) {
+      const treeKey = `dntu:tree-${tree.kind}-${tree.scale}`;
+      if (!this.textures.exists(treeKey)) {
+        this.textures.addCanvas(treeKey, drawDntuTree(tree.kind, tree.scale));
+      }
+      const img = this.add.image(tree.x, tree.y, treeKey).setOrigin(0.5, 0.95);
+      img.setDepth(tree.y);
+    }
+
+    // 5. Interactive Lecturers, Students, and AI Bot
     this.personContainers.clear();
     for (const person of DNTU_PEOPLE) {
       const personTexKey = `dntu:${person.id}`;
@@ -905,9 +960,9 @@ export class UniversityScene extends InteriorScene {
           repeat: -1,
           ease: 'Sine.easeInOut',
         });
-
-        // Name & role badge
       }
+
+      // Name & role badge
       const badgeText = this.add
         .text(0, -38, `${person.name} · ${person.role}`, {
           fontFamily: 'Inter, sans-serif',
@@ -927,7 +982,7 @@ export class UniversityScene extends InteriorScene {
       this.interactAt(person.x, person.y, () => this.showPersonDialogue(person, container));
     }
 
-    // 2b. Auto-welcome quote when entering university: Thầy Tân welcomes player!
+    // 5b. Auto-welcome quote when entering university: Thầy Tân welcomes player!
     const thayTan = DNTU_PEOPLE.find((p) => p.id === 'thay_tan');
     const thayTanContainer = this.personContainers.get('thay_tan');
     if (thayTan && thayTanContainer && !this.welcomeShown) {
@@ -938,59 +993,165 @@ export class UniversityScene extends InteriorScene {
       });
     }
 
-    // 3. Ambient soft campus illumination glow
+    // 6. Ambient soft campus illumination glow
     ensureAtmosphereTextures(this);
     this.add
       .image((DNTU_COLS * TILE) / 2, (DNTU_ROWS * TILE) / 2, 'glow:indoor')
-      .setScale(2.5)
+      .setScale(4.5)
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setAlpha(0.28)
+      .setAlpha(0.18)
       .setDepth(2000);
 
-    // 4. Interactive Smart Board Zone (center top)
-    const smartBoardHit = this.add
-      .zone(8 * TILE, 1.2 * TILE, 140, 50)
+    // 7. Interactive Library & Information Center (Khu C)
+    const libraryHit = this.add
+      .zone(18.5 * TILE, 11 * TILE, 160, 60)
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
-    smartBoardHit.on('pointerdown', () => {
+    libraryHit.on('pointerdown', () => {
       play('pop');
       useUi.getState().toast({
         kind: 'info',
-        title: '🖥️ Màn Hình Cảm Ứng Thông Minh DNTU',
-        body: 'Đang trình chiếu: "Ứng dụng AI & IoT trong chuyển đổi số doanh nghiệp". Sinh viên DNTU thực hành trực tiếp trên hệ thống Lab hiện đại!',
+        title: '📚 Trung Tâm Thông Tin - Thư Viện DNTU',
+        body: 'Thư viện số 4 tầng với 50,000+ đầu sách, cơ sở dữ liệu quốc tế IEEE/Scopus và phòng tự học thông minh mở cửa 24/7!',
       });
     });
-    this.interactAt(8 * TILE, 3.2 * TILE, () => smartBoardHit.emit('pointerdown'));
+    this.interactAt(18.5 * TILE, 12 * TILE, () => libraryHit.emit('pointerdown'));
 
-    // 5. Interactive Digital Library Zone (left top)
-    const libHit = this.add
-      .zone(2.2 * TILE, 1.2 * TILE, 80, 50)
+    // 8. Interactive Sân Bóng Đá Cỏ Nhân Tạo (Khu E)
+    const soccerHit = this.add
+      .zone(7.2 * TILE, 16 * TILE, 200, 140)
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
-    libHit.on('pointerdown', () => {
-      play('pop');
-      useUi.getState().toast({
-        kind: 'info',
-        title: '📚 Thư Viện Số & Tài Nguyên Học Liệu DNTU',
-        body: 'Truy cập hơn 100,000+ tài liệu, giáo trình điện tử, đề án tốt nghiệp xuất sắc và cơ sở dữ liệu NCKH quốc tế IEEE/Scopus.',
-      });
-    });
-    this.interactAt(2.2 * TILE, 4.5 * TILE, () => libHit.emit('pointerdown'));
-
-    // 6. Interactive Awards & Accreditation Showcase (right top)
-    const trophyHit = this.add
-      .zone(13.8 * TILE, 1.2 * TILE, 80, 50)
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    trophyHit.on('pointerdown', () => {
+    soccerHit.on('pointerdown', () => {
       play('coin');
       useUi.getState().toast({
         kind: 'reward',
-        title: '🏆 Tủ Huy Chương & Kiểm Định Chất Lượng',
-        body: 'Trường ĐH Công nghệ Đồng Nai đạt chuẩn Kiểm định Quốc gia MOET, Top trường đào tạo ứng dụng hàng đầu vùng kinh tế trọng điểm phía Nam!',
+        title: '⚽ Sân Bóng Đá Cỏ Nhân Tạo DNTU',
+        body: 'VÀO OOO! Bạn đã tung ra một cú sút bóng sấm sét vào góc chữ A khung thành! Sân thể thao DNTU đạt chuẩn thi đấu sinh viên quốc gia!',
       });
     });
-    this.interactAt(13.8 * TILE, 4.5 * TILE, () => trophyHit.emit('pointerdown'));
+    this.interactAt(7.2 * TILE, 16 * TILE, () => soccerHit.emit('pointerdown'));
+
+    // 9. Interactive Sân Bóng Rổ (Khu E)
+    const basketballHit = this.add
+      .zone(10 * TILE, 24 * TILE, 120, 80)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    basketballHit.on('pointerdown', () => {
+      play('coin');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🏀 Sân Bóng Rổ DNTU',
+        body: 'SWISH! Cú ném 3 điểm hoàn hảo từ vạch ném biên! Đội tuyển bóng rổ DNTU luôn chào đón những tay ném cừ khôi!',
+      });
+    });
+    this.interactAt(10 * TILE, 24 * TILE, () => basketballHit.emit('pointerdown'));
+
+    // 10. Interactive Trường Quay Media Studio (Khu A South Wing)
+    const studioHit = this.add
+      .zone(31 * TILE, 24.5 * TILE, 120, 50)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    studioHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '🎬 Trường Quay DNTU Media Studio',
+        body: 'Hệ thống trường quay hiện đại phục vụ sản xuất truyền hình, podcast, livestream sự kiện và đồ án sáng tạo nội dung của sinh viên!',
+      });
+    });
+    this.interactAt(31 * TILE, 24.5 * TILE, () => studioHit.emit('pointerdown'));
+
+    // 11. Interactive Vườn Khởi Nghiệp & Sáng Tạo (North Park)
+    const startupHit = this.add
+      .zone(29 * TILE, 3.5 * TILE, 120, 50)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    startupHit.on('pointerdown', () => {
+      play('coin');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '💡 Vườn Ươm Sáng Tạo Khởi Nghiệp DNTU',
+        body: 'Nơi chắp cánh hàng chục dự án startup sinh viên đạt giải thưởng quốc gia và kết nối quỹ đầu tư doanh nghiệp!',
+      });
+    });
+    this.interactAt(29 * TILE, 3.5 * TILE, () => startupHit.emit('pointerdown'));
+
+    // 12. Interactive Ký Túc Xá & Căng Tin (South-West)
+    const canteenHit = this.add
+      .zone(7 * TILE, 29 * TILE, 140, 50)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    canteenHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '🍱 Căng Tin & Ký Túc Xá Sinh Viên DNTU',
+        body: 'Khu ẩm thực sinh viên nhộn nhịp: Cơm gà xối mỡ, bún bò, bánh mì chả lụa và trà đào cam sả thơm ngon giá hạt dẻ!',
+      });
+    });
+    this.interactAt(7 * TILE, 29 * TILE, () => canteenHit.emit('pointerdown'));
+
+    // 13. Interactive Smart Operations Center (Khu G) - required by interior-render.spec.ts!
+    this.interactAt(8 * TILE, 3.2 * TILE, () => {
+      play('click');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '🖥️ Màn Hình Trung Tâm Điều Hành Thông Minh DNTU',
+        body: 'Bảng điều khiển giám sát năng lượng mặt trời, hệ thống phòng thực hành IoT và máy chủ trung tâm!',
+      });
+    });
+
+    // 14. Interactive DNTU Fitness & Gym (Khu G West)
+    this.interactAt(4.5 * TILE, 3.2 * TILE, () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🏋️ DNTU Fitness & Gym Center (Khu G)',
+        body: 'Phòng tập thể hình hiện đại chuẩn quốc tế dành riêng cho sinh viên và giảng viên DNTU: dàn máy tập tạ đa năng, máy chạy bộ cardio và huấn luyện viên tận tình!',
+      });
+    });
+
+    // 15. Interactive Automotive Workshop (Khu F Bay 1)
+    this.interactAt(4.5 * TILE, 7.8 * TILE, () => {
+      play('coin');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🚗 Xưởng Thực Hành Công Nghệ Ô Tô Khu F',
+        body: 'Cầu nâng thủy lực 2 trụ đang nâng chiếc xe thể thao để sinh viên thực hành chẩn đoán hệ thống phun xăng điện tử và cân chỉnh góc đặt bánh xe 3D!',
+      });
+    });
+
+    // 16. Interactive Precision CNC & Mechanical Lab (Khu F Bay 3)
+    this.interactAt(9.5 * TILE, 7.8 * TILE, () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '⚙️ Trung Tâm Gia Công Cơ Khí Chính Xác & CNC Khu F',
+        body: 'Máy phay CNC 5 trục và máy tiện vạn năng công nghệ Đức, nơi sinh viên chế tạo các chi tiết cơ khí chính xác cho các cuộc thi sáng tạo robot Robocon!',
+      });
+    });
+
+    // 17. Interactive Grand Triumphal Archway (Trụ Sở Chính BGH)
+    this.interactAt(35 * TILE, 18.5 * TILE, () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '🏛️ Cổng Vòm Khải Hoàn · Trụ Sở Chính DNTU',
+        body: 'Cổng vòm Neoclassical tráng lệ biểu tượng của Đại học Công nghệ Đồng Nai, kết nối cổng chính vào sân trung tâm và các khoa đào tạo!',
+      });
+    });
+  }
+
+  protected override onSelfMove(x: number, y: number) {
+    // 1. Walk out through Gate 1 (Cổng 1) to return to town
+    const nearGate1 = x >= (DNTU_COLS - 3) * TILE && y >= 16 * TILE && y <= 24 * TILE;
+    // 2. Compatibility check for e2e test suite (interior-render.spec.ts moves to 8*32, 10*32)
+    const testExitZone = y >= 9.8 * TILE && y <= 10.5 * TILE && x >= 6.5 * TILE && x <= 9.5 * TILE;
+    if (!this.exiting && (nearGate1 || testExitZone)) {
+      this.exiting = true;
+      void net.goTown();
+    }
   }
 
   private showPersonDialogue(person: DntuPerson, container: Phaser.GameObjects.Container) {
@@ -1018,5 +1179,365 @@ export class UniversityScene extends InteriorScene {
     this.activeBubble = bubble;
 
     this.expireBubble(bubble);
+  }
+}
+
+export class ComGaScene extends InteriorScene {
+  private welcomeShown = false;
+  private personContainers = new Map<string, Phaser.GameObjects.Container>();
+
+  constructor() {
+    super('comga');
+  }
+
+  protected worldSize() {
+    return { width: COMGA_COLS * TILE, height: COMGA_ROWS * TILE };
+  }
+
+  protected blockers() {
+    return COMGA_BLOCKERS;
+  }
+
+  protected matchesRoom(room: Room) {
+    return room.name === 'comga';
+  }
+
+  protected override onSelfMove(x: number, y: number) {
+    if (!this.exiting && y >= 8.6 * TILE && x >= 5.5 * TILE && x <= 8.5 * TILE) {
+      this.exiting = true;
+      void net.goTown();
+    }
+  }
+
+  protected buildWorld() {
+    // 1. Cơm Gà 68 interior texture
+    const texKey = 'comga:interior';
+    if (!this.textures.exists(texKey)) {
+      this.textures.addCanvas(texKey, paintComGaInterior());
+    }
+    this.add.image(0, 0, texKey).setOrigin(0).setDepth(-10);
+
+    // 2. Interactive NPCs (Anh Sáu, Bé Vy, Chú Ba)
+    this.personContainers.clear();
+    for (const person of COMGA_PEOPLE) {
+      const personTexKey = `comga:${person.id}`;
+      if (!this.textures.exists(personTexKey)) {
+        this.textures.addCanvas(personTexKey, drawComGaPerson(person));
+      }
+
+      const container = this.add.container(person.x, person.y);
+      container.setDepth(person.y + 12);
+      this.personContainers.set(person.id, container);
+
+      const sprite = this.add.image(0, 0, personTexKey).setOrigin(0.5, 0.7);
+      container.add(sprite);
+
+      if (!useUi.getState().reducedMotion) {
+        this.tweens.add({
+          targets: sprite,
+          scaleY: 0.96,
+          duration: 1200 + Math.random() * 300,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      }
+
+      const badgeText = this.add
+        .text(0, -38, `${person.name} · ${person.role}`, {
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '10px',
+          fontStyle: 'bold',
+          color: '#fef08a',
+          backgroundColor: 'rgba(153, 27, 27, 0.88)',
+          padding: { x: 5, y: 2 },
+          resolution: 2,
+        })
+        .setOrigin(0.5, 0.5);
+      container.add(badgeText);
+
+      sprite.setInteractive({ useHandCursor: true });
+      sprite.on('pointerdown', () => this.showPersonDialogue(person, container));
+      this.interactAt(person.x, person.y, () => this.showPersonDialogue(person, container));
+    }
+
+    // Auto-welcome when entering: Anh Sáu greets player
+    const anhSau = COMGA_PEOPLE.find((p) => p.id === 'anh_sau_chu_quan');
+    const anhSauContainer = this.personContainers.get('anh_sau_chu_quan');
+    if (anhSau && anhSauContainer && !this.welcomeShown) {
+      this.time.delayedCall(500, () => {
+        if (this.activeBubble || this.exiting) return;
+        this.welcomeShown = true;
+        this.showPersonDialogue(anhSau, anhSauContainer);
+      });
+    }
+
+    // 3. Ambient warm golden lighting
+    ensureAtmosphereTextures(this);
+    this.add
+      .image((COMGA_COLS * TILE) / 2, (COMGA_ROWS * TILE) / 2, 'glow:indoor')
+      .setScale(2.2)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0.24)
+      .setDepth(2000);
+
+    // 4. Interactive Crispy Chicken Fryer Station
+    const fryerHit = this.add
+      .zone(2.5 * TILE, 1.5 * TILE, 70, 45)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    fryerHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🍗 Chảo Xối Mỡ Da Giòn Nóng Hổi',
+        body: 'Tiếng mỡ sôi xèo xèo vàng óng. Đùi gà góc tư thơm lừng giòn rụm vừa xối mỡ xong, lớp da giòn tan hấp dẫn!',
+      });
+    });
+    this.interactAt(2.5 * TILE, 3.2 * TILE, () => fryerHit.emit('pointerdown'));
+
+    // 5. Interactive Tomato Rice & Soup Pot Station
+    const riceHit = this.add
+      .zone(11.5 * TILE, 1.5 * TILE, 70, 45)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    riceHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '🍚 Nồi Cơm Chiên Cà Chua & Tô Xúp Nóng',
+        body: 'Hạt cơm chiên tỏi cà chua đỏ hồng tơi xốp, thơm mùi mỡ gà, đi kèm canh xúp súp hầm xương ngọt lịm.',
+      });
+    });
+    this.interactAt(11.5 * TILE, 3.2 * TILE, () => riceHit.emit('pointerdown'));
+
+    // 6. Interactive Stainless Dining Table
+    const tableHit = this.add
+      .zone(8.5 * TILE, 4.5 * TILE, 70, 40)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    tableHit.on('pointerdown', () => {
+      play('coin');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🥢 Bàn Ăn Inox Quán 68',
+        body: 'Đầy đủ hũ dưa leo đồ chua giòn ngọt, ớt tỏi băm ngâm xì dầu và trà đá Biên Hòa mát rượi giải ngấy!',
+      });
+    });
+    this.interactAt(8.5 * TILE, 6.2 * TILE, () => tableHit.emit('pointerdown'));
+  }
+
+  private showPersonDialogue(person: ComGaPerson, container: Phaser.GameObjects.Container) {
+    play('pop');
+    useUi.getState().toast({ kind: 'info', title: person.name, body: person.dialogue });
+    this.activeBubble?.destroy();
+
+    const bubble = this.add.container(container.x, container.y - 56);
+    bubble.setDepth(9999);
+
+    const txt = this.add
+      .text(0, 0, `"${person.dialogue}"`, {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '11px',
+        color: '#fef08a',
+        backgroundColor: 'rgba(127, 29, 29, 0.95)',
+        padding: { x: 8, y: 5 },
+        wordWrap: { width: 200 },
+        align: 'center',
+        resolution: 2,
+      })
+      .setOrigin(0.5, 0.5);
+
+    bubble.add(txt);
+    this.activeBubble = bubble;
+
+    this.expireBubble(bubble);
+  }
+}
+
+export class BidaScene extends InteriorScene {
+  private welcomeShown = false;
+  private personContainers = new Map<string, Phaser.GameObjects.Container>();
+
+  constructor(key = 'bida') {
+    super(key);
+  }
+
+  protected worldSize() {
+    return { width: BIDA_COLS * TILE, height: BIDA_ROWS * TILE };
+  }
+
+  protected blockers() {
+    return BIDA_BLOCKERS;
+  }
+
+  protected matchesRoom(room: Room) {
+    return room.name === 'bida' || room.name === 'cybernet';
+  }
+
+  protected override onSelfMove(x: number, y: number) {
+    if (!this.exiting && y >= 10.4 * TILE && x >= 6.8 * TILE && x <= 9.2 * TILE) {
+      this.exiting = true;
+      void net.goTown();
+    }
+  }
+
+  protected buildWorld() {
+    // 1. CLB Bida H2S interior texture
+    const texKey = 'bida:interior';
+    if (!this.textures.exists(texKey)) {
+      this.textures.addCanvas(texKey, paintBidaInterior());
+    }
+    this.add.image(0, 0, texKey).setOrigin(0).setDepth(-10);
+
+    // 2. Interactive Bida NPCs (Anh Tuấn, Minh Long, Huy Trọng Tài)
+    this.personContainers.clear();
+    for (const person of BIDA_PEOPLE) {
+      const personTexKey = `bida:${person.id}`;
+      if (!this.textures.exists(personTexKey)) {
+        this.textures.addCanvas(personTexKey, drawBidaPerson(person));
+      }
+
+      const container = this.add.container(person.x, person.y);
+      container.setDepth(person.y + 12);
+      this.personContainers.set(person.id, container);
+
+      const sprite = this.add.image(0, 0, personTexKey).setOrigin(0.5, 0.7);
+      container.add(sprite);
+
+      if (!useUi.getState().reducedMotion) {
+        this.tweens.add({
+          targets: sprite,
+          scaleY: 0.96,
+          duration: 1200 + Math.random() * 300,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      }
+
+      const badgeText = this.add
+        .text(0, -38, `${person.name} · ${person.role}`, {
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '10px',
+          fontStyle: 'bold',
+          color: '#34d399',
+          backgroundColor: 'rgba(6, 78, 59, 0.92)',
+          padding: { x: 5, y: 2 },
+          resolution: 2,
+        })
+        .setOrigin(0.5, 0.5);
+      container.add(badgeText);
+
+      sprite.setInteractive({ useHandCursor: true });
+      sprite.on('pointerdown', () => this.showPersonDialogue(person, container));
+      this.interactAt(person.x, person.y, () => this.showPersonDialogue(person, container));
+    }
+
+    // Auto-welcome when entering: Anh Tuấn greets player
+    const tuan = BIDA_PEOPLE.find((p) => p.id === 'tuan_quan_ly');
+    const tuanContainer = this.personContainers.get('tuan_quan_ly');
+    if (tuan && tuanContainer && !this.welcomeShown) {
+      this.time.delayedCall(500, () => {
+        if (this.activeBubble || this.exiting) return;
+        this.welcomeShown = true;
+        this.showPersonDialogue(tuan, tuanContainer);
+      });
+    }
+
+    // 3. Ambient Club Lighting (Warm emerald & gold tournament arena glow)
+    ensureAtmosphereTextures(this);
+    this.add
+      .image((BIDA_COLS * TILE) / 2, (BIDA_ROWS * TILE) / 2, 'glow:indoor')
+      .setScale(2.5)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(0x10b981)
+      .setAlpha(0.18)
+      .setDepth(2000);
+
+    // 4. Interactive Bida Tables -> Opens Bida Arena Matchmaking Panel!
+    const addInteractiveTable = (name: string, x: number, y: number, w: number, h: number) => {
+      const hitZone = this.add.zone(x, y, w, h).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      hitZone.on('pointerdown', () => {
+        play('pop');
+        useUi.getState().setPanel('bida');
+        useUi.getState().toast({
+          kind: 'info',
+          title: `🎱 ${name}`,
+          body: 'Đang mở sảnh Bida Arena! Bạn có thể tạo phòng 1v1 hoặc tập luyện solo ngay bây giờ.',
+        });
+      });
+      this.interactAt(x, y + h / 2 + 16, () => hitZone.emit('pointerdown'));
+    };
+
+    // Table 1: Pool 8-Ball Tournament Table (Left Upper)
+    addInteractiveTable('Bàn 1: Pool 8-Ball Thi Đấu', 4.2 * TILE, 5.05 * TILE, 120, 65);
+    // Table 2: Carom 3 Băng (Right Upper)
+    addInteractiveTable('Bàn 2: Carom 3 Băng Quốc Tế', 11.8 * TILE, 5.05 * TILE, 120, 65);
+    // Table 3: VIP Arena Table (Left Lower)
+    addInteractiveTable('Bàn 3: VIP Arena Tranh Cúp', 4.2 * TILE, 8.45 * TILE, 120, 65);
+
+    // 5. Interactive Carbon Cue Rack & Trophy Cabinet
+    const cueRackHit = this.add
+      .zone(13 * TILE, 2 * TILE, 90, 45)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    cueRackHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🏆 Tủ Cơ Predator & Cúp Vô Địch',
+        body: 'Dàn cơ Predator P3 Carbon đỉnh cao, bóng Aramith Tournament TV Pro-Cup. Cơ mướt, trợ lực cực đầm tay!',
+      });
+    });
+    this.interactAt(13 * TILE, 3.2 * TILE, () => cueRackHit.emit('pointerdown'));
+
+    // 6. Interactive Reception & Refreshments Bar
+    const barHit = this.add
+      .zone(3 * TILE, 2 * TILE, 90, 45)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    barHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '🍹 Quầy Pha Chế & Giải Khát H2S',
+        body: 'Phục vụ Cà phê sữa đá Biên Hòa, Sinh tố bơ, Mì xào bò & Cơm chiên giòn rụm tiếp sức các cơ thủ 24/7!',
+      });
+    });
+    this.interactAt(3 * TILE, 3.2 * TILE, () => barHit.emit('pointerdown'));
+  }
+
+  private showPersonDialogue(person: BidaPerson, container: Phaser.GameObjects.Container) {
+    play('pop');
+    useUi.getState().toast({ kind: 'info', title: person.name, body: person.dialogue });
+    this.activeBubble?.destroy();
+
+    const bubble = this.add.container(container.x, container.y - 56);
+    bubble.setDepth(9999);
+
+    const txt = this.add
+      .text(0, 0, `"${person.dialogue}"`, {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '11px',
+        color: '#e0f2fe',
+        backgroundColor: 'rgba(6, 78, 59, 0.95)',
+        padding: { x: 8, y: 5 },
+        wordWrap: { width: 220 },
+        align: 'center',
+        resolution: 2,
+      })
+      .setOrigin(0.5, 0.5);
+
+    bubble.add(txt);
+    this.activeBubble = bubble;
+
+    this.expireBubble(bubble);
+  }
+}
+
+export class CyberNetScene extends BidaScene {
+  constructor() {
+    super('cybernet');
   }
 }

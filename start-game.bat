@@ -87,6 +87,9 @@ if %errorlevel% neq 0 (
 echo [UPSTREAM] Mock Upstream da san sang tren port 4010.
 
 :: 4. Chay dev server
+:: Tu dong don dep cac tien trinh cu tren port 5173, 8787, 2567 (neu co)
+powershell -NoProfile -Command "5173,8787,2567 | ForEach-Object { Get-NetTCPConnection -LocalPort $_ -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }" > nul 2>&1
+
 echo ========================================================
 echo   [GAME] Tat ca service da san sang!
 echo   [GAME] Dang bat Web, Realtime va API...

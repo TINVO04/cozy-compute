@@ -21,13 +21,19 @@ class Net {
   room: Room | null = null;
   private listeners = new Set<Listener>();
   private target:
-    { name: 'town' } | { name: 'apartment'; ownerId: string } | { name: 'company' } | { name: 'university' } =
-    {
-      name: 'town',
-    };
+    | { name: 'town' }
+    | { name: 'apartment'; ownerId: string }
+    | { name: 'company' }
+    | { name: 'university' }
+    | { name: 'comga' }
+    | { name: 'bida' }
+    | { name: 'cybernet' } = {
+    name: 'town',
+  };
   private retry = 0;
   private retryTimer: number | undefined;
   private closedByUs = false;
+  private messageHandlers = new Map<string, Set<(data: unknown) => void>>();
   /** Incremented on every connect/disconnect so late join results from superseded attempts are discarded. */
   private generation = 0;
   /** Connection attempts run one at a time so the server never sees two joins racing for the same player. */
@@ -66,7 +72,11 @@ class Net {
             ? await this.client.joinOrCreate('company', { token })
             : target.name === 'university'
               ? await this.client.joinOrCreate('university', { token })
-              : await this.client.joinOrCreate('apartment', { token, ownerId: target.ownerId });
+              : target.name === 'comga'
+                ? await this.client.joinOrCreate('comga', { token })
+                : target.name === 'bida' || target.name === 'cybernet'
+                  ? await this.client.joinOrCreate('bida', { token })
+                  : await this.client.joinOrCreate('apartment', { token, ownerId: target.ownerId });
       if (gen !== this.generation) {
         await room.leave(true).catch(() => undefined);
         return;
@@ -97,6 +107,11 @@ class Net {
     room.onMessage('notice', (m: { kind: string; text: string }) =>
       useUi.getState().toast({ kind: m.kind === 'warning' ? 'error' : 'info', title: m.text }),
     );
+    for (const [type, handlers] of this.messageHandlers) {
+      for (const handler of handlers) {
+        room.onMessage(type, handler);
+      }
+    }
     room.onMessage('*', () => undefined);
     room.onLeave((code) => {
       if (this.room !== room) return;
@@ -159,8 +174,47 @@ class Net {
     return this.connect({ name: 'university' });
   }
 
+  goComGa(label = 'Cơm Gà Xối Mỡ 68 Biên Hòa') {
+    useUi.getState().setRoom({ kind: 'comga', label });
+    return this.connect({ name: 'comga' });
+  }
+
+  goBida(label = 'CLB Bida H2S Trảng Dài (Biên Hòa)') {
+    useUi.getState().setRoom({ kind: 'bida', label });
+    return this.connect({ name: 'bida' });
+  }
+
+  goCyberNet(label = 'Cyber Game HNT Trảng Dài') {
+    useUi.getState().setRoom({ kind: 'cybernet', label });
+    return this.connect({ name: 'cybernet' });
+  }
+
   send(type: string, msg: unknown) {
     this.room?.send(type, msg);
+  }
+
+  onRoomMessage<T = unknown>(type: string, handler: (data: T) => void): () => void {
+    if (!this.messageHandlers.has(type)) {
+      this.messageHandlers.set(type, new Set());
+    }
+    const set = this.messageHandlers.get(type)!;
+    const fn = handler as (data: unknown) => void;
+    set.add(fn);
+
+    let unsubRoom: (() => void) | undefined;
+    if (this.room) {
+      unsubRoom = this.room.onMessage(type, fn);
+    }
+
+    return () => {
+      set.delete(fn);
+      if (set.size === 0) this.messageHandlers.delete(type);
+      unsubRoom?.();
+    };
+  }
+
+  isConnected(): boolean {
+    return Boolean(this.room);
   }
 
   async disconnect() {

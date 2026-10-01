@@ -6,6 +6,8 @@ import { ApiClient } from './api.js';
 import { ApartmentRoom } from './rooms/apartment.js';
 import { setDeps, type BaseRoom } from './rooms/base.js';
 import { CompanyRoom } from './rooms/company.js';
+import { ComGaRoom } from './rooms/comga.js';
+import { BidaRoom } from './rooms/bida.js';
 import { TownRoom } from './rooms/town.js';
 import { UniversityRoom } from './rooms/university.js';
 
@@ -64,6 +66,9 @@ gameServer.define('town', TownRoom);
 gameServer.define('apartment', ApartmentRoom).filterBy(['ownerId']);
 gameServer.define('company', CompanyRoom);
 gameServer.define('university', UniversityRoom);
+gameServer.define('comga', ComGaRoom);
+gameServer.define('bida', BidaRoom);
+gameServer.define('cybernet', BidaRoom);
 
 await sub.subscribe('player:appearance', 'player:kick', 'apartment:updated', 'events');
 sub.on('message', async (channel, raw) => {

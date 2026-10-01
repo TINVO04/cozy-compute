@@ -16,6 +16,8 @@ import {
   Volume2,
   VolumeX,
   WifiOff,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -39,6 +41,7 @@ import { ShopPanel } from './panels/ShopPanel';
 import { FishingShopPanel } from './panels/FishingShopPanel';
 import { BackpackPanel } from './panels/BackpackPanel';
 import { FishCompendium } from './panels/FishCompendium';
+import { BidaArenaPanel } from './panels/BidaArenaPanel';
 import { Sidebar } from './Sidebar';
 import { Brand } from './Brand';
 import { Button, CoinIcon, Spinner } from '../ui/primitives';
@@ -123,6 +126,7 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
           {panel === 'apartments' ? <ApartmentsPanel me={me} onClose={() => setPanel(null)} /> : null}
           {panel === 'ledger' ? <LedgerPanel onClose={() => setPanel(null)} /> : null}
           {panel === 'fishdex' ? <FishCompendium onClose={() => setPanel(null)} /> : null}
+          {panel === 'bida' ? <BidaArenaPanel me={me} onClose={() => setPanel(null)} /> : null}
         </main>
         <Sidebar me={me} />
       </div>
@@ -353,6 +357,9 @@ const ZONE_ACTIONS: Partial<Record<ZoneId, { cta: string; hint: string }>> = {
   ai_kiosk: { cta: 'Mở Trạm thưởng AI', hint: 'Đổi Xu lấy hạn mức API AI' },
   vietprodev: { cta: 'Vào công ty', hint: 'Công ty công nghệ VietProDev' },
   dntu: { cta: 'Vào trường ĐH', hint: 'Trường Đại học Công nghệ Đồng Nai' },
+  comga: { cta: 'Ăn cơm gà', hint: 'Quán Cơm Gà Xối Mỡ 68 Biên Hòa' },
+  bida: { cta: 'Vào quán Bida', hint: 'CLB Bida H2S Trảng Dài Biên Hòa (Giao lưu 1v1)' },
+  cybernet: { cta: 'Vào quán Bida', hint: 'CLB Bida H2S Trảng Dài Biên Hòa (Giao lưu 1v1)' },
 };
 
 function WorldHud({ me }: { me: Me }) {
@@ -361,6 +368,7 @@ function WorldHud({ me }: { me: Me }) {
   const panel = useUi((s) => s.panel);
   const activity = useUi((s) => s.activity);
   const delivery = useUi((s) => s.delivery);
+  const zoom = useUi((s) => s.zoom);
   const setPanel = useUi((s) => s.setPanel);
   const setActivity = useUi((s) => s.setActivity);
   const [emotes, setEmotes] = useState(false);
@@ -405,6 +413,11 @@ function WorldHud({ me }: { me: Me }) {
         return void net.goCompany('Văn Phòng VietProDev');
       case 'dntu':
         return void net.goUniversity('Đại Học Công Nghệ Đồng Nai (DNTU)');
+      case 'comga':
+        return void net.goComGa('Cơm Gà Xối Mỡ 68 Biên Hòa');
+      case 'bida':
+      case 'cybernet':
+        return void net.goBida('CLB Bida H2S Trảng Dài (Biên Hòa)');
     }
   }
 
@@ -415,6 +428,18 @@ function WorldHud({ me }: { me: Me }) {
       if (panel || activity || document.querySelector('.backdrop')) return;
       if ((e.key === 'e' || e.key === 'E') && action && !delivery) runAction();
       if (e.key === 'q' || e.key === 'Q') setEmotes((v) => !v);
+      if (e.key === '=' || e.key === '+') {
+        e.preventDefault();
+        useUi.getState().setZoom((z) => z + 0.15);
+      }
+      if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        useUi.getState().setZoom((z) => z - 0.15);
+      }
+      if (e.key === '0' && (e.ctrlKey || !action)) {
+        e.preventDefault();
+        useUi.getState().setZoom(1.0);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -437,9 +462,19 @@ function WorldHud({ me }: { me: Me }) {
             <Compass size={14} style={{ color: 'var(--primary)', flex: 'none' }} />
             <span>{room.kind === 'town' ? (zoneLabel ?? 'Thị trấn') : room.label}</span>
           </div>
-          {room.kind === 'apartment' || room.kind === 'company' || room.kind === 'university' ? (
+          {room.kind === 'apartment' ||
+          room.kind === 'company' ||
+          room.kind === 'university' ||
+          room.kind === 'comga' ||
+          room.kind === 'bida' ||
+          room.kind === 'cybernet' ? (
             <Button size="sm" onClick={() => void net.goTown()}>
               <MapIcon size={15} /> Về thị trấn
+            </Button>
+          ) : null}
+          {room.kind === 'bida' || room.kind === 'cybernet' ? (
+            <Button size="sm" variant="reward" onClick={() => setPanel('bida')}>
+              🎱 Bida Arena (Tạo phòng & Ghép đấu)
             </Button>
           ) : null}
         </div>
@@ -514,6 +549,33 @@ function WorldHud({ me }: { me: Me }) {
         </button>
       </div>
 
+      <div className="zoom-card" role="group" aria-label="Tầm nhìn bản đồ">
+        <button
+          className="zoom-btn"
+          title="Phóng to bản đồ (+ hoặc cuộn chuột lên)"
+          aria-label="Phóng to bản đồ"
+          onClick={() => useUi.getState().setZoom((z) => z + 0.15)}
+        >
+          <ZoomIn size={15} />
+        </button>
+        <button
+          className="zoom-level"
+          title="Nhấp để đặt lại 100% (Phím 0)"
+          aria-label={`Mức phóng to ${Math.round(zoom * 100)}%, nhấp để đặt lại 100%`}
+          onClick={() => useUi.getState().setZoom(1.0)}
+        >
+          <span>{Math.round(zoom * 100)}%</span>
+        </button>
+        <button
+          className="zoom-btn"
+          title="Thu nhỏ bản đồ (- hoặc cuộn chuột xuống)"
+          aria-label="Thu nhỏ bản đồ"
+          onClick={() => useUi.getState().setZoom((z) => z - 0.15)}
+        >
+          <ZoomOut size={15} />
+        </button>
+      </div>
+
       <div className="help-card" aria-hidden>
         <div className="help-group">
           <span className="kbd">W</span>
@@ -536,6 +598,11 @@ function WorldHud({ me }: { me: Me }) {
         <div className="help-group">
           <span className="kbd">Enter</span>
           <span>trò chuyện</span>
+        </div>
+        <div className="help-sep" />
+        <div className="help-group">
+          <span className="kbd">Cuộn</span>
+          <span>zoom map</span>
         </div>
       </div>
     </>

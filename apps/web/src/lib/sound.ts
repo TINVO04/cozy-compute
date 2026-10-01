@@ -2,7 +2,20 @@ import { useUi } from './store';
 
 let ctx: AudioContext | null = null;
 
-type Cue = 'coin' | 'click' | 'error' | 'splash' | 'bite' | 'duck' | 'pop' | 'nibble' | 'reel';
+type Cue =
+  | 'coin'
+  | 'click'
+  | 'error'
+  | 'splash'
+  | 'bite'
+  | 'duck'
+  | 'pop'
+  | 'nibble'
+  | 'reel'
+  | 'bida_hit'
+  | 'bida_cushion'
+  | 'bida_pocket'
+  | 'bida_win';
 
 const CUES: Record<Cue, { f: number[]; d: number; type: OscillatorType; vol: number }> = {
   coin: { f: [988, 1319], d: 0.08, type: 'square', vol: 0.05 },
@@ -14,6 +27,10 @@ const CUES: Record<Cue, { f: number[]; d: number; type: OscillatorType; vol: num
   duck: { f: [740, 988, 1175], d: 0.06, type: 'square', vol: 0.05 },
   pop: { f: [523, 784], d: 0.05, type: 'triangle', vol: 0.05 },
   reel: { f: [520, 680], d: 0.04, type: 'triangle', vol: 0.05 },
+  bida_hit: { f: [820, 520], d: 0.04, type: 'triangle', vol: 0.07 },
+  bida_cushion: { f: [190, 110], d: 0.06, type: 'sine', vol: 0.06 },
+  bida_pocket: { f: [340, 240, 150], d: 0.09, type: 'sine', vol: 0.08 },
+  bida_win: { f: [523, 659, 784, 1046], d: 0.12, type: 'square', vol: 0.07 },
 };
 
 /** Tiny synthesized sound effects — no audio assets required. */
