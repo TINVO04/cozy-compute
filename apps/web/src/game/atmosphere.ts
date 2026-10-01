@@ -1,4 +1,4 @@
-import { BUILDINGS, MAP_HEIGHT, MAP_WIDTH, TILE, TOWN_LAMPS } from '@cozy/game-data';
+import { BUILDINGS, MAP_HEIGHT, MAP_WIDTH, TILE, TOWN_LAMPS, TOWN_PROPS } from '@cozy/game-data';
 import Phaser from 'phaser';
 import { BUILDING_ROOF } from '../art/town';
 import { useUi } from '../lib/store';
@@ -199,12 +199,13 @@ export function setupTownLighting(scene: Phaser.Scene) {
   });
 
   // 3. AI Kiosk Neon Hologram Glow
-  const kioskX = 14 * TILE;
-  const kioskY = 24 * TILE - 42;
+  const kioskProp = TOWN_PROPS.find((p) => p.kind === 'kiosk');
+  const kioskX = (kioskProp?.x ?? 20) * TILE;
+  const kioskY = (kioskProp?.y ?? 16) * TILE - 42;
   const kioskGlow = scene.add
     .image(kioskX, kioskY, 'glow:kiosk')
     .setOrigin(0.5, 0.5)
-    .setDepth(24 * TILE + 20)
+    .setDepth((kioskProp?.y ?? 16) * TILE + 20)
     .setBlendMode(Phaser.BlendModes.ADD)
     .setAlpha(0.82);
 

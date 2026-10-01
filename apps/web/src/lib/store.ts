@@ -15,7 +15,8 @@ export type Panel =
   | 'apartments'
   | 'profile'
   | 'ledger'
-  | 'fishdex';
+  | 'fishdex'
+  | 'bida';
 export type Activity = null | 'fishing' | 'delivery' | 'cafe';
 
 export interface Toast {
@@ -49,7 +50,11 @@ interface UiState {
   activity: Activity;
   zone: ZoneId | null;
   connection: 'connecting' | 'online' | 'reconnecting' | 'offline';
-  room: { kind: 'town' | 'apartment' | 'company' | 'university'; ownerId?: string; label: string };
+  room: {
+    kind: 'town' | 'apartment' | 'company' | 'university' | 'comga' | 'bida' | 'cybernet';
+    ownerId?: string;
+    label: string;
+  };
   toasts: Toast[];
   chat: ChatLine[];
   delivery: DeliveryJob | null;
@@ -71,6 +76,8 @@ interface UiState {
   inspect: (userId: string | null) => void;
   setEditingApartment: (v: boolean) => void;
   setMuted: (v: boolean) => void;
+  zoom: number;
+  setZoom: (z: number | ((prev: number) => number)) => void;
 }
 
 let nextId = 1;
@@ -89,6 +96,11 @@ export const useUi = create<UiState>((set) => ({
   reducedMotion:
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   muted: localStorage.getItem('cozy.muted') === '1',
+  zoom: (() => {
+    if (typeof window === 'undefined') return 1;
+    const v = parseFloat(localStorage.getItem('cozy.zoom') || '1');
+    return isNaN(v) ? 1 : Math.max(0.5, Math.min(2.5, v));
+  })(),
   myUserId: null,
   setPanel: (panel) => set({ panel }),
   setActivity: (activity) => set({ activity }),
@@ -112,5 +124,17 @@ export const useUi = create<UiState>((set) => ({
   setMuted: (muted) => {
     localStorage.setItem('cozy.muted', muted ? '1' : '0');
     set({ muted });
+  },
+  setZoom: (z) => {
+    set((s) => {
+      const next = typeof z === 'function' ? z(s.zoom) : z;
+      const clamped = Math.round(Math.max(0.5, Math.min(2.5, next)) * 100) / 100;
+      try {
+        localStorage.setItem('cozy.zoom', String(clamped));
+      } catch {
+        // localStorage may be disabled or full
+      }
+      return { zoom: clamped };
+    });
   },
 }));

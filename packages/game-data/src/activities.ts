@@ -859,6 +859,8 @@ export const DELIVERY_PACKAGES = [
   'Bàn phím cơ switch xanh dự phòng',
   'Tập đề án tốt nghiệp & tài liệu NCKH sinh viên DNTU',
   'Hộp bằng cử nhân & nón tốt nghiệp danh giá DNTU',
+  'Hộp cơm gà xối mỡ đùi góc tư da giòn Biên Hòa nóng hổi',
+  'Thùng nước ngọt Sting dâu & combo mì xào cho Cyber Game HNT',
 ];
 
 /** Default admin-tunable activity configuration. Stored in the activities table. */

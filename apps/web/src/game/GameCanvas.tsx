@@ -1,7 +1,15 @@
 import Phaser from 'phaser';
 import { useEffect, useRef } from 'react';
 import { useUi } from '../lib/store';
-import { ApartmentScene, CompanyScene, TownScene, UniversityScene } from './scenes';
+import {
+  ApartmentScene,
+  BidaScene,
+  ComGaScene,
+  CompanyScene,
+  CyberNetScene,
+  TownScene,
+  UniversityScene,
+} from './scenes';
 
 export let game: Phaser.Game | null = null;
 
@@ -21,7 +29,7 @@ export function GameCanvas() {
       input: { keyboard: true, mouse: { preventDefaultWheel: false } },
       audio: { noAudio: true },
       banner: false,
-      scene: [TownScene, ApartmentScene, CompanyScene, UniversityScene],
+      scene: [TownScene, ApartmentScene, CompanyScene, UniversityScene, ComGaScene, BidaScene, CyberNetScene],
     });
     game.canvas?.setAttribute(
       'aria-label',
@@ -30,6 +38,36 @@ export function GameCanvas() {
     return () => {
       game?.destroy(true);
       game = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          (activeEl as HTMLElement).isContentEditable)
+      ) {
+        return;
+      }
+      if (document.querySelector('.backdrop') || document.querySelector('.panel')) {
+        return;
+      }
+
+      e.preventDefault();
+      const step = 0.1;
+      const dir = e.deltaY < 0 ? 1 : -1;
+      useUi.getState().setZoom((z) => z + dir * step);
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
     };
   }, []);
 

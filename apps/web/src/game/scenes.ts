@@ -3,9 +3,18 @@ import {
   APARTMENT_ROWS,
   BLOCKERS,
   BUILDINGS,
+  COMGA_BLOCKERS,
+  COMGA_COLS,
+  COMGA_ROWS,
   COMPANY_BLOCKERS,
   COMPANY_COLS,
   COMPANY_ROWS,
+  CYBERNET_BLOCKERS,
+  CYBERNET_COLS,
+  CYBERNET_ROWS,
+  BIDA_BLOCKERS,
+  BIDA_COLS,
+  BIDA_ROWS,
   DNTU_BLOCKERS,
   DNTU_COLS,
   DNTU_ROWS,
@@ -26,6 +35,9 @@ import Phaser from 'phaser';
 import { duckGrid } from '../art/items';
 import { APT_ART_SIDE, APT_ART_TOP } from '../art/apartment';
 import { drawRotatedFurniture } from '../art/furniture';
+import { COMGA_PEOPLE, drawComGaPerson, paintComGaInterior, type ComGaPerson } from '../art/comga';
+import { CYBERNET_PEOPLE, drawCyberNetPerson, paintCyberNetInterior } from '../art/cybernet';
+import { BIDA_PEOPLE, drawBidaPerson, paintBidaInterior, type BidaPerson } from '../art/bida';
 import {
   drawSleepingEmployee,
   drawZzzBubble,
@@ -78,8 +90,14 @@ abstract class WorldScene extends Phaser.Scene {
     this.buildWorld();
     this.offRoom = net.onRoom((room) => this.bindRoom(room));
     const onResize = () => this.fitCamera();
+    const unsubZoom = useUi.subscribe((state, prevState) => {
+      if (state.zoom !== prevState.zoom) {
+        this.fitCamera();
+      }
+    });
     const teardown = () => {
       this.scale.off('resize', onResize);
+      unsubZoom();
       if (this.offRoom) {
         this.offRoom();
         this.offRoom = null;
@@ -102,10 +120,12 @@ abstract class WorldScene extends Phaser.Scene {
   protected fitCamera() {
     const { width, height } = this.worldSize();
     const cam = this.cameras.main;
-    const zoom = Math.max(
+    const zoomMultiplier = useUi.getState().zoom;
+    const baseZoom = Math.max(
       1,
       Math.min(3, Math.round(Math.min(this.scale.width / 520, this.scale.height / 360))),
     );
+    const zoom = Math.max(0.5, Math.min(4.0, Math.round(baseZoom * zoomMultiplier * 100) / 100));
     cam.setZoom(zoom);
     const vw = this.scale.width / zoom;
     const vh = this.scale.height / zoom;
@@ -617,11 +637,11 @@ abstract class InteriorScene extends WorldScene {
   protected override fitCamera() {
     super.fitCamera();
     const { width, height } = this.worldSize();
-    // Fit the complete room at integer scale, rather than rounding up and cropping it.
-    const zoom = Math.max(
+    const baseZoom = Math.max(
       1,
       Math.min(3, Math.floor(Math.min(this.scale.width / width, this.scale.height / height))),
     );
+    const zoom = Math.max(0.5, Math.min(4, baseZoom * useUi.getState().zoom));
     const vw = this.scale.width / zoom;
     const vh = this.scale.height / zoom;
     this.cameras.main
@@ -1059,5 +1079,414 @@ export class UniversityScene extends InteriorScene {
     this.activeBubble = bubble;
 
     this.expireBubble(bubble);
+  }
+}
+
+export class ComGaScene extends InteriorScene {
+  private welcomeShown = false;
+  private personContainers = new Map<string, Phaser.GameObjects.Container>();
+
+  constructor() {
+    super('comga');
+  }
+
+  protected worldSize() {
+    return { width: COMGA_COLS * TILE, height: COMGA_ROWS * TILE };
+  }
+
+  protected blockers() {
+    return COMGA_BLOCKERS;
+  }
+
+  protected matchesRoom(room: Room) {
+    return room.name === 'comga';
+  }
+
+  protected override onSelfMove(x: number, y: number) {
+    if (!this.exiting && y >= 8.6 * TILE && x >= 5.5 * TILE && x <= 8.5 * TILE) {
+      this.exiting = true;
+      void net.goTown();
+    }
+  }
+
+  protected buildWorld() {
+    // 1. Cơm Gà 68 interior texture
+    const texKey = 'comga:interior';
+    if (!this.textures.exists(texKey)) {
+      this.textures.addCanvas(texKey, paintComGaInterior());
+    }
+    this.add.image(0, 0, texKey).setOrigin(0).setDepth(-10);
+
+    // 2. Interactive NPCs (Anh Sáu, Bé Vy, Chú Ba)
+    this.personContainers.clear();
+    for (const person of COMGA_PEOPLE) {
+      const personTexKey = `comga:${person.id}`;
+      if (!this.textures.exists(personTexKey)) {
+        this.textures.addCanvas(personTexKey, drawComGaPerson(person));
+      }
+
+      const container = this.add.container(person.x, person.y);
+      container.setDepth(person.y + 12);
+      this.personContainers.set(person.id, container);
+
+      const sprite = this.add.image(0, 0, personTexKey).setOrigin(0.5, 0.7);
+      container.add(sprite);
+
+      if (!useUi.getState().reducedMotion) {
+        this.tweens.add({
+          targets: sprite,
+          scaleY: 0.96,
+          duration: 1200 + Math.random() * 300,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      }
+
+      const badgeText = this.add
+        .text(0, -38, `${person.name} · ${person.role}`, {
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '10px',
+          fontStyle: 'bold',
+          color: '#fef08a',
+          backgroundColor: 'rgba(153, 27, 27, 0.88)',
+          padding: { x: 5, y: 2 },
+          resolution: 2,
+        })
+        .setOrigin(0.5, 0.5);
+      container.add(badgeText);
+
+      sprite.setInteractive({ useHandCursor: true });
+      sprite.on('pointerdown', () => this.showPersonDialogue(person, container));
+      this.interactAt(person.x, person.y, person.name, () => this.showPersonDialogue(person, container));
+    }
+
+    // Auto-welcome when entering: Anh Sáu greets player
+    const anhSau = COMGA_PEOPLE.find((p) => p.id === 'anh_sau_chu_quan');
+    const anhSauContainer = this.personContainers.get('anh_sau_chu_quan');
+    if (anhSau && anhSauContainer && !this.welcomeShown) {
+      this.time.delayedCall(500, () => {
+        if (this.activeBubble || this.exiting) return;
+        this.welcomeShown = true;
+        this.showPersonDialogue(anhSau, anhSauContainer);
+      });
+    }
+
+    // 3. Ambient warm golden lighting
+    ensureAtmosphereTextures(this);
+    this.add
+      .image((COMGA_COLS * TILE) / 2, (COMGA_ROWS * TILE) / 2, 'glow:indoor')
+      .setScale(2.2)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0.24)
+      .setDepth(2000);
+
+    // 4. Interactive Crispy Chicken Fryer Station
+    const fryerHit = this.add
+      .zone(2.5 * TILE, 1.5 * TILE, 70, 45)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    fryerHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🍗 Chảo Xối Mỡ Da Giòn Nóng Hổi',
+        body: 'Tiếng mỡ sôi xèo xèo vàng óng. Đùi gà góc tư thơm lừng giòn rụm vừa xối mỡ xong, lớp da giòn tan hấp dẫn!',
+      });
+    });
+    this.interactAt(2.5 * TILE, 3.2 * TILE, 'Bếp chiên gà', () => fryerHit.emit('pointerdown'));
+
+    // 5. Interactive Tomato Rice & Soup Pot Station
+    const riceHit = this.add
+      .zone(11.5 * TILE, 1.5 * TILE, 70, 45)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    riceHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '🍚 Nồi Cơm Chiên Cà Chua & Tô Xúp Nóng',
+        body: 'Hạt cơm chiên tỏi cà chua đỏ hồng tơi xốp, thơm mùi mỡ gà, đi kèm canh xúp súp hầm xương ngọt lịm.',
+      });
+    });
+    this.interactAt(11.5 * TILE, 3.2 * TILE, 'Quầy cơm chiên', () => riceHit.emit('pointerdown'));
+
+    // 6. Interactive Stainless Dining Table
+    const tableHit = this.add
+      .zone(8.5 * TILE, 4.5 * TILE, 70, 40)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    tableHit.on('pointerdown', () => {
+      play('coin');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🥢 Bàn Ăn Inox Quán 68',
+        body: 'Đầy đủ hũ dưa leo đồ chua giòn ngọt, ớt tỏi băm ngâm xì dầu và trà đá Biên Hòa mát rượi giải ngấy!',
+      });
+    });
+    this.interactAt(8.5 * TILE, 6.2 * TILE, 'Bàn ăn inox', () => tableHit.emit('pointerdown'));
+  }
+
+  private showPersonDialogue(person: ComGaPerson, container: Phaser.GameObjects.Container) {
+    play('pop');
+    useUi.getState().toast({ kind: 'info', title: person.name, body: person.dialogue });
+    this.activeBubble?.destroy();
+
+    const bubble = this.add.container(container.x, container.y - 56);
+    bubble.setDepth(9999);
+
+    const txt = this.add
+      .text(0, 0, `"${person.dialogue}"`, {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '11px',
+        color: '#fef08a',
+        backgroundColor: 'rgba(127, 29, 29, 0.95)',
+        padding: { x: 8, y: 5 },
+        wordWrap: { width: 200 },
+        align: 'center',
+        resolution: 2,
+      })
+      .setOrigin(0.5, 0.5);
+
+    bubble.add(txt);
+    this.containBubble(bubble, txt);
+    this.activeBubble = bubble;
+
+    this.expireBubble(bubble);
+  }
+}
+
+export class BidaScene extends InteriorScene {
+  private welcomeShown = false;
+  private personContainers = new Map<string, Phaser.GameObjects.Container>();
+
+  constructor(key = 'bida') {
+    super(key);
+  }
+
+  protected worldSize() {
+    return { width: BIDA_COLS * TILE, height: BIDA_ROWS * TILE };
+  }
+
+  protected blockers() {
+    return BIDA_BLOCKERS;
+  }
+
+  protected matchesRoom(room: Room) {
+    return room.name === 'bida';
+  }
+
+  protected override onSelfMove(x: number, y: number) {
+    if (!this.exiting && y >= 10.4 * TILE && x >= 6.8 * TILE && x <= 9.2 * TILE) {
+      this.exiting = true;
+      void net.goTown();
+    }
+  }
+
+  protected buildWorld() {
+    // 1. CLB Bida H2S interior texture
+    const texKey = 'bida:interior';
+    if (this.textures.exists(texKey)) {
+      this.textures.remove(texKey);
+    }
+    this.textures.addCanvas(texKey, paintBidaInterior());
+    this.add.image(0, 0, texKey).setOrigin(0).setDepth(-10);
+
+    // 2. Interactive Bida NPCs (Anh Tuấn, Minh Long, Huy Trọng Tài)
+    this.personContainers.clear();
+    for (const person of BIDA_PEOPLE) {
+      const personTexKey = `bida:${person.id}`;
+      if (!this.textures.exists(personTexKey)) {
+        this.textures.addCanvas(personTexKey, drawBidaPerson(person));
+      }
+
+      const container = this.add.container(person.x, person.y);
+      container.setDepth(person.y + 12);
+      this.personContainers.set(person.id, container);
+
+      const sprite = this.add.image(0, 0, personTexKey).setOrigin(0.5, 0.7);
+      container.add(sprite);
+
+      if (!useUi.getState().reducedMotion) {
+        this.tweens.add({
+          targets: sprite,
+          scaleY: 0.96,
+          duration: 1200 + Math.random() * 300,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      }
+
+      const badgeText = this.add
+        .text(0, -38, `${person.name} · ${person.role}`, {
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '10px',
+          fontStyle: 'bold',
+          color: '#34d399',
+          backgroundColor: 'rgba(6, 78, 59, 0.92)',
+          padding: { x: 5, y: 2 },
+          resolution: 2,
+        })
+        .setOrigin(0.5, 0.5);
+      container.add(badgeText);
+
+      sprite.setInteractive({ useHandCursor: true });
+      sprite.on('pointerdown', () => this.showPersonDialogue(person, container));
+      this.interactAt(person.x, person.y, person.name, () => this.showPersonDialogue(person, container));
+    }
+
+    // Auto-welcome when entering: Anh Tuấn greets player
+    const tuan = BIDA_PEOPLE.find((p) => p.id === 'tuan_quan_ly');
+    const tuanContainer = this.personContainers.get('tuan_quan_ly');
+    if (tuan && tuanContainer && !this.welcomeShown) {
+      this.time.delayedCall(500, () => {
+        if (this.activeBubble || this.exiting) return;
+        this.welcomeShown = true;
+        this.showPersonDialogue(tuan, tuanContainer);
+      });
+    }
+
+    // 3. Ambient Club Lighting (Warm emerald & gold tournament arena glow)
+    ensureAtmosphereTextures(this);
+    this.add
+      .image((BIDA_COLS * TILE) / 2, (BIDA_ROWS * TILE) / 2, 'glow:indoor')
+      .setScale(2.5)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(0x10b981)
+      .setAlpha(0.18)
+      .setDepth(2000);
+
+    // 4. Interactive Bida Tables -> Opens Bida Arena Matchmaking Panel!
+    const addInteractiveTable = (name: string, x: number, y: number, w: number, h: number) => {
+      const hitZone = this.add.zone(x, y, w, h).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      hitZone.on('pointerdown', () => {
+        play('pop');
+        useUi.getState().setPanel('bida');
+        useUi.getState().toast({
+          kind: 'info',
+          title: `🎱 ${name}`,
+          body: 'Đang mở sảnh Bida Arena! Bạn có thể tạo phòng 1v1 hoặc tập luyện solo ngay bây giờ.',
+        });
+      });
+      this.interactAt(x, y + h / 2 + 16, name, () => hitZone.emit('pointerdown'));
+    };
+
+    // Table 1: Pool 8-Ball Tournament Table (Left Upper)
+    addInteractiveTable('Bàn 1: Pool 8-Ball Thi Đấu', 4.2 * TILE, 5.05 * TILE, 120, 65);
+    // Table 2: Carom 3 Băng (Right Upper)
+    addInteractiveTable('Bàn 2: Carom 3 Băng Quốc Tế', 11.8 * TILE, 5.05 * TILE, 120, 65);
+    // Table 3: VIP Arena Table (Left Lower)
+    addInteractiveTable('Bàn 3: VIP Arena Tranh Cúp', 4.2 * TILE, 8.45 * TILE, 120, 65);
+
+    // 5. Interactive Carbon Cue Rack & Trophy Cabinet
+    const cueRackHit = this.add
+      .zone(13 * TILE, 2 * TILE, 90, 45)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    cueRackHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🏆 Tủ Cơ Predator & Cúp Vô Địch',
+        body: 'Dàn cơ Predator P3 Carbon đỉnh cao, bóng Aramith Tournament TV Pro-Cup. Cơ mướt, trợ lực cực đầm tay!',
+      });
+    });
+    this.interactAt(13 * TILE, 3.2 * TILE, 'Tủ cơ & cúp', () => cueRackHit.emit('pointerdown'));
+
+    // 6. Interactive Reception & Refreshments Bar
+    const barHit = this.add
+      .zone(3 * TILE, 2 * TILE, 90, 45)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    barHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '🍹 Quầy Pha Chế & Giải Khát H2S',
+        body: 'Phục vụ Cà phê sữa đá Biên Hòa, Sinh tố bơ, Mì xào bò & Cơm chiên giòn rụm tiếp sức các cơ thủ 24/7!',
+      });
+    });
+    this.interactAt(3 * TILE, 3.2 * TILE, 'Quầy giải khát', () => barHit.emit('pointerdown'));
+  }
+
+  private showPersonDialogue(person: BidaPerson, container: Phaser.GameObjects.Container) {
+    play('pop');
+    useUi.getState().toast({ kind: 'info', title: person.name, body: person.dialogue });
+    this.activeBubble?.destroy();
+
+    const bubble = this.add.container(container.x, container.y - 56);
+    bubble.setDepth(9999);
+
+    const txt = this.add
+      .text(0, 0, `"${person.dialogue}"`, {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '11px',
+        color: '#e0f2fe',
+        backgroundColor: 'rgba(6, 78, 59, 0.95)',
+        padding: { x: 8, y: 5 },
+        wordWrap: { width: 220 },
+        align: 'center',
+        resolution: 2,
+      })
+      .setOrigin(0.5, 0.5);
+
+    bubble.add(txt);
+    this.containBubble(bubble, txt);
+    this.activeBubble = bubble;
+
+    this.expireBubble(bubble);
+  }
+}
+
+export class CyberNetScene extends InteriorScene {
+  constructor() {
+    super('cybernet');
+  }
+  protected worldSize() {
+    return { width: CYBERNET_COLS * TILE, height: CYBERNET_ROWS * TILE };
+  }
+  protected blockers() {
+    return CYBERNET_BLOCKERS;
+  }
+  protected matchesRoom(room: Room) {
+    return room.name === 'cybernet';
+  }
+  protected override onSelfMove(x: number, y: number) {
+    if (!this.exiting && y >= 10.4 * TILE && x >= 6.8 * TILE && x <= 9.2 * TILE) {
+      this.exiting = true;
+      void net.goTown();
+    }
+  }
+  protected buildWorld() {
+    const key = 'cybernet:interior';
+    if (this.textures.exists(key)) this.textures.remove(key);
+    this.textures.addCanvas(key, paintCyberNetInterior());
+    this.add.image(0, 0, key).setOrigin(0).setDepth(-10);
+    for (const person of CYBERNET_PEOPLE) {
+      const tex = 'cybernet:' + person.id;
+      if (!this.textures.exists(tex)) this.textures.addCanvas(tex, drawCyberNetPerson(person));
+      const sprite = this.add
+        .image(person.x, person.y, tex)
+        .setOrigin(0.5, 0.7)
+        .setDepth(person.y + 12);
+      this.add
+        .text(person.x, person.y - 38, person.name, {
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '10px',
+          color: '#e0f2fe',
+          backgroundColor: '#0f172a',
+          padding: { x: 5, y: 2 },
+          resolution: 2,
+        })
+        .setOrigin(0.5)
+        .setDepth(person.y + 13);
+      const talk = () => {
+        play('pop');
+        useUi.getState().toast({ kind: 'info', title: person.name, body: person.dialogue });
+      };
+      sprite.setInteractive({ useHandCursor: true }).on('pointerdown', talk);
+      this.interactAt(person.x, person.y, person.name, talk);
+    }
   }
 }

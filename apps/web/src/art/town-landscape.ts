@@ -253,6 +253,9 @@ const SIGNS: Record<string, string> = {
   apartments: 'CHUNG CƯ',
   delivery: 'BƯU TRẠM',
   fishing_shop: 'NGƯ CỤ BÁC BA',
+  comga: 'CƠM GÀ 68',
+  bida: 'BIDA H2S',
+  cybernet: 'CYBER GAME HNT',
 };
 
 /**
@@ -755,12 +758,579 @@ function paintDntuBuilding(b: Building): HTMLCanvasElement {
   return canvas;
 }
 
+/**
+ * Paints authentic Cơm Gà Xối Mỡ 68 Biên Hòa restaurant facade:
+ * - Proportional 2-story Vietnamese shophouse (canvas: 160x156):
+ * - Roof (y: 4..24, sleek 20px): Terracotta tiled hip roof, stainless kitchen exhaust chimney venting steam
+ * - Floor 2 (y: 26..68, 42px): Indochine yellow stucco, 3 green louver shutter windows with cascading bougainvillea, outdoor AC compressor
+ * - Signboard (y: 68..94, 26px): Full-width red Alu panel with 3D embossed gold letters ("CƠM GÀ 68", "ĐẶC SẢN BIÊN HÒA", "XỐI MỠ DA GIÒN")
+ * - Awning (y: 93..104, 11px): Red & yellow scalloped retractable awning ("mái hiên di động")
+ * - Ground Floor (y: 104..156, 52px):
+ *   - Left: Tall stainless & glass chicken cart with hanging crispy whole fried chicken, drumsticks, chopping block, cleaver, cucumbers & bubbling xối mỡ station
+ *   - Center: Open dining entrance (doorX=36, doorW=64), checkered floor, golden fried rice warmer, bone broth cauldron & red "XIN CHÀO" mat
+ *   - Right: Stainless dining table, red & blue stools, Chinsu chili sauce, iced tea with green straw & customer Honda Wave parked on sidewalk
+ */
+function paintComGaBuilding(b: Building): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = b.rect.w + 8; // 168
+  canvas.height = b.rect.h + BUILDING_ROOF; // 158
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  const w = b.rect.w; // 160
+  const bottom = canvas.height - 2; // 156
+  const doorX = 4 + b.door.x * TILE - b.rect.x; // 36
+  const doorW = b.door.w * TILE; // 64
+
+  // 0. Base ground shadow
+  rect(ctx, 'rgba(54, 48, 36, 0.35)', 4, bottom - 4, w + 4, 6);
+
+  // 1. Solid Building Structure (Warm Saigon/Biên Hòa shophouse wall)
+  rect(ctx, '#78350f', 4, 16, w, bottom - 16); // Structural dark timber framing
+  rect(ctx, '#fef08a', 6, 18, w - 4, bottom - 18); // Indochine warm cream-yellow stucco
+  rect(ctx, '#fef9c3', 6, 26, w - 4, 42); // Stucco highlight on Floor 2
+
+  // Corner wood pillars
+  rect(ctx, '#78350f', 4, 16, 4, bottom - 16);
+  rect(ctx, '#92400e', 5, 17, 2, bottom - 17);
+  rect(ctx, '#78350f', w, 16, 4, bottom - 16);
+  rect(ctx, '#92400e', w + 1, 17, 2, bottom - 17);
+
+  // 2. Terracotta Tiled Roof (y: 4..24) - Compact, sleek, proportional!
+  rect(ctx, '#7f1d1d', 4, 20, w, 4); // Roof overhang shadow
+  rect(ctx, '#991b1b', 2, 6, w + 4, 16);
+  rect(ctx, '#b91c1c', 3, 7, w + 2, 14);
+  // Slanted clay roof tile ridges (ngói móc đỏ cam)
+  for (let rx = 5; rx < w + 4; rx += 4) {
+    rect(ctx, '#ea580c', rx, 7, 2, 13);
+    rect(ctx, '#7f1d1d', rx + 2, 7, 1, 13);
+  }
+  // Roof ridge cap & decorative golden finials
+  rect(ctx, '#7c2d12', 1, 4, w + 6, 3);
+  rect(ctx, '#c2410c', 2, 3, w + 4, 2);
+  rect(ctx, '#fbbf24', 2, 2, 3, 3); // Left finial
+  rect(ctx, '#fbbf24', w + 3, 2, 3, 3); // Right finial
+
+  // Stainless kitchen exhaust chimney duct on right side of roof
+  const chimX = w - 24;
+  rect(ctx, '#475569', chimX - 1, 0, 11, 18);
+  rect(ctx, '#cbd5e1', chimX, 0, 9, 17);
+  rect(ctx, '#f8fafc', chimX + 1, 0, 3, 17); // Chrome reflection
+  rect(ctx, '#64748b', chimX - 2, 0, 15, 4); // Rain cap
+  rect(ctx, '#94a3b8', chimX - 1, 0, 13, 2);
+  // Billowing fragrant steam puffs wafting out
+  rect(ctx, 'rgba(255, 255, 255, 0.75)', chimX + 3, -4, 4, 3);
+  rect(ctx, 'rgba(255, 255, 255, 0.55)', chimX + 6, -7, 5, 3);
+  rect(ctx, 'rgba(255, 255, 255, 0.35)', chimX + 9, -10, 6, 3);
+
+  // 3. Second Floor Windows & Shophouse Architecture (y: 26..68, height = 42px)
+  // Horizontal dividing beam
+  rect(ctx, '#78350f', 4, 24, w, 2);
+
+  // Window helper
+  const drawWindow = (wx: number, wy: number, ww: number, wh: number) => {
+    rect(ctx, '#14532d', wx - 1, wy - 1, ww + 2, wh + 2);
+    rect(ctx, '#166534', wx, wy, ww, wh);
+    // Green wooden louver slats (cửa chớp lá sách)
+    const mid = wx + Math.floor(ww / 2);
+    for (let ly = wy + 3; ly < wy + wh - 4; ly += 4) {
+      rect(ctx, '#15803d', wx + 2, ly, mid - wx - 3, 2);
+      rect(ctx, '#15803d', mid + 1, ly, wx + ww - mid - 3, 2);
+    }
+    rect(ctx, '#14532d', mid - 1, wy, 2, wh); // Center frame
+
+    // Planter box with blooming red/magenta bougainvillea (hoa giấy nở rộ)
+    rect(ctx, '#78350f', wx - 2, wy + wh - 2, ww + 4, 6);
+    rect(ctx, '#92400e', wx - 1, wy + wh - 1, ww + 2, 4);
+    for (let fx = wx - 1; fx < wx + ww + 1; fx += 3) {
+      rect(ctx, '#16a34a', fx, wy + wh - 4, 3, 4);
+      rect(ctx, fx % 2 === 0 ? '#e11d48' : '#f43f5e', fx + 1, wy + wh - 5, 2, 3);
+    }
+  };
+
+  // 3 Green Shutter Windows across 2nd floor:
+  drawWindow(14, 28, 28, 30); // Window 1 (left)
+  drawWindow(92, 28, 26, 30); // Window 2 (center-right)
+  drawWindow(124, 28, 26, 30); // Window 3 (far-right)
+
+  // Wall-mounted outdoor AC compressor unit (cục nóng máy lạnh)
+  const acX = 50;
+  const acY = 34;
+  rect(ctx, '#64748b', acX - 1, acY - 1, 32, 22);
+  rect(ctx, '#f1f5f9', acX, acY, 30, 20);
+  rect(ctx, '#334155', acX + 16, acY + 4, 10, 10); // Fan circular grille
+  rect(ctx, '#94a3b8', acX + 18, acY + 6, 6, 6);
+  rect(ctx, '#0284c7', acX + 4, acY + 5, 8, 3); // Panasonic blue logo badge
+  rect(ctx, '#cbd5e1', acX + 4, acY + 11, 8, 4); // Vent slats
+
+  // Wall sconce lanterns
+  for (const lx of [8, 46, 88, 154]) {
+    rect(ctx, '#475569', lx, 32, 2, 6);
+    rect(ctx, '#fef08a', lx - 1, 30, 4, 3);
+  }
+
+  // 4. Grand Red & Gold Signboard ("CƠM GÀ 68 - BIÊN HÒA") (y: 68..94, height = 26px)
+  const signX = 6;
+  const signW = w - 4; // 156
+  const signY = 68;
+  const signH = 26;
+
+  // Drop shadow & golden frame
+  rect(ctx, 'rgba(0, 0, 0, 0.45)', signX - 1, signY - 1, signW + 2, signH + 3);
+  rect(ctx, '#ca8a04', signX - 1, signY - 1, signW + 2, signH + 2);
+  rect(ctx, '#facc15', signX, signY, signW, signH);
+  rect(ctx, '#991b1b', signX + 1, signY + 1, signW - 2, signH - 2);
+  rect(ctx, '#b91c1c', signX + 2, signY + 2, signW - 4, signH - 4);
+  rect(ctx, '#dc2626', signX + 2, signY + 2, signW - 4, 4); // Gloss highlight
+
+  // Golden inner border
+  rect(ctx, '#fef08a', signX + 3, signY + 2, signW - 6, 1);
+  rect(ctx, '#fef08a', signX + 3, signY + signH - 3, signW - 6, 1);
+  rect(ctx, '#fef08a', signX + 3, signY + 2, 1, signH - 4);
+  rect(ctx, '#fef08a', signX + signW - 4, signY + 2, 1, signH - 4);
+
+  // Spotlights above sign
+  for (const lx of [signX + 16, signX + signW / 2 - 30, signX + signW / 2 + 30, signX + signW - 16]) {
+    rect(ctx, '#334155', lx - 2, signY - 3, 5, 3);
+    rect(ctx, '#fef08a', lx - 1, signY - 1, 3, 1);
+  }
+
+  // Text
+  ctx.font = '700 5px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#fef08a';
+  ctx.fillText('⭐ ĐẶC SẢN BIÊN HÒA · GIA TRUYỀN ⭐', signX + signW / 2, signY + 3);
+
+  // Main 3D Bold Title
+  ctx.font = '900 12.5px "Inter", sans-serif';
+  ctx.fillStyle = '#450a0a';
+  ctx.fillText('CƠM GÀ 68', signX + signW / 2 + 1, signY + 9);
+  ctx.fillStyle = '#fef08a';
+  ctx.fillText('CƠM GÀ 68', signX + signW / 2, signY + 8);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('CƠM GÀ 68', signX + signW / 2 - 0.5, signY + 7.6);
+
+  ctx.font = '700 4.5px sans-serif';
+  ctx.fillStyle = '#fef08a';
+  ctx.fillText('XỐI MỠ DA GIÒN · GÀ TA THẢ VƯỜN · GỎI GÀ XÉ PHAY', signX + signW / 2, signY + 19);
+
+  // 5. Scalloped Red-Yellow Retractable Awning ("Mái hiên di động") (y: 92..104, height = 12px)
+  const awnY = 93;
+  const awnH = 11;
+  rect(ctx, 'rgba(0, 0, 0, 0.3)', 4, awnY + awnH, w, 4); // Shadow under awning
+  for (let ax = 4; ax < 4 + w; ax += 10) {
+    const isYellow = Math.floor((ax - 4) / 10) % 2 === 0;
+    rect(ctx, isYellow ? '#facc15' : '#dc2626', ax, awnY, 10, awnH);
+    rect(ctx, isYellow ? '#ca8a04' : '#991b1b', ax, awnY + awnH - 2, 10, 2);
+  }
+  // Scalloped bottom wavy fringe
+  for (let ax = 4; ax < 4 + w; ax += 5) {
+    rect(ctx, '#ffffff', ax + 1, awnY + awnH, 3, 2);
+  }
+
+  // 6. Ground Floor Restaurant Facade (y: 104..156, height = 52px!) - NO GAPS!
+  // Stainless / granite kickplate at ground
+  rect(ctx, '#94a3b8', 4, bottom - 8, w, 8);
+  rect(ctx, '#cbd5e1', 5, bottom - 8, w - 2, 2);
+
+  // Left: Stainless Steel Chicken Showcase (Tủ cơm gà kính inox xối mỡ cao ráo)
+  const cartX = 6;
+  const cartW = 28;
+  const cartY = 106;
+  const cartH = 46;
+  // Glass cabinet frame
+  rect(ctx, '#475569', cartX - 1, cartY - 1, cartW + 2, cartH + 2);
+  rect(ctx, '#cbd5e1', cartX, cartY, cartW, cartH);
+  rect(ctx, 'rgba(254, 243, 199, 0.92)', cartX + 2, cartY + 2, cartW - 4, cartH - 16); // Lit glass showcase
+  // Hanging golden fried chicken thighs & whole crispy chickens
+  for (const cx of [cartX + 4, cartX + 11, cartX + 18]) {
+    rect(ctx, '#78350f', cx + 2, cartY + 3, 1, 3); // Hanging hook
+    rect(ctx, '#b45309', cx, cartY + 5, 5, 12);
+    rect(ctx, '#f59e0b', cx + 1, cartY + 6, 4, 9);
+    rect(ctx, '#d97706', cx + 1, cartY + 12, 3, 4);
+  }
+  // Wooden chopping block (thớt gỗ me tròn) & cleaver (dao chặt gà inox)
+  rect(ctx, '#78350f', cartX + 3, cartY + 20, 10, 6);
+  rect(ctx, '#92400e', cartX + 4, cartY + 20, 8, 2);
+  rect(ctx, '#cbd5e1', cartX + 7, cartY + 17, 5, 4); // Inox cleaver
+  // Trays of sliced cucumber, red tomatoes, shredded pickled carrots
+  rect(ctx, '#cbd5e1', cartX + 15, cartY + 21, 10, 5);
+  rect(ctx, '#22c55e', cartX + 16, cartY + 21, 4, 3); // Cucumber
+  rect(ctx, '#ef4444', cartX + 20, cartY + 21, 4, 3); // Tomato
+  // Stainless lower cart with hot oil xối mỡ station
+  rect(ctx, '#64748b', cartX, cartY + cartH - 14, cartW, 14);
+  rect(ctx, '#cbd5e1', cartX + 2, cartY + cartH - 13, cartW - 4, 4);
+  rect(ctx, '#f59e0b', cartX + 4, cartY + cartH - 11, 8, 3); // Bubbling hot oil
+  // Rising aroma steam puff
+  rect(ctx, 'rgba(255, 255, 255, 0.75)', cartX + 6, cartY - 4, 3, 3);
+  rect(ctx, 'rgba(255, 255, 255, 0.5)', cartX + 9, cartY - 7, 4, 3);
+
+  // Center: Entrance Doorway (Lối vào quán rộng rãi)
+  const dy = 106;
+  const doorH = 48;
+  rect(ctx, '#78350f', doorX - 1, dy - 1, doorW + 2, doorH + 2);
+  rect(ctx, '#fef3c7', doorX, dy, doorW, doorH); // Warm glowing interior
+  // Inside checkered floor tiles
+  for (let iy = dy + 10; iy < bottom - 4; iy += 8) {
+    for (let ix = doorX; ix < doorX + doorW; ix += 8) {
+      if ((Math.floor((ix - doorX) / 8) + Math.floor((iy - dy) / 8)) % 2 === 0) {
+        rect(ctx, '#fed7aa', ix, iy, 8, 8);
+      }
+    }
+  }
+  // Inside: Fragrant yellow chicken rice warmer & bone broth cauldron
+  rect(ctx, '#cbd5e1', doorX + 4, dy + 12, 12, 12);
+  rect(ctx, '#facc15', doorX + 6, dy + 14, 8, 6); // Golden fried rice
+  rect(ctx, '#64748b', doorX + 20, dy + 10, 14, 14); // Large cauldron
+  rect(ctx, '#f59e0b', doorX + 22, dy + 12, 10, 4); // Broth surface
+  rect(ctx, 'rgba(255, 255, 255, 0.6)', doorX + 24, dy + 6, 6, 4); // Steam
+  // Cashier counter
+  rect(ctx, '#78350f', doorX + 40, dy + 12, 18, 14);
+  rect(ctx, '#94a3b8', doorX + 44, dy + 8, 6, 5); // POS monitor
+  // Open glass folding door panels at sides
+  rect(ctx, 'rgba(224, 242, 254, 0.8)', doorX, dy, 6, doorH - 4);
+  rect(ctx, '#94a3b8', doorX + 5, dy, 1, doorH - 4);
+  rect(ctx, 'rgba(224, 242, 254, 0.8)', doorX + doorW - 6, dy, 6, doorH - 4);
+  rect(ctx, '#94a3b8', doorX + doorW - 6, dy, 1, doorH - 4);
+
+  // "XIN CHÀO" Red Welcome Mat
+  const matX = doorX + 8;
+  const matW = doorW - 16;
+  const matY = bottom - 8;
+  rect(ctx, '#991b1b', matX, matY, matW, 7);
+  rect(ctx, '#dc2626', matX + 1, matY + 1, matW - 2, 5);
+  rect(ctx, '#fef08a', matX + 4, matY + 2, matW - 8, 2);
+
+  // Right: Stainless Dining Table, Stools & Parked Honda Wave
+  const winX = doorX + doorW + 2;
+  const winW = w - winX - 2; // 56px
+  const winY = 106;
+  const winH = 46;
+
+  // Window showing dining room
+  rect(ctx, '#78350f', winX - 1, winY - 1, winW + 2, winH + 2);
+  rect(ctx, 'rgba(254, 249, 195, 0.9)', winX, winY, winW, winH);
+
+  // Stainless dining table inside
+  rect(ctx, '#cbd5e1', winX + 4, winY + 10, winW - 16, 6);
+  rect(ctx, '#f8fafc', winX + 5, winY + 10, winW - 18, 2);
+  rect(ctx, '#64748b', winX + 8, winY + 16, 3, 14);
+  rect(ctx, '#64748b', winX + winW - 18, winY + 16, 3, 14);
+  // Red & blue plastic dining stools
+  rect(ctx, '#dc2626', winX + 2, winY + 18, 6, 12);
+  rect(ctx, '#2563eb', winX + winW - 15, winY + 18, 6, 12);
+  // Table condiments: Red Chinsu bottle, soy sauce, iced tea (Trà đá) with green straw
+  rect(ctx, '#dc2626', winX + 8, winY + 4, 3, 6); // Chinsu tương ớt
+  rect(ctx, '#1e293b', winX + 13, winY + 4, 3, 6); // Xì dầu Maggi
+  rect(ctx, '#d97706', winX + 18, winY + 5, 4, 5); // Ly trà đá
+  rect(ctx, '#22c55e', winX + 20, winY + 2, 1, 5); // Ống hút xanh
+
+  // Customer Motorbike (Honda Wave đỏ đen) parked on sidewalk in front
+  const bikeX = winX + 12;
+  const bikeY = bottom - 18;
+  // Wheels
+  rect(ctx, '#0f172a', bikeX, bikeY + 7, 7, 9);
+  rect(ctx, '#0f172a', bikeX + 22, bikeY + 7, 7, 9);
+  rect(ctx, '#94a3b8', bikeX + 2, bikeY + 9, 3, 5);
+  rect(ctx, '#94a3b8', bikeX + 24, bikeY + 9, 3, 5);
+  // Red Wave body frame & black seat
+  rect(ctx, '#dc2626', bikeX + 6, bikeY + 4, 12, 6);
+  rect(ctx, '#b91c1c', bikeX + 3, bikeY + 5, 5, 5);
+  rect(ctx, '#1e293b', bikeX + 10, bikeY + 1, 10, 5); // Black seat
+  rect(ctx, '#cbd5e1', bikeX + 16, bikeY + 9, 7, 3); // Exhaust pipe (ống pô)
+  rect(ctx, '#64748b', bikeX + 3, bikeY - 2, 2, 5); // Handlebar mirror
+
+  // Sidewalk standing A-frame menu sign (Biển hiệu chữ A)
+  rect(ctx, '#ca8a04', winX - 2, bottom - 18, 5, 17);
+  rect(ctx, '#fef08a', winX - 1, bottom - 17, 3, 15);
+  rect(ctx, '#dc2626', winX - 1, bottom - 14, 3, 4); // "68"
+
+  return canvas;
+}
+
+/**
+ * Paints authentic CLB Bida H2S Trảng Dài (Biên Hòa) building facade:
+ * - Solid 2-story building filling full 160x156 canvas with zero gaps.
+ * - Roof & Parapet (y: 4..24): Charcoal parapet with gold / emerald LED crown rim, HVAC chillers & illuminated 8-ball + crossed cues crest.
+ * - 2nd Floor (y: 26..68): Panoramic tinted observation glass showing 3 illuminated tournament billiard tables with emerald and royal blue felt, suspended LED canopies, and players aiming shots.
+ * - Grand Bida Neon Signboard (y: 68..94): Full-width composite panel with gold & emerald borders, "CLB BIDA H2S", "TRẢNG DÀI · BIÊN HÒA", "BÀN THI ĐẤU QUỐC TẾ · MỞ 24/7".
+ * - Ground Floor (y: 92..156):
+ *   - Left: Showcase glass cabinet displaying Predator carbon cues & Bien Hoa Open trophy.
+ *   - Center: Automatic sliding glass doors with brass trim, welcoming red carpet runner.
+ *   - Right: Sidewalk parking with cuesmith's Honda SH scooter & standing illuminated totem sign.
+ */
+function paintBidaBuilding(b: Building): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = b.rect.w + 8; // 168
+  canvas.height = b.rect.h + BUILDING_ROOF; // 158
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  const w = b.rect.w; // 160
+  const bottom = canvas.height - 2; // 156
+  const doorX = 4 + b.door.x * TILE - b.rect.x; // 36
+  const doorW = b.door.w * TILE; // 64
+
+  // 0. Base ground shadow
+  rect(ctx, 'rgba(15, 23, 42, 0.45)', 4, bottom - 4, w + 4, 6);
+
+  // 1. FULL SOLID 2-STORY BUILDING STRUCTURE (y: 4..156)
+  rect(ctx, '#030712', 4, 4, w, bottom - 4); // Dark foundation
+  rect(ctx, '#0f172a', 5, 5, w - 2, bottom - 5); // Charcoal paneling
+  // Architectural horizontal grooved seams
+  for (let y = 18; y < bottom - 4; y += 10) {
+    rect(ctx, '#090d16', 5, y, w - 2, 1);
+    rect(ctx, '#1e293b', 5, y + 1, w - 2, 1);
+  }
+
+  // Emerald & Gold vertical channel pilasters flanking the building
+  rect(ctx, '#047857', 4, 4, 3, bottom - 4);
+  rect(ctx, '#10b981', 5, 4, 1.5, bottom - 4); // Bright emerald tube
+  rect(ctx, '#b45309', w + 1, 4, 3, bottom - 4);
+  rect(ctx, '#facc15', w + 2, 4, 1.5, bottom - 4); // Gold tube
+
+  // 2. Rooftop & Parapet with Industrial AC Chillers (y: 4..24)
+  rect(ctx, '#090d16', 2, 4, w + 4, 8);
+  rect(ctx, '#1e293b', 3, 5, w + 2, 6);
+  rect(ctx, '#10b981', 4, 11, w, 2); // Glowing emerald crown rim
+  rect(ctx, '#facc15', 6, 11, w - 4, 1);
+
+  // Dual industrial rooftop cooling units (Hệ thống điều hòa phòng lạnh 100% cho CLB Bida)
+  for (const cx of [14, w - 38]) {
+    rect(ctx, '#090d16', cx - 1, 6, 22, 16);
+    rect(ctx, '#1e293b', cx, 7, 20, 14);
+    rect(ctx, '#334155', cx + 2, 8, 16, 12);
+    oval(ctx, '#0f172a', cx + 10, 14, 6, 4);
+    rect(ctx, '#94a3b8', cx + 7, 14, 7, 1);
+    rect(ctx, '#94a3b8', cx + 10, 11, 1, 7);
+  }
+
+  // Central 8-Ball & Crossed Cues Crest on Roof Parapet
+  const crestX = w / 2 + 4;
+  rect(ctx, '#090d16', crestX - 12, 5, 24, 18);
+  rect(ctx, '#d4af37', crestX - 10, 6, 20, 16);
+  rect(ctx, '#0f172a', crestX - 8, 7, 16, 14);
+  // Gold 8-ball
+  oval(ctx, '#facc15', crestX, 14, 6, 6);
+  oval(ctx, '#09090b', crestX, 14, 5, 5);
+  oval(ctx, '#ffffff', crestX, 14, 2.5, 2.5);
+  ctx.font = '800 4.5px sans-serif';
+  ctx.fillStyle = '#000000';
+  ctx.textAlign = 'center';
+  ctx.fillText('8', crestX, 15.5);
+
+  // 3. Second Floor Billiards Arena Panoramic Window (y: 26..68)
+  const f2X = 8;
+  const f2W = w - 8; // 152
+  const f2Y = 26;
+  const f2H = 40;
+
+  rect(ctx, '#090d16', f2X - 1, f2Y - 1, f2W + 2, f2H + 2);
+  rect(ctx, '#030712', f2X, f2Y, f2W, f2H); // Dark interior
+  rect(ctx, 'rgba(16, 185, 129, 0.08)', f2X, f2Y, f2W, f2H); // Emerald sheen
+
+  // Draw 3 mini tournament tables visible through the glass on 2nd floor
+  const drawMiniTable = (tx: number, feltColor: string, _label: string) => {
+    // Overhead light
+    rect(ctx, '#09090b', tx + 2, f2Y + 4, 38, 3);
+    rect(ctx, '#facc15', tx + 4, f2Y + 7, 34, 1);
+    // Table frame
+    rect(ctx, '#451a03', tx, f2Y + 12, 42, 22);
+    rect(ctx, '#78350f', tx + 1, f2Y + 13, 40, 2);
+    // Felt surface
+    rect(ctx, feltColor, tx + 3, f2Y + 15, 36, 16);
+    // Balls on felt
+    oval(ctx, '#ffffff', tx + 8, f2Y + 23, 1.5, 1.5);
+    oval(ctx, '#facc15', tx + 26, f2Y + 23, 1.5, 1.5);
+    oval(ctx, '#ef4444', tx + 30, f2Y + 21, 1.5, 1.5);
+    oval(ctx, '#09090b', tx + 32, f2Y + 23, 1.5, 1.5);
+    // Player silhouette holding cue stick
+    rect(ctx, '#090d16', tx + 2, f2Y + 20, 4, 10);
+    ctx.strokeStyle = '#fef08a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(tx + 4, f2Y + 22);
+    ctx.lineTo(tx + 7, f2Y + 23);
+    ctx.stroke();
+  };
+
+  drawMiniTable(f2X + 6, '#047857', 'B1'); // Table 1: Pool Emerald Green
+  drawMiniTable(f2X + 54, '#1d4ed8', 'B2'); // Table 2: Carom Royal Blue
+  drawMiniTable(f2X + 102, '#065f46', 'B3'); // Table 3: VIP Tournament
+
+  // 4. Grand Bida Signboard ("CLB BIDA H2S · BIÊN HÒA") (y: 68..94)
+  const signX = 6;
+  const signW = w - 4; // 156
+  const signY = 68;
+  const signH = 26;
+
+  rect(ctx, 'rgba(0, 0, 0, 0.65)', signX - 1, signY - 1, signW + 2, signH + 3);
+  rect(ctx, '#d4af37', signX - 1, signY - 1, signW + 2, 2); // Gold neon top border
+  rect(ctx, '#10b981', signX - 1, signY + signH - 1, signW + 2, 2); // Emerald neon bottom border
+  rect(ctx, '#09090b', signX, signY, signW, signH);
+
+  // Corner accents
+  rect(ctx, '#facc15', signX, signY, 6, 3);
+  rect(ctx, '#facc15', signX, signY, 3, 6);
+  rect(ctx, '#34d399', signX + signW - 6, signY + signH - 3, 6, 3);
+  rect(ctx, '#34d399', signX + signW - 3, signY + signH - 6, 3, 6);
+
+  // Left 8-Ball badge
+  oval(ctx, '#facc15', signX + 13, signY + 13, 7, 7);
+  oval(ctx, '#09090b', signX + 13, signY + 13, 5.5, 5.5);
+  oval(ctx, '#ffffff', signX + 13, signY + 13, 3, 3);
+  ctx.font = '800 4.5px sans-serif';
+  ctx.fillStyle = '#09090b';
+  ctx.textAlign = 'center';
+  ctx.fillText('8', signX + 13, signY + 14.5);
+
+  // Sign text
+  ctx.font = '700 5px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#34d399';
+  ctx.fillText('⚡ TRẢNG DÀI · BIÊN HÒA ⚡', signX + signW / 2 + 4, signY + 3);
+
+  // Main bold typography
+  ctx.font = '900 13px "Inter", sans-serif';
+  ctx.fillStyle = '#b45309';
+  ctx.fillText('CLB BIDA H2S', signX + signW / 2 + 5, signY + 9);
+  ctx.fillStyle = '#facc15';
+  ctx.fillText('CLB BIDA H2S', signX + signW / 2 + 4, signY + 8);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('CLB BIDA H2S', signX + signW / 2 + 3.5, signY + 7.6);
+
+  ctx.font = '700 4.5px sans-serif';
+  ctx.fillStyle = '#fde047';
+  ctx.fillText('BÀN THI ĐẤU QUỐC TẾ · GIAO LƯU 1V1 · MỞ 24/7', signX + signW / 2 + 4, signY + 19);
+
+  // 5. Ground Floor Entrance & Lobby (y: 92..156, height = 64px)
+  // Left: Showcase Cue Cabinet & Trophy Showcase
+  const cartX = 6;
+  const cartW = 28;
+  const cartY = 104;
+  const cartH = 48;
+  rect(ctx, '#78350f', cartX - 1, cartY - 1, cartW + 2, cartH + 2);
+  rect(ctx, '#451a03', cartX, cartY, cartW, cartH);
+  rect(ctx, 'rgba(254, 240, 138, 0.2)', cartX + 2, cartY + 2, cartW - 4, cartH - 4); // Illuminated glass
+  // Cues inside cabinet
+  for (let cx = cartX + 5; cx < cartX + cartW - 4; cx += 4) {
+    rect(ctx, '#0f172a', cx, cartY + 6, 2, 34); // Carbon cue
+    rect(ctx, '#38bdf8', cx, cartY + 6, 2, 3); // Chalk tip
+    rect(ctx, '#facc15', cx, cartY + 28, 2, 8); // Gold wrap
+  }
+  // Gold Trophy cup on bottom shelf
+  rect(ctx, '#facc15', cartX + 8, cartY + cartH - 10, 12, 6);
+  rect(ctx, '#eab308', cartX + 11, cartY + cartH - 4, 6, 3);
+
+  // Center: Automatic Glass Entrance with Red Carpet Runner
+  const dy = 104;
+  const doorH = 48;
+  rect(ctx, '#030712', doorX - 1, dy - 1, doorW + 2, doorH + 2);
+  rect(ctx, '#020617', doorX, dy, doorW, doorH); // Dark lobby
+  // Gold LED sensor bar above doors
+  rect(ctx, '#facc15', doorX + 6, dy + 2, doorW - 12, 3);
+  rect(ctx, '#fef08a', doorX + 8, dy + 2, doorW - 16, 1);
+
+  // Inside view: Reception desk & drink cooler
+  rect(ctx, '#1e293b', doorX + 8, dy + 14, 24, 14); // Reception counter
+  rect(ctx, '#10b981', doorX + 12, dy + 16, 8, 6); // POS billing screen
+  rect(ctx, '#0284c7', doorX + 36, dy + 10, 20, 24); // Cooler
+  rect(ctx, '#ef4444', doorX + 38, dy + 12, 4, 6); // Redbull / Sting
+
+  // Automatic glass sliding doors with gold handles
+  rect(ctx, 'rgba(16, 185, 129, 0.2)', doorX, dy + 6, 8, doorH - 10);
+  rect(ctx, '#d4af37', doorX + 7, dy + 6, 1, doorH - 10);
+  rect(ctx, 'rgba(16, 185, 129, 0.2)', doorX + doorW - 8, dy + 6, 8, doorH - 10);
+  rect(ctx, '#d4af37', doorX + doorW - 8, dy + 6, 1, doorH - 10);
+
+  // Red Welcome Carpet Runner
+  const matX = doorX + 4;
+  const matW = doorW - 8;
+  const matY = bottom - 6;
+  rect(ctx, '#dc2626', matX, matY, matW, 5);
+  rect(ctx, '#facc15', matX + 1, matY + 1, matW - 2, 2);
+
+  // Right: Sidewalk Parking with Customer's Honda SH Scooter & Standing LED Totem
+  const winX = doorX + doorW + 2;
+  const winW = w - winX - 2; // 56px
+  const winY = 104;
+  const winH = 48;
+
+  rect(ctx, '#090d16', winX - 1, winY - 1, winW + 2, winH + 2);
+  rect(ctx, '#020617', winX, winY, winW, winH);
+  rect(ctx, 'rgba(15, 23, 42, 0.85)', winX, winY, winW, winH);
+  // Interior warm LED strips visible through glass
+  rect(ctx, '#facc15', winX + 4, winY + 8, winW - 14, 2);
+  rect(ctx, '#10b981', winX + 8, winY + 16, winW - 20, 2);
+
+  // Premium Honda SH 160i parked on sidewalk
+  const bikeX = winX + 6;
+  const bikeY = bottom - 19;
+  // Wheels
+  rect(ctx, '#020617', bikeX, bikeY + 7, 7, 10);
+  rect(ctx, '#020617', bikeX + 22, bikeY + 7, 7, 10);
+  rect(ctx, '#cbd5e1', bikeX + 2, bikeY + 9, 3, 6);
+  rect(ctx, '#cbd5e1', bikeX + 24, bikeY + 9, 3, 6);
+  // White & Chrome luxury SH body
+  rect(ctx, '#f8fafc', bikeX + 5, bikeY + 2, 16, 9);
+  rect(ctx, '#94a3b8', bikeX + 8, bikeY + 4, 8, 3);
+  rect(ctx, '#451a03', bikeX + 10, bikeY - 1, 12, 5); // Brown leather seat
+  rect(ctx, '#38bdf8', bikeX + 4, bikeY + 1, 4, 3); // LED Headlight
+  rect(ctx, '#64748b', bikeX + 18, bikeY + 8, 7, 3); // Exhaust
+
+  // Standing LED Totem ("BIDA 1V1 · TẠO PHÒNG")
+  rect(ctx, '#d4af37', winX + winW - 6, bottom - 30, 5, 28);
+  rect(ctx, '#030712', winX + winW - 5, bottom - 29, 3, 26);
+  rect(ctx, '#10b981', winX + winW - 5, bottom - 27, 3, 6);
+  rect(ctx, '#facc15', winX + winW - 5, bottom - 18, 3, 6);
+
+  return canvas;
+}
+
+function paintCyberNetBuilding(b: Building): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = b.rect.w + 8;
+  canvas.height = b.rect.h + BUILDING_ROOF;
+  const ctx = canvas.getContext('2d')!;
+  const w = b.rect.w;
+  const bottom = canvas.height - 2;
+  rect(ctx, '#020617', 0, 8, w + 8, bottom - 8);
+  rect(ctx, '#1e293b', 4, 12, w, bottom - 12);
+  for (let y = 16; y < bottom - 80; y += 9) rect(ctx, '#334155', 7, y, w - 6, 2);
+  rect(ctx, '#38bdf8', 4, bottom - 78, w, 3);
+  rect(ctx, '#0f172a', 8, bottom - 74, w - 8, 22);
+  ctx.font = '800 12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e0f2fe';
+  ctx.fillText('CYBER GAME HNT', canvas.width / 2, bottom - 58);
+  rect(ctx, '#a855f7', 4, bottom - 49, w, 2);
+  const dx = 4 + b.door.x * TILE - b.rect.x;
+  rect(ctx, '#0284c7', dx + 8, bottom - 43, b.door.w * TILE - 16, 43);
+  rect(ctx, '#0c4a6e', dx + 11, bottom - 40, b.door.w * TILE - 22, 39);
+  rect(ctx, '#38bdf8', dx + (b.door.w * TILE) / 2, bottom - 40, 2, 39);
+  for (const x of [12, w - 28]) {
+    rect(ctx, '#020617', x, bottom - 40, 24, 24);
+    rect(ctx, '#2563eb', x + 3, bottom - 37, 18, 15);
+    rect(ctx, '#ec4899', x + 3, bottom - 21, 18, 2);
+  }
+  return canvas;
+}
+
 export function paintBuilding(b: Building): HTMLCanvasElement {
   if (b.id === 'vietprodev') {
     return paintVietProDevTownhouse(b);
   }
   if (b.id === 'dntu') {
     return paintDntuBuilding(b);
+  }
+  if (b.id === 'comga') {
+    return paintComGaBuilding(b);
+  }
+  if (b.id === 'cybernet') return paintCyberNetBuilding(b);
+  if (b.id === 'bida') {
+    return paintBidaBuilding(b);
   }
   const canvas = document.createElement('canvas');
   canvas.width = b.rect.w + 8;

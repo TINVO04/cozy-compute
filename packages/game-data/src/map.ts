@@ -31,7 +31,10 @@ export type ZoneId =
   | 'pier'
   | 'fishing_shop'
   | 'vietprodev'
-  | 'dntu';
+  | 'dntu'
+  | 'comga'
+  | 'cybernet'
+  | 'bida';
 
 export interface Zone {
   id: ZoneId;
@@ -52,6 +55,15 @@ export interface Building {
 }
 
 export const BUILDINGS: Building[] = [
+  {
+    id: 'cybernet',
+    label: 'Cyber Game HNT Trảng Dài',
+    rect: t(3, 23, 5, 3),
+    wall: 0x1e293b,
+    roof: 0x0f172a,
+    accent: 0x38bdf8,
+    door: { x: 4, w: 2 },
+  },
   {
     id: 'cafe',
     label: 'Tiệm Cà Phê Bean There',
@@ -116,6 +128,24 @@ export const BUILDINGS: Building[] = [
     door: { x: 5, w: 2 },
   },
   {
+    id: 'comga',
+    label: 'Cơm Gà Xối Mỡ 68 Biên Hòa',
+    rect: t(12, 12, 5, 4),
+    wall: 0xfef08a,
+    roof: 0xd97706,
+    accent: 0xb45309,
+    door: { x: 13, w: 2 },
+  },
+  {
+    id: 'bida',
+    label: 'CLB Bida H2S Trảng Dài Biên Hòa',
+    rect: t(12, 18, 5, 4),
+    wall: 0x1e293b,
+    roof: 0x0f172a,
+    accent: 0x10b981,
+    door: { x: 13, w: 2 },
+  },
+  {
     id: 'fishing_shop',
     label: 'Tiệm Ngư Cụ Bác Ba',
     rect: t(29, 22, 5, 3),
@@ -127,6 +157,7 @@ export const BUILDINGS: Building[] = [
 ];
 
 export const ZONES: Zone[] = [
+  { id: 'cybernet', label: 'Cyber Game HNT Trảng Dài', prompt: 'Vào Cyber Game', rect: t(3, 26, 5, 1.5) },
   {
     id: 'cafe',
     label: 'Tiệm Cà Phê Bean There',
@@ -164,8 +195,20 @@ export const ZONES: Zone[] = [
     prompt: 'Nhận đơn hàng cần giao',
     rect: t(3, 20, 5, 2),
   },
+  {
+    id: 'comga',
+    label: 'Cơm Gà Xối Mỡ 68',
+    prompt: 'Bước vào quán cơm gà xối mỡ',
+    rect: t(12, 16, 5, 2),
+  },
+  {
+    id: 'bida',
+    label: 'CLB Bida H2S Biên Hòa',
+    prompt: 'Bước vào quán bida giao lưu thi đấu',
+    rect: t(12, 22, 5, 1),
+  },
   { id: 'events', label: 'Bảng Sự Kiện', prompt: 'Xem sự kiện hôm nay', rect: t(30, 12, 5, 5) },
-  { id: 'ai_kiosk', label: 'Trạm Thưởng AI', prompt: 'Mở trạm đổi thưởng AI', rect: t(11, 21, 6, 5) },
+  { id: 'ai_kiosk', label: 'Trạm Thưởng AI', prompt: 'Mở trạm đổi thưởng AI', rect: t(19, 15, 3, 2) },
   { id: 'pier', label: 'Cầu Tàu Lắc Lư', prompt: 'Thả cần câu cá', rect: t(37, 26, 4, 4) },
   {
     id: 'fishing_shop',
@@ -181,7 +224,7 @@ export const TOWN_LAMPS = [
   { x: 10, y: 10 },
   { x: 21, y: 10 },
   { x: 35, y: 12 },
-  { x: 16, y: 19 },
+  { x: 10, y: 19 },
   { x: 31, y: 19 },
   { x: 10, y: 25 },
   { x: 26, y: 28 },
@@ -193,7 +236,7 @@ export const TOWN_TREES = [
   { x: 21, y: 1 },
   { x: 34, y: 1 },
   { x: 3, y: 12 },
-  { x: 6, y: 26 },
+  { x: 2, y: 26 },
   { x: 3, y: 29 },
   { x: 19, y: 24 },
   { x: 27, y: 24 },
@@ -212,7 +255,7 @@ export type TownPropKind =
 export const TOWN_PROPS: { kind: TownPropKind; x: number; y: number }[] = [
   { kind: 'fountain', x: 24, y: 17 },
   { kind: 'board', x: 33, y: 14 },
-  { kind: 'kiosk', x: 14, y: 24 },
+  { kind: 'kiosk', x: 20, y: 16 },
   { kind: 'bench', x: 19, y: 13 },
   { kind: 'bench', x: 28, y: 13 },
   { kind: 'bench', x: 19, y: 19 },
@@ -235,7 +278,7 @@ export const BLOCKERS: Rect[] = [
   ...BUILDINGS.map((b) => b.rect),
   t(23, 15, 2, 2), // fountain
   t(32, 13, 2, 1), // event board
-  t(13, 23, 2, 1), // AI kiosk
+  t(19, 15, 2, 1), // AI kiosk
   ...TOWN_TREES.map((p) => ({ x: p.x * TILE - 5, y: p.y * TILE - 10, w: 10, h: 10 })),
   ...TOWN_FENCES.map((p) => ({ x: p.x * TILE, y: p.y * TILE - 5, w: (p.segments - 1) * 16 + 4, h: 11 })),
   ...TOWN_PROPS.filter((p) => ['bench', 'table', 'crate', 'planter', 'sign'].includes(p.kind)).map((p) => ({
@@ -263,6 +306,7 @@ export const PATHS: Rect[] = [
   t(10, 10, 2, 18),
   t(32, 10, 3, 18),
   t(10, 26, 25, 2),
+  t(3, 26, 9, 2),
   t(10, 16, 7, 2),
   t(30, 16, 5, 2),
   t(22, 10, 3, 2),
@@ -299,11 +343,11 @@ export function zoneCenter(id: ZoneId): { x: number; y: number } {
 /** Event spawns stay in open spaces and on the connected promenade. */
 export const DUCK_SPOTS: { x: number; y: number }[] = [
   { x: 5, y: 11 },
-  { x: 12, y: 12 },
+  { x: 10, y: 12 },
   { x: 20, y: 11 },
   { x: 33, y: 11 },
   { x: 44, y: 12 },
-  { x: 3, y: 23 },
+  { x: 9, y: 23 },
   { x: 9, y: 28 },
   { x: 18, y: 27 },
   { x: 26, y: 22 },
@@ -325,6 +369,58 @@ export const DELIVERY_DESTINATIONS: ZoneId[] = [
   'fishing_shop',
   'vietprodev',
   'dntu',
+  'comga',
+  'cybernet',
+  'bida',
+];
+
+/** Cơm Gà Xối Mỡ 68 Biên Hòa interior grid & constants */
+export const COMGA_COLS = 14;
+export const COMGA_ROWS = 10;
+export const COMGA_SPAWN = { x: 7 * TILE, y: 8.5 * TILE };
+export const COMGA_BLOCKERS: Rect[] = [
+  t(0, 0, COMGA_COLS, 2), // Back kitchen wall with stainless counter & glass chicken warmer
+  t(1, 1, 3, 2), // Chicken fryer & boiling soup cauldrons
+  t(10, 1, 3, 2), // Sauce, rice & drink prep station
+  t(2, 4, 3, 2), // Stainless dining table 1
+  t(8, 4, 4, 2), // Stainless dining table 2
+  t(0, 0, 1, COMGA_ROWS), // Left wall
+  t(COMGA_COLS - 1, 0, 1, COMGA_ROWS), // Right wall
+  t(0, COMGA_ROWS - 1, 5, 1), // Bottom left wall
+  t(9, COMGA_ROWS - 1, 5, 1), // Bottom right wall
+];
+
+/** CLB Bida H2S Trảng Dài (Biên Hòa) interior grid & constants */
+export const BIDA_COLS = 16;
+export const BIDA_ROWS = 12;
+export const BIDA_SPAWN = { x: 8 * TILE, y: 9.6 * TILE };
+export const BIDA_BLOCKERS: Rect[] = [
+  t(0, 0, BIDA_COLS, 2), // Back wall with cue racks, scoreboard & beverage bar
+  t(1, 1, 4, 1.8), // Reception & refreshment bar counter
+  t(11, 1, 4, 1.8), // Professional carbon cue locker & trophy display
+  t(1.8, 3.8, 4.8, 2.5), // Bida Table 1 (Pool 8-Ball - Left Upper)
+  t(9.4, 3.8, 4.8, 2.5), // Bida Table 2 (Carom 3 Băng - Right Upper)
+  t(1.8, 7.2, 4.8, 2.5), // Bida Table 3 (VIP Arena Table - Left Lower)
+  t(10.2, 7.6, 4.8, 2.0), // Spectator lounge sofas & VIP seating (Right Lower)
+  t(0, 0, 1, BIDA_ROWS), // Left wall
+  t(BIDA_COLS - 1, 0, 1, BIDA_ROWS), // Right wall
+  t(0, BIDA_ROWS - 1, 6.5, 1), // Bottom left wall
+  t(9.5, BIDA_ROWS - 1, 6.5, 1), // Bottom right wall
+];
+
+/** Backward compatibility aliases for CyberNet */
+export const CYBERNET_COLS = BIDA_COLS;
+export const CYBERNET_ROWS = BIDA_ROWS;
+export const CYBERNET_SPAWN = BIDA_SPAWN;
+export const CYBERNET_BLOCKERS: Rect[] = [
+  t(0, 0, CYBERNET_COLS, 1.5),
+  t(0.5, 1.5, 4, 1.5),
+  t(9, 1.4, 4.5, 1.6),
+  ...[36, 132, 236, 332].flatMap((x) => [{ x, y: 144, w: 70, h: 56 }]),
+  t(0, 0, 0.5, CYBERNET_ROWS),
+  t(CYBERNET_COLS - 0.5, 0, 0.5, CYBERNET_ROWS),
+  t(0, CYBERNET_ROWS - 1, 6.5, 1),
+  t(9.5, CYBERNET_ROWS - 1, 6.5, 1),
 ];
 
 /** DNTU University interior grid & constants */
