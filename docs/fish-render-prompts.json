@@ -1,5 +1,5 @@
 {
-  "status": "60/63 rendered fish assets installed; 3 pending",
+  "status": "63/63 rendered fish assets installed; 0 pending",
   "mode": "User-authorized Gemini HTTP generation and AGY built-in GenerateImage continuation",
   "proposed_model": "gemini-3.1-flash-image",
   "size": "Provider-selected; actual test sizes recorded in output/imagegen/gemini-test/reference-test-report.json",
@@ -433,7 +433,8 @@
       "description": "Thân hình bán trong suốt phát ra ánh sáng huỳnh quang mờ ảo trong những đêm sương mù giăng kín.",
       "subject": "Pale icy-blue ghostlike shark, softly translucent skin, visible fin structure and restrained spectral glow; complete shark silhouette.",
       "prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Pale icy-blue ghostlike shark, softly translucent skin, visible fin structure and restrained spectral glow; complete shark silhouette.\nExisting game identity (preserve relevant visual details): Thân hình bán trong suốt phát ra ánh sáng huỳnh quang mờ ảo trong những đêm sương mù giăng kín.",
-      "output": "apps/web/public/fish/ghost_shark-render.webp"
+      "output": "apps/web/public/fish/ghost_shark-render.webp",
+      "generation_route": "AGY built-in generate_image with all three style references"
     },
     {
       "id": "beluga_whale",
@@ -443,7 +444,8 @@
       "description": "Làn da trắng muốt mịn màng như kem tươi, luôn giữ nụ cười hồn nhiên ấm áp kể cả khi cắn câu.",
       "subject": "Ivory-white beluga whale, rounded melon forehead, no dorsal fin, small rounded flippers and horizontal tail flukes.",
       "prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Ivory-white beluga whale, rounded melon forehead, no dorsal fin, small rounded flippers and horizontal tail flukes.\nExisting game identity (preserve relevant visual details): Làn da trắng muốt mịn màng như kem tươi, luôn giữ nụ cười hồn nhiên ấm áp kể cả khi cắn câu.",
-      "output": "apps/web/public/fish/beluga_whale-render.webp"
+      "output": "apps/web/public/fish/beluga_whale-render.webp",
+      "generation_route": "AGY built-in generate_image with all three style references"
     },
     {
       "id": "narwhal",
@@ -453,7 +455,8 @@
       "description": "Chiếc sừng xoắn độc nhất vô nhị vươn cao, được đồn đại là dùng để bắt trộm sóng Wi-Fi từ các du thuyền.",
       "subject": "Mottled grey narwhal, rounded forehead, no dorsal fin and one long spiral tusk with a restrained luminous wireless motif, not a swordfish bill.",
       "prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Mottled grey narwhal, rounded forehead, no dorsal fin and one long spiral tusk with a restrained luminous wireless motif, not a swordfish bill.\nExisting game identity (preserve relevant visual details): Chiếc sừng xoắn độc nhất vô nhị vươn cao, được đồn đại là dùng để bắt trộm sóng Wi-Fi từ các du thuyền.",
-      "output": "apps/web/public/fish/narwhal-render.webp"
+      "output": "apps/web/public/fish/narwhal-render.webp",
+      "generation_route": "AGY built-in generate_image with all three style references"
     },
     {
       "id": "killer_whale",
@@ -676,6 +679,7 @@
     "axolotl",
     "barracuda",
     "bass_largemouth",
+    "beluga_whale",
     "betta_fighting",
     "blue_tang",
     "blue_whale",
@@ -694,6 +698,7 @@
     "flounder",
     "flying_fish",
     "flying_squid",
+    "ghost_shark",
     "giant_squid",
     "golden_dragon_astral",
     "golden_koi",
@@ -707,6 +712,7 @@
     "lionfish",
     "manta_ray",
     "moray_eel",
+    "narwhal",
     "office_carp",
     "office_carp_ceo",
     "philosopher_eel",
@@ -726,7 +732,7 @@
     "tilapia",
     "tuna_giant"
   ],
-  "pending_species": ["ghost_shark", "beluga_whale", "narwhal"],
+  "pending_species": [],
   "quota_reset_utc": "2026-10-01T09:53:24Z",
   "quota_error": "Image generation returns 429 RESOURCE_EXHAUSTED through gateway and native Google endpoints; quota reporting still shows approximately 100 percent available. Reset differs by account; no other model used.",
   "quota_reset_latest_utc": "2026-10-01T10:27:34Z",
@@ -747,6 +753,7 @@
       "anglerfish",
       "arowana_dragon",
       "barracuda",
+      "beluga_whale",
       "betta_fighting",
       "catfish_giant",
       "catfish_noodle",
@@ -755,12 +762,14 @@
       "dolphin_playful",
       "electric_catfish",
       "electric_eel",
+      "ghost_shark",
       "golden_dragon_astral",
       "hammerhead_shark",
       "koi_storm",
       "kraken_eclipse",
       "lionfish",
       "moray_eel",
+      "narwhal",
       "office_carp_ceo",
       "philosopher_eel",
       "phoenix_tetra",
@@ -778,17 +787,7 @@
       "apps/web/public/fish/guppy_rainbow-illustration.webp",
       "apps/web/public/fish/golden_dragon_fish-illustration.webp"
     ],
-    "last_error": {
-      "code": 429,
-      "status": "RESOURCE_EXHAUSTED",
-      "message": "You have exhausted your capacity on this model. Your quota will reset after 4h58m8s.",
-      "model": "gemini-3.1-flash-image",
-      "reason": "QUOTA_EXHAUSTED",
-      "domain": "cloudcode-pa.googleapis.com",
-      "quotaResetDelay": "4h58m8.03323809s",
-      "quotaResetTimeStamp": "2026-10-01T17:30:16Z",
-      "retryDelay": "17888.033238090s"
-    }
+    "last_error": null
   },
   "collection_size": 63
 }

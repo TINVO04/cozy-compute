@@ -2,7 +2,7 @@
   "chat_model": "Gemini 3.8 Flash (High)",
   "image_tool_model": "gemini-3.1-flash-image",
   "total_jobs": 31,
-  "completed_jobs_count": 28,
+  "completed_jobs_count": 31,
   "completed": [
     {
       "id": "betta_fighting",
@@ -177,23 +177,27 @@
       "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\4663bf24-a822-438a-8da1-31cdacfd49a3\\phoenix_tetra_1790857905770.jpg",
       "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/phoenix_tetra-reference-1.jpg",
       "completed_at": "2026-10-01T12:31:56.460Z"
+    },
+    {
+      "id": "ghost_shark",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\53dc7599-7bb4-4812-a8ee-9d9e0edfcdfd\\ghost_shark_render_1790858932335.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/ghost_shark-reference-1.jpg",
+      "completed_at": "2026-10-01T12:49:04.980Z"
+    },
+    {
+      "id": "beluga_whale",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\53dc7599-7bb4-4812-a8ee-9d9e0edfcdfd\\beluga_whale_render_1790858972665.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/beluga_whale-reference-1.jpg",
+      "completed_at": "2026-10-01T12:49:38.750Z"
+    },
+    {
+      "id": "narwhal",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\53dc7599-7bb4-4812-a8ee-9d9e0edfcdfd\\narwhal_render_1790859004080.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/narwhal-reference-1.jpg",
+      "completed_at": "2026-10-01T12:50:16.671Z"
     }
   ],
-  "remaining_jobs_count": 3,
-  "remaining_ids": ["ghost_shark", "beluga_whale", "narwhal"],
-  "brain_path": "C:/Users/tinvo/.gemini/antigravity-cli/brain/4663bf24-a822-438a-8da1-31cdacfd49a3",
-  "last_status": "BLOCKED_QUOTA_EXHAUSTED",
-  "quota_reset_info": {
-    "code": 429,
-    "status": "RESOURCE_EXHAUSTED",
-    "message": "You have exhausted your capacity on this model. Your quota will reset after 4h58m8s.",
-    "model": "gemini-3.1-flash-image",
-    "reason": "QUOTA_EXHAUSTED",
-    "domain": "cloudcode-pa.googleapis.com",
-    "quotaResetDelay": "4h58m8.03323809s",
-    "quotaResetTimeStamp": "2026-10-01T17:30:16Z",
-    "retryDelay": "17888.033238090s"
-  },
-  "failed_job": "ghost_shark",
-  "failed_at": "2026-10-01T12:32:05Z"
+  "remaining_jobs_count": 0,
+  "remaining_ids": [],
+  "brain_path": "C:/Users/tinvo/.gemini/antigravity-cli/brain/53dc7599-7bb4-4812-a8ee-9d9e0edfcdfd"
 }

@@ -62,6 +62,9 @@ export const FISH_3D_ASSETS: Record<string, string> = {
   sunfish_mola: '/fish/sunfish_mola-render.webp',
   cyber_koi: '/fish/cyber_koi-render.webp',
   phoenix_tetra: '/fish/phoenix_tetra-render.webp',
+  ghost_shark: '/fish/ghost_shark-render.webp',
+  beluga_whale: '/fish/beluga_whale-render.webp',
+  narwhal: '/fish/narwhal-render.webp',
 };
 export const FISH_ASSET_ASPECTS: Record<string, number> = {
   swordfish: 693 / 808,
@@ -124,6 +127,9 @@ export const FISH_ASSET_ASPECTS: Record<string, number> = {
   sunfish_mola: 768 / 690,
   cyber_koi: 536 / 768,
   phoenix_tetra: 688 / 768,
+  ghost_shark: 452 / 768,
+  beluga_whale: 401 / 768,
+  narwhal: 582 / 768,
 };
 
 const images = new Map<string, HTMLImageElement>();

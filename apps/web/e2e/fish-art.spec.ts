@@ -76,15 +76,13 @@ test('registered fish use their rendered assets in the shared canvas and gallery
     const api = (window as unknown as { fishArtTest: ArtFixture }).fishArtTest;
     return {
       registered: Object.keys(api.FISH_3D_ASSETS).length,
-      missingLegendary: api.FISH.filter((f) => f.rarity === 'legendary' && !api.FISH_3D_ASSETS[f.id]).map(
-        (f) => f.id,
-      ),
-      missingVariants: api.FISH.filter((f) => f.variantOf && !api.FISH_3D_ASSETS[f.id]).map((f) => f.id),
+      totalSpecies: api.FISH.length,
+      missing: api.FISH.filter((f) => !api.FISH_3D_ASSETS[f.id]).map((f) => f.id),
     };
   });
   expect(results).toHaveLength(coverage.registered);
-  expect(coverage.missingLegendary).toEqual([]);
-  expect(coverage.missingVariants).toEqual([]);
+  expect(coverage.registered).toBe(coverage.totalSpecies);
+  expect(coverage.missing).toEqual([]);
   for (const result of results) {
     expect(result.same, result.id).toBe(true);
     await expect(page.locator('[data-species="' + result.id + '"] img')).toHaveAttribute(

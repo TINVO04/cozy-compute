@@ -625,5 +625,38 @@
     "width": 768,
     "height": 688,
     "bytes": 109924
+  },
+  {
+    "species": "ghost_shark",
+    "source": "output/imagegen/agy-session/ghost_shark-reference-1.jpg",
+    "asset": "apps/web/public/fish/ghost_shark-render.webp",
+    "raw_size": [1024, 1024],
+    "raw_bbox": [72, 244, 968, 747],
+    "raw_margin": 56,
+    "width": 768,
+    "height": 452,
+    "bytes": 40998
+  },
+  {
+    "species": "beluga_whale",
+    "source": "output/imagegen/agy-session/beluga_whale-reference-1.jpg",
+    "asset": "apps/web/public/fish/beluga_whale-render.webp",
+    "raw_size": [1024, 1024],
+    "raw_bbox": [69, 292, 986, 741],
+    "raw_margin": 38,
+    "width": 768,
+    "height": 401,
+    "bytes": 25888
+  },
+  {
+    "species": "narwhal",
+    "source": "output/imagegen/agy-session/narwhal-reference-1.jpg",
+    "asset": "apps/web/public/fish/narwhal-render.webp",
+    "raw_size": [1024, 1024],
+    "raw_bbox": [44, 111, 971, 798],
+    "raw_margin": 44,
+    "width": 768,
+    "height": 582,
+    "bytes": 47728
   }
 ]
