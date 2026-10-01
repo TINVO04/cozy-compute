@@ -15,7 +15,15 @@ type Cue =
   | 'bida_hit'
   | 'bida_cushion'
   | 'bida_pocket'
-  | 'bida_win';
+  | 'bida_win'
+  | 'cyber_shot'
+  | 'cyber_headshot'
+  | 'cyber_slash'
+  | 'cyber_dash'
+  | 'cyber_windwall'
+  | 'cyber_ult'
+  | 'cyber_victory'
+  | 'cyber_order';
 
 const CUES: Record<Cue, { f: number[]; d: number; type: OscillatorType; vol: number }> = {
   coin: { f: [988, 1319], d: 0.08, type: 'square', vol: 0.05 },
@@ -31,6 +39,14 @@ const CUES: Record<Cue, { f: number[]; d: number; type: OscillatorType; vol: num
   bida_cushion: { f: [190, 110], d: 0.06, type: 'sine', vol: 0.06 },
   bida_pocket: { f: [340, 240, 150], d: 0.09, type: 'sine', vol: 0.08 },
   bida_win: { f: [523, 659, 784, 1046], d: 0.12, type: 'square', vol: 0.07 },
+  cyber_shot: { f: [450, 180, 80], d: 0.05, type: 'sawtooth', vol: 0.08 },
+  cyber_headshot: { f: [1760, 2637], d: 0.08, type: 'square', vol: 0.09 },
+  cyber_slash: { f: [620, 310], d: 0.06, type: 'sine', vol: 0.07 },
+  cyber_dash: { f: [300, 600], d: 0.05, type: 'sine', vol: 0.06 },
+  cyber_windwall: { f: [200, 320, 240], d: 0.1, type: 'triangle', vol: 0.07 },
+  cyber_ult: { f: [440, 660, 880, 1100], d: 0.14, type: 'square', vol: 0.08 },
+  cyber_victory: { f: [523, 659, 784, 1046, 1318], d: 0.15, type: 'triangle', vol: 0.08 },
+  cyber_order: { f: [784, 1046], d: 0.08, type: 'triangle', vol: 0.06 },
 };
 
 /** Tiny synthesized sound effects — no audio assets required. */
