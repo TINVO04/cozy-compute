@@ -611,13 +611,80 @@ export class ApartmentScene extends WorldScene {
 abstract class InteriorScene extends WorldScene {
   protected activeBubble: Phaser.GameObjects.Container | null = null;
   protected exiting = false;
-  private interactions: { x: number; y: number; run: () => void }[] = [];
+  private interactions: { x: number; y: number; run: () => void; label: string }[] = [];
+  private interactionHint: Phaser.GameObjects.Text | null = null;
+
+  protected override fitCamera() {
+    super.fitCamera();
+    const { width, height } = this.worldSize();
+    // Fit the complete room at integer scale, rather than rounding up and cropping it.
+    const zoom = Math.max(
+      1,
+      Math.min(3, Math.floor(Math.min(this.scale.width / width, this.scale.height / height))),
+    );
+    const vw = this.scale.width / zoom;
+    const vh = this.scale.height / zoom;
+    this.cameras.main
+      .setZoom(zoom)
+      .setBounds(
+        Math.min(0, (width - vw) / 2),
+        Math.min(0, (height - vh) / 2),
+        Math.max(width, vw),
+        Math.max(height, vh),
+      )
+      .centerOn(width / 2, height / 2);
+  }
+
+  private nearestInteraction(x: number, y: number) {
+    const nearest = this.interactions.reduce<(typeof this.interactions)[number] | undefined>(
+      (best, action) =>
+        !best || Math.hypot(action.x - x, action.y - y) < Math.hypot(best.x - x, best.y - y) ? action : best,
+      undefined,
+    );
+    return nearest && Math.hypot(nearest.x - x, nearest.y - y) <= 2 * TILE ? nearest : undefined;
+  }
+
+  override update(time: number, delta: number) {
+    super.update(time, delta);
+    const ui = useUi.getState();
+    const self = this.layer?.self?.container;
+    const action =
+      self && !this.exiting && !typing() && !ui.panel && !ui.activity && !document.querySelector('.backdrop')
+        ? this.nearestInteraction(self.x, self.y)
+        : undefined;
+    this.interactionHint?.setVisible(!!action);
+    if (action && self && this.interactionHint) {
+      const { width, height } = this.worldSize();
+      this.interactionHint.setText('E · ' + action.label);
+      this.interactionHint.setPosition(
+        Phaser.Math.Clamp(
+          self.x,
+          this.interactionHint.width / 2 + TILE,
+          width - this.interactionHint.width / 2 - TILE,
+        ),
+        Math.min(self.y + 44, height - TILE - 12),
+      );
+    }
+  }
 
   override create() {
     this.exiting = false;
     this.activeBubble = null;
     this.interactions = [];
     super.create();
+    this.cameras.main.setBackgroundColor('#242c2b');
+    this.interactionHint = this.add
+      .text(0, 0, '', {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '10px',
+        color: '#f3f0e4',
+        backgroundColor: '#263b34',
+        padding: { x: 6, y: 4 },
+        resolution: 2,
+      })
+      .setOrigin(0.5)
+      .setDepth(9000)
+      .setVisible(false);
     const onKey = (event: KeyboardEvent) => {
       const ui = useUi.getState();
       if (event.repeat || typing() || ui.panel || ui.activity || document.querySelector('.backdrop')) return;
@@ -627,14 +694,7 @@ abstract class InteriorScene extends WorldScene {
       }
       if (event.key.toLowerCase() !== 'e' || this.exiting || !this.layer?.self) return;
       const { x, y } = this.layer.self.container;
-      const nearest = this.interactions.reduce<(typeof this.interactions)[number] | undefined>(
-        (best, action) =>
-          !best || Math.hypot(action.x - x, action.y - y) < Math.hypot(best.x - x, best.y - y)
-            ? action
-            : best,
-        undefined,
-      );
-      if (nearest && Math.hypot(nearest.x - x, nearest.y - y) <= 2 * TILE) nearest.run();
+      this.nearestInteraction(x, y)?.run();
     };
     window.addEventListener('keydown', onKey);
     this.events.once('shutdown', () => {
@@ -642,11 +702,12 @@ abstract class InteriorScene extends WorldScene {
       this.activeBubble?.destroy();
       this.activeBubble = null;
       this.interactions = [];
+      this.interactionHint = null;
     });
   }
 
-  protected interactAt(x: number, y: number, run: () => void) {
-    this.interactions.push({ x, y, run });
+  protected interactAt(x: number, y: number, label: string, run: () => void) {
+    this.interactions.push({ x, y, label, run });
   }
 
   protected expireBubble(bubble: Phaser.GameObjects.Container) {
@@ -674,6 +735,14 @@ abstract class InteriorScene extends WorldScene {
       this.exiting = true;
       void net.goTown();
     }
+  }
+
+  protected containBubble(bubble: Phaser.GameObjects.Container, text: Phaser.GameObjects.Text) {
+    const { width, height } = this.worldSize();
+    bubble.setPosition(
+      Phaser.Math.Clamp(bubble.x, TILE + text.width / 2, width - TILE - text.width / 2),
+      Phaser.Math.Clamp(bubble.y, 72 + text.height / 2, height - TILE - text.height / 2),
+    );
   }
 }
 
@@ -722,14 +791,14 @@ export class CompanyScene extends InteriorScene {
       container.add(sprite);
 
       // Floating Zzz bubble
-      const zzz = this.add.image(14, -26, zzzKey).setOrigin(0.5, 0.5);
+      const zzz = this.add.image(20, -14, zzzKey).setOrigin(0.5, 0.5).setScale(0.55);
       container.add(zzz);
 
       // Gentle snoring / floating animation
       if (!useUi.getState().reducedMotion) {
         this.tweens.add({
           targets: zzz,
-          y: '-=10',
+          y: '-=4',
           alpha: { from: 1, to: 0.25 },
           duration: 1800 + Math.random() * 400,
           yoyo: true,
@@ -746,15 +815,14 @@ export class CompanyScene extends InteriorScene {
           repeat: -1,
           ease: 'Sine.easeInOut',
         });
-
-        // Name & role badge above employee
       }
       const badgeText = this.add
-        .text(0, -38, `${emp.name} · ${emp.role}`, {
+        .text(0, 30, emp.name.replace(' ', '\n'), {
           fontFamily: 'Inter, sans-serif',
           fontSize: '10px',
           fontStyle: 'bold',
-          color: '#38bdf8',
+          color: '#d9efdf',
+          align: 'center',
           backgroundColor: 'rgba(15, 23, 42, 0.85)',
           padding: { x: 5, y: 2 },
           resolution: 2,
@@ -765,17 +833,8 @@ export class CompanyScene extends InteriorScene {
       // Interactive on click / tap
       sprite.setInteractive({ useHandCursor: true });
       sprite.on('pointerdown', () => this.showEmployeeDialogue(emp, container));
-      this.interactAt(emp.x, 6.5 * TILE, () => this.showEmployeeDialogue(emp, container));
+      this.interactAt(emp.x, 6.5 * TILE, emp.name, () => this.showEmployeeDialogue(emp, container));
     }
-
-    // 3. Ambient soft office glow
-    ensureAtmosphereTextures(this);
-    this.add
-      .image((COMPANY_COLS * TILE) / 2, (COMPANY_ROWS * TILE) / 2, 'glow:indoor')
-      .setScale(2.5)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setAlpha(0.3)
-      .setDepth(2000);
 
     // 4. Interactive Whiteboard Zone
     const wbHit = this.add
@@ -790,11 +849,11 @@ export class CompanyScene extends InteriorScene {
         body: 'Sprint 99: Fix 1 bug -> sinh ra 5 bug mới. Deadline: Hôm qua. Đang giải quyết bằng 42 ly cà phê!',
       });
     });
-    this.interactAt(4.5 * TILE, 2.8 * TILE, () => wbHit.emit('pointerdown'));
+    this.interactAt(4.5 * TILE, 2.8 * TILE, 'Sprint backlog', () => wbHit.emit('pointerdown'));
 
     // 5. Interactive Coffee Machine Zone
     const coffeeHit = this.add
-      .zone(14 * TILE, 1.2 * TILE, 44, 38)
+      .zone(14 * TILE, 47, 60, 70)
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
     coffeeHit.on('pointerdown', () => {
@@ -805,13 +864,10 @@ export class CompanyScene extends InteriorScene {
         body: 'Bạn đã nhấp một ngụm cà phê phin đậm đặc. Hồi phục 100% năng lượng lập trình viên!',
       });
     });
-    this.interactAt(14 * TILE, 3.6 * TILE, () => coffeeHit.emit('pointerdown'));
+    this.interactAt(14 * TILE, 3.6 * TILE, 'Cà phê', () => coffeeHit.emit('pointerdown'));
 
     // 6. Interactive Server Rack Zone
-    const srvHit = this.add
-      .zone(1.8 * TILE, 1.2 * TILE, 44, 52)
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
+    const srvHit = this.add.zone(60, 48, 52, 68).setOrigin(0.5).setInteractive({ useHandCursor: true });
     srvHit.on('pointerdown', () => {
       play('click');
       useUi.getState().toast({
@@ -820,12 +876,12 @@ export class CompanyScene extends InteriorScene {
         body: 'CPU: 99.8% | RAM: 63.9/64GB | Kubernetes: 14 Pods CrashLoopBackOff. Đang chờ dev thức dậy!',
       });
     });
-    this.interactAt(1.8 * TILE, 3.6 * TILE, () => srvHit.emit('pointerdown'));
+    this.interactAt(1.8 * TILE, 3.6 * TILE, 'Server rack', () => srvHit.emit('pointerdown'));
   }
 
   private showEmployeeDialogue(emp: SleepingEmployee, container: Phaser.GameObjects.Container) {
     play('pop');
-    useUi.getState().toast({ kind: 'info', title: emp.name, body: emp.dialogue });
+    useUi.getState().toast({ kind: 'info', title: emp.name, body: emp.role + ' — ' + emp.dialogue });
     this.activeBubble?.destroy();
 
     const bubble = this.add.container(container.x, container.y - 56);
@@ -845,6 +901,7 @@ export class CompanyScene extends InteriorScene {
       .setOrigin(0.5, 0.5);
 
     bubble.add(txt);
+    this.containBubble(bubble, txt);
     this.activeBubble = bubble;
 
     this.expireBubble(bubble);
@@ -905,15 +962,13 @@ export class UniversityScene extends InteriorScene {
           repeat: -1,
           ease: 'Sine.easeInOut',
         });
-
-        // Name & role badge
       }
       const badgeText = this.add
-        .text(0, -38, `${person.name} · ${person.role}`, {
+        .text(0, 22, person.name, {
           fontFamily: 'Inter, sans-serif',
           fontSize: '10px',
           fontStyle: 'bold',
-          color: '#fbbf24',
+          color: '#fae9c9',
           backgroundColor: 'rgba(15, 23, 42, 0.85)',
           padding: { x: 5, y: 2 },
           resolution: 2,
@@ -924,7 +979,7 @@ export class UniversityScene extends InteriorScene {
       // Interactive on click / tap
       sprite.setInteractive({ useHandCursor: true });
       sprite.on('pointerdown', () => this.showPersonDialogue(person, container));
-      this.interactAt(person.x, person.y, () => this.showPersonDialogue(person, container));
+      this.interactAt(person.x, person.y, person.name, () => this.showPersonDialogue(person, container));
     }
 
     // 2b. Auto-welcome quote when entering university: Thầy Tân welcomes player!
@@ -938,18 +993,9 @@ export class UniversityScene extends InteriorScene {
       });
     }
 
-    // 3. Ambient soft campus illumination glow
-    ensureAtmosphereTextures(this);
-    this.add
-      .image((DNTU_COLS * TILE) / 2, (DNTU_ROWS * TILE) / 2, 'glow:indoor')
-      .setScale(2.5)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setAlpha(0.28)
-      .setDepth(2000);
-
     // 4. Interactive Smart Board Zone (center top)
     const smartBoardHit = this.add
-      .zone(8 * TILE, 1.2 * TILE, 140, 50)
+      .zone(8 * TILE, 30, 232, 44)
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
     smartBoardHit.on('pointerdown', () => {
@@ -960,13 +1006,10 @@ export class UniversityScene extends InteriorScene {
         body: 'Đang trình chiếu: "Ứng dụng AI & IoT trong chuyển đổi số doanh nghiệp". Sinh viên DNTU thực hành trực tiếp trên hệ thống Lab hiện đại!',
       });
     });
-    this.interactAt(8 * TILE, 3.2 * TILE, () => smartBoardHit.emit('pointerdown'));
+    this.interactAt(8 * TILE, 3.2 * TILE, 'Màn hình DNTU', () => smartBoardHit.emit('pointerdown'));
 
     // 5. Interactive Digital Library Zone (left top)
-    const libHit = this.add
-      .zone(2.2 * TILE, 1.2 * TILE, 80, 50)
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
+    const libHit = this.add.zone(64, 69, 64, 106).setOrigin(0.5).setInteractive({ useHandCursor: true });
     libHit.on('pointerdown', () => {
       play('pop');
       useUi.getState().toast({
@@ -975,13 +1018,10 @@ export class UniversityScene extends InteriorScene {
         body: 'Truy cập hơn 100,000+ tài liệu, giáo trình điện tử, đề án tốt nghiệp xuất sắc và cơ sở dữ liệu NCKH quốc tế IEEE/Scopus.',
       });
     });
-    this.interactAt(2.2 * TILE, 4.5 * TILE, () => libHit.emit('pointerdown'));
+    this.interactAt(2.2 * TILE, 4.5 * TILE, 'Thư viện', () => libHit.emit('pointerdown'));
 
     // 6. Interactive Awards & Accreditation Showcase (right top)
-    const trophyHit = this.add
-      .zone(13.8 * TILE, 1.2 * TILE, 80, 50)
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
+    const trophyHit = this.add.zone(448, 69, 64, 106).setOrigin(0.5).setInteractive({ useHandCursor: true });
     trophyHit.on('pointerdown', () => {
       play('coin');
       useUi.getState().toast({
@@ -990,12 +1030,12 @@ export class UniversityScene extends InteriorScene {
         body: 'Trường ĐH Công nghệ Đồng Nai đạt chuẩn Kiểm định Quốc gia MOET, Top trường đào tạo ứng dụng hàng đầu vùng kinh tế trọng điểm phía Nam!',
       });
     });
-    this.interactAt(13.8 * TILE, 4.5 * TILE, () => trophyHit.emit('pointerdown'));
+    this.interactAt(13.8 * TILE, 4.5 * TILE, 'Thành tựu DNTU', () => trophyHit.emit('pointerdown'));
   }
 
   private showPersonDialogue(person: DntuPerson, container: Phaser.GameObjects.Container) {
     play('pop');
-    useUi.getState().toast({ kind: 'info', title: person.name, body: person.dialogue });
+    useUi.getState().toast({ kind: 'info', title: person.name, body: person.role + ' — ' + person.dialogue });
     this.activeBubble?.destroy();
 
     const bubble = this.add.container(container.x, container.y - 56);
@@ -1015,6 +1055,7 @@ export class UniversityScene extends InteriorScene {
       .setOrigin(0.5, 0.5);
 
     bubble.add(txt);
+    this.containBubble(bubble, txt);
     this.activeBubble = bubble;
 
     this.expireBubble(bubble);

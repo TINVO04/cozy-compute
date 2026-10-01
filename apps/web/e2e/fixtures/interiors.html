@@ -2,7 +2,8 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <title>Interior interaction regression fixture</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VietProDev & DNTU — xem trước nội thất</title>
     <style>
       body {
         margin: 0;
@@ -21,13 +22,14 @@
         window.exitRequests++;
       };
       window.interiorUi = useUi;
+      const university = new URLSearchParams(location.search).get('room') === 'university';
       window.interiorPreview = new Phaser.Game({
         type: Phaser.CANVAS,
         pixelArt: true,
         scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
         audio: { noAudio: true },
         banner: false,
-        scene: [CompanyScene, UniversityScene],
+        scene: university ? [UniversityScene, CompanyScene] : [CompanyScene, UniversityScene],
       });
     </script>
   </body>

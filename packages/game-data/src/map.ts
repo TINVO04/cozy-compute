@@ -331,10 +331,12 @@ export const DELIVERY_DESTINATIONS: ZoneId[] = [
 export const DNTU_COLS = 16;
 export const DNTU_ROWS = 11;
 export const DNTU_SPAWN = { x: 8 * TILE, y: 9.5 * TILE };
+/** Shared by room art and authoritative/client movement. */
+export const DNTU_DESKS: Rect[] = [t(3, 4, 4, 3), t(9, 4, 4, 3)];
 export const DNTU_BLOCKERS: Rect[] = [
   t(0, 0, DNTU_COLS, 2), // North stage wall with Smart Board & stage
   t(7.5, 2, 1, 0.6), // Podium extends below the back wall; keep the side aisle open.
-  t(3, 4, 10, 3), // Central smart lecture hall desk row & computer lab
+  ...DNTU_DESKS, // AI and design islands, separated by a two-tile aisle.
   t(1, 1, 2, 3), // Digital library shelf in top-left
   t(13, 1, 2, 3), // Awards & accreditation showcase in top-right
   t(0, 0, 1, DNTU_ROWS), // Left wall
@@ -347,9 +349,10 @@ export const DNTU_BLOCKERS: Rect[] = [
 export const COMPANY_COLS = 16;
 export const COMPANY_ROWS = 11;
 export const COMPANY_SPAWN = { x: 8 * TILE, y: 9.5 * TILE };
+export const COMPANY_DESKS: Rect[] = [t(3, 4, 4, 2), t(9, 4, 4, 2)];
 export const COMPANY_BLOCKERS: Rect[] = [
   t(0, 0, COMPANY_COLS, 2), // Back wall with whiteboard, monitors, etc.
-  t(3, 4, 10, 2), // The long conference table with sleeping employees
+  ...COMPANY_DESKS, // Two workstation islands; center aisle stays open.
   t(1, 1, 2, 2), // Server rack in top-left corner
   t(13, 1, 2, 2), // Coffee & water station in top-right corner
   t(0, 0, 1, COMPANY_ROWS), // Left wall
