@@ -29,6 +29,7 @@ export const DEFAULT_TABLE_BOUNDS: TableBounds = {
 };
 
 export type BallType = 'cue' | 'solid' | 'stripe' | '8ball';
+export type BallGroup = 'solid' | 'stripe';
 
 export interface BidaBall {
   id: number;
@@ -59,6 +60,34 @@ export interface AimPrediction {
   cueBallCollisionPoint: { x: number; y: number };
   hitBallId?: number;
   targetBallDirection?: { x: number; y: number };
+  isLegalHit?: boolean;
+}
+
+/** Determines whether a ball belongs to solid (1-7), stripe (9-15), 8ball or cue. */
+export function getBallGroup(ballId: number): BallGroup | '8ball' | 'cue' {
+  if (ballId === 0) return 'cue';
+  if (ballId === 8) return '8ball';
+  return ballId >= 1 && ballId <= 7 ? 'solid' : 'stripe';
+}
+
+/** Returns the list of ball IDs that are currently legal targets under 8-ball rules. */
+export function getLegalTargetsForGroup(balls: BidaBall[], assignedGroup: BallGroup | null): number[] {
+  const activeBalls = balls.filter((b) => !b.pocketed && b.id !== 0);
+  if (!assignedGroup) {
+    // Open table: any object ball 1-15 except 8-ball is a primary target.
+    const nonEight = activeBalls.filter((b) => b.id !== 8);
+    return nonEight.length > 0 ? nonEight.map((b) => b.id) : activeBalls.map((b) => b.id);
+  }
+
+  // If group is assigned: player must hit their own group of balls (solids or stripes)
+  const ownBalls = activeBalls.filter((b) => b.type === assignedGroup);
+  if (ownBalls.length > 0) {
+    return ownBalls.map((b) => b.id);
+  }
+
+  // If all player's group balls are pocketed, the 8-ball becomes the legal target!
+  const eightBall = activeBalls.find((b) => b.id === 8);
+  return eightBall ? [8] : [];
 }
 
 export const BALL_COLORS: Record<number, { color: string; type: BallType }> = {
@@ -339,6 +368,7 @@ export function calculateAimPrediction(
   balls: BidaBall[],
   aimAngle: number,
   bounds: TableBounds = DEFAULT_TABLE_BOUNDS,
+  legalTargetIds?: number[],
 ): AimPrediction {
   const dirX = Math.cos(aimAngle);
   const dirY = Math.sin(aimAngle);
@@ -395,11 +425,13 @@ export function calculateAimPrediction(
     const targetDx = hitBall.x - colX;
     const targetDy = hitBall.y - colY;
     const targetDist = Math.hypot(targetDx, targetDy) || 1;
+    const isLegalHit = legalTargetIds ? legalTargetIds.includes(hitBall.id) : true;
 
     return {
       cueBallCollisionPoint: { x: colX, y: colY },
       hitBallId: hitBall.id,
       targetBallDirection: { x: targetDx / targetDist, y: targetDy / targetDist },
+      isLegalHit,
     };
   }
 

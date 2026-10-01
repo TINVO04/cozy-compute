@@ -6,6 +6,8 @@ import {
   createStandard8BallRack,
   createStandardPockets,
   DEFAULT_TABLE_BOUNDS,
+  getBallGroup,
+  getLegalTargetsForGroup,
   resetCueBallInKitchen,
   stepBilliardsPhysics,
   type BidaBall,
@@ -162,5 +164,39 @@ describe('billiards physics & match engine', () => {
 
   it('guarantees bida club entrance spawn point is free and walkable without table collision', () => {
     expect(isWalkable(BIDA_SPAWN.x, BIDA_SPAWN.y, BIDA_BLOCKERS)).toBe(true);
+  });
+
+  it('correctly classifies ball groups into solids (1-7), stripes (9-15), 8ball and cue', () => {
+    expect(getBallGroup(0)).toBe('cue');
+    expect(getBallGroup(1)).toBe('solid');
+    expect(getBallGroup(7)).toBe('solid');
+    expect(getBallGroup(8)).toBe('8ball');
+    expect(getBallGroup(9)).toBe('stripe');
+    expect(getBallGroup(15)).toBe('stripe');
+  });
+
+  it('determines legal 8-ball target balls for open table, assigned group, and 8-ball phase', () => {
+    const balls = createStandard8BallRack(DEFAULT_TABLE_BOUNDS);
+
+    // Open table (null group): legal targets are all object balls 1-15 except 8-ball
+    const openTargets = getLegalTargetsForGroup(balls, null);
+    expect(openTargets).toHaveLength(14);
+    expect(openTargets).not.toContain(0);
+    expect(openTargets).not.toContain(8);
+
+    // Player assigned solids: legal targets are balls 1-7
+    const solidTargets = getLegalTargetsForGroup(balls, 'solid');
+    expect(solidTargets).toEqual([1, 2, 3, 4, 5, 6, 7]);
+
+    // Player assigned stripes: legal targets are balls 9-15
+    const stripeTargets = getLegalTargetsForGroup(balls, 'stripe');
+    expect(stripeTargets).toEqual([9, 10, 11, 12, 13, 14, 15]);
+
+    // Once all solids are pocketed, legal target becomes the 8-ball!
+    balls.forEach((b) => {
+      if (b.type === 'solid') b.pocketed = true;
+    });
+    const finalSolidTargets = getLegalTargetsForGroup(balls, 'solid');
+    expect(finalSolidTargets).toEqual([8]);
   });
 });

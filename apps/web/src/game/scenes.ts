@@ -1385,9 +1385,10 @@ export class BidaScene extends InteriorScene {
   protected buildWorld() {
     // 1. CLB Bida H2S interior texture
     const texKey = 'bida:interior';
-    if (!this.textures.exists(texKey)) {
-      this.textures.addCanvas(texKey, paintBidaInterior());
+    if (this.textures.exists(texKey)) {
+      this.textures.remove(texKey);
     }
+    this.textures.addCanvas(texKey, paintBidaInterior());
     this.add.image(0, 0, texKey).setOrigin(0).setDepth(-10);
 
     // 2. Interactive Bida NPCs (Anh Tuấn, Minh Long, Huy Trọng Tài)

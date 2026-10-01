@@ -1,12 +1,15 @@
 import {
+  BALL_COLORS,
   BALL_RADIUS,
   calculateAimPrediction,
   createCaromRack,
   createStandard8BallRack,
   createStandardPockets,
   DEFAULT_TABLE_BOUNDS,
+  getLegalTargetsForGroup,
   resetCueBallInKitchen,
   stepBilliardsPhysics,
+  type BallGroup,
   type BidaBall,
 } from '@cozy/game-data';
 import { ChevronLeft, Play, RefreshCw, X, Zap } from 'lucide-react';
@@ -50,6 +53,8 @@ interface ActiveMatch {
   winnerName?: string;
   isAi?: boolean;
   isLocal2P?: boolean;
+  hostGroup?: BallGroup;
+  guestGroup?: BallGroup;
 }
 
 const DEFAULT_CLUB_TABLES: TableSummary[] = [
@@ -92,6 +97,35 @@ const DEFAULT_CLUB_TABLES: TableSummary[] = [
     isAi: true,
   },
 ];
+
+function MiniBallBadge({ num, pocketed }: { num: number; pocketed: boolean }) {
+  const info = BALL_COLORS[num] ?? { color: '#ffffff', type: 'solid' };
+  const isStripe = info.type === 'stripe';
+  return (
+    <span
+      key={num}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 18,
+        height: 18,
+        borderRadius: '50%',
+        backgroundColor: info.color,
+        border: isStripe ? '2px dashed #ffffff' : '1px solid #ffffff',
+        color: num === 1 || num === 9 ? '#000000' : '#ffffff',
+        fontSize: 9,
+        fontWeight: 800,
+        opacity: pocketed ? 0.25 : 1,
+        filter: pocketed ? 'grayscale(80%)' : 'none',
+        lineHeight: 1,
+      }}
+      title={`Bi ${num} (${info.type === 'solid' ? 'Trơn' : 'Khoang'})${pocketed ? ' - Đã vào lỗ' : ' - Còn trên bàn'}`}
+    >
+      {num}
+    </span>
+  );
+}
 
 export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void }) {
   const [serverTables, setServerTables] = useState<TableSummary[]>([]);
@@ -161,6 +195,8 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
       scores: { score1: number; score2: number };
       scratch: boolean;
       balls: BidaBall[];
+      hostGroup?: BallGroup;
+      guestGroup?: BallGroup;
     }>('bida:turn_changed', (msg) => {
       if (activeMatchRef.current) {
         setActiveMatch({
@@ -169,6 +205,8 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
           score1: msg.scores.score1,
           score2: msg.scores.score2,
           balls: msg.balls,
+          hostGroup: msg.hostGroup ?? activeMatchRef.current.hostGroup,
+          guestGroup: msg.guestGroup ?? activeMatchRef.current.guestGroup,
         });
       }
       ballsRef.current = msg.balls;
@@ -252,9 +290,13 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
       const cue = ballsRef.current.find((b) => b.id === 0);
       if (!cue) return;
 
-      const candidates = ballsRef.current.filter((b) => b.id > 0 && !b.pocketed && b.id !== 8);
-      const pool =
-        candidates.length > 0 ? candidates : ballsRef.current.filter((b) => b.id === 8 && !b.pocketed);
+      const aiGroup = activeMatch.guestGroup;
+      const legalTargetIds =
+        activeMatch.mode === '8ball'
+          ? getLegalTargetsForGroup(ballsRef.current, aiGroup ?? null)
+          : ballsRef.current.filter((b) => b.id > 0 && !b.pocketed).map((b) => b.id);
+
+      const pool = ballsRef.current.filter((b) => !b.pocketed && legalTargetIds.includes(b.id));
       if (pool.length === 0) return;
 
       const firstTarget = pool[0];
@@ -434,31 +476,56 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
           else nextScore2 += pocketedThisShot.length;
         }
 
+        // 8-Ball group assignment upon first pocketed legal object ball
+        let nextHostGroup = match.hostGroup;
+        let nextGuestGroup = match.guestGroup;
+        if (match.mode === '8ball' && !nextHostGroup && pocketedThisShot.length > 0) {
+          const firstObjId = pocketedThisShot.find((id) => id > 0 && id !== 8);
+          if (firstObjId) {
+            const isSolid = firstObjId <= 7;
+            const shooterGroup: BallGroup = isSolid ? 'solid' : 'stripe';
+            const oppGroup: BallGroup = isSolid ? 'stripe' : 'solid';
+            const isHostTurn = match.isLocal2P ? match.turn === 'p1' : match.turn === 'me';
+            if (isHostTurn) {
+              nextHostGroup = shooterGroup;
+              nextGuestGroup = oppGroup;
+            } else {
+              nextGuestGroup = shooterGroup;
+              nextHostGroup = oppGroup;
+            }
+          }
+        }
+
+        const isHostShooter = match.isLocal2P ? match.turn === 'p1' : match.turn === 'me';
+        const currentShooterGroup = isHostShooter ? nextHostGroup : nextGuestGroup;
+
         if (eightBallPocketed) {
-          const remaining = balls.filter((b) => b.id > 0 && b.id !== 8 && !b.pocketed).length;
+          const remainingOwn = currentShooterGroup
+            ? balls.filter((b) => b.type === currentShooterGroup && !b.pocketed).length
+            : 999;
           let winnerName = '';
           let winnerId = '';
           let reason = '';
 
-          if (remaining > 0 || scratch) {
+          if (remainingOwn > 0 || scratch || !currentShooterGroup) {
             if (match.isLocal2P) {
               winnerId = match.turn === 'p1' ? 'p2' : 'p1';
               winnerName = match.turn === 'p1' ? 'Cơ Thủ 2' : 'Cơ Thủ 1';
-              reason = `${match.turn === 'p1' ? 'Cơ Thủ 1' : 'Cơ Thủ 2'} làm rơi bi số 8 khi chưa dọn sạch bàn! ${winnerName} chiến thắng!`;
+              reason = `${match.turn === 'p1' ? 'Cơ Thủ 1' : 'Cơ Thủ 2'} làm rơi bi số 8 khi chưa dọn sạch nhóm bi của mình! ${winnerName} chiến thắng!`;
             } else {
               winnerId = match.turn === 'me' ? 'ai' : 'me';
               winnerName = match.turn === 'me' ? match.guestName || 'Đối thủ' : me.displayName;
-              reason = `Làm rơi bi số 8 khi chưa dọn sạch bàn! ${winnerName} chiến thắng!`;
+              reason = `Làm rơi bi số 8 khi chưa dọn sạch nhóm bi của mình! ${winnerName} chiến thắng!`;
             }
           } else {
             if (match.isLocal2P) {
               winnerId = match.turn;
               winnerName = match.turn === 'p1' ? 'Cơ Thủ 1' : 'Cơ Thủ 2';
-              reason = `${winnerName} xuất sắc dọn sạch bàn và đưa bi số 8 vào lỗ thành công!`;
+              reason = `${winnerName} xuất sắc dọn sạch toàn bộ nhóm bi và đưa bi số 8 vào lỗ thành công!`;
             } else {
               winnerId = match.turn;
               winnerName = match.turn === 'me' ? me.displayName : match.guestName || 'Đối thủ';
-              reason = `${winnerName} xuất sắc dọn sạch bàn và đưa bi số 8 vào lỗ thành công!`;
+              reason = `${winnerName} xuất sắc dọn sạch toàn bộ nhóm bi và đưa bi số 8 vào lỗ thành công!`;
             }
           }
 
@@ -468,15 +535,26 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
           return;
         }
 
+        // Determine if shooter legally pocketed own ball
+        let legallyPocketedOwn = false;
+        if (currentShooterGroup) {
+          legallyPocketedOwn = pocketedThisShot.some((id) => {
+            const b = balls.find((ball) => ball.id === id);
+            return b?.type === currentShooterGroup;
+          });
+        } else {
+          legallyPocketedOwn = pocketedThisShot.some((id) => id > 0 && id !== 8);
+        }
+
         let nextTurn = match.turn;
         if (match.mode === 'practice') {
           nextTurn = 'me';
         } else if (match.isLocal2P) {
-          if (scratch || pocketedThisShot.length === 0) {
+          if (scratch || !legallyPocketedOwn) {
             nextTurn = match.turn === 'p1' ? 'p2' : 'p1';
           }
         } else if (match.isAi) {
-          if (scratch || pocketedThisShot.length === 0) {
+          if (scratch || !legallyPocketedOwn) {
             nextTurn = match.turn === 'me' ? 'ai' : 'me';
           }
         }
@@ -487,6 +565,8 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
           score1: nextScore1,
           score2: nextScore2,
           balls: balls.map((b) => ({ ...b })),
+          hostGroup: nextHostGroup,
+          guestGroup: nextGuestGroup,
         });
         setIsSimulating(false);
       }
@@ -571,6 +651,16 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
       }
     }
 
+    const isHostTurn = activeMatch?.isLocal2P ? activeMatch.turn === 'p1' : isMyTurn;
+    const currentShooterGroup = isHostTurn ? activeMatch?.hostGroup : activeMatch?.guestGroup;
+
+    const legalTargetIds =
+      activeMatch?.mode === '8ball'
+        ? getLegalTargetsForGroup(balls, currentShooterGroup ?? null)
+        : activeMatch?.mode === 'carom'
+          ? [1, 2]
+          : balls.filter((b) => b.id > 0).map((b) => b.id);
+
     for (const b of balls) {
       if (b.pocketed) continue;
 
@@ -599,12 +689,27 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(String(b.number), b.x, b.y + 0.5);
+
+        // Highlight legal target balls with glowing aura
+        if (legalTargetIds.includes(b.id) && isMyTurn && !isSimulating) {
+          ctx.strokeStyle = '#facc15';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, BALL_RADIUS + 3.5, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.strokeStyle = 'rgba(250, 204, 21, 0.35)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, BALL_RADIUS + 5.5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
       }
     }
 
     const cueBall = balls.find((b) => b.id === 0);
     if (cueBall && !cueBall.pocketed && !isSimulating) {
-      const pred = calculateAimPrediction(cueBall, balls, aimAngle, bounds);
+      const pred = calculateAimPrediction(cueBall, balls, aimAngle, bounds, legalTargetIds);
 
       ctx.strokeStyle = 'rgba(254, 240, 138, 0.85)';
       ctx.lineWidth = 1.5;
@@ -624,12 +729,47 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
       if (pred.targetBallDirection) {
         const tx = pred.cueBallCollisionPoint.x;
         const ty = pred.cueBallCollisionPoint.y;
-        ctx.strokeStyle = '#22c55e';
+        ctx.strokeStyle = pred.isLegalHit ? '#22c55e' : '#ef4444';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(tx, ty);
         ctx.lineTo(tx + pred.targetBallDirection.x * 45, ty + pred.targetBallDirection.y * 45);
         ctx.stroke();
+      }
+
+      if (pred.hitBallId !== undefined) {
+        const hitBall = balls.find((b) => b.id === pred.hitBallId);
+        if (hitBall) {
+          const isLegal = pred.isLegalHit;
+          const groupName =
+            hitBall.id === 8
+              ? 'Bi 8 Đen'
+              : hitBall.type === 'solid'
+                ? `Bi ${hitBall.number} (Trơn)`
+                : `Bi ${hitBall.number} (Khoang)`;
+          const text = isLegal ? `🎯 ${groupName} · Hợp lệ` : `⚠️ ${groupName} · Không hợp lệ!`;
+
+          ctx.font = '700 10px sans-serif';
+          ctx.textAlign = 'center';
+          const tw = ctx.measureText(text).width;
+          const bx = Math.min(
+            bounds.cushionRight - tw / 2 - 8,
+            Math.max(bounds.cushionLeft + tw / 2 + 8, pred.cueBallCollisionPoint.x),
+          );
+          const by =
+            pred.cueBallCollisionPoint.y < bounds.cushionTop + 45
+              ? pred.cueBallCollisionPoint.y + 26
+              : pred.cueBallCollisionPoint.y - 22;
+
+          ctx.fillStyle = isLegal ? 'rgba(6, 78, 59, 0.95)' : 'rgba(153, 27, 27, 0.95)';
+          ctx.strokeStyle = isLegal ? '#34d399' : '#f87171';
+          ctx.lineWidth = 1;
+          ctx.fillRect(bx - tw / 2 - 6, by - 9, tw + 12, 18);
+          ctx.strokeRect(bx - tw / 2 - 6, by - 9, tw + 12, 18);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(text, bx, by + 3.5);
+        }
       }
 
       const cueDist = 18 + (power / 100) * 55;
@@ -741,6 +881,8 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
       balls: isCarom ? createCaromRack() : createStandard8BallRack(),
       isAi,
       isLocal2P: is2P,
+      hostGroup: undefined,
+      guestGroup: undefined,
     };
 
     ballsRef.current = match.balls;
@@ -768,6 +910,8 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
         balls: isCarom ? createCaromRack() : createStandard8BallRack(),
         isAi: tbl.isAi ?? false,
         isLocal2P: tbl.isLocal2P ?? false,
+        hostGroup: undefined,
+        guestGroup: undefined,
       };
 
       ballsRef.current = match.balls;
@@ -796,6 +940,8 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
         turn: activeMatch.isLocal2P ? 'p1' : 'me',
         winner: undefined,
         winnerName: undefined,
+        hostGroup: undefined,
+        guestGroup: undefined,
       });
       setWinModal(null);
       return;
@@ -1027,17 +1173,125 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
                   </div>
                 </div>
 
-                <div className="row" style={{ gap: 20 }}>
-                  <div className="row" style={{ gap: 8 }}>
-                    <span style={{ fontWeight: 700, color: '#38bdf8' }}>{activeMatch.hostName}:</span>
-                    <span style={{ fontSize: 18, fontWeight: 900 }}>{activeMatch.score1}</span>
+                <div className="row" style={{ gap: 20, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                    <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+                      <span style={{ fontWeight: 800, color: '#38bdf8' }}>{activeMatch.hostName}:</span>
+                      <span style={{ fontSize: 18, fontWeight: 900 }}>{activeMatch.score1}</span>
+                      {activeMatch.mode === '8ball' ? (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            fontWeight: 700,
+                            background:
+                              activeMatch.hostGroup === 'solid'
+                                ? 'rgba(250, 204, 21, 0.2)'
+                                : activeMatch.hostGroup === 'stripe'
+                                  ? 'rgba(168, 85, 247, 0.2)'
+                                  : 'rgba(255, 255, 255, 0.1)',
+                            color:
+                              activeMatch.hostGroup === 'solid'
+                                ? '#facc15'
+                                : activeMatch.hostGroup === 'stripe'
+                                  ? '#c084fc'
+                                  : '#a1a1aa',
+                            border: '1px solid currentColor',
+                          }}
+                        >
+                          {activeMatch.hostGroup === 'solid'
+                            ? '🟡 Bi Trơn (1-7)'
+                            : activeMatch.hostGroup === 'stripe'
+                              ? '🟣 Bi Khoang (9-15)'
+                              : '⚪ Bàn Mở'}
+                        </span>
+                      ) : null}
+                    </div>
+                    {activeMatch.mode === '8ball' && activeMatch.hostGroup ? (
+                      <div className="row" style={{ gap: 3, marginTop: 4 }}>
+                        {(activeMatch.hostGroup === 'solid'
+                          ? [1, 2, 3, 4, 5, 6, 7]
+                          : [9, 10, 11, 12, 13, 14, 15]
+                        ).map((n) => (
+                          <MiniBallBadge
+                            key={n}
+                            num={n}
+                            pocketed={Boolean(activeMatch.balls.find((b) => b.number === n)?.pocketed)}
+                          />
+                        ))}
+                        {(activeMatch.hostGroup === 'solid'
+                          ? [1, 2, 3, 4, 5, 6, 7]
+                          : [9, 10, 11, 12, 13, 14, 15]
+                        ).every((n) => activeMatch.balls.find((b) => b.number === n)?.pocketed) ? (
+                          <span style={{ fontSize: 11, color: '#facc15', fontWeight: 800, marginLeft: 4 }}>
+                            🎱 ĂN BI 8!
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
-                  <span style={{ color: '#71717a' }}>VS</span>
-                  <div className="row" style={{ gap: 8 }}>
-                    <span style={{ fontWeight: 700, color: '#f43f5e' }}>
-                      {activeMatch.guestName ?? 'Chờ khách…'}:
-                    </span>
-                    <span style={{ fontSize: 18, fontWeight: 900 }}>{activeMatch.score2}</span>
+
+                  <span style={{ color: '#71717a', fontWeight: 900 }}>VS</span>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                    <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+                      <span style={{ fontWeight: 800, color: '#f43f5e' }}>
+                        {activeMatch.guestName ?? 'Chờ khách…'}:
+                      </span>
+                      <span style={{ fontSize: 18, fontWeight: 900 }}>{activeMatch.score2}</span>
+                      {activeMatch.mode === '8ball' ? (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            fontWeight: 700,
+                            background:
+                              activeMatch.guestGroup === 'solid'
+                                ? 'rgba(250, 204, 21, 0.2)'
+                                : activeMatch.guestGroup === 'stripe'
+                                  ? 'rgba(168, 85, 247, 0.2)'
+                                  : 'rgba(255, 255, 255, 0.1)',
+                            color:
+                              activeMatch.guestGroup === 'solid'
+                                ? '#facc15'
+                                : activeMatch.guestGroup === 'stripe'
+                                  ? '#c084fc'
+                                  : '#a1a1aa',
+                            border: '1px solid currentColor',
+                          }}
+                        >
+                          {activeMatch.guestGroup === 'solid'
+                            ? '🟡 Bi Trơn (1-7)'
+                            : activeMatch.guestGroup === 'stripe'
+                              ? '🟣 Bi Khoang (9-15)'
+                              : '⚪ Bàn Mở'}
+                        </span>
+                      ) : null}
+                    </div>
+                    {activeMatch.mode === '8ball' && activeMatch.guestGroup ? (
+                      <div className="row" style={{ gap: 3, marginTop: 4 }}>
+                        {(activeMatch.guestGroup === 'solid'
+                          ? [1, 2, 3, 4, 5, 6, 7]
+                          : [9, 10, 11, 12, 13, 14, 15]
+                        ).map((n) => (
+                          <MiniBallBadge
+                            key={n}
+                            num={n}
+                            pocketed={Boolean(activeMatch.balls.find((b) => b.number === n)?.pocketed)}
+                          />
+                        ))}
+                        {(activeMatch.guestGroup === 'solid'
+                          ? [1, 2, 3, 4, 5, 6, 7]
+                          : [9, 10, 11, 12, 13, 14, 15]
+                        ).every((n) => activeMatch.balls.find((b) => b.number === n)?.pocketed) ? (
+                          <span style={{ fontSize: 11, color: '#facc15', fontWeight: 800, marginLeft: 4 }}>
+                            🎱 ĂN BI 8!
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
@@ -1046,41 +1300,100 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
                 </Button>
               </div>
 
-              <div
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: 6,
-                  marginBottom: 10,
-                  textAlign: 'center',
-                  fontWeight: 700,
-                  fontSize: 13,
-                  background: activeMatch.isLocal2P
-                    ? activeMatch.turn === 'p1'
-                      ? 'rgba(16, 185, 129, 0.25)'
-                      : 'rgba(59, 130, 246, 0.25)'
-                    : isMyTurn
-                      ? 'rgba(16, 185, 129, 0.25)'
-                      : 'rgba(234, 179, 8, 0.25)',
-                  color: activeMatch.isLocal2P
-                    ? activeMatch.turn === 'p1'
-                      ? '#34d399'
-                      : '#60a5fa'
-                    : isMyTurn
-                      ? '#34d399'
-                      : '#facc15',
-                  border: '1px solid currentColor',
-                }}
-              >
-                {activeMatch.isLocal2P
+              {(() => {
+                const isHostTurn = activeMatch.isLocal2P ? activeMatch.turn === 'p1' : isMyTurn;
+                const currentTurnGroup = isHostTurn ? activeMatch.hostGroup : activeMatch.guestGroup;
+                const currentTargetBalls =
+                  currentTurnGroup === 'solid'
+                    ? [1, 2, 3, 4, 5, 6, 7]
+                    : currentTurnGroup === 'stripe'
+                      ? [9, 10, 11, 12, 13, 14, 15]
+                      : [];
+                const remainingTargetCount = currentTargetBalls.filter(
+                  (num) => !activeMatch.balls.find((b) => b.number === num)?.pocketed,
+                ).length;
+                const currentShooterName = activeMatch.isLocal2P
                   ? activeMatch.turn === 'p1'
-                    ? '🟢 LƯỢT CỦA CƠ THỦ 1 (Cầm cơ) — Rê chuột ngắm bi, giữ Space để đánh!'
-                    : '🔵 LƯỢT CỦA CƠ THỦ 2 (Cầm cơ) — Rê chuột ngắm bi, giữ Space để đánh!'
-                  : activeMatch.isAi && activeMatch.turn === 'ai'
-                    ? '🤖 ĐỐI THỦ ĐANG TÍNH TOÁN ĐƯỜNG CƠ (Vui lòng đợi)...'
-                    : isMyTurn
-                      ? '👉 LƯỢT CỦA BẠN (CẦM CƠ) — Rê chuột ngắm bi, kéo chuột hoặc giữ Space để nạp lực đánh!'
-                      : '⏳ ĐANG CHỜ ĐỐI THỦ ĐÁNH...'}
-              </div>
+                    ? 'Cơ Thủ 1'
+                    : 'Cơ Thủ 2'
+                  : isMyTurn
+                    ? 'Bạn'
+                    : (activeMatch.guestName ?? 'Đối thủ');
+
+                return (
+                  <div
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: 6,
+                      marginBottom: 10,
+                      textAlign: 'center',
+                      background: activeMatch.isLocal2P
+                        ? activeMatch.turn === 'p1'
+                          ? 'rgba(16, 185, 129, 0.2)'
+                          : 'rgba(59, 130, 246, 0.2)'
+                        : isMyTurn
+                          ? 'rgba(16, 185, 129, 0.2)'
+                          : 'rgba(234, 179, 8, 0.2)',
+                      color: activeMatch.isLocal2P
+                        ? activeMatch.turn === 'p1'
+                          ? '#34d399'
+                          : '#60a5fa'
+                        : isMyTurn
+                          ? '#34d399'
+                          : '#facc15',
+                      border: '1px solid currentColor',
+                    }}
+                  >
+                    <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>
+                      {activeMatch.isLocal2P
+                        ? activeMatch.turn === 'p1'
+                          ? '🟢 LƯỢT CƠ THỦ 1 (CẦM CƠ) — Rê chuột ngắm bi, giữ Space để nạp lực!'
+                          : '🔵 LƯỢT CƠ THỦ 2 (CẦM CƠ) — Rê chuột ngắm bi, giữ Space để nạp lực!'
+                        : activeMatch.isAi && activeMatch.turn === 'ai'
+                          ? '🤖 ĐỐI THỦ ĐANG TÍNH ĐƯỜNG CƠ (Vui lòng đợi)...'
+                          : isMyTurn
+                            ? '👉 LƯỢT CỦA BẠN (CẦM CƠ) — Rê chuột ngắm bi, kéo thanh lực hoặc giữ Space để đánh!'
+                            : '⏳ ĐANG CHỜ ĐỐI THỦ ĐÁNH...'}
+                    </div>
+
+                    {activeMatch.mode === '8ball' ? (
+                      <div style={{ fontSize: 12.5, fontWeight: 600 }}>
+                        {!currentTurnGroup ? (
+                          <span style={{ color: '#fef08a' }}>
+                            ⚪ <strong>BÀN MỞ (OPEN TABLE)</strong>: Chưa chọn nhóm bi. Hãy thụt bất kỳ{' '}
+                            <strong>Bi Trơn (1-7)</strong> hoặc <strong>Bi Khoang (9-15)</strong> vào lỗ để
+                            nhận nhóm! (Tránh bi 8 đen)
+                          </span>
+                        ) : remainingTargetCount > 0 ? (
+                          <span>
+                            🎯 Mục tiêu cần thụt của {currentShooterName}:{' '}
+                            <strong style={{ color: currentTurnGroup === 'solid' ? '#facc15' : '#c084fc' }}>
+                              {currentTurnGroup === 'solid'
+                                ? 'BI TRƠN (Số 1 đến 7)'
+                                : 'BI KHOANG (Số 9 đến 15)'}
+                            </strong>{' '}
+                            · Còn <strong>{remainingTargetCount} bi</strong> (Viền vàng sáng trên bàn) trước
+                            khi được ăn Bi Số 8!
+                          </span>
+                        ) : (
+                          <span style={{ color: '#4ade80' }}>
+                            🔥 <strong>ĐÃ DỌN SẠCH NHÓM BI!</strong> Mục tiêu tối thượng hiện tại:{' '}
+                            <strong style={{ color: '#facc15' }}>
+                              THỤT BI SỐ 8 (ĐEN) VÀO LỖ ĐỂ CHIẾN THẮNG! 🎱
+                            </strong>
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 12, color: '#e2e8f0' }}>
+                        {activeMatch.mode === 'carom'
+                          ? '🔴 Luật Carom 3 Băng: Đánh bi chủ chạm 2 bi mục tiêu và các mặt băng để ghi điểm'
+                          : '🎯 Luyện tập tự do không giới hạn'}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
                 <canvas
