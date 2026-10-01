@@ -506,5 +506,65 @@
       "toolAction": "Generating sunfish mola image",
       "toolSummary": "Sunfish mola generation"
     }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "sunfish_mola",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Grey-blue ocean sunfish, tall disk-shaped body, blunt head, tall dorsal and anal fins and rounded truncated clavus instead of a normal tail.\nExisting game identity (preserve relevant visual details): Tròn xoe phẳng lì như cái thớt khổng lồ, thích nằm ngửa tắm nắng với gương mặt ngơ ngác hoàn toàn.",
+      "toolAction": "Generating sunfish mola image",
+      "toolSummary": "Generate sunfish_mola image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "cyber_koi",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Blue-silver koi with metallic overlapping scales and restrained cyan luminous circuit patterns integrated into its scales; keep carp anatomy.\nExisting game identity (preserve relevant visual details): Được nâng cấp bằng bo mạch bán dẫn phát quang neon và bộ vi xử lý lượng tử siêu tốc.",
+      "toolAction": "Generating cyber koi image",
+      "toolSummary": "Generate cyber_koi image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "phoenix_tetra",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Small fiery orange-red tetra, luminous warm scale highlights and flame-shaped translucent fins; recognizable fish with feather-like fin detailing.\nExisting game identity (preserve relevant visual details): Thân hình rực lửa bơi lội dưới lòng nước sâu thẳm mà bộ vảy vẫn bốc cháy kiêu hãnh.",
+      "toolAction": "Generating phoenix tetra image",
+      "toolSummary": "Generate phoenix_tetra image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "ghost_shark",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Pale icy-blue ghostlike shark, softly translucent skin, visible fin structure and restrained spectral glow; complete shark silhouette.\nExisting game identity (preserve relevant visual details): Thân hình bán trong suốt phát ra ánh sáng huỳnh quang mờ ảo trong những đêm sương mù giăng kín.",
+      "toolAction": "Generating ghost shark image",
+      "toolSummary": "Generate ghost_shark image"
+    }
   }
 ]

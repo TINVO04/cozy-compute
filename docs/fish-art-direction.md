@@ -33,7 +33,7 @@ These signatures are prompt requirements, not a claim that anatomy or every gene
 
 ## Asset pipeline and current completion
 
-The catalog contains 63 collectibles: 55 original species plus eight higher-tier variants. Dedicated rendered bitmap coverage is 57/63: the three preserved style references plus 54 generated images. All 11 legendary species and all eight higher-tier variants have individual artwork. Six original species still use temporary Canvas fallbacks: sunfish_mola, cyber_koi, phoenix_tetra, ghost_shark, beluga_whale and narwhal. The fallback is functional but does not count as completed rendered art.
+The catalog contains 63 collectibles: 55 original species plus eight higher-tier variants. Dedicated rendered bitmap coverage is 60/63: the three preserved style references plus 57 generated images. All 11 legendary species and all eight higher-tier variants have individual artwork. Three original species still use temporary Canvas fallbacks: ghost_shark, beluga_whale and narwhal. The fallback is functional but does not count as completed rendered art.
 
 The shared loader in apps/web/src/art/fish-assets.ts refreshes subscribers as images arrive. Canvas caches include each species revision, so a loading fallback cannot become permanent. Admin previews, backpack icons, trophy canvases and held fish use the same source with its actual aspect ratio. Rendered world textures use linear sampling; town pixel art retains its existing sampling.
 
@@ -68,7 +68,7 @@ The resumed AGY session on 2026-10-01 successfully generated 13 new assets: all 
 
 The subsequent sunfish_mola request returned HTTP 429 RESOURCE_EXHAUSTED / QUOTA_EXHAUSTED for gemini-3.1-flash-image at approximately 19:10 Asia/Saigon. Raw error metadata estimates reset at 2026-10-01T17:02:01Z, or 00:02:01 on 2026-10-02 Asia/Saigon. This is a provider estimate, not a guaranteed recovery time. No retries or account/model switches were made after this error. Sanitized metadata is in output/imagegen/agy-session/quota-recheck.json.
 
-Remaining jobs and full production prompts are preserved in output/imagegen/agy-session/remaining-jobs.json and docs/fish-render-prompts.json. Dedicated art remains pending for those six species; available AGY chat-token quota does not establish availability of its image-generation service.
+Remaining jobs and full production prompts are preserved in output/imagegen/agy-session/remaining-jobs.json and docs/fish-render-prompts.json. Dedicated art remains pending for those three species; available AGY chat-token quota does not establish availability of its image-generation service.
 
 The continuation's final AGY visual review passed all 13 new assets after a targeted alpha cleanup removed a trapped backdrop triangle between the left tentacle arches of kraken_eclipse. The cleanup is reproducible in the installer and preserves the jade mantle and tentacle edges. Project format, lint, typecheck and unit-test gates passed; all 13 fish-art/fishing browser scenarios passed. Four asset-content and framing scenarios passed again after the Kraken cleanup.
 
@@ -80,3 +80,11 @@ The continuation's final AGY visual review passed all 13 new assets after a targ
 - [Humpback whale](https://en.wikipedia.org/wiki/Humpback_whale): long pectoral fins and head tubercles.
 
 References inform anatomy; no third-party artwork was reused. Fictional details originate from the game's species descriptions.
+
+## Latest account-switch continuation
+
+After the user switched the AGY account at approximately 19:30 Asia/Saigon on 2026-10-01, three additional image requests succeeded: sunfish_mola, cyber_koi and phoenix_tetra. Their dedicated transparent WebPs are installed and registered with actual dimensions. AGY now has 29 saved outputs across sessions, including the initial Betta; continuation bookkeeping is 28/31 with three remaining. The exact four tool calls from session 4663bf24-a822-438a-8da1-31cdacfd49a3 are preserved in actual-image-prompts.json.
+
+The fourth request, ghost_shark, returned HTTP 429 RESOURCE_EXHAUSTED / QUOTA_EXHAUSTED for gemini-3.1-flash-image. The verified raw error estimates reset at 2026-10-01T17:30:16Z, or 00:30:16 on 2026-10-02 Asia/Saigon. This remains a provider estimate. No additional image-generation calls were sent after the error. Current pending jobs are ghost_shark, beluga_whale and narwhal, preserved with full prompts in remaining-jobs.json.
+
+The three new assets passed AGY visual review against the raw sources, the style anchors and the rebuilt dark board, recorded in output/imagegen/agy-session/visual-review-final-three.md. No matting correction was required. The phoenix tetra has a deeper fantasy silhouette than a wild neon tetra, which the review accepts as a collectible interpretation. Lint, typecheck, unit tests and all eight fish-art browser scenarios passed after integration.

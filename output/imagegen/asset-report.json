@@ -592,5 +592,38 @@
     "width": 768,
     "height": 350,
     "bytes": 61292
+  },
+  {
+    "species": "sunfish_mola",
+    "source": "output/imagegen/agy-session/sunfish_mola-reference-1.jpg",
+    "asset": "apps/web/public/fish/sunfish_mola-render.webp",
+    "raw_size": [1024, 1024],
+    "raw_bbox": [82, 29, 944, 995],
+    "raw_margin": 29,
+    "width": 690,
+    "height": 768,
+    "bytes": 83126
+  },
+  {
+    "species": "cyber_koi",
+    "source": "output/imagegen/agy-session/cyber_koi-reference-1.jpg",
+    "asset": "apps/web/public/fish/cyber_koi-render.webp",
+    "raw_size": [1024, 1024],
+    "raw_bbox": [67, 184, 979, 802],
+    "raw_margin": 45,
+    "width": 768,
+    "height": 536,
+    "bytes": 99366
+  },
+  {
+    "species": "phoenix_tetra",
+    "source": "output/imagegen/agy-session/phoenix_tetra-reference-1.jpg",
+    "asset": "apps/web/public/fish/phoenix_tetra-render.webp",
+    "raw_size": [1024, 1024],
+    "raw_bbox": [78, 91, 964, 879],
+    "raw_margin": 60,
+    "width": 768,
+    "height": 688,
+    "bytes": 109924
   }
 ]

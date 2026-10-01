@@ -1,5 +1,5 @@
 {
-  "status": "57/63 rendered fish assets installed; 6 pending",
+  "status": "60/63 rendered fish assets installed; 3 pending",
   "mode": "User-authorized Gemini HTTP generation and AGY built-in GenerateImage continuation",
   "proposed_model": "gemini-3.1-flash-image",
   "size": "Provider-selected; actual test sizes recorded in output/imagegen/gemini-test/reference-test-report.json",
@@ -400,7 +400,8 @@
       "description": "Tròn xoe phẳng lì như cái thớt khổng lồ, thích nằm ngửa tắm nắng với gương mặt ngơ ngác hoàn toàn.",
       "subject": "Grey-blue ocean sunfish, tall disk-shaped body, blunt head, tall dorsal and anal fins and rounded truncated clavus instead of a normal tail.",
       "prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Grey-blue ocean sunfish, tall disk-shaped body, blunt head, tall dorsal and anal fins and rounded truncated clavus instead of a normal tail.\nExisting game identity (preserve relevant visual details): Tròn xoe phẳng lì như cái thớt khổng lồ, thích nằm ngửa tắm nắng với gương mặt ngơ ngác hoàn toàn.",
-      "output": "apps/web/public/fish/sunfish_mola-render.webp"
+      "output": "apps/web/public/fish/sunfish_mola-render.webp",
+      "generation_route": "AGY built-in generate_image with all three style references"
     },
     {
       "id": "cyber_koi",
@@ -410,7 +411,8 @@
       "description": "Được nâng cấp bằng bo mạch bán dẫn phát quang neon và bộ vi xử lý lượng tử siêu tốc.",
       "subject": "Blue-silver koi with metallic overlapping scales and restrained cyan luminous circuit patterns integrated into its scales; keep carp anatomy.",
       "prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Blue-silver koi with metallic overlapping scales and restrained cyan luminous circuit patterns integrated into its scales; keep carp anatomy.\nExisting game identity (preserve relevant visual details): Được nâng cấp bằng bo mạch bán dẫn phát quang neon và bộ vi xử lý lượng tử siêu tốc.",
-      "output": "apps/web/public/fish/cyber_koi-render.webp"
+      "output": "apps/web/public/fish/cyber_koi-render.webp",
+      "generation_route": "AGY built-in generate_image with all three style references"
     },
     {
       "id": "phoenix_tetra",
@@ -420,7 +422,8 @@
       "description": "Thân hình rực lửa bơi lội dưới lòng nước sâu thẳm mà bộ vảy vẫn bốc cháy kiêu hãnh.",
       "subject": "Small fiery orange-red tetra, luminous warm scale highlights and flame-shaped translucent fins; recognizable fish with feather-like fin detailing.",
       "prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Small fiery orange-red tetra, luminous warm scale highlights and flame-shaped translucent fins; recognizable fish with feather-like fin detailing.\nExisting game identity (preserve relevant visual details): Thân hình rực lửa bơi lội dưới lòng nước sâu thẳm mà bộ vảy vẫn bốc cháy kiêu hãnh.",
-      "output": "apps/web/public/fish/phoenix_tetra-render.webp"
+      "output": "apps/web/public/fish/phoenix_tetra-render.webp",
+      "generation_route": "AGY built-in generate_image with all three style references"
     },
     {
       "id": "ghost_shark",
@@ -682,6 +685,7 @@
     "clownfish",
     "crawfish",
     "crypto_whale",
+    "cyber_koi",
     "disco_trout",
     "disco_trout_diva",
     "dolphin_playful",
@@ -706,6 +710,7 @@
     "office_carp",
     "office_carp_ceo",
     "philosopher_eel",
+    "phoenix_tetra",
     "pink_dolphin",
     "piranha",
     "pufferfish",
@@ -715,12 +720,13 @@
     "snakehead",
     "soggy_boot",
     "sturgeon",
+    "sunfish_mola",
     "swordfish_void",
     "tax_salmon",
     "tilapia",
     "tuna_giant"
   ],
-  "pending_species": ["sunfish_mola", "cyber_koi", "phoenix_tetra", "ghost_shark", "beluga_whale", "narwhal"],
+  "pending_species": ["ghost_shark", "beluga_whale", "narwhal"],
   "quota_reset_utc": "2026-10-01T09:53:24Z",
   "quota_error": "Image generation returns 429 RESOURCE_EXHAUSTED through gateway and native Google endpoints; quota reporting still shows approximately 100 percent available. Reset differs by account; no other model used.",
   "quota_reset_latest_utc": "2026-10-01T10:27:34Z",
@@ -744,6 +750,7 @@
       "betta_fighting",
       "catfish_giant",
       "catfish_noodle",
+      "cyber_koi",
       "disco_trout_diva",
       "dolphin_playful",
       "electric_catfish",
@@ -756,11 +763,13 @@
       "moray_eel",
       "office_carp_ceo",
       "philosopher_eel",
+      "phoenix_tetra",
       "pink_dolphin",
       "piranha",
       "pufferfish_gym",
       "snakehead",
       "sturgeon",
+      "sunfish_mola",
       "swordfish_void",
       "tuna_giant"
     ],
@@ -772,13 +781,13 @@
     "last_error": {
       "code": 429,
       "status": "RESOURCE_EXHAUSTED",
-      "message": "You have exhausted your capacity on this model. Your quota will reset after 4h51m45s.",
+      "message": "You have exhausted your capacity on this model. Your quota will reset after 4h58m8s.",
       "model": "gemini-3.1-flash-image",
       "reason": "QUOTA_EXHAUSTED",
       "domain": "cloudcode-pa.googleapis.com",
-      "quotaResetDelay": "4h51m45.446534571s",
-      "quotaResetTimeStamp": "2026-10-01T17:02:01Z",
-      "retryDelay": "17505.446534571s"
+      "quotaResetDelay": "4h58m8.03323809s",
+      "quotaResetTimeStamp": "2026-10-01T17:30:16Z",
+      "retryDelay": "17888.033238090s"
     }
   },
   "collection_size": 63

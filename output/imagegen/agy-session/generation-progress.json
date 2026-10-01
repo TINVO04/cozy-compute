@@ -2,7 +2,7 @@
   "chat_model": "Gemini 3.8 Flash (High)",
   "image_tool_model": "gemini-3.1-flash-image",
   "total_jobs": 31,
-  "completed_jobs_count": 25,
+  "completed_jobs_count": 28,
   "completed": [
     {
       "id": "betta_fighting",
@@ -159,23 +159,41 @@
       "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516\\alligator_gar_1790856596008.jpg",
       "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/alligator_gar-reference-1.jpg",
       "completed_at": "2026-10-01T12:10:03.897Z"
+    },
+    {
+      "id": "sunfish_mola",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\4663bf24-a822-438a-8da1-31cdacfd49a3\\sunfish_mola_1790857838808.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/sunfish_mola-reference-1.jpg",
+      "completed_at": "2026-10-01T12:30:44.029Z"
+    },
+    {
+      "id": "cyber_koi",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\4663bf24-a822-438a-8da1-31cdacfd49a3\\cyber_koi_1790857868766.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/cyber_koi-reference-1.jpg",
+      "completed_at": "2026-10-01T12:31:17.811Z"
+    },
+    {
+      "id": "phoenix_tetra",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\4663bf24-a822-438a-8da1-31cdacfd49a3\\phoenix_tetra_1790857905770.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/phoenix_tetra-reference-1.jpg",
+      "completed_at": "2026-10-01T12:31:56.460Z"
     }
   ],
+  "remaining_jobs_count": 3,
+  "remaining_ids": ["ghost_shark", "beluga_whale", "narwhal"],
+  "brain_path": "C:/Users/tinvo/.gemini/antigravity-cli/brain/4663bf24-a822-438a-8da1-31cdacfd49a3",
   "last_status": "BLOCKED_QUOTA_EXHAUSTED",
   "quota_reset_info": {
     "code": 429,
     "status": "RESOURCE_EXHAUSTED",
-    "message": "You have exhausted your capacity on this model. Your quota will reset after 4h51m45s.",
+    "message": "You have exhausted your capacity on this model. Your quota will reset after 4h58m8s.",
     "model": "gemini-3.1-flash-image",
     "reason": "QUOTA_EXHAUSTED",
     "domain": "cloudcode-pa.googleapis.com",
-    "quotaResetDelay": "4h51m45.446534571s",
-    "quotaResetTimeStamp": "2026-10-01T17:02:01Z",
-    "retryDelay": "17505.446534571s"
+    "quotaResetDelay": "4h58m8.03323809s",
+    "quotaResetTimeStamp": "2026-10-01T17:30:16Z",
+    "retryDelay": "17888.033238090s"
   },
-  "remaining_jobs_count": 6,
-  "remaining_ids": ["sunfish_mola", "cyber_koi", "phoenix_tetra", "ghost_shark", "beluga_whale", "narwhal"],
-  "failed_job": "sunfish_mola",
-  "failed_at": "2026-10-01T12:10:12Z",
-  "brain_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516"
+  "failed_job": "ghost_shark",
+  "failed_at": "2026-10-01T12:32:05Z"
 }

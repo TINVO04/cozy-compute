@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-10-01T12:10:12Z",
-  "local_timestamp": "2026-10-01T19:10:12+07:00",
-  "test_target": "sunfish_mola",
+  "timestamp": "2026-10-01T12:32:05Z",
+  "local_timestamp": "2026-10-01T19:32:05+07:00",
+  "test_target": "ghost_shark",
   "chat_model": "Gemini 3.8 Flash (High)",
   "image_generation_service": {
     "endpoint_domain": "cloudcode-pa.googleapis.com",
@@ -9,10 +9,10 @@
     "http_code": 429,
     "status": "RESOURCE_EXHAUSTED",
     "reason": "QUOTA_EXHAUSTED",
-    "message": "You have exhausted your capacity on this model. Your quota will reset after 4h51m45s.",
-    "quota_reset_timestamp_utc": "2026-10-01T17:02:01Z",
-    "quota_reset_delay": "4h51m45.446534571s",
-    "retry_delay_seconds": 17505.446534571
+    "message": "You have exhausted your capacity on this model. Your quota will reset after 4h58m8s.",
+    "quota_reset_timestamp_utc": "2026-10-01T17:30:16Z",
+    "quota_reset_delay": "4h58m8.03323809s",
+    "retry_delay_seconds": 17888.03323809
   },
-  "current_brain_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516"
+  "current_brain_path": "C:/Users/tinvo/.gemini/antigravity-cli/brain/4663bf24-a822-438a-8da1-31cdacfd49a3"
 }
