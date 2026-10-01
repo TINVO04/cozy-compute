@@ -42,6 +42,7 @@ import { FishingShopPanel } from './panels/FishingShopPanel';
 import { BackpackPanel } from './panels/BackpackPanel';
 import { FishCompendium } from './panels/FishCompendium';
 import { BidaArenaPanel } from './panels/BidaArenaPanel';
+import { CyberNetPcPanel } from './panels/CyberNetPcPanel';
 import { Sidebar } from './Sidebar';
 import { Brand } from './Brand';
 import { Button, CoinIcon, Spinner } from '../ui/primitives';
@@ -127,6 +128,7 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
           {panel === 'ledger' ? <LedgerPanel onClose={() => setPanel(null)} /> : null}
           {panel === 'fishdex' ? <FishCompendium onClose={() => setPanel(null)} /> : null}
           {panel === 'bida' ? <BidaArenaPanel me={me} onClose={() => setPanel(null)} /> : null}
+          {panel === 'cybernet' ? <CyberNetPcPanel me={me} onClose={() => setPanel(null)} /> : null}
         </main>
         <Sidebar me={me} />
       </div>

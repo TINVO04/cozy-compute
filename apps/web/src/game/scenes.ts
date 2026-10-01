@@ -1631,6 +1631,71 @@ export class CyberNetScene extends InteriorScene {
     if (this.textures.exists(key)) this.textures.remove(key);
     this.textures.addCanvas(key, paintCyberNetInterior());
     this.add.image(0, 0, key).setOrigin(0).setDepth(-10);
+
+    // 1. Ambient Cyberpunk Esports Lighting (Cyan/Neon glow)
+    ensureAtmosphereTextures(this);
+    this.add
+      .image((CYBERNET_COLS * TILE) / 2, (CYBERNET_ROWS * TILE) / 2, 'glow:indoor')
+      .setScale(2.5)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(0x06b6d4)
+      .setAlpha(0.16)
+      .setDepth(2000);
+
+    // 2. Interactive Gaming PC Stations (VIP 01 - VIP 04)
+    const stations = [
+      { name: 'VIP 01', x: 36 + 35, y: 144 + 24 },
+      { name: 'VIP 02', x: 132 + 35, y: 144 + 24 },
+      { name: 'VIP 03', x: 236 + 35, y: 144 + 24 },
+      { name: 'VIP 04', x: 332 + 35, y: 144 + 24 },
+    ];
+
+    for (const st of stations) {
+      // Interactive rectangle for direct mouse click / tap
+      const hit = this.add
+        .rectangle(st.x, st.y, 74, 58, 0x38bdf8, 0.001)
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true });
+      const openStation = () => {
+        play('pop');
+        useUi.getState().setCyberStation(st.name);
+        useUi.getState().setPanel('cybernet');
+        useUi.getState().toast({
+          kind: 'info',
+          title: `🖥️ Máy Trạm ${st.name}`,
+          body: `Đã mở màn hình máy tính Windows 11 trạm ${st.name}!`,
+        });
+      };
+      hit.on('pointerdown', openStation);
+      // Keyboard 'E' proximity interaction right in front of the chair (y: 206)
+      this.interactAt(st.x, 206, `Bật máy ${st.name}`, openStation);
+    }
+
+    // 3. Interactive Cashier & Top-up Counter
+    const cashierHit = this.add.zone(80, 72, 120, 48).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    cashierHit.on('pointerdown', () => {
+      play('coin');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '💳 Quầy Thu Ngân & Nạp Tiền CSM',
+        body: 'Cyber Game HNT Trảng Dài: Nạp 50k tặng 20k, miễn phí đồ uống! Máy Core i7 14700K + RTX 4070.',
+      });
+    });
+    this.interactAt(80, 88, 'Quầy thu ngân', () => cashierHit.emit('pointerdown'));
+
+    // 4. Interactive Pantry, Drinks Fridge & Noodle Bar
+    const pantryHit = this.add.zone(360, 72, 140, 50).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    pantryHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🍜 Bếp Mì & Tủ Sting Ướp Lạnh',
+        body: 'Sting dâu lạnh buốt & mì xào bò thơm phức! Bạn có thể bấm gọi món ngay trên máy tính phòng net.',
+      });
+    });
+    this.interactAt(360, 88, 'Bếp mì & tủ nước', () => pantryHit.emit('pointerdown'));
+
+    // 5. Interactive NPCs
     for (const person of CYBERNET_PEOPLE) {
       const tex = 'cybernet:' + person.id;
       if (!this.textures.exists(tex)) this.textures.addCanvas(tex, drawCyberNetPerson(person));

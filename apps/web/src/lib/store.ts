@@ -16,7 +16,8 @@ export type Panel =
   | 'profile'
   | 'ledger'
   | 'fishdex'
-  | 'bida';
+  | 'bida'
+  | 'cybernet';
 export type Activity = null | 'fishing' | 'delivery' | 'cafe';
 
 export interface Toast {
@@ -59,11 +60,13 @@ interface UiState {
   chat: ChatLine[];
   delivery: DeliveryJob | null;
   inspectUserId: string | null;
+  cyberStation: string | null;
   editingApartment: boolean;
   reducedMotion: boolean;
   muted: boolean;
   myUserId: string | null;
   setPanel: (p: Panel) => void;
+  setCyberStation: (station: string | null) => void;
   setActivity: (a: Activity) => void;
   setZone: (z: ZoneId | null) => void;
   setConnection: (c: UiState['connection']) => void;
@@ -92,6 +95,7 @@ export const useUi = create<UiState>((set) => ({
   chat: [],
   delivery: null,
   inspectUserId: null,
+  cyberStation: null,
   editingApartment: false,
   reducedMotion:
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -103,6 +107,7 @@ export const useUi = create<UiState>((set) => ({
   })(),
   myUserId: null,
   setPanel: (panel) => set({ panel }),
+  setCyberStation: (cyberStation) => set({ cyberStation }),
   setActivity: (activity) => set({ activity }),
   setZone: (zone) => set({ zone }),
   setConnection: (connection) => set({ connection }),
