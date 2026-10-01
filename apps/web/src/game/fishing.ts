@@ -8,6 +8,7 @@ import {
 import type Phaser from 'phaser';
 import { play } from '../lib/sound';
 import { fishNibblePose } from './fishing-motion';
+import { drawOrganicFishShadow } from './fish-shadow';
 
 export interface FishingSessionParams {
   selfX: number;
@@ -50,6 +51,8 @@ export class InWorldFishingController {
     alpha: number;
   }[] = [];
   private flyingFish: Phaser.GameObjects.Image | null = null;
+  private landingFish: Phaser.GameObjects.Graphics | null = null;
+  private landingTween: Phaser.Tweens.Tween | null = null;
 
   // Coordinates
   private rodTipX = 0;
@@ -68,6 +71,7 @@ export class InWorldFishingController {
 
   private isBite = false;
   private isReeling = false;
+  private isLanding = false;
   private playedNibbles = new Set<number>();
   private bobberJitter = 0;
   private rodFlex = 0;
@@ -108,6 +112,7 @@ export class InWorldFishingController {
   /** Puts character into fishing stance facing the water, holding their fishing rod in hand ready to cast */
   holdRodReady(params: { selfX: number; selfY: number; equippedRod?: RodConfig }) {
     this.cleanupVisuals();
+    this.isLanding = false;
     this.active = true;
     this.isReadyOnly = true;
     this.readyRod = params.equippedRod ?? FISHING_RODS['rod_twig']!;
@@ -147,6 +152,7 @@ export class InWorldFishingController {
     this.shadowSpawnedRipple = false;
     this.isBite = false;
     this.isReeling = false;
+    this.isLanding = false;
     this.playedNibbles.clear();
     this.bobberJitter = 0;
     this.rodFlex = 0;
@@ -295,6 +301,7 @@ export class InWorldFishingController {
 
   /** Catch success animation: fish vaults from water into player hands */
   catchSuccess(fishSpeciesId: string, onComplete?: () => void) {
+    this.isLanding = true;
     this.isBite = false;
     this.isReeling = false;
     this.exclamation?.setVisible(false);
@@ -323,6 +330,7 @@ export class InWorldFishingController {
 
     // Parabolic vault arc for flying fish
     const fishGraphic = this.scene.add.graphics().setDepth(endY + 20);
+    this.landingFish = fishGraphic;
     let t = 0;
     const arcTween = this.scene.tweens.addCounter({
       from: 0,
@@ -348,16 +356,20 @@ export class InWorldFishingController {
         }
       },
       onComplete: () => {
+        this.landingTween = null;
+        this.landingFish = null;
         fishGraphic.destroy();
         this.cleanup();
         onComplete?.();
       },
     });
+    this.landingTween = arcTween;
   }
 
   /** Called every frame in TownScene update */
   update(time: number, _delta: number) {
     if (!this.active) return;
+    if (this.isLanding) return;
     if (this.isReadyOnly) {
       this.drawRodOnly(time);
       return;
@@ -812,6 +824,10 @@ export class InWorldFishingController {
   }
 
   cleanupVisuals() {
+    this.landingTween?.remove();
+    this.landingTween = null;
+    this.landingFish?.destroy();
+    this.landingFish = null;
     this.lineGraphics?.destroy();
     this.lineGraphics = null;
     this.shadowGraphics?.destroy();
@@ -831,6 +847,7 @@ export class InWorldFishingController {
 
   cleanup() {
     this.active = false;
+    this.isLanding = false;
     this.isReadyOnly = false;
     this.readyRod = null;
     this.params = null;
@@ -841,135 +858,4 @@ export class InWorldFishingController {
     this.rodGraphics = null;
     this.cleanupVisuals();
   }
-}
-
-/**
- * Renders an organic, biologically contoured aquatic fish shadow with traveling spine wave,
- * flared pectoral fins, forked caudal fin, and realistic underwater lighting/depth shading.
- */
-function drawOrganicFishShadow(
-  g: Phaser.GameObjects.Graphics,
-  cx: number,
-  cy: number,
-  angle: number,
-  time: number,
-  tierCfg: (typeof SHADOW_TIER_CONFIG)[FishShadowTier],
-  fadeAlpha: number,
-  isBite: boolean,
-  isRecoil: boolean,
-) {
-  const len = tierCfg.lengthPx;
-  const wid = tierCfg.widthPx;
-  const wiggleSpeed = tierCfg.wiggleSpeed;
-
-  g.save();
-  g.translateCanvas(cx, cy);
-  g.rotateCanvas(angle);
-
-  // 1. Soft underwater depth blur / shadow beneath the fish
-  g.fillStyle(0x041320, 0.28 * fadeAlpha);
-  g.fillEllipse(-len * 0.05, 3.5, len * 1.05, wid * 0.95);
-
-  // 2. High Tier Radiant Aura (Apex / Mythic / Crown)
-  if (tierCfg.hasGlow || tierCfg.hasCrown) {
-    const auraColor = tierCfg.hasCrown ? 0xfef08a : 0x38bdf8;
-    const pulse = 1 + Math.sin(time * 0.005) * 0.12;
-    g.fillStyle(auraColor, 0.18 * fadeAlpha);
-    g.fillCircle(0, 0, len * 0.65 * pulse);
-    g.fillStyle(auraColor, 0.08 * fadeAlpha);
-    g.fillCircle(0, 0, len * 0.95 * pulse);
-  }
-
-  // Calculate animated spine wave along the fish body
-  const spineWave1 = Math.sin(time * 0.007 * wiggleSpeed) * (isBite ? 7 : 2.5);
-  const spineWave2 = Math.sin(time * 0.007 * wiggleSpeed - 1.2) * (isBite ? 11 : 4.5);
-  const spineWave3 = Math.sin(time * 0.007 * wiggleSpeed - 2.4) * (isBite ? 16 : 7.5);
-
-  // Primary Silhouette Color (deep underwater aquatic silhouette)
-  const bodyColor = 0x0f273d;
-  g.fillStyle(bodyColor, 0.88 * fadeAlpha);
-
-  // A. Pectoral Fins (Left & Right)
-  const finFlutter = Math.sin(time * 0.008 * wiggleSpeed) * 3;
-  const finLen = wid * 0.9;
-  const finBaseX = len * 0.12;
-  const finSpreadY = wid * 0.42;
-
-  // Upper fin
-  g.beginPath();
-  g.moveTo(finBaseX, -finSpreadY);
-  g.lineTo(finBaseX - finLen * 0.8, -finSpreadY - finLen - (isRecoil ? 4 : finFlutter));
-  g.lineTo(finBaseX - finLen * 0.3, -finSpreadY - finLen * 0.4);
-  g.closePath();
-  g.fillPath();
-
-  // Lower fin
-  g.beginPath();
-  g.moveTo(finBaseX, finSpreadY);
-  g.lineTo(finBaseX - finLen * 0.8, finSpreadY + finLen + (isRecoil ? 4 : finFlutter));
-  g.lineTo(finBaseX - finLen * 0.3, finSpreadY + finLen * 0.4);
-  g.closePath();
-  g.fillPath();
-
-  // B. Caudal (Tail) Fin (Forked / Crescent Tail)
-  const tailBaseX = -len * 0.48;
-  const tailBaseY = spineWave2;
-  const tailTipX = -len * 0.74;
-  const tailSpread = wid * (isBite ? 1.1 : 0.85);
-
-  g.beginPath();
-  g.moveTo(tailBaseX, tailBaseY);
-  // Upper lobe
-  g.lineTo(tailTipX, tailBaseY - tailSpread + spineWave3);
-  // Middle notch of tail fork
-  g.lineTo(tailTipX + len * 0.12, tailBaseY + spineWave3 * 0.7);
-  // Lower lobe
-  g.lineTo(tailTipX, tailBaseY + tailSpread + spineWave3);
-  g.closePath();
-  g.fillPath();
-
-  // C. Main Streamlined Body (smooth organic fish silhouette using curved path)
-  const snoutX = len * 0.5;
-  const snoutY = 0;
-  const gillsX = len * 0.18;
-  const gillsHalfW = wid * 0.5;
-  const midX = -len * 0.12;
-  const midHalfW = wid * 0.38;
-  const peduncleX = -len * 0.42;
-  const peduncleHalfW = wid * 0.14;
-
-  g.beginPath();
-  g.moveTo(snoutX, snoutY);
-  g.lineTo(gillsX, -gillsHalfW + spineWave1 * 0.2);
-  g.lineTo(midX, -midHalfW + spineWave1);
-  g.lineTo(peduncleX, -peduncleHalfW + spineWave2);
-  g.lineTo(tailBaseX, tailBaseY);
-  g.lineTo(peduncleX, peduncleHalfW + spineWave2);
-  g.lineTo(midX, midHalfW + spineWave1);
-  g.lineTo(gillsX, gillsHalfW + spineWave1 * 0.2);
-  g.closePath();
-  g.fillPath();
-
-  // D. Subtle Translucent Dorsal Ridge Highlight (gives realistic 3D volume in water)
-  g.lineStyle(Math.max(1, wid * 0.18), 0x2dd4bf, 0.25 * fadeAlpha);
-  g.beginPath();
-  g.moveTo(gillsX, spineWave1 * 0.2);
-  g.lineTo(midX, spineWave1);
-  g.lineTo(peduncleX, spineWave2);
-  g.strokePath();
-
-  // E. Golden Royal Crown on Head (Crown Tier - Tier 6)
-  if (tierCfg.hasCrown) {
-    const crownX = snoutX - 6;
-    g.fillStyle(0xfbbf24, fadeAlpha);
-    g.lineStyle(1, 0xffffff, fadeAlpha);
-    g.fillTriangle(crownX - 10, -5, crownX - 6, -14, crownX - 2, -5);
-    g.fillTriangle(crownX - 4, -5, crownX + 2, -18, crownX + 8, -5);
-    g.fillTriangle(crownX + 6, -5, crownX + 10, -14, crownX + 14, -5);
-    g.fillRect(crownX - 10, -5, 24, 3);
-    g.fillStyle(0xef4444, fadeAlpha);
-    g.fillCircle(crownX + 2, -17, 2.5);
-  }
-
-  g.restore();
 }

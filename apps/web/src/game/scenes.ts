@@ -41,16 +41,7 @@ import {
   SLEEPING_EMPLOYEES,
   type SleepingEmployee,
 } from '../art/company';
-import {
-  DNTU_BUILDINGS,
-  DNTU_PEOPLE,
-  DNTU_PROPS,
-  DNTU_TREES,
-  drawDntuPerson,
-  drawDntuTree,
-  paintDntuGround,
-  type DntuPerson,
-} from '../art/dntu';
+import { DNTU_PEOPLE, drawDntuPerson, paintDntuCampus, type DntuPerson } from '../art/dntu';
 import {
   APT_TILE,
   BUILDING_ROOF,
@@ -636,13 +627,80 @@ export class ApartmentScene extends WorldScene {
 abstract class InteriorScene extends WorldScene {
   protected activeBubble: Phaser.GameObjects.Container | null = null;
   protected exiting = false;
-  private interactions: { x: number; y: number; run: () => void }[] = [];
+  private interactions: { x: number; y: number; run: () => void; label: string }[] = [];
+  private interactionHint: Phaser.GameObjects.Text | null = null;
+
+  protected override fitCamera() {
+    super.fitCamera();
+    const { width, height } = this.worldSize();
+    // Fit the complete room at integer scale, rather than rounding up and cropping it.
+    const zoom = Math.max(
+      1,
+      Math.min(3, Math.floor(Math.min(this.scale.width / width, this.scale.height / height))),
+    );
+    const vw = this.scale.width / zoom;
+    const vh = this.scale.height / zoom;
+    this.cameras.main
+      .setZoom(zoom)
+      .setBounds(
+        Math.min(0, (width - vw) / 2),
+        Math.min(0, (height - vh) / 2),
+        Math.max(width, vw),
+        Math.max(height, vh),
+      )
+      .centerOn(width / 2, height / 2);
+  }
+
+  private nearestInteraction(x: number, y: number) {
+    const nearest = this.interactions.reduce<(typeof this.interactions)[number] | undefined>(
+      (best, action) =>
+        !best || Math.hypot(action.x - x, action.y - y) < Math.hypot(best.x - x, best.y - y) ? action : best,
+      undefined,
+    );
+    return nearest && Math.hypot(nearest.x - x, nearest.y - y) <= 2 * TILE ? nearest : undefined;
+  }
+
+  override update(time: number, delta: number) {
+    super.update(time, delta);
+    const ui = useUi.getState();
+    const self = this.layer?.self?.container;
+    const action =
+      self && !this.exiting && !typing() && !ui.panel && !ui.activity && !document.querySelector('.backdrop')
+        ? this.nearestInteraction(self.x, self.y)
+        : undefined;
+    this.interactionHint?.setVisible(!!action);
+    if (action && self && this.interactionHint) {
+      const { width, height } = this.worldSize();
+      this.interactionHint.setText('E · ' + action.label);
+      this.interactionHint.setPosition(
+        Phaser.Math.Clamp(
+          self.x,
+          this.interactionHint.width / 2 + TILE,
+          width - this.interactionHint.width / 2 - TILE,
+        ),
+        Math.min(self.y + 44, height - TILE - 12),
+      );
+    }
+  }
 
   override create() {
     this.exiting = false;
     this.activeBubble = null;
     this.interactions = [];
     super.create();
+    this.cameras.main.setBackgroundColor('#242c2b');
+    this.interactionHint = this.add
+      .text(0, 0, '', {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '10px',
+        color: '#f3f0e4',
+        backgroundColor: '#263b34',
+        padding: { x: 6, y: 4 },
+        resolution: 2,
+      })
+      .setOrigin(0.5)
+      .setDepth(9000)
+      .setVisible(false);
     const onKey = (event: KeyboardEvent) => {
       const ui = useUi.getState();
       if (event.repeat || typing() || ui.panel || ui.activity || document.querySelector('.backdrop')) return;
@@ -652,14 +710,7 @@ abstract class InteriorScene extends WorldScene {
       }
       if (event.key.toLowerCase() !== 'e' || this.exiting || !this.layer?.self) return;
       const { x, y } = this.layer.self.container;
-      const nearest = this.interactions.reduce<(typeof this.interactions)[number] | undefined>(
-        (best, action) =>
-          !best || Math.hypot(action.x - x, action.y - y) < Math.hypot(best.x - x, best.y - y)
-            ? action
-            : best,
-        undefined,
-      );
-      if (nearest && Math.hypot(nearest.x - x, nearest.y - y) <= 2 * TILE) nearest.run();
+      this.nearestInteraction(x, y)?.run();
     };
     window.addEventListener('keydown', onKey);
     this.events.once('shutdown', () => {
@@ -667,11 +718,12 @@ abstract class InteriorScene extends WorldScene {
       this.activeBubble?.destroy();
       this.activeBubble = null;
       this.interactions = [];
+      this.interactionHint = null;
     });
   }
 
-  protected interactAt(x: number, y: number, run: () => void) {
-    this.interactions.push({ x, y, run });
+  protected interactAt(x: number, y: number, label: string, run: () => void) {
+    this.interactions.push({ x, y, label, run });
   }
 
   protected expireBubble(bubble: Phaser.GameObjects.Container) {
@@ -699,6 +751,14 @@ abstract class InteriorScene extends WorldScene {
       this.exiting = true;
       void net.goTown();
     }
+  }
+
+  protected containBubble(bubble: Phaser.GameObjects.Container, text: Phaser.GameObjects.Text) {
+    const { width, height } = this.worldSize();
+    bubble.setPosition(
+      Phaser.Math.Clamp(bubble.x, TILE + text.width / 2, width - TILE - text.width / 2),
+      Phaser.Math.Clamp(bubble.y, 72 + text.height / 2, height - TILE - text.height / 2),
+    );
   }
 }
 
@@ -747,14 +807,14 @@ export class CompanyScene extends InteriorScene {
       container.add(sprite);
 
       // Floating Zzz bubble
-      const zzz = this.add.image(14, -26, zzzKey).setOrigin(0.5, 0.5);
+      const zzz = this.add.image(20, -14, zzzKey).setOrigin(0.5, 0.5).setScale(0.55);
       container.add(zzz);
 
       // Gentle snoring / floating animation
       if (!useUi.getState().reducedMotion) {
         this.tweens.add({
           targets: zzz,
-          y: '-=10',
+          y: '-=4',
           alpha: { from: 1, to: 0.25 },
           duration: 1800 + Math.random() * 400,
           yoyo: true,
@@ -771,15 +831,14 @@ export class CompanyScene extends InteriorScene {
           repeat: -1,
           ease: 'Sine.easeInOut',
         });
-
-        // Name & role badge above employee
       }
       const badgeText = this.add
-        .text(0, -38, `${emp.name} · ${emp.role}`, {
+        .text(0, 30, emp.name.replace(' ', '\n'), {
           fontFamily: 'Inter, sans-serif',
           fontSize: '10px',
           fontStyle: 'bold',
-          color: '#38bdf8',
+          color: '#d9efdf',
+          align: 'center',
           backgroundColor: 'rgba(15, 23, 42, 0.85)',
           padding: { x: 5, y: 2 },
           resolution: 2,
@@ -790,17 +849,8 @@ export class CompanyScene extends InteriorScene {
       // Interactive on click / tap
       sprite.setInteractive({ useHandCursor: true });
       sprite.on('pointerdown', () => this.showEmployeeDialogue(emp, container));
-      this.interactAt(emp.x, 6.5 * TILE, () => this.showEmployeeDialogue(emp, container));
+      this.interactAt(emp.x, 6.5 * TILE, emp.name, () => this.showEmployeeDialogue(emp, container));
     }
-
-    // 3. Ambient soft office glow
-    ensureAtmosphereTextures(this);
-    this.add
-      .image((COMPANY_COLS * TILE) / 2, (COMPANY_ROWS * TILE) / 2, 'glow:indoor')
-      .setScale(2.5)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setAlpha(0.3)
-      .setDepth(2000);
 
     // 4. Interactive Whiteboard Zone
     const wbHit = this.add
@@ -815,11 +865,11 @@ export class CompanyScene extends InteriorScene {
         body: 'Sprint 99: Fix 1 bug -> sinh ra 5 bug mới. Deadline: Hôm qua. Đang giải quyết bằng 42 ly cà phê!',
       });
     });
-    this.interactAt(4.5 * TILE, 2.8 * TILE, () => wbHit.emit('pointerdown'));
+    this.interactAt(4.5 * TILE, 2.8 * TILE, 'Sprint backlog', () => wbHit.emit('pointerdown'));
 
     // 5. Interactive Coffee Machine Zone
     const coffeeHit = this.add
-      .zone(14 * TILE, 1.2 * TILE, 44, 38)
+      .zone(14 * TILE, 47, 60, 70)
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
     coffeeHit.on('pointerdown', () => {
@@ -830,13 +880,10 @@ export class CompanyScene extends InteriorScene {
         body: 'Bạn đã nhấp một ngụm cà phê phin đậm đặc. Hồi phục 100% năng lượng lập trình viên!',
       });
     });
-    this.interactAt(14 * TILE, 3.6 * TILE, () => coffeeHit.emit('pointerdown'));
+    this.interactAt(14 * TILE, 3.6 * TILE, 'Cà phê', () => coffeeHit.emit('pointerdown'));
 
     // 6. Interactive Server Rack Zone
-    const srvHit = this.add
-      .zone(1.8 * TILE, 1.2 * TILE, 44, 52)
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
+    const srvHit = this.add.zone(60, 48, 52, 68).setOrigin(0.5).setInteractive({ useHandCursor: true });
     srvHit.on('pointerdown', () => {
       play('click');
       useUi.getState().toast({
@@ -845,12 +892,12 @@ export class CompanyScene extends InteriorScene {
         body: 'CPU: 99.8% | RAM: 63.9/64GB | Kubernetes: 14 Pods CrashLoopBackOff. Đang chờ dev thức dậy!',
       });
     });
-    this.interactAt(1.8 * TILE, 3.6 * TILE, () => srvHit.emit('pointerdown'));
+    this.interactAt(1.8 * TILE, 3.6 * TILE, 'Server rack', () => srvHit.emit('pointerdown'));
   }
 
   private showEmployeeDialogue(emp: SleepingEmployee, container: Phaser.GameObjects.Container) {
     play('pop');
-    useUi.getState().toast({ kind: 'info', title: emp.name, body: emp.dialogue });
+    useUi.getState().toast({ kind: 'info', title: emp.name, body: emp.role + ' — ' + emp.dialogue });
     this.activeBubble?.destroy();
 
     const bubble = this.add.container(container.x, container.y - 56);
@@ -870,6 +917,7 @@ export class CompanyScene extends InteriorScene {
       .setOrigin(0.5, 0.5);
 
     bubble.add(txt);
+    this.containBubble(bubble, txt);
     this.activeBubble = bubble;
 
     this.expireBubble(bubble);
@@ -897,44 +945,14 @@ export class UniversityScene extends InteriorScene {
   }
 
   protected buildWorld() {
-    // 1. DNTU Grand Campus Ground Canvas (Grass, Paved Roads, Sports Pitches, Plazas)
-    const groundKey = 'dntu:ground';
-    if (!this.textures.exists(groundKey)) {
-      this.textures.addCanvas(groundKey, paintDntuGround());
+    // 1. DNTU Grand Campus Interior Background
+    const campusKey = 'dntu:campus';
+    if (!this.textures.exists(campusKey)) {
+      this.textures.addCanvas(campusKey, paintDntuCampus());
     }
-    this.add.image(0, 0, groundKey).setOrigin(0).setDepth(-10);
+    this.add.image(0, 0, campusKey).setOrigin(0).setDepth(-10);
 
-    // 2. 2.5D Architectural Campus Buildings (Depth-sorted with realistic elevations)
-    for (const bldg of DNTU_BUILDINGS) {
-      const bldgKey = `dntu:bldg-${bldg.id}`;
-      if (!this.textures.exists(bldgKey)) {
-        this.textures.addCanvas(bldgKey, bldg.draw());
-      }
-      const img = this.add.image(bldg.x, bldg.y - bldg.roofHeight, bldgKey).setOrigin(0, 0);
-      img.setDepth(bldg.depth ?? bldg.y + bldg.h);
-    }
-
-    // 3. 2.5D Depth-Sorted Props (Goals, Hoops, Flagpole, Lecture Podium, Fountain, Benches, Lamps)
-    for (const prop of DNTU_PROPS) {
-      const propKey = `dntu:prop-${prop.id}`;
-      if (!this.textures.exists(propKey)) {
-        this.textures.addCanvas(propKey, prop.draw());
-      }
-      const img = this.add.image(prop.x, prop.y, propKey).setOrigin(0.5, 1.0);
-      img.setDepth(prop.y);
-    }
-
-    // 4. 2.5D Depth-Sorted Campus Trees (Red Phượng Vĩ, Royal Palms, Golden Bells, Grand Banyan)
-    for (const tree of DNTU_TREES) {
-      const treeKey = `dntu:tree-${tree.kind}-${tree.scale}`;
-      if (!this.textures.exists(treeKey)) {
-        this.textures.addCanvas(treeKey, drawDntuTree(tree.kind, tree.scale));
-      }
-      const img = this.add.image(tree.x, tree.y, treeKey).setOrigin(0.5, 0.95);
-      img.setDepth(tree.y);
-    }
-
-    // 5. Interactive Lecturers, Students, and AI Bot
+    // 2. Interactive Lecturers, Students, and AI Bot
     this.personContainers.clear();
     for (const person of DNTU_PEOPLE) {
       const personTexKey = `dntu:${person.id}`;
@@ -961,14 +979,12 @@ export class UniversityScene extends InteriorScene {
           ease: 'Sine.easeInOut',
         });
       }
-
-      // Name & role badge
       const badgeText = this.add
-        .text(0, -38, `${person.name} · ${person.role}`, {
+        .text(0, 22, person.name, {
           fontFamily: 'Inter, sans-serif',
           fontSize: '10px',
           fontStyle: 'bold',
-          color: '#fbbf24',
+          color: '#fae9c9',
           backgroundColor: 'rgba(15, 23, 42, 0.85)',
           padding: { x: 5, y: 2 },
           resolution: 2,
@@ -979,10 +995,10 @@ export class UniversityScene extends InteriorScene {
       // Interactive on click / tap
       sprite.setInteractive({ useHandCursor: true });
       sprite.on('pointerdown', () => this.showPersonDialogue(person, container));
-      this.interactAt(person.x, person.y, () => this.showPersonDialogue(person, container));
+      this.interactAt(person.x, person.y, person.name, () => this.showPersonDialogue(person, container));
     }
 
-    // 5b. Auto-welcome quote when entering university: Thầy Tân welcomes player!
+    // 2b. Auto-welcome quote when entering university: Thầy Tân welcomes player!
     const thayTan = DNTU_PEOPLE.find((p) => p.id === 'thay_tan');
     const thayTanContainer = this.personContainers.get('thay_tan');
     if (thayTan && thayTanContainer && !this.welcomeShown) {
@@ -993,170 +1009,49 @@ export class UniversityScene extends InteriorScene {
       });
     }
 
-    // 6. Ambient soft campus illumination glow
-    ensureAtmosphereTextures(this);
-    this.add
-      .image((DNTU_COLS * TILE) / 2, (DNTU_ROWS * TILE) / 2, 'glow:indoor')
-      .setScale(4.5)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setAlpha(0.18)
-      .setDepth(2000);
-
-    // 7. Interactive Library & Information Center (Khu C)
-    const libraryHit = this.add
-      .zone(18.5 * TILE, 11 * TILE, 160, 60)
+    // 4. Interactive Smart Board Zone (center top)
+    const smartBoardHit = this.add
+      .zone(8 * TILE, 30, 232, 44)
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
-    libraryHit.on('pointerdown', () => {
+    smartBoardHit.on('pointerdown', () => {
       play('pop');
       useUi.getState().toast({
         kind: 'info',
-        title: '📚 Trung Tâm Thông Tin - Thư Viện DNTU',
-        body: 'Thư viện số 4 tầng với 50,000+ đầu sách, cơ sở dữ liệu quốc tế IEEE/Scopus và phòng tự học thông minh mở cửa 24/7!',
+        title: '🖥️ Màn Hình Cảm Ứng Thông Minh DNTU',
+        body: 'Đang trình chiếu: "Ứng dụng AI & IoT trong chuyển đổi số doanh nghiệp". Sinh viên DNTU thực hành trực tiếp trên hệ thống Lab hiện đại!',
       });
     });
-    this.interactAt(18.5 * TILE, 12 * TILE, () => libraryHit.emit('pointerdown'));
+    this.interactAt(8 * TILE, 3.2 * TILE, 'Màn hình DNTU', () => smartBoardHit.emit('pointerdown'));
 
-    // 8. Interactive Sân Bóng Đá Cỏ Nhân Tạo (Khu E)
-    const soccerHit = this.add
-      .zone(7.2 * TILE, 16 * TILE, 200, 140)
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    soccerHit.on('pointerdown', () => {
+    // 5. Interactive Digital Library Zone (left top)
+    const libHit = this.add.zone(64, 69, 64, 106).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    libHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '📚 Thư Viện Số & Tài Nguyên Học Liệu DNTU',
+        body: 'Truy cập hơn 100,000+ tài liệu, giáo trình điện tử, đề án tốt nghiệp xuất sắc và cơ sở dữ liệu NCKH quốc tế IEEE/Scopus.',
+      });
+    });
+    this.interactAt(2.2 * TILE, 4.5 * TILE, 'Thư viện', () => libHit.emit('pointerdown'));
+
+    // 6. Interactive Awards & Accreditation Showcase (right top)
+    const trophyHit = this.add.zone(448, 69, 64, 106).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    trophyHit.on('pointerdown', () => {
       play('coin');
       useUi.getState().toast({
         kind: 'reward',
-        title: '⚽ Sân Bóng Đá Cỏ Nhân Tạo DNTU',
-        body: 'VÀO OOO! Bạn đã tung ra một cú sút bóng sấm sét vào góc chữ A khung thành! Sân thể thao DNTU đạt chuẩn thi đấu sinh viên quốc gia!',
+        title: '🏆 Tủ Huy Chương & Kiểm Định Chất Lượng',
+        body: 'Trường ĐH Công nghệ Đồng Nai đạt chuẩn Kiểm định Quốc gia MOET, Top trường đào tạo ứng dụng hàng đầu vùng kinh tế trọng điểm phía Nam!',
       });
     });
-    this.interactAt(7.2 * TILE, 16 * TILE, () => soccerHit.emit('pointerdown'));
-
-    // 9. Interactive Sân Bóng Rổ (Khu E)
-    const basketballHit = this.add
-      .zone(10 * TILE, 24 * TILE, 120, 80)
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    basketballHit.on('pointerdown', () => {
-      play('coin');
-      useUi.getState().toast({
-        kind: 'reward',
-        title: '🏀 Sân Bóng Rổ DNTU',
-        body: 'SWISH! Cú ném 3 điểm hoàn hảo từ vạch ném biên! Đội tuyển bóng rổ DNTU luôn chào đón những tay ném cừ khôi!',
-      });
-    });
-    this.interactAt(10 * TILE, 24 * TILE, () => basketballHit.emit('pointerdown'));
-
-    // 10. Interactive Trường Quay Media Studio (Khu A South Wing)
-    const studioHit = this.add
-      .zone(31 * TILE, 24.5 * TILE, 120, 50)
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    studioHit.on('pointerdown', () => {
-      play('pop');
-      useUi.getState().toast({
-        kind: 'info',
-        title: '🎬 Trường Quay DNTU Media Studio',
-        body: 'Hệ thống trường quay hiện đại phục vụ sản xuất truyền hình, podcast, livestream sự kiện và đồ án sáng tạo nội dung của sinh viên!',
-      });
-    });
-    this.interactAt(31 * TILE, 24.5 * TILE, () => studioHit.emit('pointerdown'));
-
-    // 11. Interactive Vườn Khởi Nghiệp & Sáng Tạo (North Park)
-    const startupHit = this.add
-      .zone(29 * TILE, 3.5 * TILE, 120, 50)
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    startupHit.on('pointerdown', () => {
-      play('coin');
-      useUi.getState().toast({
-        kind: 'reward',
-        title: '💡 Vườn Ươm Sáng Tạo Khởi Nghiệp DNTU',
-        body: 'Nơi chắp cánh hàng chục dự án startup sinh viên đạt giải thưởng quốc gia và kết nối quỹ đầu tư doanh nghiệp!',
-      });
-    });
-    this.interactAt(29 * TILE, 3.5 * TILE, () => startupHit.emit('pointerdown'));
-
-    // 12. Interactive Ký Túc Xá & Căng Tin (South-West)
-    const canteenHit = this.add
-      .zone(7 * TILE, 29 * TILE, 140, 50)
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    canteenHit.on('pointerdown', () => {
-      play('pop');
-      useUi.getState().toast({
-        kind: 'info',
-        title: '🍱 Căng Tin & Ký Túc Xá Sinh Viên DNTU',
-        body: 'Khu ẩm thực sinh viên nhộn nhịp: Cơm gà xối mỡ, bún bò, bánh mì chả lụa và trà đào cam sả thơm ngon giá hạt dẻ!',
-      });
-    });
-    this.interactAt(7 * TILE, 29 * TILE, () => canteenHit.emit('pointerdown'));
-
-    // 13. Interactive Smart Operations Center (Khu G) - required by interior-render.spec.ts!
-    this.interactAt(8 * TILE, 3.2 * TILE, () => {
-      play('click');
-      useUi.getState().toast({
-        kind: 'info',
-        title: '🖥️ Màn Hình Trung Tâm Điều Hành Thông Minh DNTU',
-        body: 'Bảng điều khiển giám sát năng lượng mặt trời, hệ thống phòng thực hành IoT và máy chủ trung tâm!',
-      });
-    });
-
-    // 14. Interactive DNTU Fitness & Gym (Khu G West)
-    this.interactAt(4.5 * TILE, 3.2 * TILE, () => {
-      play('pop');
-      useUi.getState().toast({
-        kind: 'reward',
-        title: '🏋️ DNTU Fitness & Gym Center (Khu G)',
-        body: 'Phòng tập thể hình hiện đại chuẩn quốc tế dành riêng cho sinh viên và giảng viên DNTU: dàn máy tập tạ đa năng, máy chạy bộ cardio và huấn luyện viên tận tình!',
-      });
-    });
-
-    // 15. Interactive Automotive Workshop (Khu F Bay 1)
-    this.interactAt(4.5 * TILE, 7.8 * TILE, () => {
-      play('coin');
-      useUi.getState().toast({
-        kind: 'reward',
-        title: '🚗 Xưởng Thực Hành Công Nghệ Ô Tô Khu F',
-        body: 'Cầu nâng thủy lực 2 trụ đang nâng chiếc xe thể thao để sinh viên thực hành chẩn đoán hệ thống phun xăng điện tử và cân chỉnh góc đặt bánh xe 3D!',
-      });
-    });
-
-    // 16. Interactive Precision CNC & Mechanical Lab (Khu F Bay 3)
-    this.interactAt(9.5 * TILE, 7.8 * TILE, () => {
-      play('pop');
-      useUi.getState().toast({
-        kind: 'info',
-        title: '⚙️ Trung Tâm Gia Công Cơ Khí Chính Xác & CNC Khu F',
-        body: 'Máy phay CNC 5 trục và máy tiện vạn năng công nghệ Đức, nơi sinh viên chế tạo các chi tiết cơ khí chính xác cho các cuộc thi sáng tạo robot Robocon!',
-      });
-    });
-
-    // 17. Interactive Grand Triumphal Archway (Trụ Sở Chính BGH)
-    this.interactAt(35 * TILE, 18.5 * TILE, () => {
-      play('pop');
-      useUi.getState().toast({
-        kind: 'info',
-        title: '🏛️ Cổng Vòm Khải Hoàn · Trụ Sở Chính DNTU',
-        body: 'Cổng vòm Neoclassical tráng lệ biểu tượng của Đại học Công nghệ Đồng Nai, kết nối cổng chính vào sân trung tâm và các khoa đào tạo!',
-      });
-    });
-  }
-
-  protected override onSelfMove(x: number, y: number) {
-    // 1. Walk out through Gate 1 (Cổng 1) to return to town
-    const nearGate1 = x >= (DNTU_COLS - 3) * TILE && y >= 16 * TILE && y <= 24 * TILE;
-    // 2. Compatibility check for e2e test suite (interior-render.spec.ts moves to 8*32, 10*32)
-    const testExitZone = y >= 9.8 * TILE && y <= 10.5 * TILE && x >= 6.5 * TILE && x <= 9.5 * TILE;
-    if (!this.exiting && (nearGate1 || testExitZone)) {
-      this.exiting = true;
-      void net.goTown();
-    }
+    this.interactAt(13.8 * TILE, 4.5 * TILE, 'Thành tựu DNTU', () => trophyHit.emit('pointerdown'));
   }
 
   private showPersonDialogue(person: DntuPerson, container: Phaser.GameObjects.Container) {
     play('pop');
-    useUi.getState().toast({ kind: 'info', title: person.name, body: person.dialogue });
+    useUi.getState().toast({ kind: 'info', title: person.name, body: person.role + ' — ' + person.dialogue });
     this.activeBubble?.destroy();
 
     const bubble = this.add.container(container.x, container.y - 56);
@@ -1176,6 +1071,7 @@ export class UniversityScene extends InteriorScene {
       .setOrigin(0.5, 0.5);
 
     bubble.add(txt);
+    this.containBubble(bubble, txt);
     this.activeBubble = bubble;
 
     this.expireBubble(bubble);
@@ -1258,7 +1154,7 @@ export class ComGaScene extends InteriorScene {
 
       sprite.setInteractive({ useHandCursor: true });
       sprite.on('pointerdown', () => this.showPersonDialogue(person, container));
-      this.interactAt(person.x, person.y, () => this.showPersonDialogue(person, container));
+      this.interactAt(person.x, person.y, person.name, () => this.showPersonDialogue(person, container));
     }
 
     // Auto-welcome when entering: Anh Sáu greets player
@@ -1294,7 +1190,7 @@ export class ComGaScene extends InteriorScene {
         body: 'Tiếng mỡ sôi xèo xèo vàng óng. Đùi gà góc tư thơm lừng giòn rụm vừa xối mỡ xong, lớp da giòn tan hấp dẫn!',
       });
     });
-    this.interactAt(2.5 * TILE, 3.2 * TILE, () => fryerHit.emit('pointerdown'));
+    this.interactAt(2.5 * TILE, 3.2 * TILE, 'Bếp chiên gà', () => fryerHit.emit('pointerdown'));
 
     // 5. Interactive Tomato Rice & Soup Pot Station
     const riceHit = this.add
@@ -1309,7 +1205,7 @@ export class ComGaScene extends InteriorScene {
         body: 'Hạt cơm chiên tỏi cà chua đỏ hồng tơi xốp, thơm mùi mỡ gà, đi kèm canh xúp súp hầm xương ngọt lịm.',
       });
     });
-    this.interactAt(11.5 * TILE, 3.2 * TILE, () => riceHit.emit('pointerdown'));
+    this.interactAt(11.5 * TILE, 3.2 * TILE, 'Quầy cơm chiên', () => riceHit.emit('pointerdown'));
 
     // 6. Interactive Stainless Dining Table
     const tableHit = this.add
@@ -1324,7 +1220,7 @@ export class ComGaScene extends InteriorScene {
         body: 'Đầy đủ hũ dưa leo đồ chua giòn ngọt, ớt tỏi băm ngâm xì dầu và trà đá Biên Hòa mát rượi giải ngấy!',
       });
     });
-    this.interactAt(8.5 * TILE, 6.2 * TILE, () => tableHit.emit('pointerdown'));
+    this.interactAt(8.5 * TILE, 6.2 * TILE, 'Bàn ăn inox', () => tableHit.emit('pointerdown'));
   }
 
   private showPersonDialogue(person: ComGaPerson, container: Phaser.GameObjects.Container) {
@@ -1349,6 +1245,7 @@ export class ComGaScene extends InteriorScene {
       .setOrigin(0.5, 0.5);
 
     bubble.add(txt);
+    this.containBubble(bubble, txt);
     this.activeBubble = bubble;
 
     this.expireBubble(bubble);
@@ -1432,7 +1329,7 @@ export class BidaScene extends InteriorScene {
 
       sprite.setInteractive({ useHandCursor: true });
       sprite.on('pointerdown', () => this.showPersonDialogue(person, container));
-      this.interactAt(person.x, person.y, () => this.showPersonDialogue(person, container));
+      this.interactAt(person.x, person.y, person.name, () => this.showPersonDialogue(person, container));
     }
 
     // Auto-welcome when entering: Anh Tuấn greets player
@@ -1468,7 +1365,7 @@ export class BidaScene extends InteriorScene {
           body: 'Đang mở sảnh Bida Arena! Bạn có thể tạo phòng 1v1 hoặc tập luyện solo ngay bây giờ.',
         });
       });
-      this.interactAt(x, y + h / 2 + 16, () => hitZone.emit('pointerdown'));
+      this.interactAt(x, y + h / 2 + 16, name, () => hitZone.emit('pointerdown'));
     };
 
     // Table 1: Pool 8-Ball Tournament Table (Left Upper)
@@ -1491,7 +1388,7 @@ export class BidaScene extends InteriorScene {
         body: 'Dàn cơ Predator P3 Carbon đỉnh cao, bóng Aramith Tournament TV Pro-Cup. Cơ mướt, trợ lực cực đầm tay!',
       });
     });
-    this.interactAt(13 * TILE, 3.2 * TILE, () => cueRackHit.emit('pointerdown'));
+    this.interactAt(13 * TILE, 3.2 * TILE, 'Tủ cơ & cúp', () => cueRackHit.emit('pointerdown'));
 
     // 6. Interactive Reception & Refreshments Bar
     const barHit = this.add
@@ -1506,7 +1403,7 @@ export class BidaScene extends InteriorScene {
         body: 'Phục vụ Cà phê sữa đá Biên Hòa, Sinh tố bơ, Mì xào bò & Cơm chiên giòn rụm tiếp sức các cơ thủ 24/7!',
       });
     });
-    this.interactAt(3 * TILE, 3.2 * TILE, () => barHit.emit('pointerdown'));
+    this.interactAt(3 * TILE, 3.2 * TILE, 'Quầy giải khát', () => barHit.emit('pointerdown'));
   }
 
   private showPersonDialogue(person: BidaPerson, container: Phaser.GameObjects.Container) {
@@ -1531,6 +1428,7 @@ export class BidaScene extends InteriorScene {
       .setOrigin(0.5, 0.5);
 
     bubble.add(txt);
+    this.containBubble(bubble, txt);
     this.activeBubble = bubble;
 
     this.expireBubble(bubble);

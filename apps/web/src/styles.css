@@ -2185,10 +2185,96 @@ img.pixel,
   backdrop-filter: blur(16px);
   border: 2px solid rgba(56, 189, 248, 0.4);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
-  overflow: hidden;
+  max-height: calc(100% - 24px);
+  overflow: auto;
   animation: rise 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   margin-bottom: auto;
   margin-top: auto;
+}
+.fishing-result-art {
+  height: 210px;
+  position: relative;
+  overflow: hidden;
+}
+.fishing-result-card--miss {
+  border-color: rgba(251, 191, 36, 0.45);
+}
+.fishing-result-art--miss {
+  height: 112px;
+  background: #172c3c;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+.fishing-miss-illustration {
+  position: relative;
+  width: 144px;
+  height: 100%;
+  margin: auto;
+  color: #7dd3cf;
+}
+.fishing-miss-waves {
+  position: absolute;
+  left: 12px;
+  top: 32px;
+  opacity: 0.35;
+}
+.fishing-miss-fish {
+  position: absolute;
+  top: 20px;
+  left: 44px;
+  transform: rotate(-16deg);
+}
+.fishing-miss-marker {
+  position: absolute;
+  left: 92px;
+  top: 20px;
+  color: #fcd34d;
+}
+.fishing-result-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #7dd3fc;
+}
+.fishing-result-card--miss .fishing-result-eyebrow {
+  color: #fcd34d;
+}
+.fishing-result-description {
+  margin: 8px 0 0;
+  color: #cbd5e1;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.fishing-result-tip {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(251, 191, 36, 0.08);
+  color: #fde68a;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.fishing-result-tip svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.fishing-result-key-hint {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.fishing-result-card .btn {
+  min-height: 44px;
+}
+.fishing-inworld-hud button:focus-visible {
+  outline: 2px solid #7dd3fc;
+  outline-offset: 3px;
 }
 .ingredients {
   display: grid;
