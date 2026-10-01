@@ -5,9 +5,10 @@ import { useMemo, useState } from 'react';
 import { fishIcon, fishRenderDimensions, FISH_EFFECT_CLASS } from '../../art/fish';
 import { api, formatDateSafe, type FishJournalEntry } from '../../lib/api';
 import { play } from '../../lib/sound';
+import { useFishArt } from '../../lib/use-fish-art';
 import { Button, CoinIcon, EmptyState, Modal, Panel, Progress } from '../../ui/primitives';
 
-type FishRarity = 'common' | 'rare' | 'epic' | 'legendary';
+type FishRarity = FishSpecies['rarity'];
 
 const HABITAT_LABELS: Record<FishHabitat, string> = {
   ocean: 'Biển Cả',
@@ -22,10 +23,14 @@ const RARITY_LABELS: Record<FishRarity, { label: string; color: string; bg: stri
   rare: { label: 'Hiếm có', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.15)' },
   epic: { label: 'Sử thi', color: '#c084fc', bg: 'rgba(192, 132, 252, 0.15)' },
   legendary: { label: 'Huyền thoại', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.18)' },
+  defiant: { label: 'Nghịch Thiên', color: '#fb7185', bg: 'rgba(251, 113, 133, 0.18)' },
+  sovereign: { label: 'Chí Tôn', color: '#67e8f9', bg: 'rgba(103, 232, 249, 0.18)' },
 };
 
 export function FishCompendium({ onClose }: { onClose: () => void }) {
+  useFishArt();
   const [habitat, setHabitat] = useState<FishHabitat | 'all'>('all');
+  const [rarityFilter, setRarityFilter] = useState<FishRarity | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'caught' | 'uncaught'>('all');
   const [search, setSearch] = useState('');
   const [inspectFish, setInspectFish] = useState<{ fish: FishSpecies; entry?: FishJournalEntry } | null>(
@@ -61,6 +66,7 @@ export function FishCompendium({ onClose }: { onClose: () => void }) {
   const filteredFish = useMemo(() => {
     return allSpecies.filter((f) => {
       if (habitat !== 'all' && f.habitat !== habitat) return false;
+      if (rarityFilter !== 'all' && f.rarity !== rarityFilter) return false;
       const isCaught = journalMap.has(f.id);
       if (statusFilter === 'caught' && !isCaught) return false;
       if (statusFilter === 'uncaught' && isCaught) return false;
@@ -75,7 +81,7 @@ export function FishCompendium({ onClose }: { onClose: () => void }) {
       }
       return true;
     });
-  }, [allSpecies, habitat, statusFilter, search, journalMap]);
+  }, [allSpecies, habitat, rarityFilter, statusFilter, search, journalMap]);
 
   return (
     <Panel
@@ -108,7 +114,8 @@ export function FishCompendium({ onClose }: { onClose: () => void }) {
           </div>
           <Progress value={caughtSpeciesCount} max={totalSpecies} />
           <div className="muted" style={{ fontSize: 12 }}>
-            Khám phá trọn bộ 55 loài cá bí ẩn nước mặn, nước ngọt và huyền tích cổ xưa tại Wobbly Pier!
+            Khám phá {totalSpecies} loài và biến thể nước mặn, nước ngọt cùng huyền tích cổ xưa tại Wobbly
+            Pier!
           </div>
         </div>
 
@@ -164,7 +171,20 @@ export function FishCompendium({ onClose }: { onClose: () => void }) {
             </button>
           </div>
 
-          <div className="row" style={{ gap: 8 }}>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            <select
+              aria-label="Lọc bậc cá"
+              value={rarityFilter}
+              onChange={(e) => setRarityFilter(e.target.value as FishRarity | 'all')}
+              style={{ minHeight: 44, maxWidth: '100%' }}
+            >
+              <option value="all">Mọi bậc cá</option>
+              {Object.entries(RARITY_LABELS).map(([id, meta]) => (
+                <option key={id} value={id}>
+                  {meta.label}
+                </option>
+              ))}
+            </select>
             <div style={{ position: 'relative' }}>
               <input
                 type="text"
@@ -330,7 +350,7 @@ export function FishCompendium({ onClose }: { onClose: () => void }) {
                         maxWidth: '90%',
                         maxHeight: '90%',
                         objectFit: 'contain',
-                        imageRendering: 'pixelated',
+                        imageRendering: 'auto',
                       }}
                     />
                   </div>
@@ -460,7 +480,7 @@ function FishDetailModal({
               maxWidth: '85%',
               maxHeight: '85%',
               objectFit: 'contain',
-              imageRendering: 'pixelated',
+              imageRendering: 'auto',
               cursor: isCaught ? 'grab' : 'default',
             }}
           />

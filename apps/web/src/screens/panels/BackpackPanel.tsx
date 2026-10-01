@@ -41,6 +41,7 @@ import {
 import { qk, useRefreshEconomy } from '../../lib/queries';
 import { play } from '../../lib/sound';
 import { useUi } from '../../lib/store';
+import { useFishArt } from '../../lib/use-fish-art';
 import {
   Button,
   CoinIcon,
@@ -71,6 +72,8 @@ const RARITY_COLORS: Record<string, string> = {
   rare: '#38bdf8',
   epic: '#c084fc',
   legendary: '#fbbf24',
+  defiant: '#fb7185',
+  sovereign: '#67e8f9',
 };
 
 export function BackpackPanel({
@@ -83,6 +86,7 @@ export function BackpackPanel({
   onClose: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<'backpack' | 'tackle' | 'wardrobe' | 'profile'>(initialTab);
+  useFishArt();
   const qc = useQueryClient();
   const refresh = useRefreshEconomy();
   const setPanel = useUi((s) => s.setPanel);

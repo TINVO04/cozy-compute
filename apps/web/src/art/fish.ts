@@ -1,14 +1,19 @@
 import { INK, PixelGrid } from './pixel';
 import { FISH, type FishSpecies } from '@cozy/game-data';
+import {
+  FISH_3D_ASSETS,
+  FISH_ASSET_ASPECTS,
+  fishArtRevision,
+  loadedFishArt,
+  loadFishArt,
+} from './fish-assets';
+import { paintFishIllustration } from './fish-illustration';
+export { FISH_3D_ASSETS } from './fish-assets';
 
 /**
- * 2026 Masterpiece Pixel Art Engine for 55 Unique Fish Species.
- * Every species features:
- * - Organic anatomical curves (tapered snouts, arched spines, countershaded bellies, flared caudal fins)
- * - 3-to-4 tone harmonious palettes (highlight, midtone, shadow, dark rim)
- * - Crisp ink outlines (#1c192d) and sparkling eye specular glints
- * - Bespoke species identity (barbels, lanterns, crowns, lightning sparks, Wi-Fi waves, monocles, etc.)
- * - 100% integer-scaled, nearest-neighbor pixel art rendering.
+ * Shared fish rendering for the collection, character previews and world textures.
+ * Rendered bitmap assets are primary; the PixelGrid renderer remains available
+ * for the explicit legacy avatar view and Canvas art handles missing assets.
  */
 
 // Lookup map for species metadata
@@ -30,6 +35,10 @@ export function fishRenderDimensions(
   displayScale: number;
 } {
   const species = SPECIES_MAP.get(speciesId);
+  // Variant silhouettes inherit the parent's proportions until a dedicated bitmap is installed.
+  if (species?.variantOf && !FISH_ASSET_ASPECTS[speciesId]) {
+    return fishRenderDimensions(species.variantOf, sizeCm);
+  }
   const minCm = species?.minSizeCm ?? 20;
   const maxCm = species?.maxSizeCm ?? 100;
   const actualCm = sizeCm ?? (minCm + maxCm) / 2;
@@ -107,6 +116,8 @@ export function fishRenderDimensions(
     displayScale = ratio > 0.8 ? 5 : 4;
   }
 
+  const assetAspect = FISH_ASSET_ASPECTS[speciesId];
+  if (assetAspect) baseHeight = Math.round(baseWidth * assetAspect);
   return { baseWidth, baseHeight, displayScale };
 }
 
@@ -114,6 +125,14 @@ export function fishRenderDimensions(
  * Returns the unique CSS effect class for a legendary or epic fish.
  */
 export const FISH_EFFECT_CLASS: Record<string, string> = {
+  office_carp_ceo: 'fish-fx-defiant',
+  pufferfish_gym: 'fish-fx-defiant',
+  catfish_noodle: 'fish-fx-defiant',
+  disco_trout_diva: 'fish-fx-defiant',
+  swordfish_void: 'fish-fx-void',
+  golden_dragon_astral: 'fish-fx-astral',
+  koi_storm: 'fish-fx-storm',
+  kraken_eclipse: 'fish-fx-eclipse',
   // Legendary species unique lavish effects (11 loài)
   golden_dragon_fish: 'fish-fx-golden-dragon',
   rubber_duck_leviathan: 'fish-fx-rubber-duck',
@@ -178,6 +197,8 @@ export const ROD_EFFECT_CLASS: Record<string, string> = {
  * Draws the high-detail pixel art for each of the 55 unique fish species.
  */
 export function drawFish(speciesId: string): PixelGrid {
+  const parent = SPECIES_MAP.get(speciesId)?.variantOf;
+  if (parent) return drawFish(parent);
   const { baseWidth: W, baseHeight: H } = fishRenderDimensions(speciesId);
   const g = new PixelGrid(W, H);
 
@@ -1381,39 +1402,33 @@ export function drawFishSilhouette(speciesId: string): PixelGrid {
 const fishIconCache = new Map<string, string>();
 
 /**
- * High-end 3D rendered assets for standout fish models.
- */
-export const FISH_3D_ASSETS: Record<string, string> = {
-  swordfish: '/fish/swordfish.png',
-  guppy_rainbow: '/fish/guppy_rainbow.png',
-  golden_dragon_fish: '/fish/golden_dragon_fish.png',
-};
-
-/**
- * Returns a high-definition crisp image or rendered asset representing the fish.
- * Prefers AAA 3D rendered models when available, with seamless pixel art fallback.
+ * All current UI surfaces use the same illustration as avatars and world textures.
  */
 export function fishIcon(speciesId: string, scale = 4, silhouette = false): string {
-  if (!silhouette && FISH_3D_ASSETS[speciesId]) {
+  if (!silhouette && FISH_3D_ASSETS[speciesId] && loadedFishArt(speciesId)) {
     return FISH_3D_ASSETS[speciesId];
   }
 
-  const key = `${speciesId}@scale=${scale}@${silhouette ? 'sil' : 'lit'}`;
+  const key = `${speciesId}@scale=${scale}@${silhouette ? 'sil' : 'lit'}@${fishArtRevision(speciesId)}`;
   const hit = fishIconCache.get(key);
   if (hit) return hit;
 
   if (typeof document === 'undefined') return '';
 
-  const grid = silhouette ? drawFishSilhouette(speciesId) : drawFish(speciesId);
-  const canvas = grid.toCanvas(scale);
+  const { baseWidth, baseHeight } = fishRenderDimensions(speciesId);
+  const canvas = getHDFishCanvas(
+    speciesId,
+    baseWidth * Math.max(scale, 16),
+    baseHeight * Math.max(scale, 16),
+    silhouette,
+  );
   const url = canvas.toDataURL();
   fishIconCache.set(key, url);
   return url;
 }
 
 /**
- * Compatibility helper for Chibi avatar / trophy scene rendering.
- * Renders the pixel art fish into a canvas at appropriate integer scale.
+ * Shared illustration canvas; PixelGrid is reserved for the explicit legacy avatar view.
  */
 export function getHDFishCanvas(
   speciesId: string,
@@ -1421,11 +1436,43 @@ export function getHDFishCanvas(
   height?: number,
   silhouette = false,
 ): HTMLCanvasElement {
-  const grid = silhouette ? drawFishSilhouette(speciesId) : drawFish(speciesId);
-  const targetW = width ?? grid.w * 4;
-  const targetH = height ?? grid.h * 4;
-  const scale = Math.max(1, Math.floor(Math.min(targetW / grid.w, targetH / grid.h)));
-  return grid.toCanvas(scale);
+  const { baseWidth, baseHeight } = fishRenderDimensions(speciesId);
+  const factor = Math.min((width ?? baseWidth * 12) / baseWidth, (height ?? baseHeight * 12) / baseHeight);
+  const targetW = Math.max(1, Math.round(baseWidth * factor));
+  const targetH = Math.max(1, Math.round(baseHeight * factor));
+  const key = `${speciesId}:${targetW}:${targetH}:${silhouette}:${fishArtRevision(speciesId)}`;
+  const hit = fishCanvasCache.get(key);
+  if (hit) return hit;
+  const asset = loadedFishArt(speciesId);
+  if (asset) {
+    const canvas = document.createElement('canvas');
+    canvas.width = targetW;
+    canvas.height = targetH;
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    const fit = Math.min(canvas.width / asset.naturalWidth, canvas.height / asset.naturalHeight);
+    const w = asset.naturalWidth * fit;
+    const h = asset.naturalHeight * fit;
+    ctx.drawImage(asset, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+    if (silhouette) {
+      ctx.globalCompositeOperation = 'source-in';
+      ctx.fillStyle = '#253849';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    cacheFishCanvas(key, canvas);
+    return canvas;
+  }
+  void loadFishArt(speciesId);
+  const canvas = paintFishIllustration(speciesId, targetW, targetH, silhouette);
+  cacheFishCanvas(key, canvas);
+  return canvas;
+}
+
+const fishCanvasCache = new Map<string, HTMLCanvasElement>();
+function cacheFishCanvas(key: string, canvas: HTMLCanvasElement) {
+  if (fishCanvasCache.size >= 256) fishCanvasCache.delete(fishCanvasCache.keys().next().value!);
+  fishCanvasCache.set(key, canvas);
 }
 
 /**
@@ -1450,12 +1497,9 @@ export function drawHDFish(
   height: number,
   isSilhouette = false,
 ) {
-  const grid = isSilhouette ? drawFishSilhouette(speciesId) : drawFish(speciesId);
-  const scale = Math.max(1, Math.floor(Math.min(width / grid.w, height / grid.h)));
-  const ox = Math.round((width - grid.w * scale) / 2);
-  const oy = Math.round((height - grid.h * scale) / 2);
+  const canvas = getHDFishCanvas(speciesId, width, height, isSilhouette);
   ctx.save();
-  ctx.imageSmoothingEnabled = false;
-  grid.drawTo(ctx, ox, oy, scale);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(canvas, (width - canvas.width) / 2, (height - canvas.height) / 2);
   ctx.restore();
 }

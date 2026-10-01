@@ -9,6 +9,8 @@ import type Phaser from 'phaser';
 import { play } from '../lib/sound';
 import { fishNibblePose } from './fishing-motion';
 import { drawOrganicFishShadow } from './fish-shadow';
+import { ensureFishTexture } from './fish-texture';
+import { fishRenderDimensions } from '../art/fish';
 
 export interface FishingSessionParams {
   selfX: number;
@@ -330,6 +332,11 @@ export class InWorldFishingController {
 
     // Parabolic vault arc for flying fish
     const fishGraphic = this.scene.add.graphics().setDepth(endY + 20);
+    const { baseWidth, baseHeight } = fishRenderDimensions(fishSpeciesId);
+    this.flyingFish = this.scene.add
+      .image(startX, startY, ensureFishTexture(this.scene, fishSpeciesId))
+      .setDisplaySize(36, (36 * baseHeight) / baseWidth)
+      .setDepth(endY + 21);
     this.landingFish = fishGraphic;
     let t = 0;
     const arcTween = this.scene.tweens.addCounter({
@@ -343,11 +350,7 @@ export class InWorldFishingController {
         const curX = startX + (endX - startX) * t;
         const curY = startY + (endY - startY) * t - Math.sin(t * Math.PI) * 55;
 
-        // Draw animated flying fish silhouette
-        fishGraphic.fillStyle(0x38bdf8, 1);
-        fishGraphic.lineStyle(1.5, 0xffffff, 1);
-        fishGraphic.fillEllipse(curX, curY, 18, 9);
-        fishGraphic.strokeEllipse(curX, curY, 18, 9);
+        this.flyingFish?.setPosition(curX, curY).setAngle(Math.sin(t * Math.PI * 2) * 18);
 
         // Water droplets trailing behind
         if (Math.random() > 0.3) {

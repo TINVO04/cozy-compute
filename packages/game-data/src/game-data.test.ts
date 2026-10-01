@@ -67,6 +67,20 @@ describe('game-data movement', () => {
 });
 
 describe('game-data activities', () => {
+  it('adds distinct higher-tier variants with existing parents and valid size ranges', () => {
+    const ids = new Set(FISH.map((f) => f.id));
+    expect(ids.size).toBe(FISH.length);
+    for (const rarity of ['defiant', 'sovereign']) {
+      const variants = FISH.filter((f) => f.rarity === rarity);
+      expect(variants).toHaveLength(4);
+      for (const fish of variants) {
+        expect(ids.has(fish.variantOf!)).toBe(true);
+        expect(fish.variantOf).not.toBe(fish.id);
+        expect(fish.maxSizeCm).toBeGreaterThan(fish.minSizeCm);
+        expect(fish.weight).toBeLessThan(1);
+      }
+    }
+  });
   it('contains correctly configured fish species with positive rewards', () => {
     expect(FISH.length).toBeGreaterThanOrEqual(5);
     for (const fish of FISH) {
@@ -74,7 +88,7 @@ describe('game-data activities', () => {
       expect(fish.weight).toBeGreaterThan(0);
       expect(fish.coin).toBeGreaterThan(0);
       expect(fish.fame).toBeGreaterThanOrEqual(0);
-      expect(['common', 'rare', 'epic', 'legendary']).toContain(fish.rarity);
+      expect(['common', 'rare', 'epic', 'legendary', 'defiant', 'sovereign']).toContain(fish.rarity);
     }
   });
 

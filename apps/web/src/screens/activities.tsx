@@ -20,6 +20,7 @@ import { fishIcon, fishRenderDimensions, FISH_EFFECT_CLASS } from '../art/fish';
 import { chibiTrophyScene } from '../art/chibi';
 import { getTownSelfPosition, townFishingController } from '../game/scenes';
 import { net } from '../game/net';
+import { useFishArt } from '../lib/use-fish-art';
 
 function rewardToast(coin: number, fame: number, title: string, tired?: boolean) {
   useUi.getState().toast({
@@ -107,6 +108,7 @@ type FishPhase =
     };
 
 export function FishingActivity() {
+  useFishArt();
   const close = useUi((s) => s.setActivity);
   const setPanel = useUi((s) => s.setPanel);
   const refresh = useRefreshEconomy();
@@ -724,7 +726,7 @@ export function FishingActivity() {
                             width: Math.min(baseWidth * displayScale, 240),
                             height: Math.min(baseHeight * displayScale, 140),
                             objectFit: 'contain',
-                            imageRendering: 'pixelated',
+                            imageRendering: 'auto',
                           }}
                         />
                       </div>

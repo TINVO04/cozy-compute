@@ -1,0 +1,181 @@
+{
+  "chat_model": "Gemini 3.8 Flash (High)",
+  "image_tool_model": "gemini-3.1-flash-image",
+  "total_jobs": 31,
+  "completed_jobs_count": 25,
+  "completed": [
+    {
+      "id": "betta_fighting",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\448a1578-36d8-4786-b02a-f3e83f3aa31d\\betta_fighting_1790840519179.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/betta_fighting-reference-1.jpg",
+      "completed_at": "2026-10-01T07:49:56.292Z"
+    },
+    {
+      "id": "piranha",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\448a1578-36d8-4786-b02a-f3e83f3aa31d\\piranha_fish_1790841022249.jpg",
+      "output_path": "D:\\Game_Cua_Bao\\output\\imagegen\\agy-session\\piranha-reference-1.jpg",
+      "completed_at": "2026-10-01T07:50:27.531Z"
+    },
+    {
+      "id": "snakehead",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\448a1578-36d8-4786-b02a-f3e83f3aa31d\\snakehead_fish_1790841050476.jpg",
+      "output_path": "D:\\Game_Cua_Bao\\output\\imagegen\\agy-session\\snakehead-reference-1.jpg",
+      "completed_at": "2026-10-01T07:50:59.539Z"
+    },
+    {
+      "id": "lionfish",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\448a1578-36d8-4786-b02a-f3e83f3aa31d\\lionfish_specimen_1790841082551.jpg",
+      "output_path": "D:\\Game_Cua_Bao\\output\\imagegen\\agy-session\\lionfish-reference-1.jpg",
+      "completed_at": "2026-10-01T07:51:34.968Z"
+    },
+    {
+      "id": "barracuda",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\448a1578-36d8-4786-b02a-f3e83f3aa31d\\barracuda_predator_1790841152050.jpg",
+      "output_path": "D:\\Game_Cua_Bao\\output\\imagegen\\agy-session\\barracuda-reference-1.jpg",
+      "completed_at": "2026-10-01T07:52:41.752Z"
+    },
+    {
+      "id": "anglerfish",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\448a1578-36d8-4786-b02a-f3e83f3aa31d\\anglerfish_deepsea_1790841205268.jpg",
+      "output_path": "D:\\Game_Cua_Bao\\output\\imagegen\\agy-session\\anglerfish-reference-1.jpg",
+      "completed_at": "2026-10-01T07:53:34.256Z"
+    },
+    {
+      "id": "moray_eel",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\448a1578-36d8-4786-b02a-f3e83f3aa31d\\moray_eel_marine_1790841263451.jpg",
+      "output_path": "D:\\Game_Cua_Bao\\output\\imagegen\\agy-session\\moray_eel-reference-1.jpg",
+      "completed_at": "2026-10-01T07:54:35.537Z"
+    },
+    {
+      "id": "pink_dolphin",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\448a1578-36d8-4786-b02a-f3e83f3aa31d\\pink_river_dolphin_1790841298358.jpg",
+      "output_path": "D:\\Game_Cua_Bao\\output\\imagegen\\agy-session\\pink_dolphin-reference-1.jpg",
+      "completed_at": "2026-10-01T07:55:04.649Z"
+    },
+    {
+      "id": "dolphin_playful",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\448a1578-36d8-4786-b02a-f3e83f3aa31d\\dolphin_playful_ocean_1790841343928.jpg",
+      "output_path": "D:\\Game_Cua_Bao\\output\\imagegen\\agy-session\\dolphin_playful-reference-1.jpg",
+      "completed_at": "2026-10-01T07:55:51.854Z"
+    },
+    {
+      "id": "hammerhead_shark",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\448a1578-36d8-4786-b02a-f3e83f3aa31d\\hammerhead_shark_1790841375062.jpg",
+      "output_path": "D:\\Game_Cua_Bao\\output\\imagegen\\agy-session\\hammerhead_shark-reference-1.jpg",
+      "completed_at": "2026-10-01T07:56:20.798Z"
+    },
+    {
+      "id": "tuna_giant",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\448a1578-36d8-4786-b02a-f3e83f3aa31d\\tuna_giant_fish_1790841435464.jpg",
+      "output_path": "D:\\Game_Cua_Bao\\output\\imagegen\\agy-session\\tuna_giant-reference-1.jpg",
+      "completed_at": "2026-10-01T07:57:21.166Z"
+    },
+    {
+      "id": "philosopher_eel",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\448a1578-36d8-4786-b02a-f3e83f3aa31d\\philosopher_eel_1790841465878.jpg",
+      "output_path": "D:\\Game_Cua_Bao\\output\\imagegen\\agy-session\\philosopher_eel-reference-1.jpg",
+      "completed_at": "2026-10-01T07:57:53.840Z"
+    },
+    {
+      "id": "electric_catfish",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\448a1578-36d8-4786-b02a-f3e83f3aa31d\\electric_catfish_1790841508511.jpg",
+      "output_path": "D:\\Game_Cua_Bao\\output\\imagegen\\agy-session\\electric_catfish-reference-1.jpg",
+      "completed_at": "2026-10-01T07:58:38.532Z"
+    },
+    {
+      "id": "office_carp_ceo",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516\\office_carp_ceo_1790856147756.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/office_carp_ceo-reference-1.jpg",
+      "completed_at": "2026-10-01T12:02:36.478Z"
+    },
+    {
+      "id": "pufferfish_gym",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516\\pufferfish_gym_1790856177192.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/pufferfish_gym-reference-1.jpg",
+      "completed_at": "2026-10-01T12:03:03.005Z"
+    },
+    {
+      "id": "catfish_noodle",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516\\catfish_noodle_1790856220410.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/catfish_noodle-reference-1.jpg",
+      "completed_at": "2026-10-01T12:03:49.965Z"
+    },
+    {
+      "id": "disco_trout_diva",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516\\disco_trout_diva_1790856270641.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/disco_trout_diva-reference-1.jpg",
+      "completed_at": "2026-10-01T12:04:36.829Z"
+    },
+    {
+      "id": "swordfish_void",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516\\swordfish_void_1790856301002.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/swordfish_void-reference-1.jpg",
+      "completed_at": "2026-10-01T12:05:08.698Z"
+    },
+    {
+      "id": "golden_dragon_astral",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516\\golden_dragon_astral_1790856341644.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/golden_dragon_astral-reference-1.jpg",
+      "completed_at": "2026-10-01T12:05:47.903Z"
+    },
+    {
+      "id": "koi_storm",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516\\koi_storm_1790856375450.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/koi_storm-reference-1.jpg",
+      "completed_at": "2026-10-01T12:06:25.756Z"
+    },
+    {
+      "id": "kraken_eclipse",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516\\kraken_eclipse_1790856411817.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/kraken_eclipse-reference-1.jpg",
+      "completed_at": "2026-10-01T12:07:02.016Z"
+    },
+    {
+      "id": "electric_eel",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516\\electric_eel_1790856445157.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/electric_eel-reference-1.jpg",
+      "completed_at": "2026-10-01T12:07:31.566Z"
+    },
+    {
+      "id": "arowana_dragon",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516\\arowana_dragon_1790856485559.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/arowana_dragon-reference-1.jpg",
+      "completed_at": "2026-10-01T12:08:12.684Z"
+    },
+    {
+      "id": "sturgeon",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516\\sturgeon_1790856520398.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/sturgeon-reference-1.jpg",
+      "completed_at": "2026-10-01T12:08:49.028Z"
+    },
+    {
+      "id": "catfish_giant",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516\\catfish_giant_1790856556754.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/catfish_giant-reference-1.jpg",
+      "completed_at": "2026-10-01T12:09:29.195Z"
+    },
+    {
+      "id": "alligator_gar",
+      "raw_source_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516\\alligator_gar_1790856596008.jpg",
+      "output_path": "D:/Game_Cua_Bao/output/imagegen/agy-session/alligator_gar-reference-1.jpg",
+      "completed_at": "2026-10-01T12:10:03.897Z"
+    }
+  ],
+  "last_status": "BLOCKED_QUOTA_EXHAUSTED",
+  "quota_reset_info": {
+    "code": 429,
+    "status": "RESOURCE_EXHAUSTED",
+    "message": "You have exhausted your capacity on this model. Your quota will reset after 4h51m45s.",
+    "model": "gemini-3.1-flash-image",
+    "reason": "QUOTA_EXHAUSTED",
+    "domain": "cloudcode-pa.googleapis.com",
+    "quotaResetDelay": "4h51m45.446534571s",
+    "quotaResetTimeStamp": "2026-10-01T17:02:01Z",
+    "retryDelay": "17505.446534571s"
+  },
+  "remaining_jobs_count": 6,
+  "remaining_ids": ["sunfish_mola", "cyber_koi", "phoenix_tetra", "ghost_shark", "beluga_whale", "narwhal"],
+  "failed_job": "sunfish_mola",
+  "failed_at": "2026-10-01T12:10:12Z",
+  "brain_path": "C:\\Users\\tinvo\\.gemini\\antigravity-cli\\brain\\cd1879db-b829-448d-b30d-1f0828fe1516"
+}

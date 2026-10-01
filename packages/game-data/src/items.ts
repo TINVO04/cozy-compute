@@ -3,13 +3,15 @@ export { GEN_Z_FURNITURE, GEN_Z_FURNITURE_IDS } from './furniture.js';
 
 export type ItemType = 'clothing' | 'furniture' | 'rod';
 export type ClothingSlot = 'hat' | 'top' | 'face' | 'rod';
-export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary' | 'defiant' | 'sovereign';
 
 export const RARITY_LABELS: Record<Rarity, string> = {
   common: 'Phổ thông',
   rare: 'Hiếm có',
   epic: 'Sử thi',
   legendary: 'Huyền thoại',
+  defiant: 'Nghịch Thiên',
+  sovereign: 'Chí Tôn',
 };
 
 export interface RodConfig {

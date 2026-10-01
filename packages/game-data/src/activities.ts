@@ -1,3 +1,5 @@
+import type { Rarity } from './items.js';
+
 export type ActivitySlug = 'fishing' | 'delivery' | 'cafe' | 'event_duck';
 
 export type FishHabitat = 'ocean' | 'freshwater' | 'mythic';
@@ -5,7 +7,7 @@ export type FishHabitat = 'ocean' | 'freshwater' | 'mythic';
 export interface FishSpecies {
   id: string;
   name: string;
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  rarity: Rarity;
   weight: number;
   coin: number;
   fame: number;
@@ -13,6 +15,8 @@ export interface FishSpecies {
   minSizeCm: number;
   maxSizeCm: number;
   description: string;
+  /** A new collectible derived from an existing species; rewards remain server-owned. */
+  variantOf?: string;
 }
 
 export const FISH: FishSpecies[] = [
@@ -704,6 +708,121 @@ export const FISH: FishSpecies[] = [
   },
 ];
 
+// Higher-tier variants are separate journal entries with their own art and reward weights.
+FISH.push(
+  {
+    id: 'office_carp_ceo',
+    name: 'Cá Chép Tổng Tài Bất Ổn',
+    rarity: 'defiant',
+    variantOf: 'office_carp',
+    weight: 0.28,
+    coin: 440,
+    fame: 27,
+    habitat: 'freshwater',
+    minSizeCm: 65,
+    maxSizeCm: 140,
+    description:
+      'Đeo cà vạt quá khổ, kẹp cặp táp và đội vương miện lệch. Vừa cắn câu vừa hứa tăng lương bằng rong biển.',
+  },
+  {
+    id: 'pufferfish_gym',
+    name: 'Cá Nóc Lực Sĩ Bỏ Ngày Chân',
+    rarity: 'defiant',
+    variantOf: 'pufferfish',
+    weight: 0.28,
+    coin: 460,
+    fame: 28,
+    habitat: 'ocean',
+    minSizeCm: 55,
+    maxSizeCm: 115,
+    description:
+      'Thân tròn như bóng, vây ngực cuồn cuộn ôm tạ san hô. Tập ngực cả đời nhưng quên mất mình không có chân.',
+  },
+  {
+    id: 'catfish_noodle',
+    name: 'Cá Trê Đại Sư Mì Úp',
+    rarity: 'defiant',
+    variantOf: 'catfish_giant',
+    weight: 0.24,
+    coin: 480,
+    fame: 29,
+    habitat: 'freshwater',
+    minSizeCm: 90,
+    maxSizeCm: 210,
+    description: 'Đội bát mì như nón, râu uốn thành đôi đũa. Tuyên bố tu luyện ba phút là thành chính quả.',
+  },
+  {
+    id: 'disco_trout_diva',
+    name: 'Cá Hồi Diva Lệch Nhịp',
+    rarity: 'defiant',
+    variantOf: 'disco_trout',
+    weight: 0.24,
+    coin: 500,
+    fame: 30,
+    habitat: 'mythic',
+    minSizeCm: 65,
+    maxSizeCm: 155,
+    description:
+      'Tóc xoăn bồng bềnh, kính sao và micro vỏ sò. Hát lệch nhịp đến mức cả đàn phải bơi ngược để theo kịp.',
+  },
+  {
+    id: 'swordfish_void',
+    name: 'Cá Kiếm Hư Không Đế Quân',
+    rarity: 'sovereign',
+    variantOf: 'swordfish',
+    weight: 0.065,
+    coin: 720,
+    fame: 42,
+    habitat: 'ocean',
+    minSizeCm: 240,
+    maxSizeCm: 520,
+    description:
+      'Mũi kiếm obsidian xẻ rách màn nước, vây phủ tinh vân tím. Những mảnh không gian lặng lẽ quay quanh thân như hộ vệ.',
+  },
+  {
+    id: 'golden_dragon_astral',
+    name: 'Thần Long Tinh Hà Chí Tôn',
+    rarity: 'sovereign',
+    variantOf: 'golden_dragon_fish',
+    weight: 0.055,
+    coin: 800,
+    fame: 48,
+    habitat: 'mythic',
+    minSizeCm: 300,
+    maxSizeCm: 720,
+    description:
+      'Vảy vàng bạch kim ôm một lõi sao xanh, sừng pha lê và dải vây ngân hà. Mỗi vòng lượn vẽ một quỹ đạo tinh tú.',
+  },
+  {
+    id: 'koi_storm',
+    name: 'Cá Koi Lôi Đình Thiên Đế',
+    rarity: 'sovereign',
+    variantOf: 'cyber_koi',
+    weight: 0.07,
+    coin: 740,
+    fame: 44,
+    habitat: 'freshwater',
+    minSizeCm: 110,
+    maxSizeCm: 270,
+    description:
+      'Giáp vảy lam bạc khắc đường sét, vây dài như chiến kỳ. Hai vòng lôi ấn bao quanh thân mà chẳng làm cháy một cọng rong.',
+  },
+  {
+    id: 'kraken_eclipse',
+    name: 'Kraken Nhật Thực Bá Chủ',
+    rarity: 'sovereign',
+    variantOf: 'abyssal_kraken',
+    weight: 0.045,
+    coin: 840,
+    fame: 50,
+    habitat: 'mythic',
+    minSizeCm: 550,
+    maxSizeCm: 1400,
+    description:
+      'Áo giáp hắc ngọc, giác hút đỏ rực và vành nhật thực đồng đỏ. Xúc tu cuộn thành một ngai vàng giữa biển sâu.',
+  },
+);
+
 /**
  * Calculates randomized catch size and weight for a fish species.
  * Size directly affects the visual pixel scale rendered in the celebration UI!
@@ -816,7 +935,12 @@ export const SHADOW_TIER_CONFIG: Record<FishShadowTier, ShadowTierInfo> = {
 };
 
 export function getFishShadowTier(sizeCm: number, rarity?: string, habitat?: string): FishShadowTier {
-  if (habitat === 'mythic' || (rarity === 'legendary' && sizeCm >= 600)) {
+  if (
+    habitat === 'mythic' ||
+    rarity === 'defiant' ||
+    rarity === 'sovereign' ||
+    (rarity === 'legendary' && sizeCm >= 600)
+  ) {
     return 6;
   }
   if (sizeCm < 25) return 1;

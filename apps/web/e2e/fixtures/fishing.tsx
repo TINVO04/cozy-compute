@@ -7,6 +7,7 @@ import { useUi } from '../../src/lib/store';
 import { FishingActivity } from '../../src/screens/activities';
 import { drawOrganicFishShadow } from '../../src/game/fish-shadow';
 import { SHADOW_TIER_CONFIG } from '@cozy/game-data';
+import { ensureFishTexture } from '../../src/game/fish-texture';
 import '../../src/styles.css';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
@@ -16,6 +17,7 @@ qc.setQueryData(qk.me, {
 });
 useUi.setState({ activity: 'fishing', muted: true });
 Object.defineProperty(window, 'fishingPreview', { get: () => game });
+Object.assign(window, { fishTextureTest: ensureFishTexture });
 
 function Preview() {
   const [ready, setReady] = useState(false);

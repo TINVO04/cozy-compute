@@ -1,0 +1,82 @@
+[
+  {
+    "id": "office_carp_ceo",
+    "name": "Cá Chép Tổng Tài Bất Ổn",
+    "rarity": "defiant",
+    "habitat": "freshwater",
+    "variantOf": "office_carp",
+    "subject": "A copper-orange carp with a comically oversized red silk tie, small leather briefcase tucked under one pectoral fin, crooked tiny crown and smug exhausted expression. Clearly still a fish, no human torso. Rich scale material and humorous silhouette.",
+    "prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: A copper-orange carp with a comically oversized red silk tie, small leather briefcase tucked under one pectoral fin, crooked tiny crown and smug exhausted expression. Clearly still a fish, no human torso. Rich scale material and humorous silhouette.",
+    "output": "apps/web/public/fish/office_carp_ceo-render.webp"
+  },
+  {
+    "id": "pufferfish_gym",
+    "name": "Cá Nóc Lực Sĩ Bỏ Ngày Chân",
+    "rarity": "defiant",
+    "habitat": "ocean",
+    "variantOf": "pufferfish",
+    "subject": "A round golden pufferfish with absurd muscular pectoral fins hugging a coral dumbbell, tiny headband, determined pout and very tiny normal tail. One fish only; charming visual joke, no human body. Modeled spines and pearlescent skin.",
+    "prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: A round golden pufferfish with absurd muscular pectoral fins hugging a coral dumbbell, tiny headband, determined pout and very tiny normal tail. One fish only; charming visual joke, no human body. Modeled spines and pearlescent skin.",
+    "output": "apps/web/public/fish/pufferfish_gym-render.webp"
+  },
+  {
+    "id": "catfish_noodle",
+    "name": "Cá Trê Đại Sư Mì Úp",
+    "rarity": "defiant",
+    "habitat": "freshwater",
+    "variantOf": "catfish_giant",
+    "subject": "A plump slate catfish wearing an upside-down ceramic noodle bowl like a monk hat, curled whiskers resembling chopsticks, noodles draped over the hat rim, sleepy enlightened expression. Fish anatomy intact; polished ceramic and skin, no typography.",
+    "prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: A plump slate catfish wearing an upside-down ceramic noodle bowl like a monk hat, curled whiskers resembling chopsticks, noodles draped over the hat rim, sleepy enlightened expression. Fish anatomy intact; polished ceramic and skin, no typography.",
+    "output": "apps/web/public/fish/catfish_noodle-render.webp"
+  },
+  {
+    "id": "disco_trout_diva",
+    "name": "Cá Hồi Diva Lệch Nhịp",
+    "rarity": "defiant",
+    "habitat": "mythic",
+    "variantOf": "disco_trout",
+    "subject": "A silver lavender trout with ridiculous voluminous purple curly wig, star sunglasses, a seashell microphone held in one fin, a tiny feather boa following its back. Funny diva expression, detailed scales, fully fish anatomy and visible full tail.",
+    "prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: A silver lavender trout with ridiculous voluminous purple curly wig, star sunglasses, a seashell microphone held in one fin, a tiny feather boa following its back. Funny diva expression, detailed scales, fully fish anatomy and visible full tail.",
+    "output": "apps/web/public/fish/disco_trout_diva-render.webp"
+  },
+  {
+    "id": "swordfish_void",
+    "name": "Cá Kiếm Hư Không Đế Quân",
+    "rarity": "sovereign",
+    "habitat": "ocean",
+    "variantOf": "swordfish",
+    "subject": "A majestic obsidian swordfish with readable long complete sword bill, indigo starfield embedded in scales, amethyst crystalline dorsal fins, a few floating faceted void shards and one thin broken violet energy orbit. Dangerous regal silhouette, controlled luminous accents, no fog blanket.",
+    "prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: A majestic obsidian swordfish with readable long complete sword bill, indigo starfield embedded in scales, amethyst crystalline dorsal fins, a few floating faceted void shards and one thin broken violet energy orbit. Dangerous regal silhouette, controlled luminous accents, no fog blanket.",
+    "output": "apps/web/public/fish/swordfish_void-render.webp"
+  },
+  {
+    "id": "golden_dragon_astral",
+    "name": "Thần Long Tinh Hà Chí Tôn",
+    "rarity": "sovereign",
+    "habitat": "mythic",
+    "variantOf": "golden_dragon_fish",
+    "subject": "An ascended celestial dragon fish with platinum-gold overlapping armor scales, sapphire star core in its chest, crystal antler horns, flowing galaxy-blue fin ribbons and two delicate star orbits behind it. Recognizably aquatic dragon-fish body rather than a land dragon; majestic detailed materials.",
+    "prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: An ascended celestial dragon fish with platinum-gold overlapping armor scales, sapphire star core in its chest, crystal antler horns, flowing galaxy-blue fin ribbons and two delicate star orbits behind it. Recognizably aquatic dragon-fish body rather than a land dragon; majestic detailed materials.",
+    "output": "apps/web/public/fish/golden_dragon_astral-render.webp"
+  },
+  {
+    "id": "koi_storm",
+    "name": "Cá Koi Lôi Đình Thiên Đế",
+    "rarity": "sovereign",
+    "habitat": "freshwater",
+    "variantOf": "cyber_koi",
+    "subject": "An imperial armored koi with cobalt and silver scales, branching white electric engravings, long fins like battle banners, two narrow lightning sigil rings and small blue-white arcs attached to its body. Clear fish silhouette, sculpted scale detail, balanced luminous effects, no text or opaque aura disc.",
+    "prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: An imperial armored koi with cobalt and silver scales, branching white electric engravings, long fins like battle banners, two narrow lightning sigil rings and small blue-white arcs attached to its body. Clear fish silhouette, sculpted scale detail, balanced luminous effects, no text or opaque aura disc.",
+    "output": "apps/web/public/fish/koi_storm-render.webp"
+  },
+  {
+    "id": "kraken_eclipse",
+    "name": "Kraken Nhật Thực Bá Chủ",
+    "rarity": "sovereign",
+    "habitat": "mythic",
+    "variantOf": "abyssal_kraken",
+    "subject": "A regal abyssal kraken with black jade mantle armor, copper eclipse ring behind its mantle and individually modeled dark crimson arms with ember-red glowing sucker rings. Distinct separated coiling arms forming a throne-like silhouette, all tips inside frame. Powerful controlled eclipse accents.",
+    "prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: A regal abyssal kraken with black jade mantle armor, copper eclipse ring behind its mantle and individually modeled dark crimson arms with ember-red glowing sucker rings. Distinct separated coiling arms forming a throne-like silhouette, all tips inside frame. Powerful controlled eclipse accents.",
+    "output": "apps/web/public/fish/kraken_eclipse-render.webp"
+  }
+]

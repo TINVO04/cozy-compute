@@ -1,0 +1,510 @@
+[
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "betta_fighting",
+      "ImagePaths": [
+        "D:\\Game_Cua_Bao\\apps\\web\\public\\fish\\swordfish-illustration.webp",
+        "D:\\Game_Cua_Bao\\apps\\web\\public\\fish\\guppy_rainbow-illustration.webp",
+        "D:\\Game_Cua_Bao\\apps\\web\\public\\fish\\golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Full-body isolated betta fighting fish facing left with 10 percent margin around all fins. Rich burgundy-red coloration with spectacular large flowing fan tail, delicate translucent fins with visible individual fin rays, glossy expressive eyes, and fine metallic iridescent scales catching soft studio light. Complete fish silhouette contained entirely within the frame. Rendered in a polished dimensional 3D/digital painted game asset style matching the shading, lighting, and rendering fidelity of the style reference images, while strictly preserving realistic betta fish anatomy. No pixel art, no flat/vector drawing, no cut-off fins. Solid uniform pure chroma key green #00FF00 background for easy isolation, no shadows cast on background, no text, no watermark.",
+      "toolAction": "Generating betta image",
+      "toolSummary": "Generate betta image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "piranha_fish",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Deep-bodied silver piranha, red belly, powerful jaw and small sharp triangular teeth visible in a slightly open mouth.\nExisting game identity (preserve relevant visual details): Hàm răng sắc lẹm trứ danh nhưng vì ham đớp vỏ trai nên gãy mất một chiếc răng cửa.",
+      "toolAction": "Generating piranha image",
+      "toolSummary": "Generate piranha image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "snakehead_fish",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Long olive snakehead, broad flattened snake-like head, dark mottling and extended dorsal and anal fins.\nExisting game identity (preserve relevant visual details): Lực lưỡng và thiện chiến, nhưng hễ nghe tiếng bạc hà và me dốt là giật mình thon thót.",
+      "toolAction": "Generating snakehead image",
+      "toolSummary": "Generate snakehead image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "lionfish_specimen",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Red-and-cream banded lionfish, separate long dorsal spines and dramatic striped pectoral fin fans.\nExisting game identity (preserve relevant visual details): Vây gai xoè rộng thướt tha như đầm dạ hội hoàng gia, độc đáo và đầy kiêu sa.",
+      "toolAction": "Generating lionfish image",
+      "toolSummary": "Generate lionfish image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "barracuda_predator",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Long silver-blue barracuda, pointed head, projecting lower jaw, visible teeth and separated dorsal fins.\nExisting game identity (preserve relevant visual details): Phóng nhanh như tia chớp xé toạc mặt biển, hàm răng sắc nhọn thích đi hù dọa đàn cá nhỏ.",
+      "toolAction": "Generating barracuda image",
+      "toolSummary": "Generate barracuda image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "anglerfish_deepsea",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Dark deep-sea anglerfish, rounded body, large toothy mouth and curved fishing-lure stalk ending in a warm luminous bulb.\nExisting game identity (preserve relevant visual details): Treo bóng đèn LED siêu sáng trước trán, ban đêm thường bật lên để đọc truyện tranh dưới đáy biển.",
+      "toolAction": "Generating anglerfish image",
+      "toolSummary": "Generate anglerfish image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "moray_eel_marine",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Olive mottled moray eel, sinuous muscular body, open toothy jaw, continuous dorsal fin and no pectoral fins.\nExisting game identity (preserve relevant visual details): Chuyên thò đầu ra khỏi hốc đá há hốc mồm làm meme ngạc nhiên cho toàn bộ sinh vật biển.",
+      "toolAction": "Generating moray eel image",
+      "toolSummary": "Generate moray eel image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "pink_river_dolphin",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Pink river dolphin with long narrow beak, rounded forehead, low dorsal ridge and pink textured skin.\nExisting game identity (preserve relevant visual details): Sinh vật quý hiếm với làn da hồng kẹo ngọt ngào, mang lại tình yêu và may mắn ngập tràn.",
+      "toolAction": "Generating pink dolphin image",
+      "toolSummary": "Generate pink dolphin image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "dolphin_playful_ocean",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Blue-grey bottlenose dolphin, curved dorsal fin, friendly natural expression, flippers and horizontal tail flukes.\nExisting game identity (preserve relevant visual details): Nhào lộn 360 độ trên không trung và cười tít mắt mỗi khi bạn kéo hụt cần câu.",
+      "toolAction": "Generating dolphin playful image",
+      "toolSummary": "Generate dolphin playful image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "hammerhead_shark",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Blue-grey hammerhead shark, wide hammer-shaped head with eyes at the outer ends, tall dorsal fin and asymmetric vertical tail.\nExisting game identity (preserve relevant visual details): Đầu hình chiếc búa thợ mộc tiêu chuẩn nhưng suốt đời chưa tự tay đóng được một cái đinh nào.",
+      "toolAction": "Generating hammerhead shark image",
+      "toolSummary": "Generate hammerhead shark image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "tuna_giant_fish",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Robust silver-blue tuna, torpedo-shaped body, dark blue back, yellow finlets and crescent tail.\nExisting game identity (preserve relevant visual details): Thịt béo ngậy giàu Omega-3, bơi liên tục không ngừng nghỉ vì sợ không kịp chạy deadline.",
+      "toolAction": "Generating tuna giant image",
+      "toolSummary": "Generate tuna giant image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "philosopher_eel",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Purple-grey sinuous eel with continuous fin and a small fine metal monocle matching its philosopher identity.\nExisting game identity (preserve relevant visual details): Đeo kính một tròng thanh lịch, vừa uốn lượn vừa trăn trở suy tư về ý nghĩa bản thể luận.",
+      "toolAction": "Generating philosopher eel image",
+      "toolSummary": "Generate philosopher eel image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "electric_catfish",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Golden-olive electric catfish, stout scaleless body and whisker-like barbels, restrained blue-white electrical arcs close to its body.\nExisting game identity (preserve relevant visual details): Bộ râu dài truyền dòng điện cực mạnh, cắm dây sạc vào có thể sạc đầy điện thoại trong nháy mắt.",
+      "toolAction": "Generating electric catfish image",
+      "toolSummary": "Generate electric catfish image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "electric_eel",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Long dark teal electric eel, cylindrical body, blunt head and long anal fin, restrained electrical arcs near the skin.\nExisting game identity (preserve relevant visual details): Nguồn phát điện sống cực kỳ uy lực, có thể thắp sáng cả tiệm cà phê trong nhiều giờ liền.",
+      "toolAction": "Generating electric eel image",
+      "toolSummary": "Generate electric eel image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "electric_eel",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Long dark teal electric eel, cylindrical body, blunt head and long anal fin, restrained electrical arcs near the skin.\nExisting game identity (preserve relevant visual details): Nguồn phát điện sống cực kỳ uy lực, có thể thắp sáng cả tiệm cà phê trong nhiều giờ liền.",
+      "toolAction": "Attempting electric eel generation",
+      "toolSummary": "Generate electric eel"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "electric_eel",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Long dark teal electric eel, cylindrical body, blunt head and long anal fin, restrained electrical arcs near the skin.\nExisting game identity (preserve relevant visual details): Nguồn phát điện sống cực kỳ uy lực, có thể thắp sáng cả tiệm cà phê trong nhiều giờ liền.",
+      "toolAction": "Generating electric eel image",
+      "toolSummary": "Electric eel render"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "ImageName": "office_carp_ceo",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: A copper-orange carp with a comically oversized red silk tie, small leather briefcase tucked under one pectoral fin, crooked tiny crown and smug exhausted expression. Clearly still a fish, no human torso. Rich scale material and humorous silhouette.",
+      "toolAction": "Generating image for office_carp_ceo",
+      "toolSummary": "Generate office_carp_ceo bitmap"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "office_carp_ceo",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: A copper-orange carp with a comically oversized red silk tie, small leather briefcase tucked under one pectoral fin, crooked tiny crown and smug exhausted expression. Clearly still a fish, no human torso. Rich scale material and humorous silhouette.",
+      "toolAction": "Generating image for office_carp_ceo",
+      "toolSummary": "Generate office_carp_ceo image"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "ImageName": "office_carp_ceo",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: A copper-orange carp with a comically oversized red silk tie, small leather briefcase tucked under one pectoral fin, crooked tiny crown and smug exhausted expression. Clearly still a fish, no human torso. Rich scale material and humorous silhouette.",
+      "toolAction": "Generating office carp ceo image",
+      "toolSummary": "Generate office carp ceo"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "office_carp_ceo",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: A copper-orange carp with a comically oversized red silk tie, small leather briefcase tucked under one pectoral fin, crooked tiny crown and smug exhausted expression. Clearly still a fish, no human torso. Rich scale material and humorous silhouette.",
+      "toolAction": "Generating office carp CEO image",
+      "toolSummary": "Office carp CEO image generation"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "office_carp_ceo",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: A copper-orange carp with a comically oversized red silk tie, small leather briefcase tucked under one pectoral fin, crooked tiny crown and smug exhausted expression. Clearly still a fish, no human torso. Rich scale material and humorous silhouette.",
+      "toolAction": "Generating office carp CEO image",
+      "toolSummary": "Office carp CEO generation"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "pufferfish_gym",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: A round golden pufferfish with absurd muscular pectoral fins hugging a coral dumbbell, tiny headband, determined pout and very tiny normal tail. One fish only; charming visual joke, no human body. Modeled spines and pearlescent skin.",
+      "toolAction": "Generating pufferfish gym image",
+      "toolSummary": "Pufferfish gym generation"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "catfish_noodle",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: A plump slate catfish wearing an upside-down ceramic noodle bowl like a monk hat, curled whiskers resembling chopsticks, noodles draped over the hat rim, sleepy enlightened expression. Fish anatomy intact; polished ceramic and skin, no typography.",
+      "toolAction": "Generating catfish noodle image",
+      "toolSummary": "Catfish noodle generation"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "disco_trout_diva",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: A silver lavender trout with ridiculous voluminous purple curly wig, star sunglasses, a seashell microphone held in one fin, a tiny feather boa following its back. Funny diva expression, detailed scales, fully fish anatomy and visible full tail.",
+      "toolAction": "Generating disco trout diva image",
+      "toolSummary": "Disco trout diva generation"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "swordfish_void",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: A majestic obsidian swordfish with readable long complete sword bill, indigo starfield embedded in scales, amethyst crystalline dorsal fins, a few floating faceted void shards and one thin broken violet energy orbit. Dangerous regal silhouette, controlled luminous accents, no fog blanket.",
+      "toolAction": "Generating swordfish void image",
+      "toolSummary": "Swordfish void generation"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "golden_dragon_astral",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: An ascended celestial dragon fish with platinum-gold overlapping armor scales, sapphire star core in its chest, crystal antler horns, flowing galaxy-blue fin ribbons and two delicate star orbits behind it. Recognizably aquatic dragon-fish body rather than a land dragon; majestic detailed materials.",
+      "toolAction": "Generating golden dragon astral image",
+      "toolSummary": "Golden dragon astral generation"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "koi_storm",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: An imperial armored koi with cobalt and silver scales, branching white electric engravings, long fins like battle banners, two narrow lightning sigil rings and small blue-white arcs attached to its body. Clear fish silhouette, sculpted scale detail, balanced luminous effects, no text or opaque aura disc.",
+      "toolAction": "Generating koi storm image",
+      "toolSummary": "Koi storm generation"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "kraken_eclipse",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept. Asset: individual collectible game bitmap. Match sculpted dimensional quality, detailed materials and glossy eyes of the three supplied STYLE REFERENCES (swordfish, rainbow guppy, golden dragon fish). One isolated complete subject facing left, subtle three-quarter volume. All appendages and effects within frame with at least 10 percent margin. Flat pure green #00FF00 backdrop for removal; zero green illumination on subject, no shadow on backdrop. No pixel art, flat vector, brush strokes, thick outlines, scene, typography or watermark. Effects confined close to silhouette, sharp modeled structures rather than mist or huge light discs. Subject: A regal abyssal kraken with black jade mantle armor, copper eclipse ring behind its mantle and individually modeled dark crimson arms with ember-red glowing sucker rings. Distinct separated coiling arms forming a throne-like silhouette, all tips inside frame. Powerful controlled eclipse accents.",
+      "toolAction": "Generating kraken eclipse image",
+      "toolSummary": "Kraken eclipse generation"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "electric_eel",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Long dark teal electric eel, cylindrical body, blunt head and long anal fin, restrained electrical arcs near the skin.\nExisting game identity (preserve relevant visual details): Nguồn phát điện sống cực kỳ uy lực, có thể thắp sáng cả tiệm cà phê trong nhiều giờ liền.",
+      "toolAction": "Generating electric eel image",
+      "toolSummary": "Electric eel generation"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "arowana_dragon",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Golden arowana, long laterally compressed body, large metallic overlapping scales, upward-facing mouth with two short barbels and long sweeping fins.\nExisting game identity (preserve relevant visual details): Vảy vàng kim lấp lánh như dát vàng 18k, báu vật mang lại tài lộc thịnh vượng đỉnh cao.",
+      "toolAction": "Generating arowana dragon image",
+      "toolSummary": "Arowana dragon generation"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "sturgeon",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Grey-green sturgeon, elongated snout, rows of bony scutes, mouth beneath the head with barbels and asymmetric tail.\nExisting game identity (preserve relevant visual details): Tồn tại từ thời khủng long kỷ Jura, sở hữu bọc trứng caviar quý giá đắt đỏ hơn cả vàng thỏi.",
+      "toolAction": "Generating sturgeon image",
+      "toolSummary": "Sturgeon generation"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "catfish_giant",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Large slate-grey freshwater catfish, broad flattened head, long whisker-like barbels, smooth scaleless skin and thick body.\nExisting game identity (preserve relevant visual details): Cái bụng bự núng nính, chuyên rình dưới chân cầu tàu để xin bánh mì của khách vãng lai.",
+      "toolAction": "Generating catfish giant image",
+      "toolSummary": "Catfish giant generation"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "alligator_gar",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Olive alligator gar, long broad crocodile-like snout, hard diamond-shaped scales, dark spots and rear-set dorsal fin.\nExisting game identity (preserve relevant visual details): Mõm dài sắc bén như cá sấu đầm lầy, thích thả trôi thân mình giả làm khúc gỗ mục trêu người.",
+      "toolAction": "Generating alligator gar image",
+      "toolSummary": "Alligator gar generation"
+    }
+  },
+  {
+    "name": "generate_image",
+    "args": {
+      "AspectRatio": "1:1",
+      "ImageName": "sunfish_mola",
+      "ImagePaths": [
+        "D:/Game_Cua_Bao/apps/web/public/fish/swordfish-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/guppy_rainbow-illustration.webp",
+        "D:/Game_Cua_Bao/apps/web/public/fish/golden_dragon_fish-illustration.webp"
+      ],
+      "Prompt": "Use case: stylized-concept\nAsset type: individual game collectible bitmap, used unchanged in admin, inventory and held-fish previews.\nPrimary request: Create one new species at the same finished rendered quality as the three supplied reference fish.\nInput images: Image 1 swordfish, Image 2 rainbow guppy, Image 3 golden dragon fish. All three are STYLE REFERENCES ONLY. Do not copy their anatomy or regenerate these references.\nStyle/medium: Polished dimensional game render with sculpted volume, realistic small surface details, glossy eyes, finely resolved scales or appropriate skin, delicate fin rays and rich material shading. Match the references' level of finish.\nComposition/framing: One isolated complete subject, mainly side profile with subtle three-quarter volume. Face left for the game's holding layout; upright species remain naturally upright. Center the entire silhouette with at least 8 percent clear space around every appendage.\nLighting: Soft studio key light from above, controlled highlights and subtle cool rim light; highlights follow real body curvature.\nBackdrop: Completely flat uniform pure green #00FF00, used only for removal after generation; no green cast on the subject, no contact shadow.\nConstraints: Preserve the species anatomy and the existing game's identifying details. No pixel art, flat vector shapes, thick outlines, brush strokes, watercolor, crude gradients, toy-plastic fish, collage, multiple specimens, environmental scene, typography or watermark.\nSubject: Grey-blue ocean sunfish, tall disk-shaped body, blunt head, tall dorsal and anal fins and rounded truncated clavus instead of a normal tail.\nExisting game identity (preserve relevant visual details): Tròn xoe phẳng lì như cái thớt khổng lồ, thích nằm ngửa tắm nắng với gương mặt ngơ ngác hoàn toàn.",
+      "toolAction": "Generating sunfish mola image",
+      "toolSummary": "Sunfish mola generation"
+    }
+  }
+]

@@ -1,5 +1,7 @@
 import { HAIR_COLORS, SKIN_TONES, TOP_COLORS, normalizeRodId, type Appearance } from '@cozy/game-data';
-import { fishRenderDimensions, getHDFishCanvas } from './fish';
+import { fishRenderDimensions, getHDFishCanvas, getSpeciesData } from './fish';
+import { fishArtRevision } from './fish-assets';
+import { fitChibiWithFish } from './fish-layout';
 
 /**
  * 2026 High-Definition 2D Vector / Canvas Chibi Renderer:
@@ -1326,7 +1328,7 @@ export function drawChibiAvatar(
     const isGiant = cm > 120;
     const isColossal = cm > 450;
 
-    if (pose === 'trophy' || isGiant) {
+    if (pose === 'trophy' || (pose !== 'holding' && isGiant)) {
       // Two arms raised high hoisting the trophy fish over head
       ctx.lineWidth = 6;
       ctx.lineCap = 'round';
@@ -1347,7 +1349,7 @@ export function drawChibiAvatar(
 
       if (showFish) {
         // Render the hoisted fish image above character (HD Illustration)
-        const fishCanvas = getHDFishCanvas(held.speciesId, isColossal ? 240 : 180, isColossal ? 160 : 120);
+        const fishCanvas = getHDFishCanvas(held.speciesId, isColossal ? 720 : 480, isColossal ? 480 : 320);
         const { baseWidth, baseHeight } = fishRenderDimensions(held.speciesId);
         const aspect = baseHeight / baseWidth;
 
@@ -1359,7 +1361,13 @@ export function drawChibiAvatar(
 
         ctx.save();
         // Drop shadow for hoisted fish
-        ctx.shadowColor = 'rgba(56, 189, 248, 0.5)';
+        const rarity = getSpeciesData(held.speciesId)?.rarity;
+        ctx.shadowColor =
+          rarity === 'sovereign'
+            ? 'rgba(103, 232, 249, 0.7)'
+            : rarity === 'defiant'
+              ? 'rgba(251, 113, 133, 0.6)'
+              : 'rgba(56, 189, 248, 0.5)';
         ctx.shadowBlur = 16;
         ctx.drawImage(fishCanvas, fishX, fishY, fishW, fishH);
         ctx.restore();
@@ -1388,7 +1396,7 @@ export function drawChibiAvatar(
 
       if (showFish) {
         // Fish projecting out front (-X)
-        const fishCanvas = getHDFishCanvas(held.speciesId, 160, 110);
+        const fishCanvas = getHDFishCanvas(held.speciesId, 480, 320);
         const { baseWidth, baseHeight } = fishRenderDimensions(held.speciesId);
         const aspect = baseHeight / baseWidth;
         const fishW = Math.max(28, Math.round(22 + Math.pow(cm, 0.65) * 1.8));
@@ -1417,7 +1425,7 @@ export function drawChibiAvatar(
 
       if (showFish) {
         // Show fish sticking out on sides if wide
-        const fishCanvas = getHDFishCanvas(held.speciesId, 160, 110);
+        const fishCanvas = getHDFishCanvas(held.speciesId, 480, 320);
         const { baseWidth, baseHeight } = fishRenderDimensions(held.speciesId);
         const aspect = baseHeight / baseWidth;
         const fishW = Math.max(28, Math.round(22 + Math.pow(cm, 0.65) * 1.8));
@@ -1460,7 +1468,7 @@ export function drawChibiAvatar(
 
       if (showFish) {
         // Fish in arms
-        const fishCanvas = getHDFishCanvas(held.speciesId, 160, 110);
+        const fishCanvas = getHDFishCanvas(held.speciesId, 480, 320);
         const { baseWidth, baseHeight } = fishRenderDimensions(held.speciesId);
         const aspect = baseHeight / baseWidth;
         const fishW = Math.max(28, Math.round(22 + Math.pow(cm, 0.65) * 1.8));
@@ -1624,7 +1632,9 @@ const chibiCache = new Map<string, string>();
  * Returns a high-definition 2D Chibi avatar data URL.
  */
 export function chibiAvatarPortrait(a: Appearance, size = 160): string {
-  const heldKey = a.heldFish ? `${a.heldFish.speciesId}:${a.heldFish.sizeCm}` : 'none';
+  const heldKey = a.heldFish
+    ? `${a.heldFish.speciesId}:${a.heldFish.sizeCm}:${fishArtRevision(a.heldFish.speciesId)}`
+    : 'none';
   const key = `chibi:${a.skin}:${a.hairStyle}:${a.hairColor}:${a.baseTop}:${a.hat}:${a.top}:${a.face}:${a.rod ?? ''}:${heldKey}:${size}`;
   const hit = chibiCache.get(key);
   if (hit) return hit;
@@ -1665,12 +1675,17 @@ export function chibiAvatarFull(
 
   const heldCm = a.heldFish && options.showFish !== false ? a.heldFish.sizeCm : 0;
   const baseScale = (width / 180) * 1.25;
-  // If holding/hoisting a massive fish, adaptively zoom out so character + giant fish both fit!
-  const zoomFactor = heldCm > 200 ? Math.max(0.42, 1 / (1 + (heldCm - 200) * 0.00065)) : 1;
-  const scale = options.scale ?? baseScale * zoomFactor;
-
+  const dimensions = fishRenderDimensions(a.heldFish?.speciesId ?? '');
+  const trophy = options.pose === 'trophy' || (options.pose !== 'holding' && heldCm > 120);
+  const { scale, cy } = fitChibiWithFish(
+    width,
+    height,
+    heldCm,
+    dimensions.baseHeight / dimensions.baseWidth,
+    trophy,
+    options.scale ?? baseScale,
+  );
   const cx = width / 2;
-  const cy = height * (heldCm > 200 ? 0.7 : 0.62);
 
   drawChibiAvatar(ctx, a, {
     cx,
@@ -1701,7 +1716,7 @@ export function chibiTrophyScene(
   canvas.height = height;
   const ctx = canvas.getContext('2d')!;
 
-  const isGiant = sizeCm > 150;
+  const isGiant = sizeCm > 120;
 
   // Radiant ocean backdrop
   const grad = ctx.createRadialGradient(width / 2, height * 0.45, 10, width / 2, height * 0.45, width * 0.7);
@@ -1732,8 +1747,15 @@ export function chibiTrophyScene(
     heldFish: { speciesId, sizeCm },
   };
 
-  const charY = height * 0.72;
-  const charScale = isGiant ? 1.05 : 1.25;
+  const dimensions = fishRenderDimensions(speciesId);
+  const { scale: charScale, cy: charY } = fitChibiWithFish(
+    width,
+    height,
+    sizeCm,
+    dimensions.baseHeight / dimensions.baseWidth,
+    isGiant,
+    isGiant ? 1.3 : 1.5,
+  );
 
   drawChibiAvatar(ctx, appearanceWithFish, {
     cx: width / 2,

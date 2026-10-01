@@ -3083,6 +3083,55 @@ img.pixel,
   animation: fx-sparkle-float 2.5s infinite linear;
 }
 
+/* Higher tiers preserve the collectible silhouette and use restrained material glows. */
+.rarity-defiant {
+  color: #fb7185;
+}
+.rarity-sovereign {
+  color: #67e8f9;
+}
+.fish-fx-defiant img {
+  filter: drop-shadow(0 0 7px rgba(251, 113, 133, 0.55));
+}
+.fish-fx-void img {
+  --fish-aura: #a78bfa;
+  --fish-aura-secondary: #4338ca;
+}
+.fish-fx-astral img {
+  --fish-aura: #fde68a;
+  --fish-aura-secondary: #38bdf8;
+}
+.fish-fx-storm img {
+  --fish-aura: #67e8f9;
+  --fish-aura-secondary: #60a5fa;
+}
+.fish-fx-eclipse img {
+  --fish-aura: #fb7185;
+  --fish-aura-secondary: #f97316;
+}
+.fish-fx-void img,
+.fish-fx-astral img,
+.fish-fx-storm img,
+.fish-fx-eclipse img {
+  filter: drop-shadow(0 0 8px var(--fish-aura)) drop-shadow(0 0 15px var(--fish-aura-secondary));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fish-fx-void img,
+  .fish-fx-astral img,
+  .fish-fx-storm img,
+  .fish-fx-eclipse img {
+    animation: fish-sovereign-breathe 3.8s ease-in-out infinite alternate;
+  }
+}
+@keyframes fish-sovereign-breathe {
+  from {
+    filter: drop-shadow(0 0 5px var(--fish-aura)) drop-shadow(0 0 8px var(--fish-aura-secondary));
+  }
+  to {
+    filter: drop-shadow(0 0 9px var(--fish-aura)) drop-shadow(0 0 17px var(--fish-aura-secondary));
+  }
+}
+
 /* FISH FX STYLES - ALL LEGENDARY SPECIES (11) */
 .fish-fx-golden-dragon img,
 .fish-fx-golden-dragon .fish-art-wrap {

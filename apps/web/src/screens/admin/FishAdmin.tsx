@@ -9,6 +9,7 @@ import { api, type Me } from '../../lib/api';
 import { play } from '../../lib/sound';
 import { useUi } from '../../lib/store';
 import { Button, toastError } from '../../ui/primitives';
+import { useFishArt } from '../../lib/use-fish-art';
 
 export interface AdminFishSpecies extends FishSpecies {
   defaultMinSizeCm: number;
@@ -27,12 +28,16 @@ const RARITY_LABELS: Record<string, { label: string; color: string }> = {
   rare: { label: 'Hiếm có', color: '#38bdf8' },
   epic: { label: 'Sử thi', color: '#c084fc' },
   legendary: { label: 'Huyền thoại', color: '#fbbf24' },
+  defiant: { label: 'Nghịch Thiên', color: '#fb7185' },
+  sovereign: { label: 'Chí Tôn', color: '#67e8f9' },
 };
 
 export function FishAdminPage() {
+  useFishArt();
   const qc = useQueryClient();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(['blue_whale']));
   const [habitat, setHabitat] = useState<FishHabitat | 'all'>('all');
+  const [rarityFilter, setRarityFilter] = useState<FishSpecies['rarity'] | 'all'>('all');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'overridden' | 'default'>('all');
 
@@ -59,6 +64,7 @@ export function FishAdminPage() {
   const filteredFish = useMemo(() => {
     return allFish.filter((f) => {
       if (habitat !== 'all' && f.habitat !== habitat) return false;
+      if (rarityFilter !== 'all' && f.rarity !== rarityFilter) return false;
       if (statusFilter === 'overridden' && !f.isOverridden) return false;
       if (statusFilter === 'default' && f.isOverridden) return false;
       if (search.trim()) {
@@ -67,7 +73,7 @@ export function FishAdminPage() {
       }
       return true;
     });
-  }, [allFish, habitat, statusFilter, search]);
+  }, [allFish, habitat, rarityFilter, statusFilter, search]);
 
   const selectedFishList = useMemo(() => {
     return allFish.filter((f) => selectedIds.has(f.id));
@@ -118,11 +124,11 @@ export function FishAdminPage() {
         <div>
           <h1 style={{ margin: 0, fontSize: 22, display: 'flex', alignItems: 'center', gap: 8 }}>
             <Fish size={24} style={{ color: '#38bdf8' }} />
-            Quản Trị Từ Điển Cá & Tinh Chỉnh Kích Thước Pixel
+            Quản Trị Từ Điển Cá & Kích Thước
           </h1>
           <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
-            Xem toàn bộ 55 loài cá, tinh chỉnh kích thước từng con hoặc chỉnh sửa hàng loạt đồng thời nhiều
-            loài với tỷ lệ % hoặc bù trừ cm.
+            Xem toàn bộ loài và biến thể cá, tinh chỉnh kích thước từng con hoặc chỉnh sửa hàng loạt đồng thời
+            nhiều loài với tỷ lệ % hoặc bù trừ cm.
           </p>
         </div>
 
@@ -201,6 +207,19 @@ export function FishAdminPage() {
               />
             </div>
 
+            <select
+              aria-label="Lọc bậc cá"
+              value={rarityFilter}
+              onChange={(e) => setRarityFilter(e.target.value as FishSpecies['rarity'] | 'all')}
+              style={{ minHeight: 44, maxWidth: '100%' }}
+            >
+              <option value="all">Mọi bậc cá</option>
+              {Object.entries(RARITY_LABELS).map(([id, meta]) => (
+                <option key={id} value={id}>
+                  {meta.label}
+                </option>
+              ))}
+            </select>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as 'all' | 'overridden' | 'default')}
@@ -351,6 +370,8 @@ export function FishAdminPage() {
                   <input
                     type="checkbox"
                     checked={isChecked}
+                    aria-label={fish.name}
+                    onClick={(e) => e.stopPropagation()}
                     onChange={(e) => {
                       e.stopPropagation();
                       toggleSelect(fish.id, e.target.checked);
@@ -374,7 +395,7 @@ export function FishAdminPage() {
                     <img
                       src={fishIcon(fish.id, 2)}
                       alt=""
-                      style={{ imageRendering: 'pixelated', maxWidth: '100%', maxHeight: '100%' }}
+                      style={{ imageRendering: 'auto', maxWidth: '100%', maxHeight: '100%' }}
                     />
                   </div>
 
@@ -714,6 +735,7 @@ function FishTunerWorkbench({
   appearance?: Appearance;
   onSaved: () => void;
 }) {
+  useFishArt();
   const [minSize, setMinSize] = useState(fish.minSizeCm);
   const [maxSize, setMaxSize] = useState(fish.maxSizeCm);
   const [testSize, setTestSize] = useState(Math.round((fish.minSizeCm + fish.maxSizeCm) / 2));
@@ -795,7 +817,7 @@ function FishTunerWorkbench({
   }, [appearance]);
 
   // Live 2D HD Chibi Avatar previews
-  const chibiHeldPreviewUrl = useMemo(() => {
+  const chibiHeldPreviewUrl = (() => {
     const base = liveAvatarAppearance;
     const pose = chibiPose === 'auto' ? (testSize > 120 ? 'trophy' : 'holding') : chibiPose;
     return chibiAvatarFull(base, 240, 280, {
@@ -803,12 +825,12 @@ function FishTunerWorkbench({
       dir: previewDir,
       showFish: true,
     });
-  }, [liveAvatarAppearance, chibiPose, previewDir, testSize]);
+  })();
 
-  const chibiTrophyUrl = useMemo(() => {
+  const chibiTrophyUrl = (() => {
     const base = appearance ?? { skin: 1, hairStyle: 'short', hairColor: 1, baseTop: 0 };
     return chibiTrophyScene(base, fish.id, testSize, 460, 300);
-  }, [appearance, fish.id, testSize]);
+  })();
 
   const chibiRefUrl = useMemo(() => {
     const base = appearance ?? { skin: 1, hairStyle: 'short', hairColor: 1, baseTop: 0 };
@@ -1025,7 +1047,7 @@ function FishTunerWorkbench({
                   border: '1px solid rgba(56, 189, 248, 0.4)',
                 }}
               >
-                ✨ 2D HD Chibi Engine (Anime Eyes, Smooth Shading, Specular Hair)
+                ✨ Minh họa cá HD · Cùng hình ảnh trong game
               </span>
             </div>
 
@@ -1150,9 +1172,7 @@ function FishTunerWorkbench({
               }}
             >
               <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                <strong style={{ fontSize: 14, color: '#fef08a' }}>
-                  🎉 Trình Diễn Kéo Cá (Trophy Catch Banner)
-                </strong>
+                <strong style={{ fontSize: 14, color: '#fef08a' }}>🎉 Chiến lợi phẩm câu cá</strong>
                 <span className="pill pill-primary" style={{ fontSize: 11 }}>
                   2D HD Animation Ready
                 </span>
@@ -1377,7 +1397,7 @@ function FishTunerWorkbench({
                     style={{
                       width: stageFishW,
                       height: stageFishH,
-                      imageRendering: 'pixelated',
+                      imageRendering: 'auto',
                       filter: 'drop-shadow(0 12px 32px rgba(56, 189, 248, 0.45))',
                       transition: 'all 0.1s ease',
                     }}
@@ -2234,7 +2254,7 @@ function BatchFishTunerWorkbench({
                     <img
                       src={fishIcon(fish.id, 2)}
                       alt=""
-                      style={{ imageRendering: 'pixelated', maxWidth: '100%', maxHeight: '100%' }}
+                      style={{ imageRendering: 'auto', maxWidth: '100%', maxHeight: '100%' }}
                     />
                   </div>
                   <div className="stack" style={{ gap: 2, minWidth: 0 }}>

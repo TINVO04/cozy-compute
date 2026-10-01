@@ -4,40 +4,9 @@ import type Phaser from 'phaser';
 import { AVATAR_FEET_OFFSET, ensureAvatarTexture } from './avatars';
 import { spawnFootstepDust } from './atmosphere';
 import { useUi } from '../lib/store';
-import { getHDFishCanvas, FISH_3D_ASSETS, getSpeciesData } from '../art/fish';
+import { fishRenderDimensions, getSpeciesData } from '../art/fish';
+import { ensureFishTexture } from './fish-texture';
 import { MovementPrediction, smoothMovement } from './movement-prediction';
-
-function ensureFishTexture(scene: Phaser.Scene, speciesId: string): string {
-  const key = `fish_tx_hd:${speciesId}`;
-  if (scene.textures.exists(key)) return key;
-
-  const assetUrl = FISH_3D_ASSETS[speciesId];
-  if (assetUrl) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 180;
-    canvas.height = 120;
-    const ctx = canvas.getContext('2d')!;
-    const fallbackCanvas = getHDFishCanvas(speciesId, 180, 120);
-    ctx.drawImage(fallbackCanvas, 0, 0);
-
-    const img = new Image();
-    img.src = assetUrl;
-    img.onload = () => {
-      ctx.clearRect(0, 0, 180, 120);
-      ctx.drawImage(img, 0, 0, 180, 120);
-      const tex = scene.textures.get(key);
-      if (tex && 'update' in tex && typeof tex.update === 'function') {
-        tex.update();
-      }
-    };
-    scene.textures.addCanvas(key, canvas);
-    return key;
-  }
-
-  const canvas = getHDFishCanvas(speciesId, 180, 120);
-  scene.textures.addCanvas(key, canvas);
-  return key;
-}
 
 interface PlayerSnapshot {
   userId: string;
@@ -174,7 +143,8 @@ class Avatar {
 
     const { speciesId, sizeCm } = held;
     const texKey = ensureFishTexture(this.scene, speciesId);
-    const aspect = 120 / 180;
+    const { baseWidth, baseHeight } = fishRenderDimensions(speciesId);
+    const aspect = baseHeight / baseWidth;
 
     // Display width: smoothly scaled based on sizeCm so small fish is ~32px and colossal whale is ~128px
     const targetW = Math.max(32, Math.min(128, Math.round(24 + Math.pow(sizeCm, 0.64) * 1.45)));
@@ -193,7 +163,28 @@ class Avatar {
     const reducedMotion = useUi.getState().reducedMotion;
 
     // --- 1. BACKDROP AURA (Rendered BEHIND the fish sprite) ---
-    if (rarity === 'legendary') {
+    if (rarity === 'sovereign' || rarity === 'defiant') {
+      const color = rarity === 'sovereign' ? 0x67e8f9 : 0xfb7185;
+      const accent = rarity === 'sovereign' ? 0xc4b5fd : 0xfde68a;
+      const halo = this.scene.add.graphics();
+      halo.lineStyle(2, color, 0.65);
+      halo.strokeEllipse(0, 0, targetW * 1.36, targetH * 1.5);
+      halo.lineStyle(1, accent, 0.5);
+      halo.strokeEllipse(0, 0, targetW * 1.56, targetH * 1.18);
+      this.heldFishContainer.add(halo);
+      if (!reducedMotion) {
+        this.heldFishTweens.push(
+          this.scene.tweens.add({
+            targets: halo,
+            alpha: 0.5,
+            yoyo: true,
+            repeat: -1,
+            duration: 1400,
+            ease: 'Sine.easeInOut',
+          }),
+        );
+      }
+    } else if (rarity === 'legendary') {
       // Golden Celestial Sunburst Corona
       const aura = this.scene.add.graphics();
       aura.fillStyle(0xd97706, 0.32);
@@ -347,7 +338,20 @@ class Avatar {
       }
     };
 
-    if (rarity === 'legendary') {
+    if (rarity === 'sovereign' || rarity === 'defiant') {
+      const color = rarity === 'sovereign' ? 0x67e8f9 : 0xfb7185;
+      const count = rarity === 'sovereign' ? 12 : 6;
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2;
+        addSparkleStar(
+          Math.cos(angle) * targetW * 0.53,
+          Math.sin(angle) * targetH * 0.57,
+          i % 3 === 0 ? 0xffffff : color,
+          rarity === 'sovereign' ? 4.5 : 3.5,
+          i * 160,
+        );
+      }
+    } else if (rarity === 'legendary') {
       // 10 Golden Starlight Particles
       addSparkleStar(-targetW * 0.4, -targetH * 0.32, 0xfde047, 4.5, 0);
       addSparkleStar(targetW * 0.38, -targetH * 0.3, 0xffffff, 5, 150);

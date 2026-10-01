@@ -28,6 +28,30 @@ describe('soft cap', () => {
 });
 
 describe('fishing', () => {
+  it('can select every higher-tier variant without non-finite rarity weights', () => {
+    for (const fish of FISH.filter((f) => f.variantOf)) {
+      const other = FISH[0]!;
+      // A low roll must select the first candidate; unknown boost values would yield NaN and fall through.
+      expect(rollFish(() => 0, 700, 1400, [fish, other], 0.5).id).toBe(fish.id);
+    }
+  });
+  it('keeps the highest tier rarer than the humorous tier and improves odds with better rods', () => {
+    const shares = (rodBonus: number) => {
+      const counts = { legendary: 0, defiant: 0, sovereign: 0 };
+      for (let i = 0; i < 20000; i++) {
+        const rarity = rollFish(() => (i + 0.5) / 20000, 0, 1400, FISH, rodBonus).rarity;
+        if (rarity in counts) counts[rarity as keyof typeof counts]++;
+      }
+      return counts;
+    };
+    const base = shares(0);
+    const betterRod = shares(0.85);
+    expect(base.sovereign).toBeGreaterThan(0);
+    expect(base.sovereign).toBeLessThan(base.defiant);
+    expect(base.defiant).toBeLessThan(base.legendary);
+    expect(betterRod.sovereign).toBeGreaterThan(base.sovereign);
+    expect(betterRod.defiant).toBeGreaterThan(base.defiant);
+  });
   it('returns the first fish for the lowest roll and last for the highest', () => {
     expect(rollFish(() => 0, 700, 1400).id).toBe(FISH[0]!.id);
     expect(rollFish(() => 0.999999, 700, 1400).id).toBe(FISH[FISH.length - 1]!.id);

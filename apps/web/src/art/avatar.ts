@@ -559,7 +559,12 @@ export function drawAvatar(a: Appearance, dir: Dir, frame: 0 | 1 | 2): PixelGrid
 
         // Rare / Epic / Legendary prestige sparkles around held fish
         const sp = getSpeciesData(held.speciesId);
-        if (sp?.rarity === 'legendary') {
+        if (sp?.rarity === 'sovereign' || sp?.rarity === 'defiant') {
+          const color = sp.rarity === 'sovereign' ? '#67e8f9' : '#fb7185';
+          g.set(Math.max(0, ox - 1), oy - 1, color);
+          g.set(Math.min(AV_W - 1, ox + targetW), oy - 1, '#ffffff');
+          g.set(Math.floor(AV_W / 2), oy - 2, color);
+        } else if (sp?.rarity === 'legendary') {
           g.set(Math.max(0, ox - 1), oy - 1, '#fbbf24');
           g.set(Math.min(AV_W - 1, ox + targetW), oy - 1, '#ffffff');
           g.set(Math.floor(AV_W / 2), oy - 2, '#fef08a');

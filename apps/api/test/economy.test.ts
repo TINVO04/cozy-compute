@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { zoneCenter } from '@cozy/game-data';
+import { FISH, zoneCenter } from '@cozy/game-data';
 import { api, createHarness, register, type Harness } from './harness.js';
 
 let h: Harness;
@@ -68,6 +68,37 @@ describe('auth', () => {
 });
 
 describe('fishing', () => {
+  it('catches a Chí Tôn variant with server-owned rewards, inventory and journal identity', async () => {
+    const player = await register(h);
+    at(player.id, 'pier');
+    // The highest RNG roll selects the final species; completion uses the stored server candidate.
+    h.rngQueue.push(0.999999);
+    const start = await api(h, 'POST', '/activities/fishing/start', { token: player.token });
+    expect(start.status).toBe(200);
+    h.clock.now += start.body.biteInMs + 300;
+    h.rngQueue.push(0); // Avoid the server's independent escape roll.
+    const result = await api(h, 'POST', '/activities/fishing/complete', {
+      token: player.token,
+      body: { runId: start.body.runId, nonce: start.body.nonce },
+    });
+    const expected = FISH.find((fish) => fish.id === 'kraken_eclipse')!;
+    expect(result.status).toBe(200);
+    expect(result.body.outcome).toBe('caught');
+    expect(result.body.fish.id).toBe(expected.id);
+    expect(result.body.fish.rarity).toBe('sovereign');
+    expect(result.body.coin).toBe(expected.coin);
+    const inventory = await h.ctx.db.query<{ species_id: string }>(
+      'SELECT species_id FROM user_fish_inventory WHERE user_id = $1',
+      [player.id],
+    );
+    const journal = await h.ctx.db.query<{ species_id: string; count: number }>(
+      'SELECT species_id, count FROM fish_journal WHERE user_id = $1',
+      [player.id],
+    );
+    expect(inventory.rows.map((row) => row.species_id)).toEqual([expected.id]);
+    expect(journal.rows).toEqual([{ species_id: expected.id, count: 1 }]);
+    expect((await ledgerSum(player.id, 'coin')).bal).toBe(300 + expected.coin);
+  });
   it('keeps the longest nibble sequence valid through the catch window', async () => {
     const p = await register(h);
     at(p.id, 'pier');

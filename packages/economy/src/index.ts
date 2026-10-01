@@ -32,6 +32,8 @@ export function rollFish(
     rare: 1 + quality + rodBonus * 0.4,
     epic: 1 + quality * 2 + rodBonus * 1.0,
     legendary: 1 + quality * 3 + rodBonus * 1.8,
+    defiant: 1 + quality * 3.5 + rodBonus * 2,
+    sovereign: 1 + quality * 4 + rodBonus * 2.2,
   };
   const weights = table.map((f) => f.weight * boost[f.rarity]);
   const total = weights.reduce((a, b) => a + b, 0);
