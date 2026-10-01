@@ -8,7 +8,6 @@ echo   [COZY COMPUTE] Dung toan bo he thong Web Game
 echo ========================================================
 
 echo [1/3] Dang tat Node.js (Web, API, Realtime, Mock)...
-powershell -NoProfile -Command "5173,8787,2567,4010 | ForEach-Object { Get-NetTCPConnection -LocalPort $_ -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }" > nul 2>&1
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":8787 " ^| findstr "LISTENING"') do taskkill /f /pid %%a > nul 2>&1
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":2567 " ^| findstr "LISTENING"') do taskkill /f /pid %%a > nul 2>&1
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":5173 " ^| findstr "LISTENING"') do taskkill /f /pid %%a > nul 2>&1

@@ -9,6 +9,9 @@ import {
   COMPANY_BLOCKERS,
   COMPANY_COLS,
   COMPANY_ROWS,
+  CYBERNET_BLOCKERS,
+  CYBERNET_COLS,
+  CYBERNET_ROWS,
   BIDA_BLOCKERS,
   BIDA_COLS,
   BIDA_ROWS,
@@ -33,6 +36,7 @@ import { duckGrid } from '../art/items';
 import { APT_ART_SIDE, APT_ART_TOP } from '../art/apartment';
 import { drawRotatedFurniture } from '../art/furniture';
 import { COMGA_PEOPLE, drawComGaPerson, paintComGaInterior, type ComGaPerson } from '../art/comga';
+import { CYBERNET_PEOPLE, drawCyberNetPerson, paintCyberNetInterior } from '../art/cybernet';
 import { BIDA_PEOPLE, drawBidaPerson, paintBidaInterior, type BidaPerson } from '../art/bida';
 import {
   drawSleepingEmployee,
@@ -633,11 +637,11 @@ abstract class InteriorScene extends WorldScene {
   protected override fitCamera() {
     super.fitCamera();
     const { width, height } = this.worldSize();
-    // Fit the complete room at integer scale, rather than rounding up and cropping it.
-    const zoom = Math.max(
+    const baseZoom = Math.max(
       1,
       Math.min(3, Math.floor(Math.min(this.scale.width / width, this.scale.height / height))),
     );
+    const zoom = Math.max(0.5, Math.min(4, baseZoom * useUi.getState().zoom));
     const vw = this.scale.width / zoom;
     const vh = this.scale.height / zoom;
     this.cameras.main
@@ -1269,7 +1273,7 @@ export class BidaScene extends InteriorScene {
   }
 
   protected matchesRoom(room: Room) {
-    return room.name === 'bida' || room.name === 'cybernet';
+    return room.name === 'bida';
   }
 
   protected override onSelfMove(x: number, y: number) {
@@ -1435,8 +1439,54 @@ export class BidaScene extends InteriorScene {
   }
 }
 
-export class CyberNetScene extends BidaScene {
+export class CyberNetScene extends InteriorScene {
   constructor() {
     super('cybernet');
+  }
+  protected worldSize() {
+    return { width: CYBERNET_COLS * TILE, height: CYBERNET_ROWS * TILE };
+  }
+  protected blockers() {
+    return CYBERNET_BLOCKERS;
+  }
+  protected matchesRoom(room: Room) {
+    return room.name === 'cybernet';
+  }
+  protected override onSelfMove(x: number, y: number) {
+    if (!this.exiting && y >= 10.4 * TILE && x >= 6.8 * TILE && x <= 9.2 * TILE) {
+      this.exiting = true;
+      void net.goTown();
+    }
+  }
+  protected buildWorld() {
+    const key = 'cybernet:interior';
+    if (this.textures.exists(key)) this.textures.remove(key);
+    this.textures.addCanvas(key, paintCyberNetInterior());
+    this.add.image(0, 0, key).setOrigin(0).setDepth(-10);
+    for (const person of CYBERNET_PEOPLE) {
+      const tex = 'cybernet:' + person.id;
+      if (!this.textures.exists(tex)) this.textures.addCanvas(tex, drawCyberNetPerson(person));
+      const sprite = this.add
+        .image(person.x, person.y, tex)
+        .setOrigin(0.5, 0.7)
+        .setDepth(person.y + 12);
+      this.add
+        .text(person.x, person.y - 38, person.name, {
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '10px',
+          color: '#e0f2fe',
+          backgroundColor: '#0f172a',
+          padding: { x: 5, y: 2 },
+          resolution: 2,
+        })
+        .setOrigin(0.5)
+        .setDepth(person.y + 13);
+      const talk = () => {
+        play('pop');
+        useUi.getState().toast({ kind: 'info', title: person.name, body: person.dialogue });
+      };
+      sprite.setInteractive({ useHandCursor: true }).on('pointerdown', talk);
+      this.interactAt(person.x, person.y, person.name, talk);
+    }
   }
 }

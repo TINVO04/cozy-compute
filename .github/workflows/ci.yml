@@ -90,7 +90,7 @@ jobs:
             if curl --fail --silent http://127.0.0.1:5173 > /dev/null; then break; fi
             sleep 1
           done
-          pnpm --filter @cozy/web e2e e2e/town-render.spec.ts e2e/apartment-render.spec.ts e2e/interior-render.spec.ts
+          pnpm --filter @cozy/web e2e e2e/town-render.spec.ts e2e/apartment-render.spec.ts e2e/interior-render.spec.ts e2e/bida.spec.ts e2e/venues.spec.ts
 
       - name: Build production containers
         env:

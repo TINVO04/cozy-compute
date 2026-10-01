@@ -13,7 +13,13 @@
   <body>
     <script type="module">
       import Phaser from 'phaser';
-      import { CompanyScene, UniversityScene, ComGaScene, BidaScene } from '/src/game/scenes.ts';
+      import {
+        CompanyScene,
+        UniversityScene,
+        ComGaScene,
+        BidaScene,
+        CyberNetScene,
+      } from '/src/game/scenes.ts';
       import { useUi } from '/src/lib/store.ts';
       import { net } from '/src/game/net.ts';
       useUi.setState({ reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
@@ -30,8 +36,8 @@
         audio: { noAudio: true },
         banner: false,
         scene: university
-          ? [UniversityScene, CompanyScene, ComGaScene, BidaScene]
-          : [CompanyScene, UniversityScene, ComGaScene, BidaScene],
+          ? [UniversityScene, CompanyScene, ComGaScene, BidaScene, CyberNetScene]
+          : [CompanyScene, UniversityScene, ComGaScene, BidaScene, CyberNetScene],
       });
     </script>
   </body>

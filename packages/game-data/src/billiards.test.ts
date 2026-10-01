@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   BALL_RADIUS,
+  FRICTION,
+  CUSHION_RESTITUTION,
   calculateAimPrediction,
   createCaromRack,
   createStandard8BallRack,
@@ -29,6 +31,11 @@ describe('billiards physics & match engine', () => {
     expect(eight).toBeDefined();
     expect(eight?.type).toBe('8ball');
     expect(eight?.color).toBe('#09090b');
+    expect(eight?.y).toBe(cue?.y);
+    const rear = balls
+      .filter((b) => b.id !== 0 && b.x === Math.max(...balls.map((ball) => ball.x)))
+      .sort((a, b) => a.y - b.y);
+    expect(new Set([rear[0]?.type, rear.at(-1)?.type])).toEqual(new Set(['solid', 'stripe']));
 
     // All balls must be within cushion bounds
     for (const b of balls) {
@@ -61,6 +68,7 @@ describe('billiards physics & match engine', () => {
 
     const res = stepBilliardsPhysics([ball], bounds, []);
     expect(ball.vx).toBeLessThan(0); // Reversed velocity
+    expect(ball.vx).toBeCloseTo(-5 * FRICTION * CUSHION_RESTITUTION, 8);
     expect(ball.x).toBeLessThanOrEqual(bounds.cushionRight - BALL_RADIUS);
     expect(res.cushionCollisions).toContain(0);
   });

@@ -1,7 +1,7 @@
 import { CYBERNET_COLS, CYBERNET_ROWS, TILE } from '@cozy/game-data';
 
-export const CYBERNET_W = CYBERNET_COLS * TILE; // 448
-export const CYBERNET_H = CYBERNET_ROWS * TILE; // 320
+export const CYBERNET_W = CYBERNET_COLS * TILE; // 512
+export const CYBERNET_H = CYBERNET_ROWS * TILE; // 384
 
 export interface CyberNetPerson {
   id: string;
@@ -210,7 +210,7 @@ export function paintCyberNetInterior(): HTMLCanvasElement {
   drawGamingStation(332, 144, 'VIP 04');
 
   // 6. EXIT DOOR MAT (Thảm đỏ dẫn ra thị trấn ở cửa phía Nam)
-  const exitX = 6 * TILE;
+  const exitX = 7 * TILE;
   const exitY = (CYBERNET_ROWS - 1) * TILE;
   r(ctx, '#1e293b', exitX, exitY + 6, 2 * TILE, 26);
   r(ctx, '#38bdf8', exitX + 2, exitY + 8, 2 * TILE - 4, 22);

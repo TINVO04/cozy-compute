@@ -255,7 +255,7 @@ const SIGNS: Record<string, string> = {
   fishing_shop: 'NGƯ CỤ BÁC BA',
   comga: 'CƠM GÀ 68',
   bida: 'BIDA H2S',
-  cybernet: 'BIDA H2S',
+  cybernet: 'CYBER GAME HNT',
 };
 
 /**
@@ -1289,6 +1289,35 @@ function paintBidaBuilding(b: Building): HTMLCanvasElement {
   return canvas;
 }
 
+function paintCyberNetBuilding(b: Building): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = b.rect.w + 8;
+  canvas.height = b.rect.h + BUILDING_ROOF;
+  const ctx = canvas.getContext('2d')!;
+  const w = b.rect.w;
+  const bottom = canvas.height - 2;
+  rect(ctx, '#020617', 0, 8, w + 8, bottom - 8);
+  rect(ctx, '#1e293b', 4, 12, w, bottom - 12);
+  for (let y = 16; y < bottom - 80; y += 9) rect(ctx, '#334155', 7, y, w - 6, 2);
+  rect(ctx, '#38bdf8', 4, bottom - 78, w, 3);
+  rect(ctx, '#0f172a', 8, bottom - 74, w - 8, 22);
+  ctx.font = '800 12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e0f2fe';
+  ctx.fillText('CYBER GAME HNT', canvas.width / 2, bottom - 58);
+  rect(ctx, '#a855f7', 4, bottom - 49, w, 2);
+  const dx = 4 + b.door.x * TILE - b.rect.x;
+  rect(ctx, '#0284c7', dx + 8, bottom - 43, b.door.w * TILE - 16, 43);
+  rect(ctx, '#0c4a6e', dx + 11, bottom - 40, b.door.w * TILE - 22, 39);
+  rect(ctx, '#38bdf8', dx + (b.door.w * TILE) / 2, bottom - 40, 2, 39);
+  for (const x of [12, w - 28]) {
+    rect(ctx, '#020617', x, bottom - 40, 24, 24);
+    rect(ctx, '#2563eb', x + 3, bottom - 37, 18, 15);
+    rect(ctx, '#ec4899', x + 3, bottom - 21, 18, 2);
+  }
+  return canvas;
+}
+
 export function paintBuilding(b: Building): HTMLCanvasElement {
   if (b.id === 'vietprodev') {
     return paintVietProDevTownhouse(b);
@@ -1299,7 +1328,8 @@ export function paintBuilding(b: Building): HTMLCanvasElement {
   if (b.id === 'comga') {
     return paintComGaBuilding(b);
   }
-  if (b.id === 'bida' || b.id === 'cybernet') {
+  if (b.id === 'cybernet') return paintCyberNetBuilding(b);
+  if (b.id === 'bida') {
     return paintBidaBuilding(b);
   }
   const canvas = document.createElement('canvas');

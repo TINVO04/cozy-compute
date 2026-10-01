@@ -359,7 +359,7 @@ const ZONE_ACTIONS: Partial<Record<ZoneId, { cta: string; hint: string }>> = {
   dntu: { cta: 'Vào trường ĐH', hint: 'Trường Đại học Công nghệ Đồng Nai' },
   comga: { cta: 'Ăn cơm gà', hint: 'Quán Cơm Gà Xối Mỡ 68 Biên Hòa' },
   bida: { cta: 'Vào quán Bida', hint: 'CLB Bida H2S Trảng Dài Biên Hòa (Giao lưu 1v1)' },
-  cybernet: { cta: 'Vào quán Bida', hint: 'CLB Bida H2S Trảng Dài Biên Hòa (Giao lưu 1v1)' },
+  cybernet: { cta: 'Vào Cyber Game', hint: 'Cyber Game HNT Trảng Dài' },
 };
 
 function WorldHud({ me }: { me: Me }) {
@@ -416,8 +416,9 @@ function WorldHud({ me }: { me: Me }) {
       case 'comga':
         return void net.goComGa('Cơm Gà Xối Mỡ 68 Biên Hòa');
       case 'bida':
-      case 'cybernet':
         return void net.goBida('CLB Bida H2S Trảng Dài (Biên Hòa)');
+      case 'cybernet':
+        return void net.goCyberNet();
     }
   }
 
@@ -436,7 +437,7 @@ function WorldHud({ me }: { me: Me }) {
         e.preventDefault();
         useUi.getState().setZoom((z) => z - 0.15);
       }
-      if (e.key === '0' && (e.ctrlKey || !action)) {
+      if (e.key === '0') {
         e.preventDefault();
         useUi.getState().setZoom(1.0);
       }
@@ -472,7 +473,7 @@ function WorldHud({ me }: { me: Me }) {
               <MapIcon size={15} /> Về thị trấn
             </Button>
           ) : null}
-          {room.kind === 'bida' || room.kind === 'cybernet' ? (
+          {room.kind === 'bida' ? (
             <Button size="sm" variant="reward" onClick={() => setPanel('bida')}>
               🎱 Bida Arena (Tạo phòng & Ghép đấu)
             </Button>

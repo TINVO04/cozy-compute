@@ -50,6 +50,7 @@ export interface Pocket {
 }
 
 export interface StepPhysicsResult {
+  contacts: ({ type: 'ball'; ids: [number, number] } | { type: 'cushion'; id: number })[];
   anyMoving: boolean;
   ballCollisions: [number, number][];
   cushionCollisions: number[];
@@ -150,7 +151,7 @@ export function createStandard8BallRack(bounds: TableBounds = DEFAULT_TABLE_BOUN
   // Row 2: 3 balls (8-ball in center!)
   // Row 3: 4 balls
   // Row 4: 5 balls (Solid and stripe on opposite corners)
-  const pattern = [[1], [9, 2], [3, 8, 10], [11, 4, 12, 5], [13, 6, 14, 7, 15]];
+  const pattern = [[1], [9, 2], [3, 8, 10], [11, 4, 12, 13], [5, 6, 14, 7, 15]];
 
   const apexX = bounds.cushionLeft + tableWidth * 0.72;
   const dx = BALL_RADIUS * Math.sqrt(3) + 0.4;
@@ -252,6 +253,34 @@ export function stepBilliardsPhysics(
   bounds: TableBounds = DEFAULT_TABLE_BOUNDS,
   pockets: Pocket[] = [],
 ): StepPhysicsResult {
+  // Each substep travels at most half a radius, including two approaching balls.
+  const speed = Math.max(0, ...balls.filter((b) => !b.pocketed).map((b) => Math.hypot(b.vx, b.vy)));
+  const steps = Math.max(1, Math.ceil(speed / (BALL_RADIUS / 2)));
+  const result: StepPhysicsResult = {
+    anyMoving: false,
+    ballCollisions: [],
+    cushionCollisions: [],
+    pocketedThisStep: [],
+    contacts: [],
+  };
+  for (let i = 0; i < steps; i++) {
+    const step = stepPhysics(balls, bounds, pockets, 1 / steps);
+    result.ballCollisions.push(...step.ballCollisions);
+    result.cushionCollisions.push(...step.cushionCollisions);
+    result.pocketedThisStep.push(...step.pocketedThisStep);
+    result.contacts.push(...step.contacts);
+    result.anyMoving = step.anyMoving;
+  }
+  return result;
+}
+
+function stepPhysics(
+  balls: BidaBall[],
+  bounds: TableBounds = DEFAULT_TABLE_BOUNDS,
+  pockets: Pocket[] = [],
+  dt = 1,
+): StepPhysicsResult {
+  const contacts: StepPhysicsResult['contacts'] = [];
   const ballCollisions: [number, number][] = [];
   const cushionCollisions: number[] = [];
   const pocketedThisStep: number[] = [];
@@ -262,8 +291,8 @@ export function stepBilliardsPhysics(
   for (const b of activeBalls) {
     if (b.vx === 0 && b.vy === 0) continue;
 
-    b.x += b.vx;
-    b.y += b.vy;
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
 
     // Check pockets
     for (const p of pockets) {
@@ -280,8 +309,8 @@ export function stepBilliardsPhysics(
     if (b.pocketed) continue;
 
     // Friction
-    b.vx *= FRICTION;
-    b.vy *= FRICTION;
+    b.vx *= FRICTION ** dt;
+    b.vy *= FRICTION ** dt;
 
     if (Math.hypot(b.vx, b.vy) < STOP_VELOCITY) {
       b.vx = 0;
@@ -293,20 +322,24 @@ export function stepBilliardsPhysics(
       b.x = bounds.cushionLeft + BALL_RADIUS;
       b.vx = -b.vx * CUSHION_RESTITUTION;
       cushionCollisions.push(b.id);
+      contacts.push({ type: 'cushion', id: b.id });
     } else if (b.x + BALL_RADIUS > bounds.cushionRight) {
       b.x = bounds.cushionRight - BALL_RADIUS;
       b.vx = -b.vx * CUSHION_RESTITUTION;
       cushionCollisions.push(b.id);
+      contacts.push({ type: 'cushion', id: b.id });
     }
 
     if (b.y - BALL_RADIUS < bounds.cushionTop) {
       b.y = bounds.cushionTop + BALL_RADIUS;
       b.vy = -b.vy * CUSHION_RESTITUTION;
       cushionCollisions.push(b.id);
+      contacts.push({ type: 'cushion', id: b.id });
     } else if (b.y + BALL_RADIUS > bounds.cushionBottom) {
       b.y = bounds.cushionBottom - BALL_RADIUS;
       b.vy = -b.vy * CUSHION_RESTITUTION;
       cushionCollisions.push(b.id);
+      contacts.push({ type: 'cushion', id: b.id });
     }
   }
 
@@ -347,6 +380,7 @@ export function stepBilliardsPhysics(
           b2.vx += impulse * BALL_MASS * nx;
           b2.vy += impulse * BALL_MASS * ny;
           ballCollisions.push([b1.id, b2.id]);
+          contacts.push({ type: 'ball', ids: [b1.id, b2.id] });
         }
       }
     }
@@ -355,11 +389,38 @@ export function stepBilliardsPhysics(
   const anyMoving = balls.some((b) => !b.pocketed && (b.vx !== 0 || b.vy !== 0));
 
   return {
+    contacts,
     anyMoving,
     ballCollisions,
     cushionCollisions,
     pocketedThisStep,
   };
+}
+
+/** Server and local practice share the same ordered shot observations. */
+export function createBidaShotTracker() {
+  return {
+    firstHit: undefined as number | undefined,
+    cushions: 0,
+    targets: new Set<number>(),
+    caromPoint: false,
+  };
+}
+
+export function trackBidaShot(tracker: ReturnType<typeof createBidaShotTracker>, step: StepPhysicsResult) {
+  for (const contact of step.contacts) {
+    if (contact.type === 'cushion') {
+      if (contact.id === 0) tracker.cushions++;
+    } else if (contact.ids.includes(0)) {
+      const target = contact.ids[0] === 0 ? contact.ids[1] : contact.ids[0];
+      tracker.firstHit ??= target;
+      if (!tracker.targets.has(target)) {
+        tracker.targets.add(target);
+        if (tracker.targets.has(1) && tracker.targets.has(2) && tracker.cushions >= 3)
+          tracker.caromPoint = true;
+      }
+    }
+  }
 }
 
 /** Calculates raycast aim trajectory and collision prediction point. */

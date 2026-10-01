@@ -33,6 +33,7 @@ class Net {
   private retry = 0;
   private retryTimer: number | undefined;
   private closedByUs = false;
+  private subscriptions = new Map<(data: unknown) => void, () => void>();
   private messageHandlers = new Map<string, Set<(data: unknown) => void>>();
   /** Incremented on every connect/disconnect so late join results from superseded attempts are discarded. */
   private generation = 0;
@@ -75,7 +76,7 @@ class Net {
               : target.name === 'comga'
                 ? await this.client.joinOrCreate('comga', { token })
                 : target.name === 'bida' || target.name === 'cybernet'
-                  ? await this.client.joinOrCreate('bida', { token })
+                  ? await this.client.joinOrCreate(target.name, { token })
                   : await this.client.joinOrCreate('apartment', { token, ownerId: target.ownerId });
       if (gen !== this.generation) {
         await room.leave(true).catch(() => undefined);
@@ -109,7 +110,8 @@ class Net {
     );
     for (const [type, handlers] of this.messageHandlers) {
       for (const handler of handlers) {
-        room.onMessage(type, handler);
+        this.subscriptions.get(handler)?.();
+        this.subscriptions.set(handler, room.onMessage(type, handler));
       }
     }
     room.onMessage('*', () => undefined);
@@ -201,15 +203,13 @@ class Net {
     const fn = handler as (data: unknown) => void;
     set.add(fn);
 
-    let unsubRoom: (() => void) | undefined;
-    if (this.room) {
-      unsubRoom = this.room.onMessage(type, fn);
-    }
+    if (this.room) this.subscriptions.set(fn, this.room.onMessage(type, fn));
 
     return () => {
       set.delete(fn);
       if (set.size === 0) this.messageHandlers.delete(type);
-      unsubRoom?.();
+      this.subscriptions.get(fn)?.();
+      this.subscriptions.delete(fn);
     };
   }
 

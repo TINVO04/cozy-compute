@@ -56,6 +56,15 @@ export interface Building {
 
 export const BUILDINGS: Building[] = [
   {
+    id: 'cybernet',
+    label: 'Cyber Game HNT Trảng Dài',
+    rect: t(3, 23, 5, 3),
+    wall: 0x1e293b,
+    roof: 0x0f172a,
+    accent: 0x38bdf8,
+    door: { x: 4, w: 2 },
+  },
+  {
     id: 'cafe',
     label: 'Tiệm Cà Phê Bean There',
     rect: t(4, 3, 7, 5),
@@ -148,6 +157,7 @@ export const BUILDINGS: Building[] = [
 ];
 
 export const ZONES: Zone[] = [
+  { id: 'cybernet', label: 'Cyber Game HNT Trảng Dài', prompt: 'Vào Cyber Game', rect: t(3, 26, 5, 1.5) },
   {
     id: 'cafe',
     label: 'Tiệm Cà Phê Bean There',
@@ -226,7 +236,7 @@ export const TOWN_TREES = [
   { x: 21, y: 1 },
   { x: 34, y: 1 },
   { x: 3, y: 12 },
-  { x: 6, y: 26 },
+  { x: 2, y: 26 },
   { x: 3, y: 29 },
   { x: 19, y: 24 },
   { x: 27, y: 24 },
@@ -296,6 +306,7 @@ export const PATHS: Rect[] = [
   t(10, 10, 2, 18),
   t(32, 10, 3, 18),
   t(10, 26, 25, 2),
+  t(3, 26, 9, 2),
   t(10, 16, 7, 2),
   t(30, 16, 5, 2),
   t(22, 10, 3, 2),
@@ -336,7 +347,7 @@ export const DUCK_SPOTS: { x: number; y: number }[] = [
   { x: 20, y: 11 },
   { x: 33, y: 11 },
   { x: 44, y: 12 },
-  { x: 3, y: 23 },
+  { x: 9, y: 23 },
   { x: 9, y: 28 },
   { x: 18, y: 27 },
   { x: 26, y: 22 },
@@ -401,7 +412,16 @@ export const BIDA_BLOCKERS: Rect[] = [
 export const CYBERNET_COLS = BIDA_COLS;
 export const CYBERNET_ROWS = BIDA_ROWS;
 export const CYBERNET_SPAWN = BIDA_SPAWN;
-export const CYBERNET_BLOCKERS = BIDA_BLOCKERS;
+export const CYBERNET_BLOCKERS: Rect[] = [
+  t(0, 0, CYBERNET_COLS, 1.5),
+  t(0.5, 1.5, 4, 1.5),
+  t(9, 1.4, 4.5, 1.6),
+  ...[36, 132, 236, 332].flatMap((x) => [{ x, y: 144, w: 70, h: 56 }]),
+  t(0, 0, 0.5, CYBERNET_ROWS),
+  t(CYBERNET_COLS - 0.5, 0, 0.5, CYBERNET_ROWS),
+  t(0, CYBERNET_ROWS - 1, 6.5, 1),
+  t(9.5, CYBERNET_ROWS - 1, 6.5, 1),
+];
 
 /** DNTU University interior grid & constants */
 export const DNTU_COLS = 16;

@@ -1,4 +1,6 @@
 import {
+  createBidaShotTracker,
+  trackBidaShot,
   BALL_COLORS,
   BALL_RADIUS,
   calculateAimPrediction,
@@ -18,7 +20,7 @@ import { net } from '../../game/net';
 import { type Me } from '../../lib/api';
 import { play } from '../../lib/sound';
 import { useUi } from '../../lib/store';
-import { Button, CoinIcon } from '../../ui/primitives';
+import { Button } from '../../ui/primitives';
 
 export interface TableSummary {
   id: string;
@@ -37,6 +39,8 @@ export interface TableSummary {
 }
 
 interface ActiveMatch {
+  simulating?: boolean;
+  online?: boolean;
   id: string;
   name: string;
   mode: '8ball' | 'carom' | 'practice';
@@ -155,7 +159,11 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
   const ballsRef = useRef<BidaBall[]>([]);
   const activeMatchRef = useRef<ActiveMatch | null>(null);
   activeMatchRef.current = activeMatch;
+  const shotHandlerRef = useRef<(angle: number, power: number, shooter: string) => void>(() => undefined);
+  const simulationRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [opponentAim, setOpponentAim] = useState(0);
   const powerDirectionRef = useRef<1 | -1>(1);
+  const chargingRef = useRef(false);
 
   useEffect(() => {
     net.send('bida:get_tables', {});
@@ -168,25 +176,28 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
 
     const unsubJoined = net.onRoomMessage<ActiveMatch>('bida:table_joined', (match) => {
       ballsRef.current = match.balls;
-      setActiveMatch(match);
+      setActiveMatch({ ...match, online: true });
       setWinModal(null);
     });
 
     const unsubStart = net.onRoomMessage<ActiveMatch>('bida:table_start', (match) => {
+      if (simulationRef.current !== null) clearInterval(simulationRef.current);
+      simulationRef.current = null;
       ballsRef.current = match.balls;
-      setActiveMatch(match);
+      setActiveMatch({ ...match, online: true });
+      setIsSimulating(Boolean(match.simulating));
       setWinModal(null);
       play('pop');
     });
 
     const unsubOpponentAim = net.onRoomMessage<{ angle: number }>('bida:opponent_aim', (msg) => {
-      setAimAngle(msg.angle);
+      setOpponentAim(msg.angle);
     });
 
     const unsubShotExecuted = net.onRoomMessage<{ shooterId: string; angle: number; power: number }>(
       'bida:shot_executed',
       (msg) => {
-        executeShotPhysics(msg.angle, msg.power, msg.shooterId);
+        shotHandlerRef.current(msg.angle, msg.power, msg.shooterId);
       },
     );
 
@@ -198,6 +209,8 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
       hostGroup?: BallGroup;
       guestGroup?: BallGroup;
     }>('bida:turn_changed', (msg) => {
+      if (simulationRef.current !== null) clearInterval(simulationRef.current);
+      simulationRef.current = null;
       if (activeMatchRef.current) {
         setActiveMatch({
           ...activeMatchRef.current,
@@ -224,13 +237,22 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
     const unsubGameOver = net.onRoomMessage<{ winnerId: string; winnerName: string; reason: string }>(
       'bida:game_over',
       (msg) => {
+        if (simulationRef.current !== null) clearInterval(simulationRef.current);
+        simulationRef.current = null;
+        if (activeMatchRef.current) setActiveMatch({ ...activeMatchRef.current, status: 'finished' });
         setWinModal(msg);
         setIsSimulating(false);
         play('bida_win');
       },
     );
+    const unsubRoom = net.onRoom(() => net.send('bida:get_tables', {}));
 
     return () => {
+      unsubRoom();
+      const match = activeMatchRef.current;
+      if (match?.online) net.send('bida:leave_table', { tableId: match.id });
+      if (simulationRef.current !== null) clearInterval(simulationRef.current);
+      simulationRef.current = null;
       unsubTables();
       unsubJoined();
       unsubStart();
@@ -260,6 +282,7 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
 
   const isMyTurn = Boolean(
     activeMatch &&
+    activeMatch.status === 'playing' &&
     (activeMatch.mode === 'practice' ||
       activeMatch.isLocal2P ||
       (activeMatch.isAi && activeMatch.turn === 'me') ||
@@ -270,14 +293,16 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
   const triggerShot = useCallback(() => {
     if (!activeMatch || !isMyTurn || isSimulating) return;
 
-    if (net.isConnected() && !activeMatch.isAi && !activeMatch.isLocal2P && activeMatch.mode !== 'practice') {
+    if (activeMatch.online) {
+      if (!net.isConnected()) return;
+      setIsSimulating(true);
       net.send('bida:shot', {
         tableId: activeMatch.id,
         angle: aimAngle,
         power,
       });
     } else {
-      executeShotPhysics(aimAngle, power, activeMatch.turn);
+      shotHandlerRef.current(aimAngle, power, activeMatch.turn);
     }
   }, [activeMatch, isMyTurn, isSimulating, aimAngle, power]);
 
@@ -285,6 +310,8 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
   useEffect(() => {
     if (!activeMatch || !activeMatch.isAi || activeMatch.turn !== 'ai' || isSimulating) return;
 
+    let shotTimer: ReturnType<typeof setTimeout> | undefined;
+    const matchId = activeMatch.id;
     const timer = setTimeout(() => {
       const pockets = createStandardPockets(DEFAULT_TABLE_BOUNDS);
       const cue = ballsRef.current.find((b) => b.id === 0);
@@ -330,13 +357,17 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
       setAimAngle(shotAngle);
       setPower(shotPow);
 
-      setTimeout(() => {
-        executeShotPhysics(shotAngle, shotPow, 'ai');
+      shotTimer = setTimeout(() => {
+        if (activeMatchRef.current?.id !== matchId || activeMatchRef.current.turn !== 'ai') return;
+        shotHandlerRef.current(shotAngle, shotPow, 'ai');
       }, 500);
     }, 800);
 
-    return () => clearTimeout(timer);
-  }, [activeMatch?.turn, isSimulating]);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(shotTimer);
+    };
+  }, [activeMatch, isSimulating]);
 
   useEffect(() => {
     if (!activeMatch || !isMyTurn || isSimulating) return;
@@ -345,7 +376,7 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
         setAimAngle((a) => {
           const next = a - 0.03;
-          if (net.isConnected() && !activeMatch.isAi && !activeMatch.isLocal2P) {
+          if (activeMatch.online && net.isConnected()) {
             net.send('bida:aim', { tableId: activeMatch.id, angle: next });
           }
           return next;
@@ -353,20 +384,22 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
       } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
         setAimAngle((a) => {
           const next = a + 0.03;
-          if (net.isConnected() && !activeMatch.isAi && !activeMatch.isLocal2P) {
+          if (activeMatch.online && net.isConnected()) {
             net.send('bida:aim', { tableId: activeMatch.id, angle: next });
           }
           return next;
         });
-      } else if (e.code === 'Space' && !e.repeat && !isCharging) {
+      } else if (e.code === 'Space' && !e.repeat && !chargingRef.current) {
         e.preventDefault();
+        chargingRef.current = true;
         setIsCharging(true);
       }
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && isCharging) {
+      if (e.code === 'Space' && chargingRef.current) {
         e.preventDefault();
+        chargingRef.current = false;
         setIsCharging(false);
         triggerShot();
       }
@@ -398,8 +431,20 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
     return () => clearInterval(interval);
   }, [isCharging]);
 
-  function executeShotPhysics(angle: number, shotPower: number, shooterId: string) {
+  function executeShotPhysics(angle: number, shotPower: number, _shooterId: string) {
+    if (simulationRef.current !== null) clearInterval(simulationRef.current);
+    const matchId = activeMatchRef.current?.id;
+    const mode = activeMatchRef.current?.mode;
+    const tracker = createBidaShotTracker();
     const balls = ballsRef.current;
+    const legalTargets = getLegalTargetsForGroup(
+      balls,
+      (activeMatchRef.current?.turn === activeMatchRef.current?.hostId ||
+      activeMatchRef.current?.turn === 'me' ||
+      activeMatchRef.current?.turn === 'p1'
+        ? activeMatchRef.current?.hostGroup
+        : activeMatchRef.current?.guestGroup) ?? null,
+    );
     const cueBall = balls.find((b) => b.id === 0);
     if (!cueBall) return;
 
@@ -411,13 +456,19 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
     cueBall.vx = Math.cos(angle) * force;
     cueBall.vy = Math.sin(angle) * force;
 
-    const pockets = createStandardPockets(DEFAULT_TABLE_BOUNDS);
+    const pockets = mode === 'carom' ? [] : createStandardPockets(DEFAULT_TABLE_BOUNDS);
     const pocketedThisShot: number[] = [];
     let scratch = false;
     let eightBallPocketed = false;
 
     const stepInterval = setInterval(() => {
+      if (activeMatchRef.current?.id !== matchId) {
+        clearInterval(stepInterval);
+        simulationRef.current = null;
+        return;
+      }
       const res = stepBilliardsPhysics(balls, DEFAULT_TABLE_BOUNDS, pockets);
+      trackBidaShot(tracker, res);
 
       if (res.ballCollisions.length > 0) {
         play('bida_hit');
@@ -437,25 +488,9 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
       if (!res.anyMoving) {
         clearInterval(stepInterval);
 
-        // Online Server handling
-        if (
-          net.isConnected() &&
-          activeMatchRef.current &&
-          !activeMatchRef.current.isAi &&
-          !activeMatchRef.current.isLocal2P &&
-          activeMatchRef.current.mode !== 'practice'
-        ) {
-          if (shooterId === net.room?.sessionId) {
-            net.send('bida:shot_settled', {
-              tableId: activeMatchRef.current?.id,
-              pocketedBallIds: pocketedThisShot,
-              scratch,
-              eightBallPocketed,
-              balls: balls.map((b) => ({ ...b })),
-            });
-          }
-          return;
-        }
+        simulationRef.current = null;
+        // Wait for server state; prediction never submits rewards or pocket claims.
+        if (activeMatchRef.current?.online) return;
 
         // Local / Standalone / Bot settlement
         const match = activeMatchRef.current;
@@ -466,6 +501,36 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
           play('bida_cushion');
         }
 
+        if (mode === 'carom') {
+          const isHost = match.isLocal2P ? match.turn === 'p1' : match.turn === 'me';
+          const score1 = match.score1 + (isHost && tracker.caromPoint ? 1 : 0);
+          const score2 = match.score2 + (!isHost && tracker.caromPoint ? 1 : 0);
+          const nextTurn = tracker.caromPoint
+            ? match.turn
+            : match.isLocal2P
+              ? isHost
+                ? 'p2'
+                : 'p1'
+              : isHost
+                ? 'ai'
+                : 'me';
+          setActiveMatch({
+            ...match,
+            turn: nextTurn,
+            score1,
+            score2,
+            status: score1 >= 10 || score2 >= 10 ? 'finished' : 'playing',
+          });
+          if (score1 >= 10 || score2 >= 10)
+            setWinModal({
+              winnerId: match.turn,
+              winnerName: isHost ? match.hostName : (match.guestName ?? 'Đối thủ'),
+              reason: 'Đạt 10 điểm carom 3 băng.',
+            });
+          setIsSimulating(false);
+          return;
+        }
+        const foul = !legalTargets.includes(tracker.firstHit ?? -1);
         let nextScore1 = match.score1;
         let nextScore2 = match.score2;
         if (match.isLocal2P) {
@@ -479,7 +544,7 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
         // 8-Ball group assignment upon first pocketed legal object ball
         let nextHostGroup = match.hostGroup;
         let nextGuestGroup = match.guestGroup;
-        if (match.mode === '8ball' && !nextHostGroup && pocketedThisShot.length > 0) {
+        if (match.mode === '8ball' && !scratch && !foul && !nextHostGroup && pocketedThisShot.length > 0) {
           const firstObjId = pocketedThisShot.find((id) => id > 0 && id !== 8);
           if (firstObjId) {
             const isSolid = firstObjId <= 7;
@@ -507,7 +572,7 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
           let winnerId = '';
           let reason = '';
 
-          if (remainingOwn > 0 || scratch || !currentShooterGroup) {
+          if (remainingOwn > 0 || scratch || foul || !currentShooterGroup) {
             if (match.isLocal2P) {
               winnerId = match.turn === 'p1' ? 'p2' : 'p1';
               winnerName = match.turn === 'p1' ? 'Cơ Thủ 2' : 'Cơ Thủ 1';
@@ -529,6 +594,7 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
             }
           }
 
+          setActiveMatch({ ...match, status: 'finished' });
           setWinModal({ winnerId, winnerName, reason });
           setIsSimulating(false);
           play('bida_win');
@@ -550,11 +616,11 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
         if (match.mode === 'practice') {
           nextTurn = 'me';
         } else if (match.isLocal2P) {
-          if (scratch || !legallyPocketedOwn) {
+          if (scratch || foul || !legallyPocketedOwn) {
             nextTurn = match.turn === 'p1' ? 'p2' : 'p1';
           }
         } else if (match.isAi) {
-          if (scratch || !legallyPocketedOwn) {
+          if (scratch || foul || !legallyPocketedOwn) {
             nextTurn = match.turn === 'me' ? 'ai' : 'me';
           }
         }
@@ -571,9 +637,12 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
         setIsSimulating(false);
       }
     }, 16);
+    simulationRef.current = stepInterval;
   }
 
+  shotHandlerRef.current = executeShotPhysics;
   const drawTable = useCallback(() => {
+    const displayAim = isMyTurn || activeMatch?.isAi || activeMatch?.isLocal2P ? aimAngle : opponentAim;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -709,7 +778,7 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
 
     const cueBall = balls.find((b) => b.id === 0);
     if (cueBall && !cueBall.pocketed && !isSimulating) {
-      const pred = calculateAimPrediction(cueBall, balls, aimAngle, bounds, legalTargetIds);
+      const pred = calculateAimPrediction(cueBall, balls, displayAim, bounds, legalTargetIds);
 
       ctx.strokeStyle = 'rgba(254, 240, 138, 0.85)';
       ctx.lineWidth = 1.5;
@@ -773,11 +842,11 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
       }
 
       const cueDist = 18 + (power / 100) * 55;
-      const cueStartX = cueBall.x - Math.cos(aimAngle) * cueDist;
-      const cueStartY = cueBall.y - Math.sin(aimAngle) * cueDist;
+      const cueStartX = cueBall.x - Math.cos(displayAim) * cueDist;
+      const cueStartY = cueBall.y - Math.sin(displayAim) * cueDist;
       const cueLength = 160;
-      const cueEndX = cueStartX - Math.cos(aimAngle) * cueLength;
-      const cueEndY = cueStartY - Math.sin(aimAngle) * cueLength;
+      const cueEndX = cueStartX - Math.cos(displayAim) * cueLength;
+      const cueEndY = cueStartY - Math.sin(displayAim) * cueLength;
 
       ctx.strokeStyle = '#eab308';
       ctx.lineWidth = 4;
@@ -790,17 +859,17 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
       ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.moveTo(cueStartX, cueStartY);
-      ctx.lineTo(cueStartX - Math.cos(aimAngle) * 4, cueStartY - Math.sin(aimAngle) * 4);
+      ctx.lineTo(cueStartX - Math.cos(displayAim) * 4, cueStartY - Math.sin(displayAim) * 4);
       ctx.stroke();
 
       ctx.strokeStyle = '#09090b';
       ctx.lineWidth = 5;
       ctx.beginPath();
-      ctx.moveTo(cueEndX + Math.cos(aimAngle) * 45, cueEndY + Math.sin(aimAngle) * 45);
+      ctx.moveTo(cueEndX + Math.cos(displayAim) * 45, cueEndY + Math.sin(displayAim) * 45);
       ctx.lineTo(cueEndX, cueEndY);
       ctx.stroke();
     }
-  }, [activeMatch, aimAngle, power, isSimulating]);
+  }, [activeMatch, isMyTurn, aimAngle, opponentAim, power, isSimulating]);
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!activeMatch || !isMyTurn || isSimulating) return;
@@ -816,7 +885,7 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
     const angle = Math.atan2(my - cueBall.y, mx - cueBall.x);
     setAimAngle(angle);
 
-    if (net.isConnected() && !activeMatch.isAi && !activeMatch.isLocal2P) {
+    if (activeMatch.online && net.isConnected()) {
       net.send('bida:aim', { tableId: activeMatch.id, angle });
     }
   };
@@ -927,7 +996,7 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
     if (!activeMatch) return;
     play('click');
 
-    if (activeMatch.isAi || activeMatch.isLocal2P || !net.isConnected()) {
+    if (!activeMatch.online) {
       const isCarom = activeMatch.mode === 'carom';
       const newBalls = isCarom ? createCaromRack() : createStandard8BallRack();
       ballsRef.current = newBalls;
@@ -947,19 +1016,35 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
       return;
     }
 
-    net.send('bida:rematch', { tableId: activeMatch.id });
+    if (net.isConnected()) net.send('bida:rematch', { tableId: activeMatch.id });
   };
 
   const handleLeaveTable = () => {
     if (!activeMatch) return;
     play('click');
-    if (net.isConnected() && !activeMatch.isAi && !activeMatch.isLocal2P) {
+    if (activeMatch.online && net.isConnected()) {
       net.send('bida:leave_table', { tableId: activeMatch.id });
     }
+    if (simulationRef.current !== null) clearInterval(simulationRef.current);
+    simulationRef.current = null;
+    activeMatchRef.current = null;
     setActiveMatch(null);
+    setIsSimulating(false);
+    setIsCharging(false);
     setWinModal(null);
     net.send('bida:get_tables', {});
   };
+
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, [onClose]);
 
   return (
     <div className="backdrop" role="dialog" aria-modal="true" aria-label="CLB Bida H2S Biên Hòa">
@@ -979,7 +1064,14 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
               </span>
             </div>
           </div>
-          <button className="icon-btn" onClick={onClose} aria-label="Đóng (Esc)">
+          <button
+            className="icon-btn"
+            onClick={() => {
+              handleLeaveTable();
+              onClose();
+            }}
+            aria-label="Đóng (Esc)"
+          >
             <X size={18} />
           </button>
         </div>
@@ -1295,11 +1387,27 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
                   </div>
                 </div>
 
-                <Button variant="secondary" size="sm" onClick={handleRematch} title="Xếp lại bi / Đấu lại">
+                <Button
+                  disabled={
+                    isSimulating ||
+                    (!activeMatch.isAi &&
+                      !activeMatch.isLocal2P &&
+                      net.isConnected() &&
+                      activeMatch.mode !== 'practice' &&
+                      activeMatch.status !== 'finished')
+                  }
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleRematch}
+                  title="Xếp lại bi / Đấu lại"
+                >
                   <RefreshCw size={14} /> Xếp Lại Bi
                 </Button>
               </div>
 
+              {activeMatch.status === 'waiting' ? (
+                <p role="status">Đang chờ người chơi thứ hai vào bàn…</p>
+              ) : null}
               {(() => {
                 const isHostTurn = activeMatch.isLocal2P ? activeMatch.turn === 'p1' : isMyTurn;
                 const currentTurnGroup = isHostTurn ? activeMatch.hostGroup : activeMatch.guestGroup;
@@ -1549,20 +1657,6 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
                   : `${winModal.winnerName} THẮNG TRẬN!`}
               </h3>
               <p style={{ color: '#d4d4d8', fontSize: 14, margin: '0 0 16px' }}>{winModal.reason}</p>
-              {winModal.winnerId === net.room?.sessionId ? (
-                <div
-                  className="row"
-                  style={{
-                    justifyContent: 'center',
-                    gap: 8,
-                    marginBottom: 20,
-                    color: '#facc15',
-                    fontWeight: 700,
-                  }}
-                >
-                  <CoinIcon size={20} /> +50 Xu Cơ Thủ Biên Hòa
-                </div>
-              ) : null}
               <div className="row" style={{ justifyContent: 'center', gap: 12 }}>
                 <Button variant="secondary" onClick={handleLeaveTable}>
                   Rời Bàn

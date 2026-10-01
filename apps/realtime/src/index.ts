@@ -7,6 +7,7 @@ import { ApartmentRoom } from './rooms/apartment.js';
 import { setDeps, type BaseRoom } from './rooms/base.js';
 import { CompanyRoom } from './rooms/company.js';
 import { ComGaRoom } from './rooms/comga.js';
+import { CyberNetRoom } from './rooms/cybernet.js';
 import { BidaRoom } from './rooms/bida.js';
 import { TownRoom } from './rooms/town.js';
 import { UniversityRoom } from './rooms/university.js';
@@ -68,7 +69,7 @@ gameServer.define('company', CompanyRoom);
 gameServer.define('university', UniversityRoom);
 gameServer.define('comga', ComGaRoom);
 gameServer.define('bida', BidaRoom);
-gameServer.define('cybernet', BidaRoom);
+gameServer.define('cybernet', CyberNetRoom);
 
 await sub.subscribe('player:appearance', 'player:kick', 'apartment:updated', 'events');
 sub.on('message', async (channel, raw) => {
