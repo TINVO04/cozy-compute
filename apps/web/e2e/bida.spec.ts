@@ -30,7 +30,7 @@ test('online waiting table disables shots, server settles and closing leaves exa
     const f = (window as unknown as { bidaFixture: Fixture }).bidaFixture;
     f.emit('bida:table_start', { ...f.match, status: 'playing' });
   });
-  await expect(page.getByRole('button', { name: 'Đánh Cơ (Space)' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Đánh Cơ (Space)' })).toBeEnabled();
   await page.keyboard.press('Space');
   await page.keyboard.press('Space');
   expect(
@@ -48,7 +48,7 @@ test('online waiting table disables shots, server settles and closing leaves exa
       balls: f.match.balls,
     });
   });
-  await expect(page.getByRole('button', { name: 'Đánh Cơ (Space)' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Đánh Cơ (Space)' })).toBeEnabled();
   await page.keyboard.press('Space');
   expect(
     await page.evaluate(() =>

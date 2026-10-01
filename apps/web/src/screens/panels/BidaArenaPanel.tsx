@@ -164,6 +164,10 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
   const [opponentAim, setOpponentAim] = useState(0);
   const powerDirectionRef = useRef<1 | -1>(1);
   const chargingRef = useRef(false);
+  const keyboardHandlersRef = useRef({
+    down: (_event: KeyboardEvent) => {},
+    up: (_event: KeyboardEvent) => {},
+  });
 
   useEffect(() => {
     net.send('bida:get_tables', {});
@@ -369,10 +373,9 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
     };
   }, [activeMatch, isSimulating]);
 
-  useEffect(() => {
-    if (!activeMatch || !isMyTurn || isSimulating) return;
-
+  {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (!activeMatch || !isMyTurn || isSimulating) return;
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
         setAimAngle((a) => {
           const next = a - 0.03;
@@ -397,7 +400,7 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && chargingRef.current) {
+      if (activeMatch && isMyTurn && !isSimulating && e.code === 'Space' && chargingRef.current) {
         e.preventDefault();
         chargingRef.current = false;
         setIsCharging(false);
@@ -405,13 +408,18 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
       }
     };
 
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
+    keyboardHandlersRef.current = { down: onKeyDown, up: onKeyUp };
+  }
+  useEffect(() => {
+    const down = (event: KeyboardEvent) => keyboardHandlersRef.current.down(event);
+    const up = (event: KeyboardEvent) => keyboardHandlersRef.current.up(event);
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
     };
-  }, [activeMatch, isMyTurn, isSimulating, isCharging, triggerShot]);
+  }, []);
 
   useEffect(() => {
     if (!isCharging) return;
