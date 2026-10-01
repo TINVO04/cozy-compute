@@ -8,8 +8,8 @@ import {
   type RodConfig,
 } from '@cozy/game-data';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Coffee, Fish, Package, Star, Zap } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { BookOpen, CircleAlert, Coffee, Fish, Package, RotateCcw, Star, Waves, Zap } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { api, ApiError, num, type Me } from '../lib/api';
 import { play } from '../lib/sound';
 import { useUi } from '../lib/store';
@@ -56,6 +56,7 @@ function Reward({ coin, fame }: { coin: number; fame: number }) {
 type FishPhase =
   | { kind: 'idle' }
   | { kind: 'starting' }
+  | { kind: 'resolving' }
   | {
       kind: 'waiting';
       runId: string;
@@ -94,6 +95,7 @@ type FishPhase =
       coin?: number;
       fame?: number;
       good: boolean;
+      tip?: string;
       fishId?: string;
       shadowTier?: FishShadowTier;
       equippedRod?: RodConfig;
@@ -108,17 +110,24 @@ export function FishingActivity() {
   const close = useUi((s) => s.setActivity);
   const setPanel = useUi((s) => s.setPanel);
   const refresh = useRefreshEconomy();
-  const [phase, setPhase] = useState<FishPhase>({ kind: 'idle' });
+  const [phase, setPhaseState] = useState<FishPhase>({ kind: 'idle' });
   const [resultView, setResultView] = useState<'chibi' | 'illustration'>('chibi');
   const qc = useQueryClient();
   const { data: me } = useQuery<Me>({ queryKey: qk.me, queryFn: () => api<Me>('/me') });
   const phaseRef = useRef(phase);
-  phaseRef.current = phase;
+  // Lock transitions immediately, including rapid inputs before React renders.
+  const setPhase = useCallback((next: FishPhase | ((prev: FishPhase) => FishPhase)) => {
+    const value = typeof next === 'function' ? next(phaseRef.current) : next;
+    phaseRef.current = value;
+    setPhaseState(value);
+  }, []);
+  const mounted = useRef(true);
 
   // On entering fishing activity (approaching lake and pressing E):
   // 1. If character is holding anything (e.g. heldFish), put it away immediately
   // 2. Character equips and holds their fishing rod in ready stance facing the water
   useEffect(() => {
+    mounted.current = true;
     if (me?.appearance.heldFish) {
       void api('/backpack/fish/unhold', { method: 'POST' }).catch(() => undefined);
       qc.setQueryData(qk.me, (old: Me | undefined) =>
@@ -140,6 +149,7 @@ export function FishingActivity() {
     });
 
     return () => {
+      mounted.current = false;
       townFishingController?.cleanup();
       net.send('fishing:stop', {});
     };
@@ -168,9 +178,10 @@ export function FishingActivity() {
       equippedRod,
     });
     setPhase({ kind: 'idle' });
-  }, [me?.appearance.rod, me?.appearance.heldFish, qc]);
+  }, [me?.appearance.rod, me?.appearance.heldFish, qc, setPhase]);
 
   const cast = useCallback(async () => {
+    if (phaseRef.current.kind !== 'idle') return;
     setPhase({ kind: 'starting' });
     try {
       const r = await api<{
@@ -185,6 +196,7 @@ export function FishingActivity() {
         shadowDelayMs: number;
         equippedRod?: RodConfig;
       }>('/activities/fishing/start', { body: {} });
+      if (!mounted.current) return;
 
       const now = Date.now();
       const biteAt = now + r.biteInMs;
@@ -257,15 +269,18 @@ export function FishingActivity() {
         equippedRod,
       });
     } catch (err) {
+      if (!mounted.current) return;
       errorToast(err);
       townFishingController?.cleanup();
       close(null);
     }
-  }, [close]);
+  }, [close, setPhase]);
 
   // Complete catch API
   const finishCatch = useCallback(
     async (p: { runId: string; nonce: string; equippedRod: RodConfig; shadowTier: FishShadowTier }) => {
+      if (phaseRef.current.kind !== 'reeling' && phaseRef.current.kind !== 'waiting') return;
+      setPhase({ kind: 'resolving' });
       try {
         const r = await api<{
           outcome: string;
@@ -281,6 +296,7 @@ export function FishingActivity() {
           isFirstCatch?: boolean;
           isRecord?: boolean;
         }>('/activities/fishing/complete', { body: { runId: p.runId, nonce: p.nonce } });
+        if (!mounted.current) return;
 
         if (r.outcome === 'caught' && r.fish) {
           townFishingController?.catchSuccess(r.fish.id);
@@ -340,34 +356,41 @@ export function FishingActivity() {
           rewardToast(r.coin ?? 0, r.fame ?? 0, r.fish.name, r.tired);
           refresh();
         } else {
-          townFishingController?.cleanupVisuals();
+          townFishingController?.cleanup();
           net.send('fishing:stop', {});
           play('error');
           setPhase({
             kind: 'result',
             good: false,
-            title: r.outcome === 'too_early' ? 'Quá sớm rồi!' : 'Câu xịt rồi!',
+            title: r.outcome === 'too_early' ? 'Thu cần khi cá chưa cắn' : 'Câu hụt mất rồi',
             body:
               r.message ??
               (r.outcome === 'escaped'
                 ? 'Dù đã kéo cần hết sức nhưng cá đã giãy mạnh và sẩy mất!'
                 : 'Cá đã thoát mất!'),
+            tip:
+              r.outcome === 'too_early'
+                ? 'Phao rung nhẹ là cá đang rỉa mồi. Hãy chờ dấu (!) rồi nhấn Space để giật cần.'
+                : r.outcome === 'escaped'
+                  ? 'Bạn đã kéo đủ lực, nhưng cá vẫn có thể vùng thoát. Thử lại hoặc nâng cấp cần để tăng cơ hội bắt cá.'
+                  : 'Khi cá cắn câu, giật ngay rồi nhấn Space nhanh và đều để kéo cá lên.',
           });
         }
       } catch (err) {
+        if (!mounted.current) return;
         townFishingController?.cleanup();
         net.send('fishing:stop', {});
         errorToast(err);
         setPhase({ kind: 'idle' });
       }
     },
-    [refresh, qc],
+    [refresh, qc, setPhase],
   );
 
   // Hook fish on Bite -> enter reeling phase
   const hookFish = useCallback(() => {
     const p = phaseRef.current;
-    if (p.kind !== 'bite') return;
+    if (p.kind !== 'bite' && !(p.kind === 'waiting' && Date.now() >= p.biteAt)) return;
     setPhase({
       kind: 'reeling',
       runId: p.runId,
@@ -378,7 +401,7 @@ export function FishingActivity() {
     });
     townFishingController?.onMashReel(30);
     play('reel');
-  }, []);
+  }, [setPhase]);
 
   // Mash reel key/button
   const mashReel = useCallback(() => {
@@ -396,49 +419,44 @@ export function FishingActivity() {
     } else {
       setPhase((prev) => (prev.kind === 'reeling' ? { ...prev, mashProgress: next } : prev));
     }
-  }, [finishCatch]);
+  }, [finishCatch, setPhase]);
 
   // Early pull when waiting (likely too early)
-  const pullEarly = useCallback(async () => {
+  const pullEarly = useCallback(() => {
     const p = phaseRef.current;
     if (p.kind !== 'waiting') return;
+    if (Date.now() >= p.biteAt) {
+      hookFish();
+      return;
+    }
     townFishingController?.cleanup();
     net.send('fishing:stop', {});
-    try {
-      const r = await api<{ outcome: string; message?: string }>('/activities/fishing/complete', {
-        body: { runId: p.runId, nonce: p.nonce },
-      });
-      play('error');
-      setPhase({
-        kind: 'result',
-        good: false,
-        title: 'Quá sớm rồi!',
-        body: r.message ?? 'Cá chưa cắn câu đã giật cần mất rồi!',
-      });
-    } catch (err) {
-      errorToast(err);
-      setPhase({ kind: 'idle' });
-    }
-  }, []);
+    void finishCatch(p);
+  }, [finishCatch, hookFish]);
 
   // Bite timeout if player doesn't react in time
   useEffect(() => {
     if (phase.kind !== 'bite') return;
-    const t = window.setTimeout(() => {
-      const cur = phaseRef.current;
-      if (cur.kind === 'bite') {
-        townFishingController?.cleanup();
-        play('error');
-        setPhase({
-          kind: 'result',
-          good: false,
-          title: 'Cá đã thoát mất!',
-          body: 'Bạn đã giật cần quá chậm, cá đã cắn trộm mồi rồi bơi đi!',
-        });
-      }
-    }, phase.windowMs || 2500);
+    const t = window.setTimeout(
+      () => {
+        const cur = phaseRef.current;
+        if (cur.kind === 'bite') {
+          townFishingController?.cleanup();
+          net.send('fishing:stop', {});
+          play('error');
+          setPhase({
+            kind: 'result',
+            good: false,
+            title: 'Cá đã thoát mất!',
+            body: 'Bạn đã giật cần quá chậm, cá đã cắn trộm mồi rồi bơi đi!',
+            tip: 'Nhấn Space ngay khi dấu (!) xuất hiện. Phao rung nhẹ trước đó chỉ là cá đang rỉa mồi.',
+          });
+        }
+      },
+      Math.max(0, phase.biteAt + phase.windowMs - Date.now()),
+    );
     return () => clearTimeout(t);
-  }, [phase]);
+  }, [phase, setPhase]);
 
   // Reeling decay loop (fish pulls back!)
   useEffect(() => {
@@ -449,25 +467,38 @@ export function FishingActivity() {
         const next = Math.max(0, prev.mashProgress - 1.4);
         if (next <= 0) {
           townFishingController?.cleanup();
+          net.send('fishing:stop', {});
           play('error');
           return {
             kind: 'result',
             good: false,
             title: 'Cá đã thoát mất!',
             body: 'Lực giật không đủ nhanh, cá đã giãy thoát khỏi lưỡi câu!',
+            tip: 'Sau khi giật cần, nhấn Space nhanh và đều để giữ lực kéo. Bạn cũng có thể bấm nút Giật dây.',
           };
         }
         return { ...prev, mashProgress: next };
       });
     }, 60);
     return () => clearInterval(interval);
-  }, [phase.kind]);
+  }, [phase.kind, setPhase]);
 
   // Space / Enter / B / Esc keyboard shortcuts
-  useEffect(() => {
+  useLayoutEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = document.activeElement;
-      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return;
+      if (useUi.getState().panel || el?.matches('input, textarea, select, [contenteditable="true"]')) return;
+      const p = phaseRef.current;
+      // Space belongs to the fishing action, never to dismissing its result.
+      if (e.code === 'Space' && p.kind === 'result') {
+        e.preventDefault();
+        return;
+      }
+      if (e.repeat) {
+        if (e.code === 'Space' || e.key === 'Enter') e.preventDefault();
+        return;
+      }
+      if (el?.closest('button, a, [role="button"]') && (e.code === 'Space' || e.key === 'Enter')) return;
 
       if (e.code === 'KeyB' || e.key === 'b' || e.key === 'B') {
         e.preventDefault();
@@ -480,12 +511,11 @@ export function FishingActivity() {
 
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
-        const p = phaseRef.current;
         if (p.kind === 'idle') {
           void cast();
-        } else if (p.kind === 'result') {
+        } else if (p.kind === 'result' && e.key === 'Enter') {
           returnToRodReady();
-        } else if (p.kind === 'bite') {
+        } else if (p.kind === 'bite' || (p.kind === 'waiting' && Date.now() >= p.biteAt)) {
           hookFish();
         } else if (p.kind === 'reeling') {
           mashReel();
@@ -553,6 +583,12 @@ export function FishingActivity() {
       {phase.kind === 'starting' && (
         <div className="fishing-status-chip">
           <span>🌊 Đang quăng cần ra giữa hồ nước…</span>
+        </div>
+      )}
+
+      {phase.kind === 'resolving' && (
+        <div className="fishing-status-chip" role="status" aria-live="polite">
+          <Waves size={20} aria-hidden="true" /> Đang thu cần và xem kết quả…
         </div>
       )}
 
@@ -642,8 +678,12 @@ export function FishingActivity() {
       )}
 
       {phase.kind === 'result' && (
-        <div className="fishing-result-card" role="dialog" aria-label="Kết quả câu cá">
-          <div style={{ height: 210, position: 'relative', overflow: 'hidden' }}>
+        <div
+          className={phase.good ? 'fishing-result-card' : 'fishing-result-card fishing-result-card--miss'}
+          role="region"
+          aria-label="Kết quả câu cá"
+        >
+          <div className={phase.good ? 'fishing-result-art' : 'fishing-result-art fishing-result-art--miss'}>
             {phase.fishId ? (
               <>
                 {resultView === 'chibi' ? (
@@ -728,17 +768,12 @@ export function FishingActivity() {
                 </div>
               </>
             ) : (
-              <div
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-                }}
-              >
-                <Fish size={56} color="#94a3b8" />
+              <div className="fishing-miss-illustration" aria-hidden="true">
+                <Waves className="fishing-miss-waves" size={104} strokeWidth={1} />
+                <Fish className="fishing-miss-fish" size={48} strokeWidth={1.5} />
+                <span className="fishing-miss-marker">
+                  <CircleAlert size={22} />
+                </span>
               </div>
             )}
           </div>
@@ -804,7 +839,13 @@ export function FishingActivity() {
               ) : null}
             </div>
 
-            <h3 style={{ margin: 0, fontSize: 18, color: '#f8fafc' }}>{phase.title}</h3>
+            <div role="status" aria-live="polite" aria-atomic="true">
+              <span className="fishing-result-eyebrow">
+                {phase.good ? 'CHIẾN LỢI PHẨM' : 'CÁ ĐÃ RỜI LƯỠI CÂU'}
+              </span>
+              <h3 style={{ margin: 0, fontSize: 18, color: '#f8fafc' }}>{phase.title}</h3>
+              <p className="fishing-result-description">{phase.body}</p>
+            </div>
 
             {phase.sizeCm ? (
               <div
@@ -826,9 +867,13 @@ export function FishingActivity() {
               </div>
             ) : null}
 
-            <p className="muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.4 }}>
-              {phase.body}
-            </p>
+            {phase.tip && (
+              <p className="fishing-result-tip">
+                <Zap size={16} aria-hidden="true" />
+                <span>{phase.tip}</span>
+              </p>
+            )}
+            <p className="fishing-result-key-hint">Kết quả được giữ lại. Nhấn Enter để cầm cần câu tiếp.</p>
 
             {phase.good ? <Reward coin={phase.coin ?? 0} fame={phase.fame ?? 0} /> : null}
 
@@ -859,7 +904,7 @@ export function FishingActivity() {
                 <BookOpen size={14} /> Từ Điển
               </Button>
               <Button variant="primary" size="sm" onClick={() => void returnToRodReady()}>
-                🎣 Cầm cần câu <span className="kbd">Space</span>
+                <RotateCcw size={14} aria-hidden="true" /> Cầm cần câu tiếp <span className="kbd">Enter</span>
               </Button>
               <Button
                 variant="ghost"
