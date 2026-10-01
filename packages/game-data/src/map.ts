@@ -423,22 +423,53 @@ export const CYBERNET_BLOCKERS: Rect[] = [
   t(9.5, CYBERNET_ROWS - 1, 6.5, 1),
 ];
 
-/** DNTU University interior grid & constants */
-export const DNTU_COLS = 16;
-export const DNTU_ROWS = 11;
-export const DNTU_SPAWN = { x: 8 * TILE, y: 9.5 * TILE };
-/** Shared by room art and authoritative/client movement. */
-export const DNTU_DESKS: Rect[] = [t(3, 4, 4, 3), t(9, 4, 4, 3)];
+/** DNTU University campus map grid & constants (48x32 master campus) */
+export const DNTU_COLS = 48;
+export const DNTU_ROWS = 32;
+export const DNTU_SPAWN = { x: 43 * TILE, y: 18.5 * TILE };
 export const DNTU_BLOCKERS: Rect[] = [
-  t(0, 0, DNTU_COLS, 2), // North stage wall with Smart Board & stage
-  t(7.5, 2, 1, 0.6), // Podium extends below the back wall; keep the side aisle open.
-  ...DNTU_DESKS, // AI and design islands, separated by a two-tile aisle.
-  t(1, 1, 2, 3), // Digital library shelf in top-left
-  t(13, 1, 2, 3), // Awards & accreditation showcase in top-right
-  t(0, 0, 1, DNTU_ROWS), // Left wall
-  t(DNTU_COLS - 1, 0, 1, DNTU_ROWS), // Right wall
-  t(0, DNTU_ROWS - 1, 6, 1), // Bottom left wall
-  t(10, DNTU_ROWS - 1, 6, 1), // Bottom right wall
+  // Outer perimeter fence & walls with openings at Cổng 1, Cổng 2, Cổng sau
+  t(0, 0, DNTU_COLS, 1), // Top boundary fence
+  t(0, DNTU_ROWS - 1, DNTU_COLS, 1), // Bottom boundary wall
+  t(0, 0, 1, 7), // West wall (above back gate)
+  t(0, 10, 1, DNTU_ROWS - 10), // West wall (below back gate)
+  t(DNTU_COLS - 1, 0, 1, 12), // East wall (above Gate 2)
+  t(DNTU_COLS - 1, 15, 1, 2), // East wall (between Gate 1 & Gate 2)
+  t(DNTU_COLS - 1, 24, 1, DNTU_ROWS - 24), // East wall (below Gate 1)
+
+  // Khu G (Trung Tâm Tích Hợp & Smart Labs & DNTU Gym)
+  t(2, 1, 11, 3.2),
+
+  // Khu F (Trung Tâm Thực Hành Kỹ Thuật Ô Tô & Cơ Khí)
+  t(2, 5.5, 11, 3.5),
+
+  // Khu C (Trung Tâm Thông Tin - Thư Viện)
+  t(14, 9, 9, 6),
+
+  // Khu B (Nguyễn Khuyến - Khoa CNTT & Kinh Tế)
+  t(14, 18, 9, 9),
+
+  // Khu A (Hành Chính - U-shaped building wings & Grand Archway Entrance)
+  t(25, 10, 13, 3), // Khu A North Wing
+  t(25, 23, 13, 3), // Khu A South Wing (Trường Quay)
+  t(35, 10, 3, 4), // Khu A East North Wing (Trụ Sở Chính - Tháp Bắc)
+  t(35, 21, 3, 3.5), // Khu A East South Wing (Trụ Sở Chính - Tháp Nam)
+  t(35, 14, 3.5, 2.2), // Khu A Archway North Pier
+  t(35, 19.6, 3.5, 1.4), // Khu A Archway South Pier
+  // Rows 16.2..19.6 are open for the Grand Archway (Cổng Vòm Khải Hoàn Trụ Sở Chính)!
+
+  // Cổng 1 Guardhouse & Gate Pylons
+  t(43.8, 16, 3.2, 1.8), // Cổng 1 Guardhouse & North Pylon
+  t(45, 22.8, 2, 1.2), // Cổng 1 South Pylon
+
+  // Ký Túc Xá & Căng Tin (South-West)
+  t(2, 28, 11, 3),
+
+  // Trung Tâm Tuyển Sinh (North-East)
+  t(40, 3, 6, 6),
+
+  // Khu Sáng Tạo Khởi Nghiệp (North)
+  t(24, 1, 10, 5),
 ];
 
 /** VietDevPro office interior grid & constants */

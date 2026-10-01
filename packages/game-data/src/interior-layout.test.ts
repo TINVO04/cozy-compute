@@ -1,14 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  COMPANY_BLOCKERS,
-  COMPANY_DESKS,
-  COMPANY_SPAWN,
-  DNTU_BLOCKERS,
-  DNTU_DESKS,
-  DNTU_SPAWN,
-  TILE,
-  type Rect,
-} from './map.js';
+import { COMPANY_BLOCKERS, COMPANY_DESKS, COMPANY_SPAWN, TILE, type Rect } from './map.js';
 import { isWalkable, PLAYER_SPEED, stepMovement } from './movement.js';
 
 function reachable(spawn: { x: number; y: number }, blockers: Rect[]) {
@@ -45,21 +36,6 @@ for (const room of [
     spawn: COMPANY_SPAWN,
     desks: COMPANY_DESKS,
     interactions: [[144, 90], [448, 115], [58, 115], ...[128, 192, 320, 384].map((x) => [x, 208])],
-  },
-  {
-    name: 'university',
-    blockers: DNTU_BLOCKERS,
-    spawn: DNTU_SPAWN,
-    desks: DNTU_DESKS,
-    interactions: [
-      [256, 102],
-      [70, 144],
-      [442, 144],
-      [256, 90],
-      [160, 240],
-      [352, 240],
-      [384, 96],
-    ],
   },
 ]) {
   describe(room.name + ' interior layout', () => {

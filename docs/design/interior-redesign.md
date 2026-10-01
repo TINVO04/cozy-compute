@@ -10,17 +10,17 @@ Studio lập trình với sàn gỗ sồi, tường kem, xanh sage và hai cụm
 
 ## Đại học Công nghệ Đồng Nai
 
-Phòng thực hành dùng sàn gạch kem, gỗ sáng và điểm nhấn đỏ đất. Khu Lab AI có thảm xanh, khu thiết kế có thảm màu đất; lối giữa có chỉ dẫn hướng lên màn hình giảng dạy. Hai bên là thư viện và tủ thành tựu. Thầy Tân, sinh viên và DNTU-Bot vẫn có lời thoại và tương tác.
+Khôi phục khuôn viên ngoài trời 48×32 ô từ commit `c7083e9` trong PR #2 (`feat/bida-cybernet-activities`). Khuôn viên được thêm ở `38e320e`, sau đó bị thay bằng phòng học 16×11 ô khi nhánh merge master tại `24b5134`. Bản khôi phục gồm 15 công trình: các cánh Khu A, Khu B, thư viện Khu C, Smart Labs và Gym Khu G, xưởng Khu F, ký túc xá–căng tin, khu khởi nghiệp, tuyển sinh, hai cổng và trạm xe buýt. Sân thể thao, công viên, cây xanh, đài phun, ghế đá và sáu NPC được giữ lại.
 
-![Phòng thực hành DNTU ở 1280×720](university-preview.png)
+![Toàn cảnh khuôn viên DNTU ở 1536×1024](university-preview.png)
 
 ## Di chuyển và tương tác
 
-Kích thước phòng giữ 16×11 ô. Nền bàn dùng `COMPANY_DESKS` và `DNTU_DESKS` trong game-data, cùng hình học với va chạm phía server. Lối giữa nối điểm xuất hiện với khu giảng dạy và cửa ra. Các băng ghế phía trước được vẽ trong phần tường vốn đã chặn di chuyển; thảm và chỉ dẫn sàn không tạo chướng ngại vật.
+Văn phòng giữ kích thước 16×11 ô; khuôn viên DNTU rộng 48×32 ô. Va chạm và kích thước khuôn viên trong game-data được dùng chung cho realtime và dự đoán di chuyển phía client. Người chơi xuất hiện gần cổng chính, đi qua cổng vòm để vào sân trung tâm và các đường nối giữa các khu. Camera theo người chơi, có giới hạn theo bản đồ. Điểm tương tác được đặt trước công trình để bàn phím tiếp cận được; Minh Khang đứng trên đường giữa Khu B và thư viện.
 
-Dùng WASD hoặc mũi tên để đi, E để tương tác gần nhất, Esc để đóng hội thoại. Có thể bấm trực tiếp vào nhân vật, bảng sprint, cà phê, tủ server, màn hình, thư viện và tủ thành tựu. Nhãn gợi ý E hiện khi đến gần; xuống cửa phía dưới để về thị trấn. Tắt chuyển động theo cài đặt giảm chuyển động.
+Dùng WASD hoặc mũi tên để đi, E để tương tác gần nhất, Esc để đóng hội thoại. Các NPC, thư viện, sân thể thao, trường quay, vườn khởi nghiệp, căng tin, Smart Labs, Gym, xưởng ô tô, phòng CNC và cổng vòm có thông tin riêng. Nhãn gợi ý E hiện khi đến gần; đi ra Cổng 1 hoặc Cổng 2 phía Đông để về thị trấn. Vùng thoát giả ở tọa độ phòng học cũ đã được bỏ. Tắt chuyển động theo cài đặt giảm chuyển động.
 
-Camera dùng mức phóng nguyên và hiển thị trọn phòng ở các màn hình đã kiểm thử: 800×600, 1280×720, 1440×900 và 1920×1080.
+Văn phòng hiển thị trọn phòng; khuôn viên lớn dùng camera theo người chơi. Ảnh toàn cảnh là chế độ xem kiểm tra riêng, không phải mức phóng bắt buộc khi chơi.
 
 ## Xem và kiểm tra
 
@@ -35,4 +35,4 @@ $env:E2E_SHOTS_DIR = 'D:/Game_Cua_Bao/docs/design'
 node apps/web/e2e/interior-preview.mjs
 ```
 
-Kiểm tra đường đi và va chạm trong `packages/game-data/src/interior-layout.test.ts`; kiểm tra nhãn, hội thoại, bàn phím, bấm chuột, giảm chuyển động, restart và cửa ra trong `apps/web/e2e/interior-render.spec.ts`. Khi triển khai cả các thay đổi hình học bàn có sẵn trong checkout, cần cập nhật web và realtime cùng phiên bản.
+Kiểm tra văn phòng trong `packages/game-data/src/interior-layout.test.ts` và `apps/web/e2e/interior-render.spec.ts`. Kiểm tra khuôn viên, đường đi qua cổng vòm, tương tác bàn phím và cổng ra trong `packages/game-data/src/campus-layout.test.ts` và `apps/web/e2e/campus.spec.ts`. Cần cập nhật web và realtime cùng phiên bản để thống nhất kích thước và va chạm khuôn viên.

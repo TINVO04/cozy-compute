@@ -17,5 +17,10 @@ await page.evaluate(() => {
 });
 await page.waitForTimeout(700);
 await page.keyboard.press('Escape');
+await page.setViewportSize({ width: 1536, height: 1024 });
+await page.evaluate(() => {
+  const scene = window.interiorPreview.scene.getScene('university');
+  scene.cameras.main.setZoom(1).centerOn(768, 512);
+});
 await page.screenshot({ path: resolve(outputDir, 'university-preview.png') });
 await browser.close();

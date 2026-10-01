@@ -1,13 +1,4 @@
-import {
-  COMPANY_DESKS,
-  COMPANY_COLS,
-  COMPANY_ROWS,
-  DNTU_DESKS,
-  DNTU_COLS,
-  DNTU_ROWS,
-  TILE,
-  type Rect,
-} from '@cozy/game-data';
+import { COMPANY_DESKS, COMPANY_COLS, COMPANY_ROWS, TILE, type Rect } from '@cozy/game-data';
 import { shade } from './pixel';
 
 type Palette = {
@@ -28,15 +19,6 @@ const OFFICE: Palette = {
   accent: '#a8c3a0',
   ink: '#293f38',
   wood: '#edce9f',
-};
-const CAMPUS: Palette = {
-  floor: '#e9e2cf',
-  seam: '#d1c7b3',
-  wall: '#f2e7d2',
-  trim: '#785447',
-  accent: '#b86450',
-  ink: '#304d50',
-  wood: '#e5c398',
 };
 
 /** Static, cached canvas art: no particles, per-frame painting or additional assets. */
@@ -308,82 +290,8 @@ class RoomPainter {
     this.text('Không gian làm việc chung', 256, 291, 7, '#bfd3bb', 110);
     return this.canvas;
   }
-
-  campus() {
-    const p = this.p;
-    this.shell(false);
-    // Terracotta and birch belong to the campus, distinct from the green studio.
-    this.rect(104, 8, 28, 44, '#d2bda0');
-    this.rect(380, 8, 28, 44, '#d2bda0');
-    for (const x of [108, 384]) {
-      this.rect(x, 12, 20, 32, '#f4e8cd');
-      this.rect(x + 3, 16, 14, 11, p.accent);
-      this.rect(x + 6, 19, 8, 5, '#f4e8cd');
-      this.rect(x + 3, 32, 14, 2, '#869589');
-      this.rect(x + 6, 37, 8, 2, '#869589');
-    }
-    // Lecture screen with a clear, short hierarchy instead of tiny institutional text.
-    this.rect(140, 8, 232, 44, '#293941');
-    this.rect(144, 12, 224, 36, '#344953');
-    this.rect(140, 51, 232, 3, '#172f3440');
-    this.rect(148, 16, 32, 28, p.accent);
-    this.text('DNTU', 164, 33, 9, '#fff1d9');
-    this.text('Đại học Công nghệ Đồng Nai', 272, 27, 11, '#f5eddb', 178);
-    this.text('PHÒNG THỰC HÀNH · AI & THIẾT KẾ', 272, 41, 7, '#c1d0ce', 178);
-    this.rect(240, 64, 32, 19, '#704a3b');
-    this.rect(242, 64, 28, 3, '#d6b58a');
-    this.rect(246, 70, 2, 10, '#8f6950');
-    this.rect(264, 70, 2, 10, '#8f6950');
-    this.text('DNTU', 256, 78, 7, '#f4dfb7');
-    this.rect(32, 16, 64, 106, '#795b44');
-    this.rect(36, 20, 56, 98, '#b2926b');
-    for (let row = 0; row < 4; row++) {
-      for (let b = 0; b < 8; b++) {
-        this.rect(
-          40 + b * 6,
-          32 + row * 20,
-          4,
-          14 - (b % 3),
-          ['#9f6151', '#47656a', '#c2a471', '#6f876f'][b % 4]!,
-        );
-      }
-      this.rect(38, 48 + row * 20, 52, 3, '#72533e');
-    }
-    this.text('THƯ VIỆN', 64, 28, 8, '#fff0d2');
-    this.rect(38, 115, 52, 3, '#edd8b1');
-    this.rect(416, 16, 64, 106, '#78503d');
-    this.rect(420, 20, 56, 98, '#c5b999');
-    this.rect(424, 34, 48, 48, '#9caeaa');
-    for (const x of [430, 452]) {
-      this.rect(x, 42, 13, 10, '#e3bc63');
-      this.rect(x + 5, 52, 3, 10, '#c29b47');
-      this.rect(x + 1, 63, 11, 3, '#ead394');
-      this.rect(x, 91, 15, 16, '#f3e7cb');
-      this.rect(x + 3, 94, 9, 2, p.accent);
-    }
-    this.text('THÀNH TỰU', 448, 29, 8, '#fff0d2');
-    this.rect(420, 114, 56, 4, '#e8d0a2');
-    this.rug(88, 124, 140, 145, '#b4c2b1');
-    this.rug(284, 124, 140, 145, '#d0b7a3');
-    for (const desk of DNTU_DESKS) this.desk(desk, true);
-    // Inlaid central wayfinding, not a solid obstacle.
-    this.rect(246, 132, 20, 144, '#d8c9ac');
-    this.rect(248, 134, 16, 140, '#e5d8bd');
-    for (let y = 164; y < 260; y += 18) this.rect(254, y, 4, 8, '#b98868');
-    this.text('↑', 256, 150, 12, p.trim);
-    this.rect(124, 280, 64, 2, '#799581');
-    this.rect(324, 280, 64, 2, '#ba8a73');
-    this.text('LAB AI', 156, 293, 9, '#3c5f52');
-    this.text('THIẾT KẾ', 356, 293, 9, '#785447');
-    this.text('DNTU · HỌC & SÁNG TẠO', 256, 302, 10, p.trim, 190);
-    return this.canvas;
-  }
 }
 
 export function paintOfficeInterior(): HTMLCanvasElement {
   return new RoomPainter(OFFICE, COMPANY_COLS * TILE, COMPANY_ROWS * TILE).office();
-}
-
-export function paintCampusInterior(): HTMLCanvasElement {
-  return new RoomPainter(CAMPUS, DNTU_COLS * TILE, DNTU_ROWS * TILE).campus();
 }

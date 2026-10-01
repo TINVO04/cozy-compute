@@ -45,7 +45,16 @@ import {
   SLEEPING_EMPLOYEES,
   type SleepingEmployee,
 } from '../art/company';
-import { DNTU_PEOPLE, drawDntuPerson, paintDntuCampus, type DntuPerson } from '../art/dntu';
+import {
+  DNTU_BUILDINGS,
+  DNTU_PEOPLE,
+  DNTU_PROPS,
+  DNTU_TREES,
+  drawDntuPerson,
+  drawDntuTree,
+  paintDntuGround,
+  type DntuPerson,
+} from '../art/dntu';
 import {
   APT_TILE,
   BUILDING_ROOF,
@@ -940,6 +949,13 @@ export class UniversityScene extends InteriorScene {
     return { width: DNTU_COLS * TILE, height: DNTU_ROWS * TILE };
   }
 
+  protected override fitCamera() {
+    const { width, height } = this.worldSize();
+    const zoom = Math.max(0.5, Math.min(4, useUi.getState().zoom));
+    this.cameras.main.setZoom(zoom).setBounds(0, 0, width, height);
+    if (!this.layer?.self) this.cameras.main.centerOn(43 * TILE, 18.5 * TILE);
+  }
+
   protected blockers() {
     return DNTU_BLOCKERS;
   }
@@ -949,14 +965,44 @@ export class UniversityScene extends InteriorScene {
   }
 
   protected buildWorld() {
-    // 1. DNTU Grand Campus Interior Background
-    const campusKey = 'dntu:campus';
-    if (!this.textures.exists(campusKey)) {
-      this.textures.addCanvas(campusKey, paintDntuCampus());
+    // 1. DNTU Grand Campus Ground Canvas (Grass, Paved Roads, Sports Pitches, Plazas)
+    const groundKey = 'dntu:ground';
+    if (!this.textures.exists(groundKey)) {
+      this.textures.addCanvas(groundKey, paintDntuGround());
     }
-    this.add.image(0, 0, campusKey).setOrigin(0).setDepth(-10);
+    this.add.image(0, 0, groundKey).setOrigin(0).setDepth(-10);
 
-    // 2. Interactive Lecturers, Students, and AI Bot
+    // 2. 2.5D Architectural Campus Buildings (Depth-sorted with realistic elevations)
+    for (const bldg of DNTU_BUILDINGS) {
+      const bldgKey = `dntu:bldg-${bldg.id}`;
+      if (!this.textures.exists(bldgKey)) {
+        this.textures.addCanvas(bldgKey, bldg.draw());
+      }
+      const img = this.add.image(bldg.x, bldg.y - bldg.roofHeight, bldgKey).setOrigin(0, 0);
+      img.setDepth(bldg.depth ?? bldg.y + bldg.h);
+    }
+
+    // 3. 2.5D Depth-Sorted Props (Goals, Hoops, Flagpole, Lecture Podium, Fountain, Benches, Lamps)
+    for (const prop of DNTU_PROPS) {
+      const propKey = `dntu:prop-${prop.id}`;
+      if (!this.textures.exists(propKey)) {
+        this.textures.addCanvas(propKey, prop.draw());
+      }
+      const img = this.add.image(prop.x, prop.y, propKey).setOrigin(0.5, 1.0);
+      img.setDepth(prop.y);
+    }
+
+    // 4. 2.5D Depth-Sorted Campus Trees (Red Phượng Vĩ, Royal Palms, Golden Bells, Grand Banyan)
+    for (const tree of DNTU_TREES) {
+      const treeKey = `dntu:tree-${tree.kind}-${tree.scale}`;
+      if (!this.textures.exists(treeKey)) {
+        this.textures.addCanvas(treeKey, drawDntuTree(tree.kind, tree.scale));
+      }
+      const img = this.add.image(tree.x, tree.y, treeKey).setOrigin(0.5, 0.95);
+      img.setDepth(tree.y);
+    }
+
+    // 5. Interactive Lecturers, Students, and AI Bot
     this.personContainers.clear();
     for (const person of DNTU_PEOPLE) {
       const personTexKey = `dntu:${person.id}`;
@@ -983,12 +1029,14 @@ export class UniversityScene extends InteriorScene {
           ease: 'Sine.easeInOut',
         });
       }
+
+      // Name & role badge
       const badgeText = this.add
-        .text(0, 22, person.name, {
+        .text(0, -38, `${person.name} · ${person.role}`, {
           fontFamily: 'Inter, sans-serif',
           fontSize: '10px',
           fontStyle: 'bold',
-          color: '#fae9c9',
+          color: '#fbbf24',
           backgroundColor: 'rgba(15, 23, 42, 0.85)',
           padding: { x: 5, y: 2 },
           resolution: 2,
@@ -1002,7 +1050,7 @@ export class UniversityScene extends InteriorScene {
       this.interactAt(person.x, person.y, person.name, () => this.showPersonDialogue(person, container));
     }
 
-    // 2b. Auto-welcome quote when entering university: Thầy Tân welcomes player!
+    // 5b. Auto-welcome quote when entering university: Thầy Tân welcomes player!
     const thayTan = DNTU_PEOPLE.find((p) => p.id === 'thay_tan');
     const thayTanContainer = this.personContainers.get('thay_tan');
     if (thayTan && thayTanContainer && !this.welcomeShown) {
@@ -1013,49 +1061,169 @@ export class UniversityScene extends InteriorScene {
       });
     }
 
-    // 4. Interactive Smart Board Zone (center top)
-    const smartBoardHit = this.add
-      .zone(8 * TILE, 30, 232, 44)
+    // 6. Ambient soft campus illumination glow
+    ensureAtmosphereTextures(this);
+    this.add
+      .image((DNTU_COLS * TILE) / 2, (DNTU_ROWS * TILE) / 2, 'glow:indoor')
+      .setScale(4.5)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0.18)
+      .setDepth(2000);
+
+    // 7. Interactive Library & Information Center (Khu C)
+    const libraryHit = this.add
+      .zone(18.5 * TILE, 11 * TILE, 160, 60)
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
-    smartBoardHit.on('pointerdown', () => {
+    libraryHit.on('pointerdown', () => {
       play('pop');
       useUi.getState().toast({
         kind: 'info',
-        title: '🖥️ Màn Hình Cảm Ứng Thông Minh DNTU',
-        body: 'Đang trình chiếu: "Ứng dụng AI & IoT trong chuyển đổi số doanh nghiệp". Sinh viên DNTU thực hành trực tiếp trên hệ thống Lab hiện đại!',
+        title: '📚 Trung Tâm Thông Tin - Thư Viện DNTU',
+        body: 'Thư viện số 4 tầng với 50,000+ đầu sách, cơ sở dữ liệu quốc tế IEEE/Scopus và phòng tự học thông minh mở cửa 24/7!',
       });
     });
-    this.interactAt(8 * TILE, 3.2 * TILE, 'Màn hình DNTU', () => smartBoardHit.emit('pointerdown'));
+    this.interactAt(18.5 * TILE, 15.5 * TILE, 'Thư viện DNTU', () => libraryHit.emit('pointerdown'));
 
-    // 5. Interactive Digital Library Zone (left top)
-    const libHit = this.add.zone(64, 69, 64, 106).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    libHit.on('pointerdown', () => {
-      play('pop');
-      useUi.getState().toast({
-        kind: 'info',
-        title: '📚 Thư Viện Số & Tài Nguyên Học Liệu DNTU',
-        body: 'Truy cập hơn 100,000+ tài liệu, giáo trình điện tử, đề án tốt nghiệp xuất sắc và cơ sở dữ liệu NCKH quốc tế IEEE/Scopus.',
-      });
-    });
-    this.interactAt(2.2 * TILE, 4.5 * TILE, 'Thư viện', () => libHit.emit('pointerdown'));
-
-    // 6. Interactive Awards & Accreditation Showcase (right top)
-    const trophyHit = this.add.zone(448, 69, 64, 106).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    trophyHit.on('pointerdown', () => {
+    // 8. Interactive Sân Bóng Đá Cỏ Nhân Tạo (Khu E)
+    const soccerHit = this.add
+      .zone(7.2 * TILE, 16 * TILE, 200, 140)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    soccerHit.on('pointerdown', () => {
       play('coin');
       useUi.getState().toast({
         kind: 'reward',
-        title: '🏆 Tủ Huy Chương & Kiểm Định Chất Lượng',
-        body: 'Trường ĐH Công nghệ Đồng Nai đạt chuẩn Kiểm định Quốc gia MOET, Top trường đào tạo ứng dụng hàng đầu vùng kinh tế trọng điểm phía Nam!',
+        title: '⚽ Sân Bóng Đá Cỏ Nhân Tạo DNTU',
+        body: 'Sân bóng đá cỏ nhân tạo trong khu thể thao DNTU, nơi sinh viên tập luyện và tổ chức các giải giao lưu.',
       });
     });
-    this.interactAt(13.8 * TILE, 4.5 * TILE, 'Thành tựu DNTU', () => trophyHit.emit('pointerdown'));
+    this.interactAt(7.2 * TILE, 16 * TILE, 'Sân bóng đá', () => soccerHit.emit('pointerdown'));
+
+    // 9. Interactive Sân Bóng Rổ (Khu E)
+    const basketballHit = this.add
+      .zone(10 * TILE, 24 * TILE, 120, 80)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    basketballHit.on('pointerdown', () => {
+      play('coin');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🏀 Sân Bóng Rổ DNTU',
+        body: 'Sân bóng rổ trong khu thể thao DNTU, dành cho các buổi tập và hoạt động giao lưu của sinh viên.',
+      });
+    });
+    this.interactAt(10 * TILE, 24 * TILE, 'Sân bóng rổ', () => basketballHit.emit('pointerdown'));
+
+    // 10. Interactive Trường Quay Media Studio (Khu A South Wing)
+    const studioHit = this.add
+      .zone(31 * TILE, 24.5 * TILE, 120, 50)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    studioHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '🎬 Trường Quay DNTU Media Studio',
+        body: 'Hệ thống trường quay hiện đại phục vụ sản xuất truyền hình, podcast, livestream sự kiện và đồ án sáng tạo nội dung của sinh viên!',
+      });
+    });
+    this.interactAt(31 * TILE, 22.5 * TILE, 'Trường quay DNTU', () => studioHit.emit('pointerdown'));
+
+    // 11. Interactive Vườn Khởi Nghiệp & Sáng Tạo (North Park)
+    const startupHit = this.add
+      .zone(29 * TILE, 3.5 * TILE, 120, 50)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    startupHit.on('pointerdown', () => {
+      play('coin');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '💡 Vườn Ươm Sáng Tạo Khởi Nghiệp DNTU',
+        body: 'Nơi chắp cánh hàng chục dự án startup sinh viên đạt giải thưởng quốc gia và kết nối quỹ đầu tư doanh nghiệp!',
+      });
+    });
+    this.interactAt(29 * TILE, 6.5 * TILE, 'Vườn khởi nghiệp', () => startupHit.emit('pointerdown'));
+
+    // 12. Interactive Ký Túc Xá & Căng Tin (South-West)
+    const canteenHit = this.add
+      .zone(7 * TILE, 29 * TILE, 140, 50)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    canteenHit.on('pointerdown', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '🍱 Căng Tin & Ký Túc Xá Sinh Viên DNTU',
+        body: 'Khu ẩm thực sinh viên nhộn nhịp: Cơm gà xối mỡ, bún bò, bánh mì chả lụa và trà đào cam sả thơm ngon giá hạt dẻ!',
+      });
+    });
+    this.interactAt(7 * TILE, 27.5 * TILE, 'Căng tin DNTU', () => canteenHit.emit('pointerdown'));
+
+    // 13. Interactive Smart Operations Center (Khu G) - required by interior-render.spec.ts!
+    this.interactAt(8 * TILE, 4.6 * TILE, 'Điều hành thông minh', () => {
+      play('click');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '🖥️ Màn Hình Trung Tâm Điều Hành Thông Minh DNTU',
+        body: 'Bảng điều khiển giám sát năng lượng mặt trời, hệ thống phòng thực hành IoT và máy chủ trung tâm!',
+      });
+    });
+
+    // 14. Interactive DNTU Fitness & Gym (Khu G West)
+    this.interactAt(4.5 * TILE, 4.6 * TILE, 'Fitness & Gym', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🏋️ DNTU Fitness & Gym Center (Khu G)',
+        body: 'Phòng tập thể hình hiện đại chuẩn quốc tế dành riêng cho sinh viên và giảng viên DNTU: dàn máy tập tạ đa năng, máy chạy bộ cardio và huấn luyện viên tận tình!',
+      });
+    });
+
+    // 15. Interactive Automotive Workshop (Khu F Bay 1)
+    this.interactAt(4.5 * TILE, 9.5 * TILE, 'Xưởng ô tô', () => {
+      play('coin');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🚗 Xưởng Thực Hành Công Nghệ Ô Tô Khu F',
+        body: 'Cầu nâng thủy lực 2 trụ đang nâng chiếc xe thể thao để sinh viên thực hành chẩn đoán hệ thống phun xăng điện tử và cân chỉnh góc đặt bánh xe 3D!',
+      });
+    });
+
+    // 16. Interactive Precision CNC & Mechanical Lab (Khu F Bay 3)
+    this.interactAt(9.5 * TILE, 9.5 * TILE, 'Phòng CNC', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '⚙️ Trung Tâm Gia Công Cơ Khí Chính Xác & CNC Khu F',
+        body: 'Máy phay CNC 5 trục và máy tiện vạn năng công nghệ Đức, nơi sinh viên chế tạo các chi tiết cơ khí chính xác cho các cuộc thi sáng tạo robot Robocon!',
+      });
+    });
+
+    // 17. Interactive Grand Triumphal Archway (Trụ Sở Chính BGH)
+    this.interactAt(35 * TILE, 18.5 * TILE, 'Cổng vòm DNTU', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '🏛️ Cổng Vòm Khải Hoàn · Trụ Sở Chính DNTU',
+        body: 'Cổng vòm Neoclassical tráng lệ biểu tượng của Đại học Công nghệ Đồng Nai, kết nối cổng chính vào sân trung tâm và các khoa đào tạo!',
+      });
+    });
+  }
+
+  protected override onSelfMove(x: number, y: number) {
+    // 1. Walk out through Gate 1 (Cổng 1) to return to town
+    const nearGate1 = x >= 47 * TILE && y >= 16 * TILE && y <= 24 * TILE;
+    const nearGate2 = x >= 47 * TILE && y >= 12 * TILE && y <= 15 * TILE;
+    if (!this.exiting && (nearGate1 || nearGate2)) {
+      this.exiting = true;
+      void net.goTown();
+    }
   }
 
   private showPersonDialogue(person: DntuPerson, container: Phaser.GameObjects.Container) {
     play('pop');
-    useUi.getState().toast({ kind: 'info', title: person.name, body: person.role + ' — ' + person.dialogue });
+    useUi.getState().toast({ kind: 'info', title: person.name, body: person.dialogue });
     this.activeBubble?.destroy();
 
     const bubble = this.add.container(container.x, container.y - 56);

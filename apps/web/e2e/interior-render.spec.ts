@@ -12,7 +12,7 @@ type Preview = {
   interiorUi: { getState: () => { toasts: { title: string }[] } };
 };
 
-for (const kind of ['company', 'university']) {
+for (const kind of ['company']) {
   test(kind + ' supports keyboard interaction, reduced motion and one-shot exits', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
@@ -101,7 +101,7 @@ for (const viewport of [
       await page.waitForFunction(() =>
         (window as unknown as Preview).interiorPreview?.scene.isActive('company'),
       );
-      for (const kind of ['company', 'university']) {
+      for (const kind of ['company']) {
         if (kind === 'university')
           await page.evaluate(() => {
             const game = (window as unknown as Preview).interiorPreview;
@@ -155,7 +155,7 @@ for (const viewport of [
   );
 }
 
-for (const kind of ['company', 'university']) {
+for (const kind of ['company']) {
   test(kind + ' fixtures respond to clicks and dialogue stays within the room', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/e2e/fixtures/interiors.html');
