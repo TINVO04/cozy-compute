@@ -16,3 +16,4 @@ gamevps/
 *.db-*
 infra/postgres/local_data/
 infra/redis/
+apps/web/output/

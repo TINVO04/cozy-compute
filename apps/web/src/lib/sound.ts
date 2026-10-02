@@ -23,7 +23,10 @@ type Cue =
   | 'cyber_windwall'
   | 'cyber_ult'
   | 'cyber_victory'
-  | 'cyber_order';
+  | 'cyber_order'
+  | 'farm_water'
+  | 'farm_harvest'
+  | 'farm_plant';
 
 const CUES: Record<Cue, { f: number[]; d: number; type: OscillatorType; vol: number }> = {
   coin: { f: [988, 1319], d: 0.08, type: 'square', vol: 0.05 },
@@ -47,6 +50,9 @@ const CUES: Record<Cue, { f: number[]; d: number; type: OscillatorType; vol: num
   cyber_ult: { f: [440, 660, 880, 1100], d: 0.14, type: 'square', vol: 0.08 },
   cyber_victory: { f: [523, 659, 784, 1046, 1318], d: 0.15, type: 'triangle', vol: 0.08 },
   cyber_order: { f: [784, 1046], d: 0.08, type: 'triangle', vol: 0.06 },
+  farm_water: { f: [280, 360, 420], d: 0.08, type: 'triangle', vol: 0.06 },
+  farm_harvest: { f: [587, 880, 1174], d: 0.1, type: 'triangle', vol: 0.07 },
+  farm_plant: { f: [220, 330], d: 0.06, type: 'sine', vol: 0.05 },
 };
 
 /** Tiny synthesized sound effects — no audio assets required. */

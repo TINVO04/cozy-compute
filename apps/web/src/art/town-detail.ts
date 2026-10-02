@@ -641,11 +641,249 @@ function paintBoat(color: string) {
   box(ctx, '#77613d', 32, 73, 6, 14);
   return c;
 }
+
+/** 3D Embossed DNTU Campus Monument with dimensional flame emblem and bold crimson letters. */
+function paintDntuMonument() {
+  const w = 118,
+    h = 56;
+  const c = canvas(w, h),
+    ctx = c.getContext('2d')!;
+
+  const base = h - 3;
+  // 1. Ground contact shadow
+  oval(ctx, 'rgba(30, 25, 20, 0.32)', w / 2, base + 1, w / 2 - 4, 3);
+
+  // 2. Multi-tiered Polished Granite Pedestal (Bệ đá cẩm thạch trắng)
+  const pedW = 112;
+  const pedX = (w - pedW) / 2; // 3
+  const pedH = 8;
+  const pedY = base - pedH; // 45
+
+  // Bottom stone plinth
+  box(ctx, '#71717a', pedX - 1, pedY + 3, pedW + 2, 5);
+  box(ctx, '#e4e4e7', pedX, pedY + 3, pedW, 4);
+  box(ctx, '#a1a1aa', pedX + pedW - 2, pedY + 3, 2, 4);
+
+  // Upper beveled stone slab
+  box(ctx, '#52525b', pedX, pedY, pedW, 4);
+  box(ctx, '#f4f4f5', pedX + 1, pedY, pedW - 2, 3);
+  box(ctx, '#ffffff', pedX + 2, pedY, pedW - 4, 1);
+  box(ctx, '#d4af37', pedX + 4, pedY + 3, pedW - 8, 1); // Gold brass inlay strip
+
+  // 3. OFFICIAL DNTU LOGO EMBLEM (Graduation cap, 1 red head, 2 blue heads, 3 ascending red swooshes)
+  const drawEmblemPath = (
+    pathFn: (c: CanvasRenderingContext2D, ox: number, oy: number) => void,
+    fillColor: string,
+    shadowColor: string,
+    hiColor?: string,
+  ) => {
+    // 3D Shadow / extrusion layer
+    ctx.save();
+    pathFn(ctx, 1.2, 1.2);
+    ctx.fillStyle = shadowColor;
+    ctx.fill();
+    ctx.restore();
+
+    // Main Face layer
+    ctx.save();
+    pathFn(ctx, 0, 0);
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+    if (hiColor) {
+      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = hiColor;
+      ctx.stroke();
+    }
+    ctx.restore();
+  };
+
+  // 3.1 Graduation Cap on top of the red head (Mũ cử nhân DNTU)
+  drawEmblemPath(
+    (c, ox, oy) => {
+      c.beginPath();
+      // Tilted mortarboard diamond plate sloping upwards to the right
+      c.moveTo(15.5 + ox, 7.5 + oy);
+      c.lineTo(20.5 + ox, 4.2 + oy);
+      c.lineTo(26.5 + ox, 3.2 + oy);
+      c.lineTo(21.5 + ox, 6.5 + oy);
+      c.closePath();
+      // Skullcap base resting on the head
+      c.moveTo(18.5 + ox, 6.2 + oy);
+      c.lineTo(23.2 + ox, 5.8 + oy);
+      c.lineTo(22.0 + ox, 8.2 + oy);
+      c.lineTo(19.2 + ox, 8.4 + oy);
+      c.closePath();
+    },
+    '#b91c1c',
+    '#450a0a',
+    '#f87171',
+  );
+
+  // Circle renderer with 3D drop shadow and specular highlight
+  const drawEmblemCircle = (cx: number, cy: number, r: number, fill: string, shadow: string, hi: string) => {
+    // Shadow
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx + 1.2, cy + 1.2, r, 0, Math.PI * 2);
+    ctx.fillStyle = shadow;
+    ctx.fill();
+    // Face
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    // Highlight glint
+    ctx.beginPath();
+    ctx.arc(cx - r * 0.35, cy - r * 0.35, r * 0.45, 0, Math.PI * 2);
+    ctx.fillStyle = hi;
+    ctx.fill();
+    ctx.restore();
+  };
+
+  // 3.2 Top Head (Red circle)
+  drawEmblemCircle(20.5, 11.5, 3.3, '#dc2626', '#450a0a', '#fca5a5');
+
+  // 3.3 Middle Head (Cyan/Blue circle)
+  drawEmblemCircle(16.8, 18.0, 2.6, '#0284c7', '#082f49', '#7dd3fc');
+
+  // 3.4 Lowest Head (Cyan/Blue circle)
+  drawEmblemCircle(13.5, 24.5, 2.4, '#0284c7', '#082f49', '#7dd3fc');
+
+  // 3.5 Top Figure Swoosh (Rightmost & largest curved red arc)
+  drawEmblemPath(
+    (c, ox, oy) => {
+      c.beginPath();
+      // Starts under red head
+      c.moveTo(20.5 + ox, 15.2 + oy);
+      // Outer convex curve bellying generously to the right
+      c.bezierCurveTo(27.5 + ox, 19.5 + oy, 30.5 + ox, 31.0 + oy, 28.5 + ox, 45.0 + oy);
+      // Flat base resting on pedestal
+      c.lineTo(24.2 + ox, 45.0 + oy);
+      // Inner curve going back up
+      c.bezierCurveTo(25.8 + ox, 33.0 + oy, 22.8 + ox, 22.0 + oy, 19.5 + ox, 15.2 + oy);
+      c.closePath();
+    },
+    '#b91c1c',
+    '#450a0a',
+    '#f87171',
+  );
+
+  // 3.6 Middle Figure Swoosh (Red arc under middle head)
+  drawEmblemPath(
+    (c, ox, oy) => {
+      c.beginPath();
+      // Starts under middle head
+      c.moveTo(17.2 + ox, 21.0 + oy);
+      // Outer curve following gap with top figure
+      c.bezierCurveTo(20.8 + ox, 27.0 + oy, 22.5 + ox, 35.0 + oy, 22.6 + ox, 45.0 + oy);
+      // Flat base
+      c.lineTo(19.2 + ox, 45.0 + oy);
+      // Inner curve going back up
+      c.bezierCurveTo(18.8 + ox, 35.5 + oy, 17.5 + ox, 27.5 + oy, 15.8 + ox, 21.0 + oy);
+      c.closePath();
+    },
+    '#dc2626',
+    '#450a0a',
+    '#fca5a5',
+  );
+
+  // 3.7 Lowest Figure Swoosh (Red arc under lowest head with flared tail)
+  drawEmblemPath(
+    (c, ox, oy) => {
+      c.beginPath();
+      // Starts under lowest head
+      c.moveTo(13.8 + ox, 27.2 + oy);
+      // Outer curve following gap with middle figure
+      c.bezierCurveTo(15.5 + ox, 32.0 + oy, 16.8 + ox, 38.0 + oy, 17.5 + ox, 45.0 + oy);
+      // Flat baseline extending out to flared foot
+      c.lineTo(9.5 + ox, 45.0 + oy);
+      // Left concave curve creating the iconic flared sail
+      c.bezierCurveTo(11.8 + ox, 38.5 + oy, 12.8 + ox, 32.5 + oy, 12.5 + ox, 27.2 + oy);
+      c.closePath();
+    },
+    '#b91c1c',
+    '#450a0a',
+    '#f87171',
+  );
+
+  // 4. 3D EMBOSSED "DNTU" LETTERS WITH AUTHENTIC SERIF FLAIR (Right side: x = 36..110, y = 19..45)
+  const letterY = 19;
+  const letterH = 26;
+
+  const drawBlock = (bx: number, by: number, bw: number, bh: number, skipTop = false, skipLeft = false) => {
+    box(ctx, '#450a0a', bx + 2, by + 2, bw, bh);
+    box(ctx, '#7f1d1d', bx + 1, by + 1, bw, bh);
+    box(ctx, '#b91c1c', bx, by, bw, bh);
+    if (!skipTop) box(ctx, '#f87171', bx, by, bw, 1);
+    if (!skipLeft) box(ctx, '#fca5a5', bx, by, 1, bh);
+  };
+
+  // LETTER D (x = 36, w = 15) with flared serifs
+  const dX = 36;
+  drawBlock(dX, letterY, 4, letterH);
+  // Serifs on vertical stem
+  drawBlock(dX - 2, letterY, 2, 2);
+  drawBlock(dX - 2, letterY + letterH - 2, 2, 2);
+  // Upper & lower horizontal bars
+  drawBlock(dX + 4, letterY, 7, 4, false, true);
+  drawBlock(dX + 4, letterY + letterH - 4, 7, 4, true, true);
+  // Curved bowl
+  drawBlock(dX + 10, letterY + 2, 3, 3, false, true);
+  drawBlock(dX + 12, letterY + 4, 3, letterH - 8, false, true);
+  drawBlock(dX + 10, letterY + letterH - 5, 3, 3, true, true);
+
+  // LETTER N (x = 55, w = 15) with top/bottom serifs
+  const nX = 55;
+  drawBlock(nX, letterY, 4, letterH);
+  drawBlock(nX - 2, letterY, 2, 2);
+  drawBlock(nX - 2, letterY + letterH - 2, 2, 2);
+  drawBlock(nX + 11, letterY, 4, letterH);
+  drawBlock(nX + 11, letterY, 4, 2);
+  drawBlock(nX + 13, letterY + letterH - 2, 2, 2);
+  for (let dy = 0; dy < letterH; dy++) {
+    const rx = Math.floor(nX + 3 + (dy * 7) / letterH);
+    box(ctx, '#450a0a', rx + 2, letterY + dy + 2, 3, 1);
+    box(ctx, '#7f1d1d', rx + 1, letterY + dy + 1, 3, 1);
+    box(ctx, '#b91c1c', rx, letterY + dy, 3, 1);
+    if (dy < 4) box(ctx, '#fca5a5', rx, letterY + dy, 1, 1);
+  }
+
+  // LETTER T (x = 74, w = 16) with flared downward serifs on top bar and base bracket
+  const tX = 74;
+  drawBlock(tX, letterY, 16, 4);
+  // Downward serifs at ends of T bar
+  drawBlock(tX, letterY + 4, 2, 2, true, false);
+  drawBlock(tX + 14, letterY + 4, 2, 2, true, false);
+  // Center stem
+  drawBlock(tX + 6, letterY + 4, 4, letterH - 4, true, false);
+  // Foot serifs
+  drawBlock(tX + 4, letterY + letterH - 2, 2, 2, false, false);
+  drawBlock(tX + 10, letterY + letterH - 2, 2, 2, false, true);
+
+  // LETTER U (x = 94, w = 15) with top serifs
+  const uX = 94;
+  drawBlock(uX, letterY, 4, letterH - 2);
+  drawBlock(uX - 2, letterY, 2, 2);
+  drawBlock(uX + 11, letterY, 4, letterH - 2);
+  drawBlock(uX + 13, letterY, 2, 2);
+  drawBlock(uX + 2, letterY + letterH - 4, 11, 4, true, true);
+  drawBlock(uX + 1, letterY + letterH - 5, 3, 3, true, true);
+  drawBlock(uX + 10, letterY + letterH - 5, 3, 3, true, true);
+
+  // Glistening corner glints on letters
+  for (const lx of [dX, nX, tX, uX]) {
+    box(ctx, '#ffffff', lx, letterY, 2, 2);
+  }
+
+  return c;
+}
+
 export function paintScenery(s: Scenery) {
   if (s.kind === 'house') return paintHouse(s);
   if (s.kind === 'pagoda' || s.kind === 'shrine') return paintTemple(s);
   if (s.kind === 'cart') return paintCart(s);
   if (s.kind === 'scooter') return paintScooter(s.color);
+  if (s.kind === 'monument') return paintDntuMonument();
   return paintPalm();
 }
 

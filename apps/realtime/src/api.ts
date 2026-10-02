@@ -41,4 +41,12 @@ export class ApiClient {
       objects: { itemId: string; x: number; y: number; rotation: number; size: { w: number; h: number } }[];
     }>('/internal/apartment', { ownerId, viewerId });
   }
+
+  farmAccess(ownerId: string, visitorId: string, farmToken?: string) {
+    return this.post<{ allowed: boolean; isOwner: boolean }>('/internal/farm-access', {
+      ownerId,
+      visitorId,
+      farmToken,
+    });
+  }
 }

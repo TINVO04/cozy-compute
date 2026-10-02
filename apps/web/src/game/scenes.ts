@@ -20,6 +20,13 @@ import {
   FISHING_RODS,
   MAP_HEIGHT,
   MAP_WIDTH,
+  FARM_BLOCKERS,
+  FARM_HEIGHT,
+  FARM_WIDTH,
+  FARM_PLOT_TOTAL,
+  getFarmPlotRect,
+  getPlotUnlockPrice,
+  FARM_POIS,
   t,
   TILE,
   ZONES,
@@ -30,6 +37,16 @@ import {
 import { getStateCallbacks, type Room } from 'colyseus.js';
 import Phaser from 'phaser';
 import { duckGrid } from '../art/items';
+import { paintFarmLandscape } from '../art/farm-landscape';
+import {
+  paintShopBacSau,
+  paintSiloWarehouse,
+  paintPoultryCoop,
+  paintPigPen,
+  paintGoatPen,
+  paintPlotTile,
+} from '../art/farm-props';
+import { api } from '../lib/api';
 import { APT_ART_SIDE, APT_ART_TOP } from '../art/apartment';
 import { drawRotatedFurniture } from '../art/furniture';
 import { COMGA_PEOPLE, drawComGaPerson, paintComGaInterior, type ComGaPerson } from '../art/comga';
@@ -178,9 +195,15 @@ export class TownScene extends WorldScene {
   private deliveryMarker: Phaser.GameObjects.Container | null = null;
   public fishingController: InWorldFishingController | null = null;
   public remoteFishingControllers = new Map<string, InWorldFishingController>();
+  private exiting = false;
 
   constructor() {
     super('town');
+  }
+
+  override create() {
+    this.exiting = false;
+    super.create();
   }
 
   getSelfPos(): { x: number; y: number } | null {
@@ -390,6 +413,14 @@ export class TownScene extends WorldScene {
     if (zone !== this.lastZone) {
       this.lastZone = zone;
       useUi.getState().setZone(zone);
+      if (!this.exiting && zone === 'farm_gate') {
+        const myId = useUi.getState().myUserId;
+        if (myId) {
+          this.exiting = true;
+          play('pop');
+          void net.goFarm(myId, 'Trang Trại Cá Nhân');
+        }
+      }
     }
   }
 }
@@ -1223,7 +1254,7 @@ export class ComGaScene extends InteriorScene {
   }
 
   protected override onSelfMove(x: number, y: number) {
-    if (!this.exiting && y >= 8.6 * TILE && x >= 5.5 * TILE && x <= 8.5 * TILE) {
+    if (!this.exiting && y >= 9.2 * TILE && x >= 5.5 * TILE && x <= 8.5 * TILE) {
       this.exiting = true;
       void net.goTown();
     }
@@ -1672,6 +1703,336 @@ export class CyberNetScene extends InteriorScene {
       };
       sprite.setInteractive({ useHandCursor: true }).on('pointerdown', talk);
       this.interactAt(person.x, person.y, person.name, talk);
+    }
+  }
+}
+
+export interface FarmPlotData {
+  plotIndex: number;
+  isUnlocked: boolean;
+  unlockPrice: number;
+  isTilled: boolean;
+  wateredAt: string | null;
+  cropId: string | null;
+  plantedAt: string | null;
+  growthStage: 'seed' | 'sprout' | 'blooming' | 'mature' | null;
+  isFertilized: boolean;
+}
+
+export class FarmScene extends WorldScene {
+  private interactions: { x: number; y: number; run: () => void; label: string }[] = [];
+  private interactionHint: Phaser.GameObjects.Text | null = null;
+  private keyE!: Phaser.Input.Keyboard.Key;
+  private plotSprites = new Map<number, Phaser.GameObjects.Image>();
+  private plotsData: FarmPlotData[] = [];
+  private refreshing = false;
+  private exiting = false;
+
+  constructor() {
+    super('farm');
+  }
+
+  override create() {
+    this.exiting = false;
+    this.interactions = [];
+    super.create();
+  }
+
+  protected worldSize() {
+    return { width: FARM_WIDTH, height: FARM_HEIGHT };
+  }
+
+  protected blockers() {
+    return FARM_BLOCKERS;
+  }
+
+  protected matchesRoom(room: Room) {
+    return room.name === 'farm';
+  }
+
+  protected override fitCamera() {
+    const { width, height } = this.worldSize();
+    const cam = this.cameras.main;
+    const zoomMultiplier = useUi.getState().zoom;
+    // Map is 1536x1024. Clamp baseZoom to 1.0..1.5 on standard screens so the map doesn't feel oversized
+    const baseZoom = Math.max(
+      0.75,
+      Math.min(1.5, Math.round(Math.min(this.scale.width / 960, this.scale.height / 640) * 10) / 10),
+    );
+    const zoom = Math.max(0.5, Math.min(3.0, Math.round(baseZoom * zoomMultiplier * 100) / 100));
+    cam.setZoom(zoom);
+    const vw = this.scale.width / zoom;
+    const vh = this.scale.height / zoom;
+    cam.setBounds(
+      Math.min(0, (width - vw) / 2),
+      Math.min(0, (height - vh) / 2),
+      Math.max(width, vw),
+      Math.max(height, vh),
+    );
+  }
+
+  protected override onSelfMove(x: number, y: number) {
+    // Check gate exit to town (western portal row 2..4: col 0..1)
+    if (!this.exiting && x <= 1.5 * TILE && y >= 2 * TILE && y <= 5 * TILE) {
+      this.exiting = true;
+      play('pop');
+      void net.goTown();
+    }
+  }
+
+  interactAt(x: number, y: number, label: string, run: () => void) {
+    this.interactions.push({ x, y, label, run });
+  }
+
+  private nearestInteraction(x: number, y: number) {
+    const nearest = this.interactions.reduce<(typeof this.interactions)[number] | undefined>(
+      (best, action) =>
+        !best || Math.hypot(action.x - x, action.y - y) < Math.hypot(best.x - x, best.y - y) ? action : best,
+      undefined,
+    );
+    return nearest && Math.hypot(nearest.x - x, nearest.y - y) <= 2.5 * TILE ? nearest : undefined;
+  }
+
+  protected buildWorld() {
+    // 1. Procedural Landscape Base
+    if (!this.textures.exists('farm:landscape')) {
+      this.textures.addCanvas('farm:landscape', paintFarmLandscape());
+    }
+    this.add.image(0, 0, 'farm:landscape').setOrigin(0, 0).setDepth(-10);
+
+    // 2. Props & Buildings
+    if (!this.textures.exists('farm:shop_bac_sau')) {
+      this.textures.addCanvas('farm:shop_bac_sau', paintShopBacSau());
+    }
+    const shopP = FARM_POIS.shop_bac_sau;
+    const shopSprite = this.add
+      .image(shopP.x + shopP.w / 2, shopP.y + shopP.h / 2, 'farm:shop_bac_sau')
+      .setOrigin(0.5, 0.5)
+      .setDepth(shopP.y + shopP.h);
+    const openShop = () => {
+      play('pop');
+      useUi.getState().setPanel('farm-shop');
+    };
+    shopSprite.setInteractive({ useHandCursor: true }).on('pointerdown', openShop);
+    this.interactAt(shopP.x + shopP.w / 2, shopP.y + shopP.h + 20, 'Tiệm Bác Sáu', openShop);
+
+    // Silo Warehouse
+    if (!this.textures.exists('farm:silo_warehouse')) {
+      this.textures.addCanvas('farm:silo_warehouse', paintSiloWarehouse());
+    }
+    const siloP = FARM_POIS.silo_warehouse;
+    const siloSprite = this.add
+      .image(siloP.x + siloP.w / 2, siloP.y + siloP.h / 2, 'farm:silo_warehouse')
+      .setOrigin(0.5, 0.5)
+      .setDepth(siloP.y + siloP.h);
+    const openSilo = () => {
+      play('pop');
+      useUi.getState().setPanel('farm-silo');
+    };
+    siloSprite.setInteractive({ useHandCursor: true }).on('pointerdown', openSilo);
+    this.interactAt(siloP.x + siloP.w / 2, siloP.y + siloP.h + 20, 'Nhà kho Silo', openSilo);
+
+    // Barns
+    if (!this.textures.exists('farm:poultry_coop')) {
+      this.textures.addCanvas('farm:poultry_coop', paintPoultryCoop());
+    }
+    const poultryP = FARM_POIS.poultry_coop;
+    this.add
+      .image(poultryP.x + poultryP.w / 2, poultryP.y + poultryP.h / 2, 'farm:poultry_coop')
+      .setOrigin(0.5, 0.5)
+      .setDepth(poultryP.y + poultryP.h);
+    this.interactAt(poultryP.x + poultryP.w / 2, poultryP.y - 18, 'Chuồng gia cầm', () => {
+      play('pop');
+      useUi
+        .getState()
+        .toast({ kind: 'info', title: 'Chuồng Gia Cầm', body: 'Gà ri và vịt xiêm đang mổ thóc khỏe mạnh.' });
+    });
+
+    if (!this.textures.exists('farm:pig_pen')) {
+      this.textures.addCanvas('farm:pig_pen', paintPigPen());
+    }
+    const pigP = FARM_POIS.pig_pen;
+    this.add
+      .image(pigP.x + pigP.w / 2, pigP.y + pigP.h / 2, 'farm:pig_pen')
+      .setOrigin(0.5, 0.5)
+      .setDepth(pigP.y + pigP.h);
+    this.interactAt(pigP.x + pigP.w / 2, pigP.y - 18, 'Chuồng heo', () => {
+      play('pop');
+      useUi
+        .getState()
+        .toast({ kind: 'info', title: 'Chuồng Heo', body: 'Đàn heo sọc dưa đang lăn bùn thỏa thích.' });
+    });
+
+    if (!this.textures.exists('farm:goat_pen')) {
+      this.textures.addCanvas('farm:goat_pen', paintGoatPen());
+    }
+    const goatP = FARM_POIS.goat_pen;
+    this.add
+      .image(goatP.x + goatP.w / 2, goatP.y + goatP.h / 2, 'farm:goat_pen')
+      .setOrigin(0.5, 0.5)
+      .setDepth(goatP.y + goatP.h);
+    this.interactAt(goatP.x + goatP.w / 2, goatP.y - 18, 'Chuồng dê & cừu', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: 'Chuồng Dê & Cừu',
+        body: 'Đàn cừu lông trắng muốt đang gặm cỏ thanh bình bên máng cỏ khô.',
+      });
+    });
+
+    // Center Park Bench
+    this.interactAt(740, 595, 'Ghế nghỉ chân', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: 'Ghế Nghỉ Chân',
+        body: 'Ngồi nghỉ ngơi dưới bóng cây xanh mát giữa trang trại bình yên.',
+      });
+    });
+
+    // Fishing Pond Dock
+    this.interactAt(1215, 435, 'Hồ câu cá', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: 'Hồ Cá Nông Trại',
+        body: 'Mặt hồ phẳng lặng trong vắt với hoa sen nở ngát hương và thuyền gỗ neo bên bến.',
+      });
+    });
+
+    // Gate Exit to Town
+    this.interactAt(135, 130, 'Về thị trấn', () => {
+      if (this.exiting) return;
+      this.exiting = true;
+      play('pop');
+      void net.goTown();
+    });
+
+    // 3. 36 Plots Grid Setup
+    for (let i = 0; i < FARM_PLOT_TOTAL; i++) {
+      const r = getFarmPlotRect(i);
+      const cx = r.x + r.w / 2;
+      const cy = r.y + r.h / 2;
+      const price = getPlotUnlockPrice(i);
+      const isStarter = i < 4;
+
+      const texKey = `farm:plot:${i}`;
+      if (!this.textures.exists(texKey)) {
+        this.textures.addCanvas(texKey, paintPlotTile(isStarter, false, undefined, undefined, price));
+      }
+      const sprite = this.add.image(cx, cy, texKey).setOrigin(0.5, 0.5).setDepth(-5);
+
+      const openPlot = () => {
+        play('pop');
+        useUi.getState().setActivePlotIndex(i);
+        useUi.getState().setPanel('farm-plot');
+      };
+      sprite.setInteractive({ useHandCursor: true }).on('pointerdown', openPlot);
+      this.interactAt(cx, cy, `Ô đất #${i + 1}`, openPlot);
+      this.plotSprites.set(i, sprite);
+    }
+
+    // Interaction Hint Text
+    this.interactionHint = this.add
+      .text(0, 0, '', {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '11px',
+        color: '#fef08a',
+        backgroundColor: 'rgba(15, 23, 42, 0.85)',
+        padding: { x: 8, y: 3 },
+      })
+      .setOrigin(0.5)
+      .setDepth(9999)
+      .setVisible(false);
+
+    // Keyboard E
+    this.keyE = this.input.keyboard!.addKey('E');
+    this.keyE.on('down', () => {
+      const self = this.layer?.self?.container;
+      if (!self || typing() || useUi.getState().panel) return;
+      const nearest = this.nearestInteraction(self.x, self.y);
+      if (nearest) nearest.run();
+    });
+
+    void this.fetchFarmState();
+  }
+
+  async fetchFarmState() {
+    if (this.refreshing) return;
+    this.refreshing = true;
+    try {
+      const res = await api<{
+        farm: { isPublic: boolean; hasPassword: boolean };
+        plots: FarmPlotData[];
+      }>('/api/farm/me');
+      if (res?.plots) {
+        this.plotsData = res.plots;
+        this.updatePlotsVisuals();
+      }
+    } catch {
+      // offline / not logged in
+    } finally {
+      this.refreshing = false;
+    }
+  }
+
+  private updatePlotsVisuals() {
+    for (const p of this.plotsData) {
+      const sprite = this.plotSprites.get(p.plotIndex);
+      if (!sprite) continue;
+      const isWatered = !!p.wateredAt;
+      const texKey = `farm:plot_dyn:${p.plotIndex}:${p.isUnlocked}:${isWatered}:${p.cropId ?? 'none'}:${p.growthStage ?? 'none'}`;
+      if (!this.textures.exists(texKey)) {
+        this.textures.addCanvas(
+          texKey,
+          paintPlotTile(
+            p.isUnlocked,
+            isWatered,
+            p.cropId ?? undefined,
+            p.growthStage ?? undefined,
+            p.unlockPrice,
+          ),
+        );
+      }
+      sprite.setTexture(texKey);
+    }
+  }
+
+  protected override onBind(room: Room) {
+    room.onMessage('farm:plot_watered', (msg: { plotIndex: number; name?: string }) => {
+      play('farm_water');
+      useUi.getState().toast({
+        kind: 'info',
+        title: 'Tưới nước thành công',
+        body: msg.name ? `${msg.name} vừa tưới nước ô đất #${msg.plotIndex + 1}!` : undefined,
+      });
+      void this.fetchFarmState();
+    });
+
+    room.onMessage('farm:plot_harvested', (msg: { plotIndex: number }) => {
+      play('farm_harvest');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: 'Thu hoạch thành công',
+        body: `Đã thu hoạch nông sản từ ô đất #${msg.plotIndex + 1} vào kho Silo!`,
+      });
+      void this.fetchFarmState();
+    });
+
+    room.onMessage('farm:updated', () => {
+      void this.fetchFarmState();
+    });
+  }
+
+  override update(time: number, delta: number) {
+    super.update(time, delta);
+    const self = this.layer?.self?.container;
+    const action =
+      self && !typing() && !useUi.getState().panel ? this.nearestInteraction(self.x, self.y) : undefined;
+    this.interactionHint?.setVisible(!!action);
+    if (action && self && this.interactionHint) {
+      this.interactionHint.setText('E · ' + action.label);
+      this.interactionHint.setPosition(self.x, self.y - 42);
     }
   }
 }

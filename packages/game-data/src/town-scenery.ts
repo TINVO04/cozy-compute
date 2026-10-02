@@ -7,7 +7,7 @@ const t = (x: number, y: number, w: number, h: number): Rect => ({
 });
 
 /** Landmarks in the reference town share footprints with authoritative movement. */
-export type TownSceneryKind = 'house' | 'pagoda' | 'shrine' | 'cart' | 'scooter' | 'palm';
+export type TownSceneryKind = 'house' | 'pagoda' | 'shrine' | 'cart' | 'scooter' | 'palm' | 'monument';
 export const TOWN_SCENERY: {
   id: string;
   kind: TownSceneryKind;
@@ -19,7 +19,8 @@ export const TOWN_SCENERY: {
   { id: 'west-blue-house', kind: 'house', rect: t(8, 23, 1.7, 3), color: '#5289ad' },
   { id: 'east-house', kind: 'house', rect: t(35, 12.5, 3, 3), color: '#876c4e' },
   { id: 'buu-long', kind: 'pagoda', rect: t(43, 12, 3, 4), color: '#bc583d', label: 'CHÙA BỬU LONG' },
-  { id: 'plaza-shrine', kind: 'shrine', rect: t(24, 12, 4, 1.5), color: '#b65036' },
+  { id: 'plaza-shrine', kind: 'shrine', rect: t(17.5, 23, 4, 1.5), color: '#b65036' },
+  { id: 'dntu-monument', kind: 'monument', rect: t(28.3, 9.2, 3.5, 0.8), color: '#b91c1c', label: 'DNTU' },
   ...['#568caf', '#bf674b', '#848b8a', '#bfa575', '#c9704e', '#668c9f', '#dfd4b2'].map((color, i) => ({
     id: 'south-house-' + i,
     kind: 'house' as const,
@@ -45,8 +46,8 @@ export const TOWN_SCENERY: {
     rect: t(x, 24 + [0.1, 0.3, -0.1][i]!, 0.6, 0.5),
     color: ['#be493a', '#424957', '#f0eee3'][i]!,
   })),
-  { id: 'garden-palm', kind: 'palm', rect: t(26, 24.5, 0.3, 0.3), color: '#4b9a51' },
-  { id: 'garden-palm-east', kind: 'palm', rect: t(28, 23.6, 0.3, 0.3), color: '#4b9a51' },
+  { id: 'garden-palm', kind: 'palm', rect: t(25.4, 24.5, 0.3, 0.3), color: '#4b9a51' },
+  { id: 'garden-palm-east', kind: 'palm', rect: t(26.2, 23.6, 0.3, 0.3), color: '#4b9a51' },
   { id: 'west-palm', kind: 'palm', rect: t(1.7, 4, 0.3, 0.3), color: '#4b9a51' },
 ];
 

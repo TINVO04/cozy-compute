@@ -8,6 +8,7 @@ import type { AppContext } from './context.js';
 import { AppError } from './errors.js';
 import { metrics } from './metrics.js';
 import { adminRoutes } from './routes/admin.js';
+import { farmRoutes } from './routes/farm.js';
 import { internalRoutes } from './routes/internal.js';
 import { playerRoutes } from './routes/player.js';
 
@@ -153,5 +154,6 @@ export async function buildApp(
   playerRoutes(app, full);
   adminRoutes(app, full);
   internalRoutes(app, full);
+  farmRoutes(app, full);
   return { app, ctx: full };
 }

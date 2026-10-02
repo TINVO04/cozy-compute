@@ -6,3 +6,4 @@ export * from './appearance.js';
 export * from './activities.js';
 export * from './fishing.js';
 export * from './billiards.js';
+export * from './farm.js';
