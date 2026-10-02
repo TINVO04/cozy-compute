@@ -43,6 +43,10 @@ import { BackpackPanel } from './panels/BackpackPanel';
 import { FishCompendium } from './panels/FishCompendium';
 import { BidaArenaPanel } from './panels/BidaArenaPanel';
 import { CyberNetPcPanel } from './panels/CyberNetPcPanel';
+import { FarmPasswordModal } from './panels/FarmPasswordModal';
+import { FarmPlotModal } from './panels/FarmPlotModal';
+import { FarmSiloPanel } from './panels/FarmSiloPanel';
+import { FarmShopPanel } from './panels/FarmShopPanel';
 import { Sidebar } from './Sidebar';
 import { Brand } from './Brand';
 import { Button, CoinIcon, Spinner } from '../ui/primitives';
@@ -129,6 +133,10 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
           {panel === 'fishdex' ? <FishCompendium onClose={() => setPanel(null)} /> : null}
           {panel === 'bida' ? <BidaArenaPanel me={me} onClose={() => setPanel(null)} /> : null}
           {panel === 'cybernet' ? <CyberNetPcPanel me={me} onClose={() => setPanel(null)} /> : null}
+          {panel === 'farm-password' ? <FarmPasswordModal onClose={() => setPanel(null)} /> : null}
+          {panel === 'farm-plot' ? <FarmPlotModal me={me} onClose={() => setPanel(null)} /> : null}
+          {panel === 'farm-silo' ? <FarmSiloPanel me={me} onClose={() => setPanel(null)} /> : null}
+          {panel === 'farm-shop' ? <FarmShopPanel me={me} onClose={() => setPanel(null)} /> : null}
         </main>
         <Sidebar me={me} />
       </div>
@@ -362,6 +370,7 @@ const ZONE_ACTIONS: Partial<Record<ZoneId, { cta: string; hint: string }>> = {
   comga: { cta: 'Ăn cơm gà', hint: 'Quán Cơm Gà Xối Mỡ 68 Biên Hòa' },
   bida: { cta: 'Vào quán Bida', hint: 'CLB Bida H2S Trảng Dài Biên Hòa (Giao lưu 1v1)' },
   cybernet: { cta: 'Vào Cyber Game', hint: 'Cyber Game HNT Trảng Dài' },
+  farm_gate: { cta: 'Vào Trang Trại', hint: 'Trang trại nông thôn Nam Bộ' },
 };
 
 function WorldHud({ me }: { me: Me }) {
@@ -421,6 +430,8 @@ function WorldHud({ me }: { me: Me }) {
         return void net.goBida('CLB Bida H2S Trảng Dài (Biên Hòa)');
       case 'cybernet':
         return void net.goCyberNet();
+      case 'farm_gate':
+        return void net.goFarm(me.id, 'Trang Trại Cá Nhân');
     }
   }
 

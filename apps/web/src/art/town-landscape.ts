@@ -119,6 +119,23 @@ export function paintTown(): HTMLCanvasElement {
   // Modest crossing stripes where the main street meets the plaza promenade.
   for (const x of [618, 810]) for (let y = 337; y < 369; y += 7) rect(ctx, '#e3e3d7', x, y, 20, 3);
 
+  // DNTU front courtyard paving with authentic stone grid tiles and central driveway
+  rect(ctx, '#ded7b2', 21 * TILE, 8 * TILE, 11 * TILE, 2 * TILE + 8);
+  for (let y = 8 * TILE; y <= 10 * TILE + 8; y += 8) {
+    rect(ctx, '#c8be98', 21 * TILE, y, 11 * TILE, 1);
+  }
+  for (let x = 21 * TILE; x <= 32 * TILE; x += 8) {
+    rect(ctx, '#c8be98', x, 8 * TILE, 1, 2 * TILE + 8);
+  }
+  // Central driveway connecting the main street directly to DNTU grand entrance
+  rect(ctx, '#7c8580', 25 * TILE - 2, 8 * TILE, 3 * TILE + 4, 2 * TILE + 12);
+  rect(ctx, '#999e9b', 25 * TILE, 8 * TILE, 3 * TILE, 2 * TILE + 12);
+  for (let i = 0; i < 60; i++) {
+    const sx = 25 * TILE + Math.floor(rng() * (3 * TILE));
+    const sy = 8 * TILE + Math.floor(rng() * (2 * TILE + 12));
+    rect(ctx, i % 2 ? '#a5aaa5' : '#8f9691', sx, sy, 1, 1);
+  }
+
   // Limestone square, with an understated terracotta inlay around the fountain.
   ctx.save();
   ctx.beginPath();
@@ -158,7 +175,7 @@ export function paintTown(): HTMLCanvasElement {
   flowers(ctx, { x: 26 * TILE, y: 20 * TILE + 12, w: 92, h: 20 }, 5);
   flowers(ctx, { x: 39 * TILE, y: 12 * TILE + 12, w: 126, h: 24 }, 6);
   flowers(ctx, { x: 4 * TILE, y: 23 * TILE, w: 94, h: 24 }, 7);
-  flowers(ctx, { x: 25 * TILE, y: 23 * TILE, w: 90, h: 13 }, 8);
+  flowers(ctx, { x: 25 * TILE + 2, y: 23 * TILE, w: 56, h: 13 }, 8);
   // Southern lanes, small fenced gardens and individual hedges connect the houses.
   for (let i = 0; i < 7; i++) {
     const x = (3 + i * 3.4) * TILE;
@@ -169,9 +186,9 @@ export function paintTown(): HTMLCanvasElement {
       oval(ctx, '#78a85a', x + 4 + j * 6, 28 * TILE + 8, 4, 3);
     }
   }
-  // A planted stone plinth beneath the little temple separates it from the square.
-  rect(ctx, '#998d70', 24 * TILE - 10, 13 * TILE - 12, 4 * TILE + 20, 40);
-  rect(ctx, '#d8ceb0', 24 * TILE - 8, 13 * TILE - 10, 4 * TILE + 16, 35);
+  // A planted stone plinth beneath the little temple in the southwestern garden.
+  rect(ctx, '#998d70', 17.5 * TILE - 10, 24.5 * TILE - 14, 4 * TILE + 20, 36);
+  rect(ctx, '#d8ceb0', 17.5 * TILE - 8, 24.5 * TILE - 12, 4 * TILE + 16, 32);
 
   // Café terrace and residential garden read as distinct little destinations.
   rect(ctx, '#b7ad89', 4 * TILE, 8 * TILE, 7 * TILE, 2 * TILE);
@@ -746,30 +763,14 @@ function paintDntuBuilding(b: Building): HTMLCanvasElement {
   ctx.fillStyle = '#b91c1c';
   ctx.fillText('TRƯỜNG ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', pedX, 125, signW - 8);
 
-  // 7. GRAND CAMPUS STONE MONUMENT (Bia Đá Cổng Trường - y: 168..188)
-  const monW = 120;
-  const monX = pedX - monW / 2;
-  const monY = bottom - 20;
-  const monH = 18;
-
-  rect(ctx, 'rgba(0, 0, 0, 0.25)', monX - 2, monY - 1, monW + 4, monH + 3);
-  rect(ctx, '#d4af37', monX - 1, monY - 1, monW + 2, monH + 2);
-  rect(ctx, '#fef08a', monX, monY, monW, monH);
-
-  ctx.font = '800 6px "Inter", sans-serif';
+  // 7. GOLD ARCH ENTRANCE TRANSOM (y: 136..144)
+  rect(ctx, '#7f1d1d', pedX - 28, bottom - 46, 56, 10);
+  rect(ctx, '#fef08a', pedX - 26, bottom - 45, 52, 8);
+  ctx.font = '800 5.5px "Inter", sans-serif';
   ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
+  ctx.textBaseline = 'middle';
   ctx.fillStyle = '#991b1b';
-  ctx.fillText('ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', pedX, monY + 2.5, monW - 8);
-
-  ctx.font = '600 4.5px sans-serif';
-  ctx.fillStyle = '#78350f';
-  ctx.fillText('DONG NAI TECHNOLOGY UNIVERSITY', pedX, monY + 9, monW - 8);
-
-  rect(ctx, '#991b1b', monX + 2, monY + monH - 4, monW - 4, 3);
-  ctx.font = '700 3.5px sans-serif';
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText('TRUNG THÀNH · TRÁCH NHIỆM · SÁNG TẠO', pedX, monY + monH - 3.5, monW - 8);
+  ctx.fillText('ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', pedX, bottom - 41, 48);
 
   // 8. MANICURED CONICAL TOPIARIES & PALM GREENERY
   function drawCampusTopiary(tx: number, ty: number) {

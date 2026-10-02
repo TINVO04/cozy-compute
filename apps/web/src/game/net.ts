@@ -27,7 +27,8 @@ class Net {
     | { name: 'university' }
     | { name: 'comga' }
     | { name: 'bida' }
-    | { name: 'cybernet' } = {
+    | { name: 'cybernet' }
+    | { name: 'farm'; ownerId: string; farmToken?: string } = {
     name: 'town',
   };
   private retry = 0;
@@ -77,7 +78,13 @@ class Net {
                 ? await this.client.joinOrCreate('comga', { token })
                 : target.name === 'bida' || target.name === 'cybernet'
                   ? await this.client.joinOrCreate(target.name, { token })
-                  : await this.client.joinOrCreate('apartment', { token, ownerId: target.ownerId });
+                  : target.name === 'farm'
+                    ? await this.client.joinOrCreate('farm', {
+                        token,
+                        ownerId: target.ownerId,
+                        farmToken: target.farmToken,
+                      })
+                    : await this.client.joinOrCreate('apartment', { token, ownerId: target.ownerId });
       if (gen !== this.generation) {
         await room.leave(true).catch(() => undefined);
         return;
@@ -87,8 +94,12 @@ class Net {
       if (gen !== this.generation) return;
       console.warn('[net] join failed', err);
       const msg = err instanceof Error ? err.message : String(err);
-      if (target.name === 'apartment') {
-        useUi.getState().toast({ kind: 'error', title: 'Không thể vào căn hộ', body: msg });
+      if (target.name === 'apartment' || target.name === 'farm') {
+        useUi.getState().toast({
+          kind: 'error',
+          title: target.name === 'farm' ? 'Không thể vào trang trại' : 'Không thể vào căn hộ',
+          body: msg,
+        });
         return this.connect({ name: 'town' });
       }
       this.scheduleRetry();
@@ -189,6 +200,12 @@ class Net {
   goCyberNet(label = 'Cyber Game HNT Trảng Dài') {
     useUi.getState().setRoom({ kind: 'cybernet', label });
     return this.connect({ name: 'cybernet' });
+  }
+
+  goFarm(ownerId: string, label = 'Trang Trại Cá Nhân', farmToken?: string) {
+    useUi.getState().setFarmOwnerId(ownerId);
+    useUi.getState().setRoom({ kind: 'farm', ownerId, label });
+    return this.connect({ name: 'farm', ownerId, farmToken });
   }
 
   send(type: string, msg: unknown) {

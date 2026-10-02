@@ -7,6 +7,7 @@ import {
   ComGaScene,
   CompanyScene,
   CyberNetScene,
+  FarmScene,
   TownScene,
   UniversityScene,
 } from './scenes';
@@ -29,7 +30,16 @@ export function GameCanvas() {
       input: { keyboard: true, mouse: { preventDefaultWheel: false } },
       audio: { noAudio: true },
       banner: false,
-      scene: [TownScene, ApartmentScene, CompanyScene, UniversityScene, ComGaScene, BidaScene, CyberNetScene],
+      scene: [
+        TownScene,
+        ApartmentScene,
+        CompanyScene,
+        UniversityScene,
+        ComGaScene,
+        BidaScene,
+        CyberNetScene,
+        FarmScene,
+      ],
     });
     game.canvas?.setAttribute(
       'aria-label',

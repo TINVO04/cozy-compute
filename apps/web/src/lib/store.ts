@@ -17,7 +17,11 @@ export type Panel =
   | 'ledger'
   | 'fishdex'
   | 'bida'
-  | 'cybernet';
+  | 'cybernet'
+  | 'farm-password'
+  | 'farm-plot'
+  | 'farm-silo'
+  | 'farm-shop';
 export type Activity = null | 'fishing' | 'delivery' | 'cafe';
 
 export interface Toast {
@@ -52,7 +56,7 @@ interface UiState {
   zone: ZoneId | null;
   connection: 'connecting' | 'online' | 'reconnecting' | 'offline';
   room: {
-    kind: 'town' | 'apartment' | 'company' | 'university' | 'comga' | 'bida' | 'cybernet';
+    kind: 'town' | 'apartment' | 'company' | 'university' | 'comga' | 'bida' | 'cybernet' | 'farm';
     ownerId?: string;
     label: string;
   };
@@ -65,8 +69,12 @@ interface UiState {
   reducedMotion: boolean;
   muted: boolean;
   myUserId: string | null;
+  activePlotIndex: number | null;
+  farmOwnerId: string | null;
   setPanel: (p: Panel) => void;
   setCyberStation: (station: string | null) => void;
+  setActivePlotIndex: (idx: number | null) => void;
+  setFarmOwnerId: (id: string | null) => void;
   setActivity: (a: Activity) => void;
   setZone: (z: ZoneId | null) => void;
   setConnection: (c: UiState['connection']) => void;
@@ -97,6 +105,8 @@ export const useUi = create<UiState>((set) => ({
   inspectUserId: null,
   cyberStation: null,
   editingApartment: false,
+  activePlotIndex: null,
+  farmOwnerId: null,
   reducedMotion:
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   muted: localStorage.getItem('cozy.muted') === '1',
@@ -108,6 +118,8 @@ export const useUi = create<UiState>((set) => ({
   myUserId: null,
   setPanel: (panel) => set({ panel }),
   setCyberStation: (cyberStation) => set({ cyberStation }),
+  setActivePlotIndex: (activePlotIndex) => set({ activePlotIndex }),
+  setFarmOwnerId: (farmOwnerId) => set({ farmOwnerId }),
   setActivity: (activity) => set({ activity }),
   setZone: (zone) => set({ zone }),
   setConnection: (connection) => set({ connection }),

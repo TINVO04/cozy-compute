@@ -8,6 +8,7 @@ import { setDeps, type BaseRoom } from './rooms/base.js';
 import { CompanyRoom } from './rooms/company.js';
 import { ComGaRoom } from './rooms/comga.js';
 import { CyberNetRoom } from './rooms/cybernet.js';
+import { FarmRoom } from './rooms/farm.js';
 import { BidaRoom } from './rooms/bida.js';
 import { TownRoom } from './rooms/town.js';
 import { UniversityRoom } from './rooms/university.js';
@@ -70,8 +71,9 @@ gameServer.define('university', UniversityRoom);
 gameServer.define('comga', ComGaRoom);
 gameServer.define('bida', BidaRoom);
 gameServer.define('cybernet', CyberNetRoom);
+gameServer.define('farm', FarmRoom).filterBy(['ownerId']);
 
-await sub.subscribe('player:appearance', 'player:kick', 'apartment:updated', 'events');
+await sub.subscribe('player:appearance', 'player:kick', 'apartment:updated', 'events', 'farm:updated');
 sub.on('message', async (channel, raw) => {
   try {
     const msg = JSON.parse(raw) as {
@@ -89,6 +91,8 @@ sub.on('message', async (channel, raw) => {
       if (channel === 'player:kick' && msg.userId) room.kick(msg.userId);
       if (channel === 'apartment:updated' && room instanceof ApartmentRoom && room.owner === msg.ownerId)
         await room.reloadLayout();
+      if (channel === 'farm:updated' && room instanceof FarmRoom && room.owner === msg.ownerId)
+        room.broadcast('farm:updated', { ownerId: msg.ownerId, updatedAt: Date.now() });
       if (channel === 'events' && room instanceof TownRoom) await room.syncEvent();
     }
   } catch (err) {

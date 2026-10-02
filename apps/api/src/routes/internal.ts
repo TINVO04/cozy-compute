@@ -71,4 +71,46 @@ export function internalRoutes(app: FastifyInstance, ctx: AppContext) {
       })),
     };
   });
+
+  app.post('/internal/farm-access', async (req) => {
+    requireInternal(req, ctx.config.INTERNAL_SECRET);
+    const b = z
+      .object({
+        ownerId: z.string().uuid(),
+        visitorId: z.string().uuid(),
+        farmToken: z.string().optional(),
+      })
+      .parse(req.body);
+
+    if (b.ownerId === b.visitorId) {
+      return { allowed: true, isOwner: true };
+    }
+
+    const farmRes = await ctx.db.query<{ is_public: boolean; password_hash: string | null }>(
+      'SELECT is_public, password_hash FROM farms WHERE user_id = $1',
+      [b.ownerId],
+    );
+    const farm = farmRes.rows[0];
+    if (!farm) return { allowed: false, isOwner: false };
+
+    if (farm.is_public) {
+      return { allowed: true, isOwner: false };
+    }
+
+    if (b.farmToken) {
+      const stored = await ctx.redis.get(`fauth:${b.farmToken}`);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored) as { ownerId: string; visitorId: string };
+          if (parsed.ownerId === b.ownerId && parsed.visitorId === b.visitorId) {
+            return { allowed: true, isOwner: false };
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    return { allowed: false, isOwner: false };
+  });
 }
