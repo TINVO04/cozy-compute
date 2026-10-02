@@ -15,15 +15,15 @@ import { hex, mulberry, shade } from './pixel';
 
 export const BUILDING_ROOF = 30;
 const C = {
-  grass: '#92b879',
+  grass: '#85b876',
   grassLight: '#a2c58a',
   grassDark: '#7da266',
   ink: '#3d4b3c',
-  stone: '#e6d8b7',
-  mortar: '#c5b38e',
+  stone: '#d6d6cd',
+  mortar: '#b9bcb1',
   wood: '#79533b',
-  water: '#589fa5',
-  waterDark: '#397f8b',
+  water: '#4bc0d2',
+  waterDark: '#369fb5',
 };
 
 function rect(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number) {
@@ -81,21 +81,43 @@ export function paintTown(): HTMLCanvasElement {
     if (i % 4 === 0) rect(ctx, C.grassLight, x + 2, y + 1, 1, 2);
   }
 
-  const paved = [...PATHS, PLAZA];
-  const onPath = (x: number, y: number) => paved.some((r) => pointInRect(x, y, r));
-  // Paint the union once, so intersections have no artificial seams or kerbs.
-  for (let y = TILE; y < MAP_HEIGHT - TILE; y += 8) {
-    for (let x = TILE; x < MAP_WIDTH - TILE; x += 8) {
-      if (!onPath(x + 4, y + 4)) continue;
-      rect(ctx, C.mortar, x, y, 8, 8);
-      rect(ctx, rng() > 0.4 ? C.stone : '#ded0ae', x + 1, y + 1, 7, 7);
-      rect(ctx, '#f0e5cb', x + 1, y + 1, 6, 1);
-      if (!onPath(x - 4, y + 4)) rect(ctx, '#a79872', x, y, 2, 8);
-      if (!onPath(x + 12, y + 4)) rect(ctx, '#a79872', x + 6, y, 2, 8);
-      if (!onPath(x + 4, y - 4)) rect(ctx, '#f2e8ce', x, y, 8, 2);
-      if (!onPath(x + 4, y + 12)) rect(ctx, '#a79872', x, y + 6, 8, 2);
+  // Continuous concrete sidewalks serve entrances. Asphalt is a separate
+  // connected street surface; only the central square has stone tile joints.
+  for (const path of PATHS) rect(ctx, '#d8d8cf', path.x, path.y, path.w, path.h);
+  const streets = [
+    { x: 32, y: 332, w: 1472, h: 40 },
+    { x: 332, y: 320, w: 40, h: 576 },
+    { x: 1036, y: 320, w: 72, h: 576 },
+    { x: 96, y: 844, w: 1024, h: 40 },
+  ];
+  const onStreet = (x: number, y: number) => streets.some((r) => pointInRect(x, y, r));
+  for (let y = 320; y < 896; y += 2) {
+    for (let x = 32; x < 1504; x += 2) {
+      if (!onStreet(x, y)) continue;
+      rect(ctx, '#999e9b', x, y, 2, 2);
+      if (!onStreet(x - 2, y) || !onStreet(x + 2, y) || !onStreet(x, y - 2) || !onStreet(x, y + 2))
+        rect(ctx, '#7c8580', x, y, 2, 2);
     }
   }
+  for (let i = 0; i < 3600; i++) {
+    const x = 32 + Math.floor(rng() * 1472),
+      y = 320 + Math.floor(rng() * 576);
+    if (onStreet(x, y)) rect(ctx, i % 2 ? '#a5aaa5' : '#8f9691', x, y, 1, 1);
+  }
+  // Sparse sidewalk expansion seams, without repeating brick grids.
+  for (const path of PATHS) {
+    if (path.w > path.h) {
+      for (let x = path.x + 48; x < path.x + path.w; x += 64) {
+        for (let y = path.y; y < path.y + path.h; y++) if (!onStreet(x, y)) rect(ctx, '#c4c8bc', x, y, 1, 1);
+      }
+    } else {
+      for (let y = path.y + 48; y < path.y + path.h; y += 64) {
+        for (let x = path.x; x < path.x + path.w; x++) if (!onStreet(x, y)) rect(ctx, '#c4c8bc', x, y, 1, 1);
+      }
+    }
+  }
+  // Modest crossing stripes where the main street meets the plaza promenade.
+  for (const x of [618, 810]) for (let y = 337; y < 369; y += 7) rect(ctx, '#e3e3d7', x, y, 20, 3);
 
   // Limestone square, with an understated terracotta inlay around the fountain.
   ctx.save();
@@ -123,6 +145,12 @@ export function paintTown(): HTMLCanvasElement {
     rect(ctx, '#b78666', 24 * TILE + dx! - 3, 16 * TILE + dy! - 3, 6, 6);
   }
   ctx.restore();
+  // Small eastern temple garden and its stone approach. Walls and gate are
+  // independent depth-sorted objects rendered by the town component builder.
+  rect(ctx, '#c4bea4', 1312, 400, 182, 182);
+  rect(ctx, '#92b77b', 1316, 404, 174, 174);
+  rect(ctx, '#d9ceb1', 1378, 510, 38, 72);
+  for (let y = 514; y < 580; y += 12) rect(ctx, '#b8af93', 1378, y, 38, 1);
 
   flowers(ctx, { x: 17 * TILE + 8, y: 14 * TILE, w: 18, h: 54 }, 2);
   flowers(ctx, { x: 30 * TILE - 26, y: 14 * TILE, w: 18, h: 54 }, 3);
@@ -130,6 +158,20 @@ export function paintTown(): HTMLCanvasElement {
   flowers(ctx, { x: 26 * TILE, y: 20 * TILE + 12, w: 92, h: 20 }, 5);
   flowers(ctx, { x: 39 * TILE, y: 12 * TILE + 12, w: 126, h: 24 }, 6);
   flowers(ctx, { x: 4 * TILE, y: 23 * TILE, w: 94, h: 24 }, 7);
+  flowers(ctx, { x: 25 * TILE, y: 23 * TILE, w: 90, h: 13 }, 8);
+  // Southern lanes, small fenced gardens and individual hedges connect the houses.
+  for (let i = 0; i < 7; i++) {
+    const x = (3 + i * 3.4) * TILE;
+    rect(ctx, '#c0bba3', x + 38, 28 * TILE, 18, 30);
+    for (let y = 28 * TILE; y < 28 * TILE + 30; y += 6) rect(ctx, '#e1dbc1', x + 39, y + 1, 16, 4);
+    for (let j = 0; j < 4; j++) {
+      oval(ctx, '#376c36', x + 5 + j * 6, 28 * TILE + 10, 5, 5);
+      oval(ctx, '#78a85a', x + 4 + j * 6, 28 * TILE + 8, 4, 3);
+    }
+  }
+  // A planted stone plinth beneath the little temple separates it from the square.
+  rect(ctx, '#998d70', 24 * TILE - 10, 13 * TILE - 12, 4 * TILE + 20, 40);
+  rect(ctx, '#d8ceb0', 24 * TILE - 8, 13 * TILE - 10, 4 * TILE + 16, 35);
 
   // Café terrace and residential garden read as distinct little destinations.
   rect(ctx, '#b7ad89', 4 * TILE, 8 * TILE, 7 * TILE, 2 * TILE);
@@ -154,12 +196,12 @@ export function paintTown(): HTMLCanvasElement {
     rect(ctx, '#c7bc8b', w.x - 5, w.y - 5, w.w + 5, w.h + 5);
     rect(ctx, C.waterDark, w.x, w.y, w.w, w.h);
     rect(ctx, C.water, w.x + 4, w.y + 5, w.w - 4, w.h - 5);
-    rect(ctx, '#7cb8b2', w.x + 4, w.y + 5, w.w - 4, 4);
-    rect(ctx, '#7cb8b2', w.x + 4, w.y + 5, 4, w.h - 5);
+    rect(ctx, '#76d7e5', w.x + 4, w.y + 5, w.w - 4, 4);
+    rect(ctx, '#76d7e5', w.x + 4, w.y + 5, 4, w.h - 5);
     for (let i = 0; i < 210; i++) {
       const x = w.x + 12 + rng() * (w.w - 24),
         y = w.y + 12 + rng() * (w.h - 24);
-      rect(ctx, i % 3 ? '#70adb2' : '#468f98', x, y, 4 + rng() * 12, 1);
+      rect(ctx, i % 3 ? '#76d7e5' : '#38adc2', x, y, 4 + rng() * 12, 1);
     }
     for (const [dx, dy] of [
       [22, 40],
@@ -201,14 +243,12 @@ export function paintTown(): HTMLCanvasElement {
     }
   }
 
-  // A varied woodland edge replaces the repeated circular canopy pattern.
-  for (let x = 16; x < MAP_WIDTH; x += 28) {
-    drawTree(ctx, x, 30, 0.9 + (x % 3) * 0.06);
-    if (x < WATER[0]!.x) drawTree(ctx, x, MAP_HEIGHT - 3, 1);
-  }
-  for (let y = 60; y < MAP_HEIGHT - 20; y += 32) {
-    drawTree(ctx, 16, y, 1);
-    if (y < WATER[0]!.y) drawTree(ctx, MAP_WIDTH - 15, y, 1);
+  // Crosspiece on the shore joins the playable pier into a T shaped timber dock.
+  for (let y = PIER.y - 23; y < PIER.y; y += 6) {
+    rect(ctx, '#705137', PIER.x - 70, y, PIER.w + 140, 6);
+    rect(ctx, '#bb9867', PIER.x - 69, y, PIER.w + 138, 4);
+    rect(ctx, '#ddbf89', PIER.x - 69, y, PIER.w + 138, 1);
+    for (let x = PIER.x - 64; x < PIER.x + PIER.w + 65; x += 24) rect(ctx, '#73523a', x, y + 2, 2, 1);
   }
   return canvas;
 }
@@ -229,10 +269,10 @@ export function drawTree(ctx: CanvasRenderingContext2D, cx: number, by: number, 
   for (const [dx, dy, rx, ry] of clusters) {
     const x = cx + dx! * s,
       y = by + dy! * s;
-    oval(ctx, '#35583f', x, y, rx! * s + 1, ry! * s + 1);
-    oval(ctx, '#50764b', x, y - 1, rx! * s, ry! * s - 1);
-    oval(ctx, '#739557', x - 2 * s, y - 3 * s, rx! * s * 0.78, ry! * s * 0.65);
-    oval(ctx, '#9ab775', x - 3 * s, y - 5 * s, rx! * s * 0.5, ry! * s * 0.35);
+    oval(ctx, '#2d5a2b', x, y, rx! * s + 1, ry! * s + 1);
+    oval(ctx, '#4a9347', x, y - 1, rx! * s, ry! * s - 1);
+    oval(ctx, '#6eaa55', x - 2 * s, y - 3 * s, rx! * s * 0.78, ry! * s * 0.65);
+    oval(ctx, '#96bd6c', x - 3 * s, y - 5 * s, rx! * s * 0.5, ry! * s * 0.35);
     for (let i = 0; i < 7; i++) {
       rect(
         ctx,

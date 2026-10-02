@@ -1,4 +1,5 @@
-﻿export * from './map.js';
+export * from './map.js';
+export * from './town-scenery.js';
 export * from './movement.js';
 export * from './items.js';
 export * from './appearance.js';

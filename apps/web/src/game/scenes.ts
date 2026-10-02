@@ -2,7 +2,6 @@ import {
   APARTMENT_COLS,
   APARTMENT_ROWS,
   BLOCKERS,
-  BUILDINGS,
   COMGA_BLOCKERS,
   COMGA_COLS,
   COMGA_ROWS,
@@ -23,8 +22,6 @@ import {
   MAP_WIDTH,
   t,
   TILE,
-  TOWN_PROPS,
-  TOWN_TREES,
   ZONES,
   zoneAt,
   type FishShadowTier,
@@ -55,15 +52,8 @@ import {
   paintDntuGround,
   type DntuPerson,
 } from '../art/dntu';
-import {
-  APT_TILE,
-  BUILDING_ROOF,
-  drawTree,
-  paintApartment,
-  paintBuilding,
-  paintProp,
-  paintTown,
-} from '../art/town';
+import { APT_TILE, paintApartment } from '../art/town';
+import { buildDetailedTown } from '../art/town-detail';
 import { play } from '../lib/sound';
 import { useUi } from '../lib/store';
 import { ensureAtmosphereTextures, setupTownLighting, setupTownParticles } from './atmosphere';
@@ -98,6 +88,11 @@ abstract class WorldScene extends Phaser.Scene {
     ) as typeof this.keys;
     this.buildWorld();
     this.offRoom = net.onRoom((room) => this.bindRoom(room));
+    // Loading can finish after a room snapshot arrives. Attach once the scene
+    // becomes active, when PlayerLayer can safely create existing avatars.
+    this.events.once(Phaser.Scenes.Events.CREATE, () => {
+      if (!this.layer && net.room) this.bindRoom(net.room);
+    });
     const onResize = () => this.fitCamera();
     const unsubZoom = useUi.subscribe((state, prevState) => {
       if (state.zoom !== prevState.zoom) {
@@ -224,51 +219,7 @@ export class TownScene extends WorldScene {
   }
 
   protected buildWorld() {
-    if (!this.textures.exists('town-ground')) this.textures.addCanvas('town-ground', paintTown());
-    this.add.image(0, 0, 'town-ground').setOrigin(0).setDepth(-10);
-    for (const b of BUILDINGS) {
-      const key = `bld:${b.id}`;
-      if (!this.textures.exists(key)) this.textures.addCanvas(key, paintBuilding(b));
-      this.add
-        .image(b.rect.x - 4, b.rect.y - BUILDING_ROOF, key)
-        .setOrigin(0)
-        .setDepth(b.rect.y + b.rect.h - 4);
-    }
-    const prop = (kind: Parameters<typeof paintProp>[0], x: number, y: number, depthY: number) => {
-      const key = `prop:${kind}`;
-      if (!this.textures.exists(key)) this.textures.addCanvas(key, paintProp(kind));
-      return this.add.image(x, y, key).setOrigin(0.5, 1).setDepth(depthY);
-    };
-    for (const p of TOWN_PROPS) prop(p.kind, p.x * TILE, p.y * TILE, p.y * TILE);
-    const g = document.createElement('canvas');
-    g.width = 48;
-    g.height = 60;
-    drawTree(g.getContext('2d')!, 24, 58);
-    if (!this.textures.exists('tree')) this.textures.addCanvas('tree', g);
-    for (const p of TOWN_TREES) {
-      this.add
-        .image(p.x * TILE, p.y * TILE, 'tree')
-        .setOrigin(0.5, 1)
-        .setDepth(p.y * TILE);
-    }
-    // zone labels on the ground
-    for (const z of ZONES) {
-      if (z.id === 'plaza') continue;
-      this.add
-        .text(z.rect.x + z.rect.w / 2, z.rect.y + z.rect.h - 2, z.label, {
-          fontFamily: 'Inter, sans-serif',
-          fontSize: '11px',
-          color: '#2a2438',
-          backgroundColor: '#f3e7cb',
-          padding: { x: 3, y: 1 },
-          resolution: 2,
-        })
-        .setOrigin(0.5, 1)
-        .setDepth(-5)
-        .setAlpha(
-          z.id === 'pier' || z.id === 'ai_kiosk' || z.id === 'events' || z.id === 'delivery' ? 0.9 : 0,
-        );
-    }
+    buildDetailedTown(this);
     if (!this.textures.exists('duck')) this.textures.addCanvas('duck', duckGrid().toCanvas(2));
     // water shimmer
     if (!useUi.getState().reducedMotion) {
@@ -290,6 +241,7 @@ export class TownScene extends WorldScene {
         },
       });
     }
+
     setupTownLighting(this);
     setupTownParticles(this);
     this.fishingController = new InWorldFishingController(this);

@@ -1,3 +1,5 @@
+import { TOWN_SCENERY, TOWN_TEMPLE_WALLS } from './town-scenery.js';
+
 export const TILE = 32;
 export const MAP_COLS = 48;
 export const MAP_ROWS = 32;
@@ -241,9 +243,10 @@ export const TOWN_TREES = [
   { x: 19, y: 24 },
   { x: 27, y: 24 },
   { x: 28, y: 30 },
-  { x: 44, y: 15 },
+  { x: 42, y: 17 },
   { x: 46, y: 18 },
   { x: 14, y: 29 },
+  { x: 45.625, y: 17.25 }, // small tree inside the temple courtyard
 ];
 export const TOWN_FENCES = [
   { x: 2, y: 14, segments: 6 },
@@ -276,6 +279,8 @@ export const TOWN_PROPS: { kind: TownPropKind; x: number; y: number }[] = [
 
 export const BLOCKERS: Rect[] = [
   ...BUILDINGS.map((b) => b.rect),
+  ...TOWN_SCENERY.map((s) => s.rect),
+  ...TOWN_TEMPLE_WALLS,
   t(23, 15, 2, 2), // fountain
   t(32, 13, 2, 1), // event board
   t(19, 15, 2, 1), // AI kiosk
@@ -346,12 +351,12 @@ export const DUCK_SPOTS: { x: number; y: number }[] = [
   { x: 10, y: 12 },
   { x: 20, y: 11 },
   { x: 33, y: 11 },
-  { x: 44, y: 12 },
-  { x: 9, y: 23 },
-  { x: 9, y: 28 },
+  { x: 40, y: 12 },
+  { x: 10, y: 23 },
+  { x: 9, y: 27 },
   { x: 18, y: 27 },
   { x: 26, y: 22 },
-  { x: 31, y: 29 },
+  { x: 31, y: 27 },
   { x: 38.5, y: 28 },
   { x: 29, y: 17 },
   { x: 20, y: 18 },

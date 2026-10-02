@@ -74,4 +74,12 @@ describe('town layout', () => {
       expect(accessible.has(`${p.x},${p.y}`), `duck at ${p.x},${p.y} is unreachable`).toBe(true);
     }
   });
+
+  it('keeps the temple gate open while its perimeter walls block movement', () => {
+    expect(isWalkable(1398, 584)).toBe(true);
+    expect(isWalkable(1350, 580)).toBe(false);
+    expect(isWalkable(1460, 580)).toBe(false);
+    expect(isWalkable(1314, 550)).toBe(false);
+    expect(isWalkable(1492, 550)).toBe(false);
+  });
 });
