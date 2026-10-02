@@ -195,9 +195,15 @@ export class TownScene extends WorldScene {
   private deliveryMarker: Phaser.GameObjects.Container | null = null;
   public fishingController: InWorldFishingController | null = null;
   public remoteFishingControllers = new Map<string, InWorldFishingController>();
+  private exiting = false;
 
   constructor() {
     super('town');
+  }
+
+  override create() {
+    this.exiting = false;
+    super.create();
   }
 
   getSelfPos(): { x: number; y: number } | null {
@@ -407,9 +413,10 @@ export class TownScene extends WorldScene {
     if (zone !== this.lastZone) {
       this.lastZone = zone;
       useUi.getState().setZone(zone);
-      if (zone === 'farm_gate') {
+      if (!this.exiting && zone === 'farm_gate') {
         const myId = useUi.getState().myUserId;
         if (myId) {
+          this.exiting = true;
           play('pop');
           void net.goFarm(myId, 'Trang Trại Cá Nhân');
         }
@@ -1247,7 +1254,7 @@ export class ComGaScene extends InteriorScene {
   }
 
   protected override onSelfMove(x: number, y: number) {
-    if (!this.exiting && y >= 8.6 * TILE && x >= 5.5 * TILE && x <= 8.5 * TILE) {
+    if (!this.exiting && y >= 9.2 * TILE && x >= 5.5 * TILE && x <= 8.5 * TILE) {
       this.exiting = true;
       void net.goTown();
     }
@@ -1719,9 +1726,16 @@ export class FarmScene extends WorldScene {
   private plotSprites = new Map<number, Phaser.GameObjects.Image>();
   private plotsData: FarmPlotData[] = [];
   private refreshing = false;
+  private exiting = false;
 
   constructor() {
     super('farm');
+  }
+
+  override create() {
+    this.exiting = false;
+    this.interactions = [];
+    super.create();
   }
 
   protected worldSize() {
@@ -1736,9 +1750,31 @@ export class FarmScene extends WorldScene {
     return room.name === 'farm';
   }
 
+  protected override fitCamera() {
+    const { width, height } = this.worldSize();
+    const cam = this.cameras.main;
+    const zoomMultiplier = useUi.getState().zoom;
+    // Map is 1536x1024. Clamp baseZoom to 1.0..1.5 on standard screens so the map doesn't feel oversized
+    const baseZoom = Math.max(
+      0.75,
+      Math.min(1.5, Math.round(Math.min(this.scale.width / 960, this.scale.height / 640) * 10) / 10),
+    );
+    const zoom = Math.max(0.5, Math.min(3.0, Math.round(baseZoom * zoomMultiplier * 100) / 100));
+    cam.setZoom(zoom);
+    const vw = this.scale.width / zoom;
+    const vh = this.scale.height / zoom;
+    cam.setBounds(
+      Math.min(0, (width - vw) / 2),
+      Math.min(0, (height - vh) / 2),
+      Math.max(width, vw),
+      Math.max(height, vh),
+    );
+  }
+
   protected override onSelfMove(x: number, y: number) {
-    // Check gate exit to town
-    if (x <= 1.5 * TILE && y >= 2 * TILE && y <= 5 * TILE) {
+    // Check gate exit to town (western portal row 2..4: col 0..1)
+    if (!this.exiting && x <= 1.5 * TILE && y >= 2 * TILE && y <= 5 * TILE) {
+      this.exiting = true;
       play('pop');
       void net.goTown();
     }
@@ -1770,15 +1806,15 @@ export class FarmScene extends WorldScene {
     }
     const shopP = FARM_POIS.shop_bac_sau;
     const shopSprite = this.add
-      .image(shopP.x + shopP.w / 2, shopP.y - 12, 'farm:shop_bac_sau')
-      .setOrigin(0.5, 0.6)
-      .setDepth(shopP.y + 12);
+      .image(shopP.x + shopP.w / 2, shopP.y + shopP.h / 2, 'farm:shop_bac_sau')
+      .setOrigin(0.5, 0.5)
+      .setDepth(shopP.y + shopP.h);
     const openShop = () => {
       play('pop');
       useUi.getState().setPanel('farm-shop');
     };
     shopSprite.setInteractive({ useHandCursor: true }).on('pointerdown', openShop);
-    this.interactAt(shopP.x + shopP.w / 2, shopP.y + shopP.h / 2 + 16, 'Tiệm Bác Sáu', openShop);
+    this.interactAt(shopP.x + shopP.w / 2, shopP.y + shopP.h + 20, 'Tiệm Bác Sáu', openShop);
 
     // Silo Warehouse
     if (!this.textures.exists('farm:silo_warehouse')) {
@@ -1786,15 +1822,15 @@ export class FarmScene extends WorldScene {
     }
     const siloP = FARM_POIS.silo_warehouse;
     const siloSprite = this.add
-      .image(siloP.x + siloP.w / 2, siloP.y - 10, 'farm:silo_warehouse')
-      .setOrigin(0.5, 0.6)
-      .setDepth(siloP.y + 12);
+      .image(siloP.x + siloP.w / 2, siloP.y + siloP.h / 2, 'farm:silo_warehouse')
+      .setOrigin(0.5, 0.5)
+      .setDepth(siloP.y + siloP.h);
     const openSilo = () => {
       play('pop');
       useUi.getState().setPanel('farm-silo');
     };
     siloSprite.setInteractive({ useHandCursor: true }).on('pointerdown', openSilo);
-    this.interactAt(siloP.x + siloP.w / 2, siloP.y + siloP.h / 2 + 16, 'Nhà kho Silo', openSilo);
+    this.interactAt(siloP.x + siloP.w / 2, siloP.y + siloP.h + 20, 'Nhà kho Silo', openSilo);
 
     // Barns
     if (!this.textures.exists('farm:poultry_coop')) {
@@ -1804,22 +1840,12 @@ export class FarmScene extends WorldScene {
     this.add
       .image(poultryP.x + poultryP.w / 2, poultryP.y + poultryP.h / 2, 'farm:poultry_coop')
       .setOrigin(0.5, 0.5)
-      .setDepth(poultryP.y + poultryP.h - 10);
-    this.interactAt(poultryP.x + poultryP.w / 2, poultryP.y + 16, 'Chuồng gia cầm', () => {
+      .setDepth(poultryP.y + poultryP.h);
+    this.interactAt(poultryP.x + poultryP.w / 2, poultryP.y - 18, 'Chuồng gia cầm', () => {
       play('pop');
       useUi
         .getState()
         .toast({ kind: 'info', title: 'Chuồng Gia Cầm', body: 'Gà ri và vịt xiêm đang mổ thóc khỏe mạnh.' });
-    });
-
-    // Center Park Bench
-    this.interactAt(17 * TILE, 17 * TILE, 'Ghế nghỉ chân', () => {
-      play('pop');
-      useUi.getState().toast({
-        kind: 'info',
-        title: 'Ghế Nghỉ Chân',
-        body: 'Ngồi nghỉ ngơi dưới bóng cây xanh mát giữa trang trại bình yên.',
-      });
     });
 
     if (!this.textures.exists('farm:pig_pen')) {
@@ -1829,8 +1855,8 @@ export class FarmScene extends WorldScene {
     this.add
       .image(pigP.x + pigP.w / 2, pigP.y + pigP.h / 2, 'farm:pig_pen')
       .setOrigin(0.5, 0.5)
-      .setDepth(pigP.y + pigP.h - 10);
-    this.interactAt(pigP.x + pigP.w / 2, pigP.y + 16, 'Chuồng heo', () => {
+      .setDepth(pigP.y + pigP.h);
+    this.interactAt(pigP.x + pigP.w / 2, pigP.y - 18, 'Chuồng heo', () => {
       play('pop');
       useUi
         .getState()
@@ -1844,21 +1870,28 @@ export class FarmScene extends WorldScene {
     this.add
       .image(goatP.x + goatP.w / 2, goatP.y + goatP.h / 2, 'farm:goat_pen')
       .setOrigin(0.5, 0.5)
-      .setDepth(goatP.y + goatP.h - 10);
-    this.interactAt(goatP.x + goatP.w / 2, goatP.y + 16, 'Chuồng dê', () => {
+      .setDepth(goatP.y + goatP.h);
+    this.interactAt(goatP.x + goatP.w / 2, goatP.y - 18, 'Chuồng dê & cừu', () => {
       play('pop');
       useUi.getState().toast({
         kind: 'info',
         title: 'Chuồng Dê & Cừu',
-        body: 'Dê Bách Thảo đang leo cầu dốc gỗ thoăn thoắt.',
+        body: 'Đàn cừu lông trắng muốt đang gặm cỏ thanh bình bên máng cỏ khô.',
+      });
+    });
+
+    // Center Park Bench
+    this.interactAt(740, 595, 'Ghế nghỉ chân', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: 'Ghế Nghỉ Chân',
+        body: 'Ngồi nghỉ ngơi dưới bóng cây xanh mát giữa trang trại bình yên.',
       });
     });
 
     // Fishing Pond Dock
-    const pondP = FARM_POIS.aquaculture_pond;
-    const dockX = pondP.x + pondP.w / 2;
-    const dockY = pondP.y + pondP.h - 10;
-    this.interactAt(dockX, dockY, 'Hồ câu cá', () => {
+    this.interactAt(1215, 435, 'Hồ câu cá', () => {
       play('pop');
       useUi.getState().toast({
         kind: 'info',
@@ -1868,7 +1901,9 @@ export class FarmScene extends WorldScene {
     });
 
     // Gate Exit to Town
-    this.interactAt(1.5 * TILE, 3.5 * TILE, 'Về thị trấn', () => {
+    this.interactAt(135, 130, 'Về thị trấn', () => {
+      if (this.exiting) return;
+      this.exiting = true;
       play('pop');
       void net.goTown();
     });

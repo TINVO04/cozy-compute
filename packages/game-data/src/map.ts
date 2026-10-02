@@ -392,7 +392,7 @@ export const DELIVERY_DESTINATIONS: ZoneId[] = [
 /** Cơm Gà Xối Mỡ 68 Biên Hòa interior grid & constants */
 export const COMGA_COLS = 14;
 export const COMGA_ROWS = 10;
-export const COMGA_SPAWN = { x: 7 * TILE, y: 8.5 * TILE };
+export const COMGA_SPAWN = { x: 7 * TILE, y: 7.8 * TILE };
 export const COMGA_BLOCKERS: Rect[] = [
   t(0, 0, COMGA_COLS, 2), // Back kitchen wall with stainless counter & glass chicken warmer
   t(1, 1, 3, 2), // Chicken fryer & boiling soup cauldrons
@@ -609,61 +609,61 @@ export const FARM_ZONES: FarmZone[] = [
     id: 'farm_shop',
     label: 'Tiệm Nông Nghiệp Bác Sáu',
     prompt: 'Ghé tiệm Bác Sáu',
-    rect: t(3, 8, 8, 3),
+    rect: { x: 250, y: 210, w: 250, h: 140 },
   },
   {
     id: 'farm_warehouse',
     label: 'Nhà Kho Nông Sản Silo',
     prompt: 'Mở kho Silo',
-    rect: t(16, 8, 8, 3),
+    rect: { x: 645, y: 155, w: 270, h: 200 },
   },
   {
     id: 'farm_pond',
     label: 'Ao Thủy Sản & Guồng Nước',
     prompt: 'Quản lý ao cá',
-    rect: t(30, 5, 16, 8),
+    rect: { x: 1055, y: 175, w: 430, h: 260 },
   },
   {
     id: 'barn_poultry',
     label: 'Chuồng Gia Cầm (Gà & Vịt)',
     prompt: 'Chăm sóc gia cầm',
-    rect: t(3, 18, 9, 5),
+    rect: { x: 90, y: 460, w: 455, h: 205 },
   },
   {
     id: 'barn_cattle',
     label: 'Chuồng Bò Sữa',
     prompt: 'Chăm sóc bò sữa',
-    rect: t(14, 18, 9, 5),
+    rect: { x: 640, y: 725, w: 300, h: 210 },
   },
   {
     id: 'barn_pig',
     label: 'Chuồng Heo Mọi',
     prompt: 'Chăm sóc đàn heo',
-    rect: t(3, 25, 9, 5),
+    rect: { x: 90, y: 725, w: 420, h: 210 },
   },
   {
     id: 'barn_goat',
     label: 'Chuồng Dê & Cừu',
     prompt: 'Chăm sóc dê cừu',
-    rect: t(14, 25, 9, 5),
+    rect: { x: 640, y: 725, w: 300, h: 210 },
   },
   {
     id: 'farm_plots',
     label: 'Khu Đất Trồng Trọt',
     prompt: 'Canh tác nông sản',
-    rect: t(26, 17, 20, 13),
+    rect: { x: 1040, y: 525, w: 445, h: 415 },
   },
 ];
 
 export const FARM_POIS = {
-  shop_bac_sau: t(3, 8, 8, 3),
-  silo_warehouse: t(16, 8, 8, 3),
-  aquaculture_pond: t(30, 5, 16, 8),
-  poultry_coop: t(3, 18, 9, 5),
-  cattle_pasture: t(14, 18, 9, 5),
-  pig_pen: t(3, 25, 9, 5),
-  goat_pen: t(14, 25, 9, 5),
-  crops_field: t(26, 17, 20, 13),
+  shop_bac_sau: { x: 250, y: 210, w: 250, h: 140 },
+  silo_warehouse: { x: 645, y: 155, w: 270, h: 200 },
+  aquaculture_pond: { x: 1055, y: 175, w: 430, h: 260 },
+  poultry_coop: { x: 90, y: 460, w: 455, h: 205 },
+  cattle_pasture: { x: 640, y: 725, w: 300, h: 210 },
+  pig_pen: { x: 90, y: 725, w: 420, h: 210 },
+  goat_pen: { x: 640, y: 725, w: 300, h: 210 },
+  crops_field: { x: 1040, y: 525, w: 445, h: 415 },
 };
 
 /** 36-plot grid specifications (6x6 layout) */
@@ -678,12 +678,17 @@ export function getFarmPlotRect(index: number): Rect {
   }
   const col = index % FARM_PLOT_COLS;
   const row = Math.floor(index / FARM_PLOT_COLS);
-  // Plots start at tile (27, 18), spaced by 3.1 tiles horizontally and 2.1 tiles vertically
+  const pw = 58;
+  const ph = 46;
+  const startX = 1058;
+  const startY = 554;
+  const stepX = 72;
+  const stepY = 62;
   return {
-    x: Math.round((27 + col * 3.1) * TILE),
-    y: Math.round((18 + row * 2.1) * TILE),
-    w: Math.round(2.6 * TILE),
-    h: Math.round(1.7 * TILE),
+    x: startX + col * stepX,
+    y: startY + row * stepY,
+    w: pw,
+    h: ph,
   };
 }
 
@@ -694,15 +699,23 @@ export const FARM_BLOCKERS: Rect[] = [
   t(FARM_COLS - 1, 0, 1, FARM_ROWS), // East boundary canal/fence
   t(0, 0, 1, 2), // West boundary north of gate
   t(0, 5, 1, FARM_ROWS - 5), // West boundary south of gate (rows 2..4 left open for gate exit)
+
   // Structural building footprints
-  t(3, 4, 8, 3.5), // Tiệm Nông Nghiệp Bác Sáu
-  t(16, 4, 8, 3.5), // Nhà Kho Silo
-  t(31, 5, 15, 7.5), // Ao Thủy Sản deep water basin
+  { x: 250, y: 210, w: 250, h: 130 }, // Tiệm Nông Nghiệp Bác Sáu stall
+  { x: 645, y: 155, w: 270, h: 195 }, // Nhà Kho Silo house
+  { x: 1055, y: 175, w: 430, h: 225 }, // Ao Thủy Sản deep water basin
+
   // Livestock barn enclosure perimeter fences
-  t(2.5, 17.5, 9.5, 0.8), // Poultry coop north railing
-  t(15, 19.2, 7.5, 0.8), // Center park south dividing fence
-  t(2.5, 24.5, 9.5, 0.8), // Pig pen north railing
-  t(13.5, 24.5, 9.5, 0.8), // Goat pen north railing
+  { x: 90, y: 460, w: 455, h: 203 }, // Chuồng Gia Cầm
+  { x: 90, y: 725, w: 420, h: 208 }, // Chuồng Heo
+  { x: 640, y: 725, w: 300, h: 208 }, // Chuồng Dê & Cừu
+
+  // Center park obstacles
+  { x: 590, y: 470, w: 70, h: 60 }, // Tree trunk
+  { x: 720, y: 475, w: 60, h: 40 }, // Signpost
+  { x: 695, y: 535, w: 90, h: 40 }, // Bench
+  { x: 830, y: 530, w: 75, h: 55 }, // Hay bale
+  { x: 660, y: 635, w: 270, h: 28 }, // Dividing fence below center park
 ];
 
 /** Consolidated Farm Map authoritative metadata */
