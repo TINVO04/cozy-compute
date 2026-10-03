@@ -20,7 +20,8 @@
     "build": "pnpm --filter @cozy/realtime --filter @cozy/api --filter @cozy/web build",
     "e2e:gateway": "pnpm --filter @cozy/api e2e:gateway",
     "loadtest": "pnpm --filter @cozy/realtime loadtest",
-    "version:sync": "node scripts/sync-version.mjs"
+    "version:sync": "node scripts/sync-version.mjs",
+    "grant:funds": "node apps/api/grant-funds.cjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
