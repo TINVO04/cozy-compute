@@ -703,22 +703,19 @@ export const FARM_BLOCKERS: Rect[] = [
   t(0, 0, 1, 2), // West boundary north of gate
   t(0, 5, 1, FARM_ROWS - 5), // West boundary south of gate (rows 2..4 left open for gate exit)
 
-  // Structural building footprints
-  { x: 250, y: 210, w: 250, h: 130 }, // Tiệm Nông Nghiệp Bác Sáu stall
-  { x: 645, y: 155, w: 270, h: 195 }, // Nhà Kho Silo house
-  { x: 1055, y: 175, w: 430, h: 225 }, // Ao Thủy Sản deep water basin
+  // Structural building footprints with generous walking margins
+  { x: 260, y: 220, w: 230, h: 110 }, // Tiệm Nông Nghiệp Bác Sáu stall
+  { x: 655, y: 165, w: 250, h: 175 }, // Nhà Kho Silo house
+  { x: 1075, y: 195, w: 390, h: 185 }, // Ao Thủy Sản deep water basin
 
-  // Livestock barn enclosure perimeter fences
-  { x: 90, y: 460, w: 455, h: 203 }, // Chuồng Gia Cầm
-  { x: 90, y: 725, w: 420, h: 208 }, // Chuồng Heo
-  { x: 640, y: 725, w: 300, h: 208 }, // Chuồng Dê & Cừu
+  // Livestock barn enclosure perimeter fences (with clear corridors)
+  { x: 100, y: 470, w: 430, h: 180 }, // Chuồng Gia Cầm
+  { x: 100, y: 740, w: 400, h: 180 }, // Chuồng Heo
+  { x: 650, y: 740, w: 280, h: 180 }, // Chuồng Dê & Cừu
 
-  // Center park obstacles
-  { x: 590, y: 470, w: 70, h: 60 }, // Tree trunk
-  { x: 720, y: 475, w: 60, h: 40 }, // Signpost
-  { x: 695, y: 535, w: 90, h: 40 }, // Bench
-  { x: 830, y: 530, w: 75, h: 55 }, // Hay bale
-  { x: 660, y: 635, w: 270, h: 28 }, // Dividing fence below center park
+  // Center park small obstacles (small foot collision, leaving all walkways wide open)
+  { x: 615, y: 490, w: 20, h: 20 }, // Tree trunk base
+  { x: 710, y: 545, w: 40, h: 16 }, // Bench
 ];
 
 /** Consolidated Farm Map authoritative metadata */
@@ -762,46 +759,45 @@ export interface OceanZone {
 export const OCEAN_ZONES: OceanZone[] = [
   {
     id: 'coral_reef',
-    label: 'Rạn San Hô Phát Quang',
-    prompt: 'Thả cần câu tại rạn san hô',
-    rect: t(14, 3, 20, 8),
+    label: 'Làng Bè Cá Tân Mai (Biên Hòa)',
+    prompt: 'Thả cần câu Làng Bè Tân Mai',
+    rect: t(10, 3, 14, 9),
   },
   {
     id: 'angler_dock',
-    label: 'Cầu Tàu Đảo Thần Ngư',
-    prompt: 'Neo thuyền lên bờ nghỉ chân',
-    rect: t(22, 19, 4, 3),
+    label: 'Bến Đá Cù Lao Phố (Hiệp Hòa)',
+    prompt: 'Neo thuyền bến Cù Lao Phố',
+    rect: t(22, 18, 4, 4),
   },
   {
     id: 'open_sea',
-    label: 'Vịnh Biển Lộng Gió',
-    prompt: 'Thả cần câu đại dương',
-    rect: t(2, 13, 16, 15),
+    label: 'Sông Đồng Nai Mênh Mông',
+    prompt: 'Thả cần câu dòng Sông Đồng Nai',
+    rect: t(2, 13, 18, 15),
   },
   {
     id: 'abyssal_trench',
-    label: 'Rãnh Biển Sâu (Abyssal Trench)',
-    prompt: 'Săn thủy quái rãnh biển sâu',
+    label: 'Vực Xoáy Vàm Sông Sâu',
+    prompt: 'Săn thủy quái Vàm Sông Sâu',
     rect: t(33, 19, 14, 12),
   },
   {
     id: 'return_channel',
-    label: 'Phao Tiêu Về Thị Trấn',
-    prompt: 'Quay về Cầu Tàu Thị Trấn',
-    rect: t(3, 3, 4, 4),
+    label: 'Phao Luồng Về Bến Biên Hòa',
+    prompt: 'Quay về Cầu Tàu Biên Hòa',
+    rect: t(2, 2, 6, 6),
   },
 ];
 
 export const OCEAN_BLOCKERS: Rect[] = [
-  // Outer ocean boundaries
+  // Outer river boundaries
   t(0, 0, OCEAN_COLS, 1), // North edge
   t(0, OCEAN_ROWS - 1, OCEAN_COLS, 1), // South edge
   t(0, 0, 1, OCEAN_ROWS), // West edge
   t(OCEAN_COLS - 1, 0, 1, OCEAN_ROWS), // East edge
 
-  // Angler's Isle interior cliffs and lighthouse base (island interior)
-  t(20, 13, 8, 5), // Central rocky plateau
-  t(22, 10, 4, 3), // Lighthouse tower base
+  // Cù Lao Phố island interior (Chùa Ông temple and orchard ground)
+  t(22, 12, 6, 4), // Central temple & orchard grounds
 ];
 
 export const OCEAN_MAP = {

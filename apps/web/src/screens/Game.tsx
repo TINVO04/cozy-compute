@@ -371,10 +371,22 @@ const ZONE_ACTIONS: Partial<Record<ZoneId, { cta: string; hint: string }>> = {
   bida: { cta: 'Vào quán Bida', hint: 'CLB Bida H2S Trảng Dài Biên Hòa (Giao lưu 1v1)' },
   cybernet: { cta: 'Vào Cyber Game', hint: 'Cyber Game HNT Trảng Dài' },
   farm_gate: { cta: 'Vào Trang Trại', hint: 'Trang trại nông thôn Nam Bộ' },
-  coral_reef: { cta: 'Thả cần câu rạn san hô', hint: 'Săn cá rạn san hô phát quang và cá hiếm' },
-  open_sea: { cta: 'Thả cần câu đại dương', hint: 'Săn cá kiếm hoàng kim và thủy quái biển lộng' },
-  abyssal_trench: { cta: 'Săn thủy quái rãnh sâu', hint: 'Vực thẳm đáy biển - Thần Long & Kraken' },
-  return_channel: { cta: 'Về thị trấn', hint: 'Phao tiêu hải trình dẫn về cầu tàu thị trấn' },
+  coral_reef: {
+    cta: 'Thả cần Làng Bè Tân Mai',
+    hint: 'Làng bè cá Tân Mai Biên Hòa: Săn cá lăng sông, cá điêu hồng & cá bống dừa',
+  },
+  open_sea: {
+    cta: 'Thả cần sông Đồng Nai',
+    hint: 'Dòng sông Đồng Nai mênh mông: Săn cá chép giòn, thát lát hoàng kim & cá sông lớn',
+  },
+  abyssal_trench: {
+    cta: 'Săn Thủy Quái Sông Sâu',
+    hint: 'Vực xoáy Vàm Sông Sâu hướng cửa biển: Vua cá Hô khổng lồ & Thần Long',
+  },
+  return_channel: {
+    cta: 'Về bến Biên Hòa',
+    hint: 'Phao luồng dẫn ngược dòng về cầu tàu thị trấn Biên Hòa',
+  },
 };
 
 function WorldHud({ me }: { me: Me }) {

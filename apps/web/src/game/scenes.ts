@@ -1868,12 +1868,12 @@ export class FarmScene extends WorldScene {
     const { width, height } = this.worldSize();
     const cam = this.cameras.main;
     const zoomMultiplier = useUi.getState().zoom;
-    // Map is 1536x1024. Clamp baseZoom to 1.0..1.5 on standard screens so the map doesn't feel oversized
+    // Map is 1536x1024. Clamp baseZoom to a compact 0.55..0.85 so the whole farm fits comfortably
     const baseZoom = Math.max(
-      0.75,
-      Math.min(1.5, Math.round(Math.min(this.scale.width / 960, this.scale.height / 640) * 10) / 10),
+      0.55,
+      Math.min(0.85, Math.round(Math.min(this.scale.width / 1536, this.scale.height / 1024) * 100) / 100),
     );
-    const zoom = Math.max(0.5, Math.min(3.0, Math.round(baseZoom * zoomMultiplier * 100) / 100));
+    const zoom = Math.max(0.4, Math.min(2.5, Math.round(baseZoom * zoomMultiplier * 100) / 100));
     cam.setZoom(zoom);
     const vw = this.scale.width / zoom;
     const vh = this.scale.height / zoom;
@@ -2277,8 +2277,8 @@ export class OceanScene extends WorldScene {
       play('pop');
       useUi.getState().toast({
         kind: 'info',
-        title: '⚓ Trở Về Thị Trấn',
-        body: 'Thuyền đã cập bến thị trấn an toàn!',
+        title: '⚓ Trở Về Bến Biên Hòa',
+        body: 'Thuyền đã cập bến cầu tàu Biên Hòa an toàn!',
       });
       void net.goTown();
       return;
@@ -2294,8 +2294,8 @@ export class OceanScene extends WorldScene {
         if (boat?.seaZoneAccess !== 'abyss') {
           useUi.getState().toast({
             kind: 'error',
-            title: '⚠️ Cảnh báo: Vực Thẳm Biển Sâu',
-            body: 'Bão tố và xoáy nước ngầm cực mạnh! Bạn cần Tàu Viễn Dương Hoàng Kim để câu cá tại đây.',
+            title: '⚠️ Cảnh báo: Vực Xoáy Vàm Sông Sâu',
+            body: 'Dòng nước xoáy cuộn cực mạnh hướng cửa biển! Bạn cần Tàu Viễn Dương Hoàng Kim để săn thủy quái tại đây.',
           });
         }
       }
@@ -2310,9 +2310,9 @@ export class OceanScene extends WorldScene {
     }
     this.add.image(0, 0, texKey).setOrigin(0).setDepth(-10);
 
-    // 2. Lighthouse rotating searchlight beam
+    // 2. Beacon rotating searchlight beam
     this.lighthouseBeam = this.add.graphics().setDepth(450);
-    this.lighthouseBeam.setPosition(736, 306);
+    this.lighthouseBeam.setPosition(790, 390);
     this.lighthouseBeam.fillStyle(0xfef08a, 0.22);
     this.lighthouseBeam.slice(0, 0, 480, -0.28, 0.28, false);
     this.lighthouseBeam.fillPath();
