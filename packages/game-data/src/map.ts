@@ -21,6 +21,8 @@ export const t = (x: number, y: number, w: number, h: number): Rect => ({
   h: h * TILE,
 });
 
+export type OceanZoneId = 'coral_reef' | 'angler_dock' | 'open_sea' | 'abyssal_trench' | 'return_channel';
+
 export type ZoneId =
   | 'plaza'
   | 'cafe'
@@ -37,7 +39,8 @@ export type ZoneId =
   | 'comga'
   | 'cybernet'
   | 'bida'
-  | 'farm_gate';
+  | 'farm_gate'
+  | OceanZoneId;
 
 export interface Zone {
   id: ZoneId;
@@ -736,3 +739,85 @@ export const FARM_MAP = {
   starterPlots: FARM_STARTER_PLOTS,
   getPlotRect: getFarmPlotRect,
 } as const;
+
+// ============================================================================
+// OCEAN REALM METADATA & EXPEDITION REGIONS
+// ============================================================================
+
+export const OCEAN_COLS = 48;
+export const OCEAN_ROWS = 32;
+export const OCEAN_WIDTH = OCEAN_COLS * TILE; // 1536 px
+export const OCEAN_HEIGHT = OCEAN_ROWS * TILE; // 1024 px
+
+export const OCEAN_SPAWN = { x: 736, y: 700 }; // At Angler's Isle dock pier
+export const OCEAN_RETURN_SPAWN = { x: 38 * TILE, y: 28 * TILE }; // Return to town pier
+
+export interface OceanZone {
+  id: OceanZoneId;
+  label: string;
+  prompt: string;
+  rect: Rect;
+}
+
+export const OCEAN_ZONES: OceanZone[] = [
+  {
+    id: 'coral_reef',
+    label: 'Rạn San Hô Phát Quang',
+    prompt: 'Thả cần câu tại rạn san hô',
+    rect: t(14, 3, 20, 8),
+  },
+  {
+    id: 'angler_dock',
+    label: 'Cầu Tàu Đảo Thần Ngư',
+    prompt: 'Neo thuyền lên bờ nghỉ chân',
+    rect: t(22, 19, 4, 3),
+  },
+  {
+    id: 'open_sea',
+    label: 'Vịnh Biển Lộng Gió',
+    prompt: 'Thả cần câu đại dương',
+    rect: t(2, 13, 16, 15),
+  },
+  {
+    id: 'abyssal_trench',
+    label: 'Rãnh Biển Sâu (Abyssal Trench)',
+    prompt: 'Săn thủy quái rãnh biển sâu',
+    rect: t(33, 19, 14, 12),
+  },
+  {
+    id: 'return_channel',
+    label: 'Phao Tiêu Về Thị Trấn',
+    prompt: 'Quay về Cầu Tàu Thị Trấn',
+    rect: t(3, 3, 4, 4),
+  },
+];
+
+export const OCEAN_BLOCKERS: Rect[] = [
+  // Outer ocean boundaries
+  t(0, 0, OCEAN_COLS, 1), // North edge
+  t(0, OCEAN_ROWS - 1, OCEAN_COLS, 1), // South edge
+  t(0, 0, 1, OCEAN_ROWS), // West edge
+  t(OCEAN_COLS - 1, 0, 1, OCEAN_ROWS), // East edge
+
+  // Angler's Isle interior cliffs and lighthouse base (island interior)
+  t(20, 13, 8, 5), // Central rocky plateau
+  t(22, 10, 4, 3), // Lighthouse tower base
+];
+
+export const OCEAN_MAP = {
+  cols: OCEAN_COLS,
+  rows: OCEAN_ROWS,
+  width: OCEAN_WIDTH,
+  height: OCEAN_HEIGHT,
+  spawn: OCEAN_SPAWN,
+  returnSpawn: OCEAN_RETURN_SPAWN,
+  zones: OCEAN_ZONES,
+  blockers: OCEAN_BLOCKERS,
+} as const;
+
+export function oceanZoneAt(x: number, y: number): OceanZoneId | null {
+  for (const z of OCEAN_ZONES) {
+    if (x >= z.rect.x && x < z.rect.x + z.rect.w && y >= z.rect.y && y < z.rect.y + z.rect.h) return z.id;
+  }
+  return null;
+}

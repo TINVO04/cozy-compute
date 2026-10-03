@@ -10,6 +10,7 @@ import { ComGaRoom } from './rooms/comga.js';
 import { CyberNetRoom } from './rooms/cybernet.js';
 import { FarmRoom } from './rooms/farm.js';
 import { BidaRoom } from './rooms/bida.js';
+import { OceanRoom } from './rooms/ocean.js';
 import { TownRoom } from './rooms/town.js';
 import { UniversityRoom } from './rooms/university.js';
 
@@ -72,6 +73,7 @@ gameServer.define('comga', ComGaRoom);
 gameServer.define('bida', BidaRoom);
 gameServer.define('cybernet', CyberNetRoom);
 gameServer.define('farm', FarmRoom).filterBy(['ownerId']);
+gameServer.define('ocean', OceanRoom);
 
 await sub.subscribe('player:appearance', 'player:kick', 'apartment:updated', 'events', 'farm:updated');
 sub.on('message', async (channel, raw) => {

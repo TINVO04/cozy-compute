@@ -1,8 +1,15 @@
-import { DEFAULT_APPEARANCE, type Appearance, type MoveInput, type Rect } from '@cozy/game-data';
+import {
+  DEFAULT_APPEARANCE,
+  normalizeBoatId,
+  type Appearance,
+  type MoveInput,
+  type Rect,
+} from '@cozy/game-data';
 import { getStateCallbacks, type Room } from 'colyseus.js';
 import type Phaser from 'phaser';
 import { AVATAR_FEET_OFFSET, ensureAvatarTexture } from './avatars';
-import { spawnFootstepDust } from './atmosphere';
+import { spawnFootstepDust, spawnWaterWake } from './atmosphere';
+import { ensureBoatTexture } from '../art/boat';
 import { useUi } from '../lib/store';
 import { fishRenderDimensions, getSpeciesData } from '../art/fish';
 import { ensureFishTexture } from './fish-texture';
@@ -65,6 +72,7 @@ class Avatar {
   facingDependentEffects: { obj: { x: number }; baseRelX: number }[] = [];
   rodGlowContainer: Phaser.GameObjects.Container | null = null;
   rodTweens: Phaser.Tweens.Tween[] = [];
+  boatSprite: Phaser.GameObjects.Image | null = null;
 
   constructor(
     private scene: Phaser.Scene,
@@ -701,8 +709,44 @@ class Avatar {
     this.updateHeldFishFacing();
   }
 
+  updateBoat(time: number) {
+    if (this.scene.scene.key !== 'ocean') {
+      if (this.boatSprite) {
+        this.boatSprite.destroy();
+        this.boatSprite = null;
+        this.shadow.setVisible(true);
+      }
+      return;
+    }
+
+    this.shadow.setVisible(false);
+    const boatId = normalizeBoatId(this.appearance.boat) ?? 'boat_coracle';
+    const frame = this.moving ? Math.floor(time / 250) % 2 : 0;
+    const dir = (this.dir >= 0 && this.dir <= 3 ? this.dir : 0) as 0 | 1 | 2 | 3;
+    const tex = ensureBoatTexture(this.scene, boatId, dir, frame);
+
+    if (!this.boatSprite) {
+      this.boatSprite = this.scene.add.image(0, -4, tex).setOrigin(0.5, 0.7);
+      this.container.add(this.boatSprite);
+      this.container.sendToBack(this.boatSprite);
+    } else {
+      this.boatSprite.setTexture(tex);
+    }
+
+    this.sprite.setY(this.baseSpriteY - 2);
+  }
+
   update(dtMs: number, time: number) {
-    if (this.moving) {
+    if (this.scene.scene.key === 'ocean') {
+      this.updateBoat(time);
+      if (this.moving && !useUi.getState().reducedMotion) {
+        this.dustTimer += dtMs;
+        if (this.dustTimer >= 180) {
+          this.dustTimer = 0;
+          spawnWaterWake(this.scene, this.container.x, this.container.y);
+        }
+      }
+    } else if (this.moving) {
       this.sprite.y = this.baseSpriteY;
       if (!useUi.getState().reducedMotion) {
         this.dustTimer += dtMs;
@@ -730,6 +774,8 @@ class Avatar {
     this.clearRodEffects();
     this.heldFishContainer?.destroy();
     this.rodGlowContainer?.destroy();
+    this.boatSprite?.destroy();
+    this.boatSprite = null;
     this.container.destroy();
   }
 }
@@ -756,13 +802,13 @@ export class PlayerLayer {
   private sendAcc = 0;
   private lastSent: MoveInput = { x: 0, y: 0 };
   private cleanup: (() => void)[] = [];
-  private world: { width: number; height: number; blockers: Rect[] };
+  private world: { width: number; height: number; blockers: Rect[]; speed?: number };
   private $: ReturnType<typeof getStateCallbacks>;
 
   constructor(
     private scene: Phaser.Scene,
     private room: Room,
-    world: { width: number; height: number; blockers: Rect[] },
+    world: { width: number; height: number; blockers: Rect[]; speed?: number },
     private onSelfMove?: (x: number, y: number) => void,
   ) {
     this.world = world;
@@ -818,6 +864,10 @@ export class PlayerLayer {
 
   setWorldBlockers(blockers: Rect[]) {
     this.world = { ...this.world, blockers };
+  }
+
+  setWorldSpeed(speed: number) {
+    this.world = { ...this.world, speed };
   }
 
   saySelf(text: string) {

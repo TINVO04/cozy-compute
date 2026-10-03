@@ -1,5 +1,5 @@
 import { Room, type Client } from '@colyseus/core';
-import { AuthoritativeMovement, TICK_RATE, type Rect } from '@cozy/game-data';
+import { AuthoritativeMovement, PLAYER_SPEED, TICK_RATE, type Rect } from '@cozy/game-data';
 import type { Redis } from 'ioredis';
 import type { ApiClient, SessionInfo } from '../api.js';
 import { cleanChat, EMOTES, type Emote } from '../chat.js';
@@ -188,6 +188,10 @@ export abstract class BaseRoom extends Room<RoomState> {
     );
   }
 
+  protected playerSpeedFor(_d: ClientData, _p: PlayerState): number {
+    return PLAYER_SPEED;
+  }
+
   protected tick(dtMs: number) {
     const w = this.world();
     const now = Date.now();
@@ -200,6 +204,7 @@ export abstract class BaseRoom extends Room<RoomState> {
         blockers: w.blockers,
         width: w.width,
         height: w.height,
+        speed: this.playerSpeedFor(d, p),
       });
       p.seq = next.seq;
       p.inputElapsedMs = next.inputElapsedMs;

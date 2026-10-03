@@ -12,6 +12,7 @@ import {
   CAFE_INGREDIENTS,
   DELIVERY_DESTINATIONS,
   DELIVERY_PACKAGES,
+  BOATS,
   FISH,
   FISHING_RODS,
   PLAYER_SPEED,
@@ -20,6 +21,7 @@ import {
   zoneCenter,
   calculateFishSize,
   getFishShadowTier,
+  oceanZoneAt,
   rollFishingSequence,
   type ActivityConfigMap,
   type FishShadowTier,
@@ -195,7 +197,33 @@ async function finishRun(
 
 export async function startFishing(ctx: AppContext, userId: string) {
   const cfg = await activityConfig(ctx.db, 'fishing');
-  await requireAt(ctx, userId, 'pier');
+
+  const pos = await ctx.positionOf(userId);
+  const isOcean = Boolean(pos && pos.room === 'ocean');
+
+  if (!isOcean) {
+    await requireAt(ctx, userId, 'pier');
+  } else {
+    // In ocean, player must have an equipped boat
+    const equippedBoatRes = await ctx.db.query<{ item_id: string }>(
+      `SELECT item_id FROM inventory_items WHERE user_id = $1 AND equipped_slot = 'boat'`,
+      [userId],
+    );
+    const boatId = equippedBoatRes.rows[0]?.item_id;
+    if (!boatId) {
+      throw new AppError(409, 'no_boat_equipped', 'Bạn cần trang bị thuyền trước khi câu cá ngoài khơi.');
+    }
+    const boat = BOATS[boatId];
+    // Check if in abyssal trench without tier 4 boat
+    const oceanZone = pos ? oceanZoneAt(pos.x, pos.y) : null;
+    if (oceanZone === 'abyssal_trench' && boat?.seaZoneAccess !== 'abyss') {
+      throw new AppError(
+        409,
+        'abyss_access_denied',
+        'Vực thẳm Abyssal Trench có bão tố dữ dội! Bạn cần Tàu Viễn Dương Hoàng Kim để săn thủy quái tại đây.',
+      );
+    }
+  }
 
   // Authoritative check on equipped rod
   const equippedRodRes = await ctx.db.query<{ item_id: string }>(
@@ -209,7 +237,22 @@ export async function startFishing(ctx: AppContext, userId: string) {
   const reactionWindowMs = cfg.reactionWindowMs + (rod.reactionBonusMs ?? 0);
 
   // Pre-roll fish candidate for authoritative shadow tier
-  const pendingFish = rollFish(ctx.rng, 0, reactionWindowMs, FISH, rod.shadowBonus);
+  let fishTable = FISH;
+  let seaZoneBonus = 0;
+  const oceanZone = isOcean && pos ? oceanZoneAt(pos.x, pos.y) : null;
+  if (isOcean) {
+    const oceanFish = FISH.filter((f) => f.habitat === 'ocean' || f.habitat === 'mythic');
+    if (oceanFish.length > 0) fishTable = oceanFish;
+    seaZoneBonus =
+      oceanZone === 'abyssal_trench'
+        ? 2.5
+        : oceanZone === 'open_sea'
+          ? 1.5
+          : oceanZone === 'coral_reef'
+            ? 1.0
+            : 0.4;
+  }
+  const pendingFish = rollFish(ctx.rng, 0, reactionWindowMs, fishTable, rod.shadowBonus + seaZoneBonus);
 
   // Read current size overrides from settings
   const fishSizesRes = await ctx.db.query<{ value: unknown }>(
@@ -250,6 +293,8 @@ export async function startFishing(ctx: AppContext, userId: string) {
     nibbleOrbitTurns,
     equippedRodId,
     reactionWindowMs,
+    isOcean,
+    oceanZone,
   });
 
   return {

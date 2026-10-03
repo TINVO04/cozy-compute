@@ -27,17 +27,26 @@ import {
   getFarmPlotRect,
   getPlotUnlockPrice,
   FARM_POIS,
+  BOATS,
+  OCEAN_BLOCKERS,
+  OCEAN_HEIGHT,
+  OCEAN_WIDTH,
+  normalizeBoatId,
+  oceanZoneAt,
   t,
   TILE,
   ZONES,
   zoneAt,
   type FishShadowTier,
   type Rect,
+  type ZoneId,
 } from '@cozy/game-data';
 import { getStateCallbacks, type Room } from 'colyseus.js';
 import Phaser from 'phaser';
 import { duckGrid } from '../art/items';
 import { paintFarmLandscape } from '../art/farm-landscape';
+import { paintOceanLandscape } from '../art/ocean-landscape';
+import { ensureBoatTexture } from '../art/boat';
 import {
   paintShopBacSau,
   paintSiloWarehouse,
@@ -271,10 +280,89 @@ export class TownScene extends WorldScene {
     townFishingController = this.fishingController;
     townSelfPosProvider = () => this.getSelfPos();
 
+    // Boat Slip docking visual at east pier edge (t(39, 27))
+    const slipX = 40.5 * TILE;
+    const slipY = 27.5 * TILE;
+
+    const pontoon = this.add.graphics().setDepth(slipY - 4);
+    pontoon.fillStyle(0x78350f, 0.9).fillRect(39.8 * TILE, 26.5 * TILE, 14, 38);
+    pontoon.fillStyle(0xa16207, 0.95).fillRect(40.1 * TILE, 26.5 * TILE, 4, 38);
+
+    const dockedBoatContainer = this.add.container(slipX + 16, slipY).setDepth(slipY);
+    const updateDockedBoat = () => {
+      const myAppearance = this.layer?.self?.appearance;
+      const boatId = myAppearance?.boat ? normalizeBoatId(myAppearance.boat) : null;
+      dockedBoatContainer.removeAll(true);
+      if (boatId) {
+        const tex = ensureBoatTexture(this, boatId, 1, 0);
+        const bImg = this.add.image(0, 0, tex).setOrigin(0.5, 0.7);
+        dockedBoatContainer.add(bImg);
+        const txt = this.add
+          .text(0, -28, '⛵ Lên Thuyền (E)', {
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '10px',
+            fontStyle: 'bold',
+            color: '#38bdf8',
+            backgroundColor: 'rgba(15, 23, 42, 0.85)',
+            padding: { x: 5, y: 2 },
+            resolution: 2,
+          })
+          .setOrigin(0.5);
+        dockedBoatContainer.add(txt);
+      }
+    };
+    updateDockedBoat();
+
+    if (!useUi.getState().reducedMotion) {
+      this.tweens.add({
+        targets: dockedBoatContainer,
+        y: slipY - 3,
+        duration: 1200,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+
+    const dockHit = this.add
+      .zone(slipX + 8, slipY, 56, 52)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    const embarkBoat = () => {
+      if (this.exiting) return;
+      const myAppearance = this.layer?.self?.appearance;
+      const boatId = myAppearance?.boat ? normalizeBoatId(myAppearance.boat) : null;
+      if (!boatId) {
+        play('pop');
+        useUi.getState().toast({
+          kind: 'info',
+          title: '⛵ Cần có thuyền để ra khơi',
+          body: 'Hãy ghé Tiệm Ngư Cụ Bác Ba ở phía tây bến tàu để chọn mua và trang bị một chiếc thuyền nhé!',
+        });
+        return;
+      }
+      play('pop');
+      this.exiting = true;
+      void net.goOcean();
+    };
+    dockHit.on('pointerdown', embarkBoat);
+
+    const onKey = (event: KeyboardEvent) => {
+      const ui = useUi.getState();
+      if (event.repeat || typing() || ui.panel || ui.activity || document.querySelector('.backdrop')) return;
+      if (event.key.toLowerCase() !== 'e' || this.exiting || !this.layer?.self) return;
+      const { x, y } = this.layer.self.container;
+      if (Math.hypot(x - 40 * TILE, y - 27.5 * TILE) <= 2.5 * TILE) {
+        embarkBoat();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+
     this.unsubscribe = useUi.subscribe((s, prev) => {
       if (s.delivery !== prev.delivery) this.drawDeliveryMarker();
     });
     this.events.once('shutdown', () => {
+      window.removeEventListener('keydown', onKey);
       this.unsubscribe?.();
       this.fishingController?.cleanup();
       this.remoteFishingControllers.forEach((ctrl) => ctrl.cleanup());
@@ -420,6 +508,16 @@ export class TownScene extends WorldScene {
           play('pop');
           void net.goFarm(myId, 'Trang Trại Cá Nhân');
         }
+      }
+    }
+
+    if (!this.exiting && x >= 40 * TILE && y >= 26 * TILE && y <= 29 * TILE) {
+      const myAppearance = this.layer?.self?.appearance;
+      const boatId = myAppearance?.boat ? normalizeBoatId(myAppearance.boat) : null;
+      if (boatId) {
+        this.exiting = true;
+        play('pop');
+        void net.goOcean();
       }
     }
   }
@@ -2026,6 +2124,287 @@ export class FarmScene extends WorldScene {
 
   override update(time: number, delta: number) {
     super.update(time, delta);
+    const self = this.layer?.self?.container;
+    const action =
+      self && !typing() && !useUi.getState().panel ? this.nearestInteraction(self.x, self.y) : undefined;
+    this.interactionHint?.setVisible(!!action);
+    if (action && self && this.interactionHint) {
+      this.interactionHint.setText('E · ' + action.label);
+      this.interactionHint.setPosition(self.x, self.y - 42);
+    }
+  }
+}
+
+export class OceanScene extends WorldScene {
+  private interactions: { x: number; y: number; run: () => void; label: string }[] = [];
+  private interactionHint: Phaser.GameObjects.Text | null = null;
+  public fishingController: InWorldFishingController | null = null;
+  public remoteFishingControllers = new Map<string, InWorldFishingController>();
+  private exiting = false;
+  private lighthouseBeam: Phaser.GameObjects.Graphics | null = null;
+
+  constructor() {
+    super('ocean');
+  }
+
+  override create() {
+    this.exiting = false;
+    this.interactions = [];
+    super.create();
+
+    this.interactionHint = this.add
+      .text(0, 0, '', {
+        fontFamily: 'Inter Variable, Inter, system-ui, sans-serif',
+        fontSize: '11px',
+        fontStyle: '600',
+        color: '#f8fafc',
+        backgroundColor: 'rgba(12, 74, 110, 0.92)',
+        padding: { x: 7, y: 3 },
+        resolution: 2,
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(9999)
+      .setVisible(false);
+
+    const onKey = (event: KeyboardEvent) => {
+      const ui = useUi.getState();
+      if (event.repeat || typing() || ui.panel || ui.activity || document.querySelector('.backdrop')) return;
+      if (event.key.toLowerCase() !== 'e' || this.exiting || !this.layer?.self) return;
+      const { x, y } = this.layer.self.container;
+      this.nearestInteraction(x, y)?.run();
+    };
+    window.addEventListener('keydown', onKey);
+
+    this.events.once('shutdown', () => {
+      window.removeEventListener('keydown', onKey);
+      this.fishingController?.cleanup();
+      this.remoteFishingControllers.forEach((ctrl) => ctrl.cleanup());
+      this.remoteFishingControllers.clear();
+      if (townFishingController === this.fishingController) {
+        townFishingController = null;
+      }
+      this.lighthouseBeam?.destroy();
+      this.lighthouseBeam = null;
+      this.interactionHint?.destroy();
+      this.interactionHint = null;
+      this.interactions = [];
+    });
+  }
+
+  getSelfPos(): { x: number; y: number } | null {
+    if (!this.layer?.self) return null;
+    return { x: this.layer.self.container.x, y: this.layer.self.container.y };
+  }
+
+  setSelfFishing(isFishing: boolean, facingDir?: number) {
+    this.layer?.setSelfFishing(isFishing, facingDir);
+  }
+
+  setSelfHeldFish(heldFish: { speciesId: string; sizeCm: number } | null) {
+    this.layer?.setSelfHeldFish(heldFish);
+  }
+
+  saySelf(text: string) {
+    this.layer?.saySelf(text);
+  }
+
+  protected worldSize() {
+    return { width: OCEAN_WIDTH, height: OCEAN_HEIGHT };
+  }
+
+  protected blockers() {
+    return OCEAN_BLOCKERS;
+  }
+
+  protected matchesRoom(room: Room) {
+    return room.name === 'ocean';
+  }
+
+  protected override fitCamera() {
+    const { width, height } = this.worldSize();
+    const cam = this.cameras.main;
+    const zoomMultiplier = useUi.getState().zoom;
+    const baseZoom = Math.max(
+      0.75,
+      Math.min(1.5, Math.round(Math.min(this.scale.width / 960, this.scale.height / 640) * 10) / 10),
+    );
+    const zoom = Math.max(0.5, Math.min(3.0, Math.round(baseZoom * zoomMultiplier * 100) / 100));
+    cam.setZoom(zoom);
+    const vw = this.scale.width / zoom;
+    const vh = this.scale.height / zoom;
+    cam.setBounds(
+      Math.min(0, (width - vw) / 2),
+      Math.min(0, (height - vh) / 2),
+      Math.max(width, vw),
+      Math.max(height, vh),
+    );
+  }
+
+  interactAt(x: number, y: number, label: string, run: () => void) {
+    this.interactions.push({ x, y, label, run });
+  }
+
+  private nearestInteraction(x: number, y: number) {
+    const nearest = this.interactions.reduce<(typeof this.interactions)[number] | undefined>(
+      (best, action) =>
+        !best || Math.hypot(action.x - x, action.y - y) < Math.hypot(best.x - x, best.y - y) ? action : best,
+      undefined,
+    );
+    return nearest && Math.hypot(nearest.x - x, nearest.y - y) <= 3 * TILE ? nearest : undefined;
+  }
+
+  private lastOceanZone: string | null = null;
+  protected override onSelfMove(x: number, y: number) {
+    // Return channel buoy at northwest (x <= 5.5 * TILE, y <= 5.5 * TILE)
+    if (!this.exiting && x <= 5.5 * TILE && y <= 5.5 * TILE) {
+      this.exiting = true;
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '⚓ Trở Về Thị Trấn',
+        body: 'Thuyền đã cập bến thị trấn an toàn!',
+      });
+      void net.goTown();
+      return;
+    }
+
+    const oz = oceanZoneAt(x, y);
+    if (oz !== this.lastOceanZone) {
+      this.lastOceanZone = oz;
+      useUi.getState().setZone(oz as ZoneId);
+      if (oz === 'abyssal_trench') {
+        const boatId = normalizeBoatId(this.layer?.self?.appearance.boat);
+        const boat = boatId ? BOATS[boatId] : null;
+        if (boat?.seaZoneAccess !== 'abyss') {
+          useUi.getState().toast({
+            kind: 'error',
+            title: '⚠️ Cảnh báo: Vực Thẳm Biển Sâu',
+            body: 'Bão tố và xoáy nước ngầm cực mạnh! Bạn cần Tàu Viễn Dương Hoàng Kim để câu cá tại đây.',
+          });
+        }
+      }
+    }
+  }
+
+  protected buildWorld() {
+    // 1. Procedural Ocean Landscape
+    const texKey = 'ocean:landscape';
+    if (!this.textures.exists(texKey)) {
+      this.textures.addCanvas(texKey, paintOceanLandscape());
+    }
+    this.add.image(0, 0, texKey).setOrigin(0).setDepth(-10);
+
+    // 2. Lighthouse rotating searchlight beam
+    this.lighthouseBeam = this.add.graphics().setDepth(450);
+    this.lighthouseBeam.setPosition(736, 306);
+    this.lighthouseBeam.fillStyle(0xfef08a, 0.22);
+    this.lighthouseBeam.slice(0, 0, 480, -0.28, 0.28, false);
+    this.lighthouseBeam.fillPath();
+
+    // 3. Ambient water shimmer
+    if (!useUi.getState().reducedMotion) {
+      const shimmer = this.add.graphics().setDepth(-9);
+      let tt = 0;
+      this.time.addEvent({
+        loop: true,
+        delay: 140,
+        callback: () => {
+          tt++;
+          shimmer.clear();
+          shimmer.fillStyle(0x38bdf8, 0.45);
+          for (let i = 0; i < 30; i++) {
+            const sx = (i * 137 + tt * 4) % OCEAN_WIDTH;
+            const sy = (i * 89 + tt * 2) % OCEAN_HEIGHT;
+            if (sx > 600 && sx < 880 && sy > 400 && sy < 600) continue;
+            shimmer.fillRect(sx, sy, 7, 1);
+          }
+        },
+      });
+    }
+
+    // 4. Return Buoy interaction (x: 140, y: 140)
+    const returnTown = () => {
+      if (this.exiting) return;
+      this.exiting = true;
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '⚓ Trở Về Thị Trấn',
+        body: 'Thuyền đã cập bến thị trấn an toàn!',
+      });
+      void net.goTown();
+    };
+    this.interactAt(140, 140, 'Về thị trấn', returnTown);
+
+    // 5. Fishing Controller
+    this.fishingController = new InWorldFishingController(this);
+    townFishingController = this.fishingController;
+    townSelfPosProvider = () => this.getSelfPos();
+  }
+
+  protected override onBind(room: Room) {
+    room.onMessage(
+      'fishing:remote_cast',
+      (msg: {
+        sessionId: string;
+        selfX: number;
+        selfY: number;
+        facingDir?: number;
+        shadowTier?: FishShadowTier;
+        biteInMs?: number;
+        shadowDelayMs?: number;
+        equippedRodId?: string;
+        nibbleCount?: number;
+        nibbleTimes?: number[];
+        nibbleOffsetsMs?: number[];
+        nibbleOrbitTurns?: number[];
+      }) => {
+        if (!msg?.sessionId) return;
+        this.remoteFishingControllers.get(msg.sessionId)?.cleanup();
+        const ctrl = new InWorldFishingController(this, { isRemote: true });
+        this.remoteFishingControllers.set(msg.sessionId, ctrl);
+        const equippedRod = FISHING_RODS[msg.equippedRodId ?? 'rod_twig'] ?? FISHING_RODS['rod_twig']!;
+        ctrl.startCast({
+          selfX: msg.selfX,
+          selfY: msg.selfY,
+          shadowTier: msg.shadowTier ?? 1,
+          nibbleCount: msg.nibbleCount ?? 5,
+          nibbleTimes:
+            msg.nibbleOffsetsMs?.map((offsetMs: number) => Date.now() + offsetMs) ?? msg.nibbleTimes ?? [],
+          nibbleOrbitTurns: msg.nibbleOrbitTurns,
+          biteInMs: msg.biteInMs ?? 15000,
+          shadowDelayMs: msg.shadowDelayMs ?? 8000,
+          equippedRod,
+        });
+      },
+    );
+
+    room.onMessage('fishing:remote_nibble', (msg: { sessionId: string; nibbleIndex?: number }) => {
+      if (!msg?.sessionId) return;
+      this.remoteFishingControllers.get(msg.sessionId)?.triggerRemoteNibble(msg.nibbleIndex ?? 0);
+    });
+
+    room.onMessage('fishing:remote_bite', (msg: { sessionId: string }) => {
+      if (!msg?.sessionId) return;
+      this.remoteFishingControllers.get(msg.sessionId)?.triggerRemoteBite();
+    });
+
+    room.onMessage('fishing:remote_stop', (msg: { sessionId: string }) => {
+      if (!msg?.sessionId) return;
+      this.remoteFishingControllers.get(msg.sessionId)?.cleanup();
+      this.remoteFishingControllers.delete(msg.sessionId);
+    });
+  }
+
+  override update(time: number, delta: number) {
+    super.update(time, delta);
+    this.fishingController?.update(time, delta);
+    this.remoteFishingControllers.forEach((ctrl) => ctrl.update(time, delta));
+
+    if (this.lighthouseBeam && !useUi.getState().reducedMotion) {
+      this.lighthouseBeam.rotation = (time * 0.0006) % (Math.PI * 2);
+    }
+
     const self = this.layer?.self?.container;
     const action =
       self && !typing() && !useUi.getState().panel ? this.nearestInteraction(self.x, self.y) : undefined;

@@ -28,7 +28,8 @@ class Net {
     | { name: 'comga' }
     | { name: 'bida' }
     | { name: 'cybernet' }
-    | { name: 'farm'; ownerId: string; farmToken?: string } = {
+    | { name: 'farm'; ownerId: string; farmToken?: string }
+    | { name: 'ocean' } = {
     name: 'town',
   };
   private retry = 0;
@@ -78,13 +79,15 @@ class Net {
                 ? await this.client.joinOrCreate('comga', { token })
                 : target.name === 'bida' || target.name === 'cybernet'
                   ? await this.client.joinOrCreate(target.name, { token })
-                  : target.name === 'farm'
-                    ? await this.client.joinOrCreate('farm', {
-                        token,
-                        ownerId: target.ownerId,
-                        farmToken: target.farmToken,
-                      })
-                    : await this.client.joinOrCreate('apartment', { token, ownerId: target.ownerId });
+                  : target.name === 'ocean'
+                    ? await this.client.joinOrCreate('ocean', { token })
+                    : target.name === 'farm'
+                      ? await this.client.joinOrCreate('farm', {
+                          token,
+                          ownerId: target.ownerId,
+                          farmToken: target.farmToken,
+                        })
+                      : await this.client.joinOrCreate('apartment', { token, ownerId: target.ownerId });
       if (gen !== this.generation) {
         await room.leave(true).catch(() => undefined);
         return;
@@ -206,6 +209,11 @@ class Net {
     useUi.getState().setFarmOwnerId(ownerId);
     useUi.getState().setRoom({ kind: 'farm', ownerId, label });
     return this.connect({ name: 'farm', ownerId, farmToken });
+  }
+
+  goOcean(label = 'Hải Trình Biển Sâu') {
+    useUi.getState().setRoom({ kind: 'ocean', label });
+    return this.connect({ name: 'ocean' });
   }
 
   send(type: string, msg: unknown) {

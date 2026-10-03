@@ -1,4 +1,4 @@
-import { ZONES, type ZoneId } from '@cozy/game-data';
+import { OCEAN_ZONES, ZONES, type ZoneId } from '@cozy/game-data';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BookOpen,
@@ -371,6 +371,10 @@ const ZONE_ACTIONS: Partial<Record<ZoneId, { cta: string; hint: string }>> = {
   bida: { cta: 'Vào quán Bida', hint: 'CLB Bida H2S Trảng Dài Biên Hòa (Giao lưu 1v1)' },
   cybernet: { cta: 'Vào Cyber Game', hint: 'Cyber Game HNT Trảng Dài' },
   farm_gate: { cta: 'Vào Trang Trại', hint: 'Trang trại nông thôn Nam Bộ' },
+  coral_reef: { cta: 'Thả cần câu rạn san hô', hint: 'Săn cá rạn san hô phát quang và cá hiếm' },
+  open_sea: { cta: 'Thả cần câu đại dương', hint: 'Săn cá kiếm hoàng kim và thủy quái biển lộng' },
+  abyssal_trench: { cta: 'Săn thủy quái rãnh sâu', hint: 'Vực thẳm đáy biển - Thần Long & Kraken' },
+  return_channel: { cta: 'Về thị trấn', hint: 'Phao tiêu hải trình dẫn về cầu tàu thị trấn' },
 };
 
 function WorldHud({ me }: { me: Me }) {
@@ -394,8 +398,10 @@ function WorldHud({ me }: { me: Me }) {
     return () => clearInterval(t);
   }, []);
 
-  const action = room.kind === 'town' && zone ? ZONE_ACTIONS[zone] : undefined;
-  const zoneLabel = zone ? ZONES.find((z) => z.id === zone)?.label : null;
+  const action = (room.kind === 'town' || room.kind === 'ocean') && zone ? ZONE_ACTIONS[zone] : undefined;
+  const zoneLabel = zone
+    ? (ZONES.find((z) => z.id === zone)?.label ?? OCEAN_ZONES.find((z) => z.id === zone)?.label)
+    : null;
   const deliveringHere = delivery && zone === delivery.destination;
 
   function runAction() {
@@ -403,7 +409,12 @@ function WorldHud({ me }: { me: Me }) {
     play('click');
     switch (zone) {
       case 'pier':
+      case 'coral_reef':
+      case 'open_sea':
+      case 'abyssal_trench':
         return setActivity('fishing');
+      case 'return_channel':
+        return void net.goTown();
       case 'fishing_shop':
         return setPanel('shop-rods');
       case 'cafe':

@@ -1,5 +1,5 @@
-export type { Appearance } from '@cozy/game-data';
-import type { Appearance } from '@cozy/game-data';
+export type { Appearance, ItemType, ClothingSlot } from '@cozy/game-data';
+import type { Appearance, ItemType, ClothingSlot } from '@cozy/game-data';
 import { resolveEndpoint } from './endpoints';
 
 function resolveApiBase(): string {
@@ -98,8 +98,8 @@ export interface Me {
 
 export interface ShopItem {
   id: string;
-  type: 'clothing' | 'furniture' | 'rod';
-  slot: 'hat' | 'top' | 'face' | 'rod' | null;
+  type: ItemType;
+  slot: ClothingSlot | null;
   name: string;
   description: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
