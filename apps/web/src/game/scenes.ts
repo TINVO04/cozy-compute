@@ -205,6 +205,8 @@ export class TownScene extends WorldScene {
   public fishingController: InWorldFishingController | null = null;
   public remoteFishingControllers = new Map<string, InWorldFishingController>();
   private exiting = false;
+  private dockedBoatContainer: Phaser.GameObjects.Container | null = null;
+  private lastBoatModel: string | null = '__init__';
 
   constructor() {
     super('town');
@@ -212,6 +214,7 @@ export class TownScene extends WorldScene {
 
   override create() {
     this.exiting = false;
+    this.lastBoatModel = '__init__';
     super.create();
   }
 
@@ -232,8 +235,39 @@ export class TownScene extends WorldScene {
     this.layer?.saySelf(text);
   }
 
+  private syncDockedBoat() {
+    if (!this.dockedBoatContainer) return;
+    const myAppearance = this.layer?.self?.appearance;
+    const boatId = myAppearance?.boat ? normalizeBoatId(myAppearance.boat) : null;
+    if (boatId === this.lastBoatModel) return;
+    this.lastBoatModel = boatId;
+
+    this.dockedBoatContainer.removeAll(true);
+    const displayBoatId = boatId ?? 'boat_coracle';
+    const tex = ensureBoatTexture(this, displayBoatId, 1, 0);
+    const bImg = this.add.image(0, 0, tex).setOrigin(0.5, 0.7);
+    if (!boatId) {
+      bImg.setAlpha(0.6);
+    }
+    this.dockedBoatContainer.add(bImg);
+
+    const txt = this.add
+      .text(0, -28, boatId ? '⛵ Lên Thuyền (E)' : '⛵ Bến Thuyền Ra Khơi', {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '10px',
+        fontStyle: 'bold',
+        color: boatId ? '#38bdf8' : '#fbbf24',
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        padding: { x: 6, y: 2 },
+        resolution: 2,
+      })
+      .setOrigin(0.5);
+    this.dockedBoatContainer.add(txt);
+  }
+
   override update(time: number, delta: number) {
     super.update(time, delta);
+    this.syncDockedBoat();
     this.fishingController?.update(time, delta);
     this.remoteFishingControllers.forEach((ctrl) => ctrl.update(time, delta));
   }
@@ -289,29 +323,8 @@ export class TownScene extends WorldScene {
     pontoon.fillStyle(0xa16207, 0.95).fillRect(40.1 * TILE, 26.5 * TILE, 4, 38);
 
     const dockedBoatContainer = this.add.container(slipX + 16, slipY).setDepth(slipY);
-    const updateDockedBoat = () => {
-      const myAppearance = this.layer?.self?.appearance;
-      const boatId = myAppearance?.boat ? normalizeBoatId(myAppearance.boat) : null;
-      dockedBoatContainer.removeAll(true);
-      if (boatId) {
-        const tex = ensureBoatTexture(this, boatId, 1, 0);
-        const bImg = this.add.image(0, 0, tex).setOrigin(0.5, 0.7);
-        dockedBoatContainer.add(bImg);
-        const txt = this.add
-          .text(0, -28, '⛵ Lên Thuyền (E)', {
-            fontFamily: 'Inter, sans-serif',
-            fontSize: '10px',
-            fontStyle: 'bold',
-            color: '#38bdf8',
-            backgroundColor: 'rgba(15, 23, 42, 0.85)',
-            padding: { x: 5, y: 2 },
-            resolution: 2,
-          })
-          .setOrigin(0.5);
-        dockedBoatContainer.add(txt);
-      }
-    };
-    updateDockedBoat();
+    this.dockedBoatContainer = dockedBoatContainer;
+    this.syncDockedBoat();
 
     if (!useUi.getState().reducedMotion) {
       this.tweens.add({
@@ -325,7 +338,7 @@ export class TownScene extends WorldScene {
     }
 
     const dockHit = this.add
-      .zone(slipX + 8, slipY, 56, 52)
+      .zone(slipX + 8, slipY, 64, 60)
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
     const embarkBoat = () => {
@@ -339,6 +352,7 @@ export class TownScene extends WorldScene {
           title: '⛵ Cần có thuyền để ra khơi',
           body: 'Hãy ghé Tiệm Ngư Cụ Bác Ba ở phía tây bến tàu để chọn mua và trang bị một chiếc thuyền nhé!',
         });
+        useUi.getState().setPanel('shop-rods');
         return;
       }
       play('pop');
@@ -346,13 +360,15 @@ export class TownScene extends WorldScene {
       void net.goOcean();
     };
     dockHit.on('pointerdown', embarkBoat);
+    dockedBoatContainer.setSize(56, 52).setInteractive({ useHandCursor: true });
+    dockedBoatContainer.on('pointerdown', embarkBoat);
 
     const onKey = (event: KeyboardEvent) => {
       const ui = useUi.getState();
       if (event.repeat || typing() || ui.panel || ui.activity || document.querySelector('.backdrop')) return;
       if (event.key.toLowerCase() !== 'e' || this.exiting || !this.layer?.self) return;
       const { x, y } = this.layer.self.container;
-      if (Math.hypot(x - 40 * TILE, y - 27.5 * TILE) <= 2.5 * TILE) {
+      if (Math.hypot(x - 39.5 * TILE, y - 27.5 * TILE) <= 3.5 * TILE) {
         embarkBoat();
       }
     };
@@ -511,10 +527,10 @@ export class TownScene extends WorldScene {
       }
     }
 
-    if (!this.exiting && x >= 40 * TILE && y >= 26 * TILE && y <= 29 * TILE) {
+    if (!this.exiting && x >= 38.5 * TILE && y >= 25.5 * TILE && y <= 30 * TILE) {
       const myAppearance = this.layer?.self?.appearance;
       const boatId = myAppearance?.boat ? normalizeBoatId(myAppearance.boat) : null;
-      if (boatId) {
+      if (boatId && x >= 39.3 * TILE) {
         this.exiting = true;
         play('pop');
         void net.goOcean();

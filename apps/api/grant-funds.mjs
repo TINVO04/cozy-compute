@@ -1,4 +1,5 @@
-const { Pool } = require('pg');
+import pg from 'pg';
+const { Pool } = pg;
 
 const connectionString = process.env.DATABASE_URL || 'postgres://cozy:cozy_dev_password@127.0.0.1:5432/cozy';
 const pool = new Pool({ connectionString });
@@ -49,4 +50,4 @@ async function grantInfiniteMoney() {
   }
 }
 
-grantInfiniteMoney();
+void grantInfiniteMoney();

@@ -221,7 +221,7 @@ export const ZONES: Zone[] = [
   },
   { id: 'events', label: 'Bảng Sự Kiện', prompt: 'Xem sự kiện hôm nay', rect: t(30, 12, 5, 5) },
   { id: 'ai_kiosk', label: 'Trạm Thưởng AI', prompt: 'Mở trạm đổi thưởng AI', rect: t(19, 15, 3, 2) },
-  { id: 'pier', label: 'Cầu Tàu Lắc Lư', prompt: 'Thả cần câu cá', rect: t(37, 26, 4, 4) },
+  { id: 'pier', label: 'Cầu Tàu Bến Cá', prompt: 'Bến Thuyền & Câu Cá', rect: t(37, 20, 5, 10) },
   {
     id: 'fishing_shop',
     label: 'Tiệm Ngư Cụ Bác Ba',

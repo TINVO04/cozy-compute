@@ -356,7 +356,7 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
 }
 
 const ZONE_ACTIONS: Partial<Record<ZoneId, { cta: string; hint: string }>> = {
-  pier: { cta: 'Thả cần câu', hint: 'Câu cá kiếm Xu và Danh tiếng' },
+  pier: { cta: 'Lên thuyền / Thả cần', hint: 'Bến Cầu Tàu: Xuất bến ra biển lớn hoặc thả cần câu' },
   fishing_shop: { cta: 'Mua cần câu & Ngư cụ', hint: 'Sắm cần câu xịn, tăng cơ hội săn cá khổng lồ' },
   delivery: { cta: 'Nhận đơn hàng', hint: 'Giao kiện hàng quanh thị trấn' },
   cafe: { cta: 'Bắt đầu ca làm', hint: 'Pha chế đồ uống cho khách hàng kỳ lạ' },
@@ -409,6 +409,10 @@ function WorldHud({ me }: { me: Me }) {
     play('click');
     switch (zone) {
       case 'pier':
+        if (me.appearance.boat) {
+          return void net.goOcean();
+        }
+        return setActivity('fishing');
       case 'coral_reef':
       case 'open_sea':
       case 'abyssal_trench':
@@ -524,13 +528,46 @@ function WorldHud({ me }: { me: Me }) {
               <Sparkles size={18} />
             </div>
             <div className="prompt-text">
-              <strong>{zoneLabel}</strong>
-              <span>{action.hint}</span>
+              <strong>
+                {zone === 'pier' && room.kind === 'town' ? 'Cầu Tàu & Bến Thuyền Ra Khơi' : zoneLabel}
+              </strong>
+              <span>
+                {zone === 'pier' && room.kind === 'town'
+                  ? me.appearance.boat
+                    ? 'Thuyền đã neo sẵn sàng! Xuất bến ra khơi săn cá quý hiếm.'
+                    : 'Thả cần câu tại hồ thị trấn hoặc ghé Tiệm Bác Ba sắm thuyền ra khơi.'
+                  : action.hint}
+              </span>
             </div>
-            <Button variant="primary" onClick={runAction}>
-              <span className="kbd">E</span>
-              {action.cta}
-            </Button>
+            {zone === 'pier' && room.kind === 'town' ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {me.appearance.boat ? (
+                  <>
+                    <Button variant="reward" onClick={() => void net.goOcean()}>
+                      <span className="kbd">E</span>⛵ Lên thuyền ra khơi
+                    </Button>
+                    <Button variant="secondary" onClick={() => setActivity('fishing')}>
+                      🎣 Thả cần câu
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="primary" onClick={() => setActivity('fishing')}>
+                      <span className="kbd">E</span>
+                      🎣 Thả cần câu
+                    </Button>
+                    <Button variant="secondary" onClick={() => setPanel('shop-rods')}>
+                      ⛵ Tiệm Bác Ba (Mua thuyền)
+                    </Button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <Button variant="primary" onClick={runAction}>
+                <span className="kbd">E</span>
+                {action.cta}
+              </Button>
+            )}
           </div>
         ) : null}
       </div>
