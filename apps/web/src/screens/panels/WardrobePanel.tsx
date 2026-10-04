@@ -4,6 +4,7 @@ import {
   SKIN_TONES,
   TOP_COLORS,
   type Appearance,
+  type ClothingSlot,
   type HairStyle,
 } from '@cozy/game-data';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -66,8 +67,7 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
   });
 
   const equip = useMutation({
-    mutationFn: (v: { itemId: string | null; slot: 'hat' | 'top' | 'face' | 'rod' }) =>
-      api('/inventory/equip', { body: v }),
+    mutationFn: (v: { itemId: string | null; slot: ClothingSlot }) => api('/inventory/equip', { body: v }),
     onSuccess: () => refresh(),
     onError: (err) => toastError(err, 'Không thể thay đổi trang bị'),
   });

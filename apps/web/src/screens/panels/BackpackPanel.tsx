@@ -65,6 +65,7 @@ const SLOT_NAMES: Record<string, string> = {
   top: 'Áo',
   face: 'Phụ kiện',
   rod: 'Cần câu',
+  boat: 'Thuyền',
 };
 
 const RARITY_COLORS: Record<string, string> = {
@@ -226,7 +227,7 @@ export function BackpackPanel({
 
   // Equip clothing mutation
   const equipItem = useMutation({
-    mutationFn: (v: { itemId: string | null; slot: 'hat' | 'top' | 'face' | 'rod' }) =>
+    mutationFn: (v: { itemId: string | null; slot: 'hat' | 'top' | 'face' | 'rod' | 'boat' }) =>
       api('/inventory/equip', { body: v }),
     onSuccess: () => refresh(),
     onError: (err) => toastError(err, 'Không thể thay đổi trang bị'),
@@ -239,9 +240,11 @@ export function BackpackPanel({
   }, [me.appearance.heldFish, fishList]);
   const totalBackpackCoin = useMemo(() => fishList.reduce((acc, f) => acc + f.coinValue, 0), [fishList]);
   const ownedClothing = (shop.data ?? []).filter(
-    (i) => (i.type === 'clothing' || i.type === 'rod') && i.owned > 0,
+    (i) => (i.type === 'clothing' || i.type === 'rod' || i.type === 'boat') && i.owned > 0,
   );
-  const [wardrobeFilter, setWardrobeFilter] = useState<'all' | 'hat' | 'top' | 'face' | 'rod'>('all');
+  const [wardrobeFilter, setWardrobeFilter] = useState<'all' | 'hat' | 'top' | 'face' | 'rod' | 'boat'>(
+    'all',
+  );
   const filteredOwnedClothing = useMemo(() => {
     if (wardrobeFilter === 'all') return ownedClothing;
     return ownedClothing.filter((i) => i.slot === wardrobeFilter);
@@ -1075,6 +1078,15 @@ export function BackpackPanel({
                     >
                       Cần câu
                     </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      className="tab"
+                      aria-selected={wardrobeFilter === 'boat'}
+                      onClick={() => setWardrobeFilter('boat')}
+                    >
+                      Thuyền bè
+                    </button>
                   </div>
                 </div>
 
@@ -1128,7 +1140,12 @@ export function BackpackPanel({
                                 zIndex: 2,
                               }}
                             >
-                              ✓ {item.type === 'rod' ? 'Đang cầm' : 'Đang mặc'}
+                              ✓{' '}
+                              {item.type === 'rod'
+                                ? 'Đang cầm'
+                                : item.type === 'boat'
+                                  ? 'Đang trang bị'
+                                  : 'Đang mặc'}
                             </span>
                           ) : null}
 
@@ -1147,11 +1164,13 @@ export function BackpackPanel({
                               src={
                                 item.slot === 'rod'
                                   ? itemIcon(item.sprite, 'rod', item.size, 4)
-                                  : chibiItemIcon(
-                                      item.sprite,
-                                      (item.slot as 'hat' | 'top' | 'face') ?? 'top',
-                                      72,
-                                    )
+                                  : item.slot === 'boat'
+                                    ? itemIcon(item.id, 'boat')
+                                    : chibiItemIcon(
+                                        item.sprite,
+                                        (item.slot as 'hat' | 'top' | 'face') ?? 'top',
+                                        72,
+                                      )
                               }
                               alt={item.name}
                               style={{
@@ -1192,17 +1211,21 @@ export function BackpackPanel({
                             onClick={() =>
                               equipItem.mutate({
                                 itemId: isEquipped ? null : item.id,
-                                slot: item.slot as 'hat' | 'top' | 'face' | 'rod',
+                                slot: item.slot as 'hat' | 'top' | 'face' | 'rod' | 'boat',
                               })
                             }
                           >
                             {isEquipped
                               ? item.type === 'rod'
                                 ? 'Cất cần'
-                                : 'Tháo ra'
+                                : item.type === 'boat'
+                                  ? 'Cất thuyền'
+                                  : 'Tháo ra'
                               : item.type === 'rod'
                                 ? 'Trang bị'
-                                : 'Mặc vào'}
+                                : item.type === 'boat'
+                                  ? 'Trang bị thuyền'
+                                  : 'Mặc vào'}
                           </Button>
                         </div>
                       );

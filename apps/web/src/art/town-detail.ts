@@ -556,18 +556,20 @@ function paintTempleGate() {
     ctx = c.getContext('2d')!;
   oval(ctx, 'rgba(39,53,34,0.2)', 55, 58, 50, 4);
   for (const x of [16, 85]) {
-    box(ctx, '#514b37', x, 10, 7, 48);
-    box(ctx, '#a78b58', x + 1, 11, 4, 44);
-    box(ctx, '#d6bf88', x + 1, 12, 1, 41);
-    box(ctx, '#887a53', x - 3, 53, 13, 6);
-    box(ctx, '#d7c39b', x - 3, 53, 13, 2);
+    box(ctx, '#334155', x, 10, 7, 48);
+    box(ctx, '#64748b', x + 1, 11, 5, 44);
+    box(ctx, '#94a3b8', x + 1, 12, 2, 41);
+    box(ctx, '#1e293b', x - 3, 53, 13, 6);
+    box(ctx, '#475569', x - 3, 53, 13, 2);
   }
-  box(ctx, '#553d29', 12, 10, 86, 20);
-  box(ctx, '#967240', 14, 12, 82, 16);
-  box(ctx, '#c5a169', 16, 13, 78, 1);
-  label(ctx, 'CHÙA BỬU LONG', 55, 21, 76, '#f0d49b', 8);
-  box(ctx, '#5d472e', 10, 8, 90, 3);
-  box(ctx, '#c2a66e', 11, 8, 88, 1);
+  // Metallic blue highway bridgehead sign plate with white reflective border
+  box(ctx, '#1e293b', 12, 10, 86, 20);
+  box(ctx, '#0284c7', 14, 12, 82, 16);
+  box(ctx, '#ffffff', 15, 13, 80, 1);
+  box(ctx, '#38bdf8', 15, 14, 80, 1);
+  label(ctx, 'CẦU HÓA AN', 55, 22, 76, '#ffffff', 9);
+  box(ctx, '#0f172a', 10, 8, 90, 3);
+  box(ctx, '#38bdf8', 11, 8, 88, 1);
   return c;
 }
 function paintTempleWall(w: number, h: number) {

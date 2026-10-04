@@ -140,7 +140,7 @@ export async function equip(
   ctx: AppContext,
   userId: string,
   itemId: string | null,
-  slot: 'hat' | 'top' | 'face' | 'rod',
+  slot: 'hat' | 'top' | 'face' | 'rod' | 'boat',
 ) {
   await withTx(ctx.db, async (tx) => {
     await tx.query(
@@ -159,7 +159,7 @@ export async function equip(
       const r = await tx.query(
         `UPDATE inventory_items i SET equipped_slot = $3
            FROM item_definitions d
-          WHERE i.user_id = $1 AND i.item_id = $2 AND d.id = i.item_id AND (d.type = 'clothing' OR d.type = 'rod') AND d.slot = $3 AND i.quantity > 0`,
+          WHERE i.user_id = $1 AND i.item_id = $2 AND d.id = i.item_id AND (d.type = 'clothing' OR d.type = 'rod' OR d.type = 'boat') AND d.slot = $3 AND i.quantity > 0`,
         [userId, itemId, slot],
       );
       if (!r.rowCount) throw notFound('You do not own that item.');

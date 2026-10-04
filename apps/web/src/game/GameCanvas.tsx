@@ -8,6 +8,7 @@ import {
   CompanyScene,
   CyberNetScene,
   FarmScene,
+  OceanScene,
   TownScene,
   UniversityScene,
 } from './scenes';
@@ -39,6 +40,7 @@ export function GameCanvas() {
         BidaScene,
         CyberNetScene,
         FarmScene,
+        OceanScene,
       ],
     });
     game.canvas?.setAttribute(

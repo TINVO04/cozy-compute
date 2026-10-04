@@ -380,3 +380,26 @@ export function spawnFootstepDust(scene: Phaser.Scene, x: number, y: number) {
     onComplete: () => dust.destroy(),
   });
 }
+
+/**
+ * Spawns a soft water wake ripple / foam bubble behind a moving boat.
+ */
+export function spawnWaterWake(scene: Phaser.Scene, x: number, y: number) {
+  if (!scene.sys || !scene.sys.displayList || !scene.scene.isActive()) return;
+  const wake = scene.add
+    .graphics()
+    .fillStyle(0xdbeafe, 0.7)
+    .fillCircle(0, 0, 3 + Math.random() * 2)
+    .setPosition(x + (Math.random() * 8 - 4), y + 2)
+    .setDepth(y - 2);
+
+  scene.tweens.add({
+    targets: wake,
+    scaleX: 2.2,
+    scaleY: 1.4,
+    alpha: 0,
+    duration: 400,
+    ease: 'Cubic.easeOut',
+    onComplete: () => wake.destroy(),
+  });
+}

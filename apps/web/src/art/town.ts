@@ -60,7 +60,7 @@ export function paintProp(kind: TownPropKind): HTMLCanvasElement {
       ctx.font = '700 8px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#4d5140';
-      ctx.fillText('BẾN CÂU →', 36, 18);
+      ctx.fillText('CẦU HÓA AN →', 36, 18);
       ctx.fillText('← PHỐ CHỢ', 36, 35);
     }
   } else if (kind === 'fountain') {

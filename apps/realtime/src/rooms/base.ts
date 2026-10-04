@@ -1,5 +1,5 @@
 import { Room, type Client } from '@colyseus/core';
-import { AuthoritativeMovement, TICK_RATE, type Rect } from '@cozy/game-data';
+import { AuthoritativeMovement, PLAYER_SPEED, TICK_RATE, type Rect } from '@cozy/game-data';
 import type { Redis } from 'ioredis';
 import type { ApiClient, SessionInfo } from '../api.js';
 import { cleanChat, EMOTES, type Emote } from '../chat.js';
@@ -104,7 +104,7 @@ export abstract class BaseRoom extends Room<RoomState> {
     return getDeps().api.session(options.token);
   }
 
-  override onJoin(client: Client, _options: unknown, session: SessionInfo) {
+  override onJoin(client: Client, options: unknown, session: SessionInfo) {
     const previous = this.byUser.get(session.userId);
     if (previous && previous !== client.sessionId) {
       const old = this.clients.find((c) => c.sessionId === previous);
@@ -112,7 +112,7 @@ export abstract class BaseRoom extends Room<RoomState> {
       this.removePlayer(previous);
     }
     this.byUser.set(session.userId, client.sessionId);
-    const spawn = this.spawnFor(session);
+    const spawn = this.spawnFor(session, options);
     const p = new PlayerState();
     p.userId = session.userId;
     p.name = session.displayName;
@@ -132,7 +132,7 @@ export abstract class BaseRoom extends Room<RoomState> {
     void this.publishPresence(session.userId);
   }
 
-  protected spawnFor(_session: SessionInfo): { x: number; y: number } {
+  protected spawnFor(_session: SessionInfo, _options?: unknown): { x: number; y: number } {
     return this.world().spawn;
   }
 
@@ -188,6 +188,10 @@ export abstract class BaseRoom extends Room<RoomState> {
     );
   }
 
+  protected playerSpeedFor(_d: ClientData, _p: PlayerState): number {
+    return PLAYER_SPEED;
+  }
+
   protected tick(dtMs: number) {
     const w = this.world();
     const now = Date.now();
@@ -200,6 +204,7 @@ export abstract class BaseRoom extends Room<RoomState> {
         blockers: w.blockers,
         width: w.width,
         height: w.height,
+        speed: this.playerSpeedFor(d, p),
       });
       p.seq = next.seq;
       p.inputElapsedMs = next.inputElapsedMs;

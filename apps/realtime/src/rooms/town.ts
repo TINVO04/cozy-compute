@@ -1,5 +1,5 @@
 import type { Client } from '@colyseus/core';
-import { BLOCKERS, MAP_HEIGHT, MAP_WIDTH, SPAWN } from '@cozy/game-data';
+import { BLOCKERS, getTownReturnSpawn, MAP_HEIGHT, MAP_WIDTH, SPAWN } from '@cozy/game-data';
 import type { SessionInfo } from '../api.js';
 import { DuckState, EventState, type PlayerState } from '../schema.js';
 import { BaseRoom, getDeps, type WorldSpec } from './base.js';
@@ -90,8 +90,12 @@ export class TownRoom extends BaseRoom {
     if (this.eventTimer) clearInterval(this.eventTimer);
   }
 
-  protected override spawnFor(_session: SessionInfo) {
-    // Scatter slightly so a crowd does not stack on one pixel.
+  protected override spawnFor(_session: SessionInfo, options?: unknown): { x: number; y: number } {
+    const from = (options as { from?: string } | undefined)?.from;
+    if (from) {
+      return getTownReturnSpawn(from);
+    }
+    // Scatter slightly so a crowd does not stack on one pixel when spawning in central plaza.
     return {
       x: SPAWN.x + Math.round((Math.random() - 0.5) * 96),
       y: SPAWN.y + Math.round((Math.random() - 0.5) * 32),

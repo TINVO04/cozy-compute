@@ -56,7 +56,7 @@ interface UiState {
   zone: ZoneId | null;
   connection: 'connecting' | 'online' | 'reconnecting' | 'offline';
   room: {
-    kind: 'town' | 'apartment' | 'company' | 'university' | 'comga' | 'bida' | 'cybernet' | 'farm';
+    kind: 'town' | 'apartment' | 'company' | 'university' | 'comga' | 'bida' | 'cybernet' | 'farm' | 'ocean';
     ownerId?: string;
     label: string;
   };

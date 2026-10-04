@@ -27,17 +27,26 @@ import {
   getFarmPlotRect,
   getPlotUnlockPrice,
   FARM_POIS,
+  OCEAN_BLOCKERS,
+  OCEAN_HEIGHT,
+  OCEAN_WIDTH,
+  normalizeBoatId,
+  oceanZoneAt,
   t,
   TILE,
+  PIER,
   ZONES,
   zoneAt,
   type FishShadowTier,
   type Rect,
+  type ZoneId,
 } from '@cozy/game-data';
 import { getStateCallbacks, type Room } from 'colyseus.js';
 import Phaser from 'phaser';
 import { duckGrid } from '../art/items';
 import { paintFarmLandscape } from '../art/farm-landscape';
+import { paintOceanLandscape } from '../art/ocean-landscape';
+import { ensureBoatTexture } from '../art/boat';
 import {
   paintShopBacSau,
   paintSiloWarehouse,
@@ -196,6 +205,22 @@ export class TownScene extends WorldScene {
   public fishingController: InWorldFishingController | null = null;
   public remoteFishingControllers = new Map<string, InWorldFishingController>();
   private exiting = false;
+  private dockedBoatContainer: Phaser.GameObjects.Container | null = null;
+  private lastBoatModel: string | null = '__init__';
+  private lastBarricadeToast = 0;
+  private spawnCooldownUntil = 0;
+
+  private notifyBarricade() {
+    const now = Date.now();
+    if (now - this.lastBarricadeToast < 4000) return;
+    this.lastBarricadeToast = now;
+    play('pop');
+    useUi.getState().toast({
+      kind: 'info',
+      title: '🚧 Cầu Hóa An (Hướng Bình Dương)',
+      body: 'Cầu Hóa An hướng đi Bình Dương đang thi công mở rộng và sẽ thông xe trong bản cập nhật kế tiếp! Hãy bước sang bến thuyền bên hông cầu để lái thuyền ra Sông Đồng Nai.',
+    });
+  }
 
   constructor() {
     super('town');
@@ -203,6 +228,9 @@ export class TownScene extends WorldScene {
 
   override create() {
     this.exiting = false;
+    this.lastBoatModel = '__init__';
+    this.lastBarricadeToast = 0;
+    this.spawnCooldownUntil = Date.now() + 1200;
     super.create();
   }
 
@@ -223,8 +251,39 @@ export class TownScene extends WorldScene {
     this.layer?.saySelf(text);
   }
 
+  private syncDockedBoat() {
+    if (!this.dockedBoatContainer) return;
+    const myAppearance = this.layer?.self?.appearance;
+    const boatId = myAppearance?.boat ? normalizeBoatId(myAppearance.boat) : null;
+    if (boatId === this.lastBoatModel) return;
+    this.lastBoatModel = boatId;
+
+    this.dockedBoatContainer.removeAll(true);
+    const displayBoatId = boatId ?? 'boat_coracle';
+    const tex = ensureBoatTexture(this, displayBoatId, 1, 0);
+    const bImg = this.add.image(0, 0, tex).setOrigin(0.5, 0.7);
+    if (!boatId) {
+      bImg.setAlpha(0.6);
+    }
+    this.dockedBoatContainer.add(bImg);
+
+    const txt = this.add
+      .text(0, -28, boatId ? '⛵ Lên Thuyền (E)' : '⛵ Bến Thuyền Ra Khơi', {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '10px',
+        fontStyle: 'bold',
+        color: boatId ? '#38bdf8' : '#fbbf24',
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        padding: { x: 6, y: 2 },
+        resolution: 2,
+      })
+      .setOrigin(0.5);
+    this.dockedBoatContainer.add(txt);
+  }
+
   override update(time: number, delta: number) {
     super.update(time, delta);
+    this.syncDockedBoat();
     this.fishingController?.update(time, delta);
     this.remoteFishingControllers.forEach((ctrl) => ctrl.update(time, delta));
   }
@@ -271,10 +330,83 @@ export class TownScene extends WorldScene {
     townFishingController = this.fishingController;
     townSelfPosProvider = () => this.getSelfPos();
 
+    // Boat Slip docking visual at east pier edge (t(39, 27))
+    const slipX = 40.5 * TILE;
+    const slipY = 27.5 * TILE;
+
+    const pontoon = this.add.graphics().setDepth(slipY - 4);
+    pontoon.fillStyle(0x1e293b, 0.9).fillRect(39.8 * TILE, 26.5 * TILE, 14, 38);
+    pontoon.fillStyle(0x0284c7, 0.95).fillRect(40.0 * TILE, 26.5 * TILE, 10, 36);
+    pontoon.fillStyle(0x38bdf8, 1.0).fillRect(40.2 * TILE, 26.5 * TILE, 2, 36);
+
+    const dockedBoatContainer = this.add.container(slipX + 16, slipY).setDepth(slipY);
+    this.dockedBoatContainer = dockedBoatContainer;
+    this.syncDockedBoat();
+
+    if (!useUi.getState().reducedMotion) {
+      this.tweens.add({
+        targets: dockedBoatContainer,
+        y: slipY - 3,
+        duration: 1200,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+
+    const dockHit = this.add
+      .zone(slipX + 8, slipY, 64, 60)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    const embarkBoat = () => {
+      if (this.exiting) return;
+      const myAppearance = this.layer?.self?.appearance;
+      const boatId = myAppearance?.boat ? normalizeBoatId(myAppearance.boat) : null;
+      if (!boatId) {
+        play('pop');
+        useUi.getState().toast({
+          kind: 'info',
+          title: '⛵ Cần có thuyền để ra khơi',
+          body: 'Hãy ghé Tiệm Ngư Cụ Bác Ba ở phía tây bến tàu để chọn mua và trang bị một chiếc thuyền nhé!',
+        });
+        useUi.getState().setPanel('shop-rods');
+        return;
+      }
+      play('pop');
+      this.exiting = true;
+      void net.goOcean();
+    };
+    dockHit.on('pointerdown', embarkBoat);
+    dockedBoatContainer.setSize(56, 52).setInteractive({ useHandCursor: true });
+    dockedBoatContainer.on('pointerdown', embarkBoat);
+
+    // Interactive Cầu Hóa An -> Bình Dương construction barricade
+    const barrierX = 39 * TILE;
+    const barrierY = PIER.y + PIER.h - 16;
+    const barHit = this.add
+      .zone(barrierX, barrierY, PIER.w + 16, 36)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    barHit.on('pointerdown', () => this.notifyBarricade());
+
+    const onKey = (event: KeyboardEvent) => {
+      const ui = useUi.getState();
+      if (event.repeat || typing() || ui.panel || ui.activity || document.querySelector('.backdrop')) return;
+      if (event.key.toLowerCase() !== 'e' || this.exiting || !this.layer?.self) return;
+      const { x, y } = this.layer.self.container;
+      if (Math.hypot(x - 39.5 * TILE, y - 27.5 * TILE) <= 3.5 * TILE) {
+        embarkBoat();
+      } else if (Math.hypot(x - barrierX, y - barrierY) <= 3.0 * TILE) {
+        this.notifyBarricade();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+
     this.unsubscribe = useUi.subscribe((s, prev) => {
       if (s.delivery !== prev.delivery) this.drawDeliveryMarker();
     });
     this.events.once('shutdown', () => {
+      window.removeEventListener('keydown', onKey);
       this.unsubscribe?.();
       this.fishingController?.cleanup();
       this.remoteFishingControllers.forEach((ctrl) => ctrl.cleanup());
@@ -413,7 +545,7 @@ export class TownScene extends WorldScene {
     if (zone !== this.lastZone) {
       this.lastZone = zone;
       useUi.getState().setZone(zone);
-      if (!this.exiting && zone === 'farm_gate') {
+      if (!this.exiting && Date.now() >= this.spawnCooldownUntil && zone === 'farm_gate') {
         const myId = useUi.getState().myUserId;
         if (myId) {
           this.exiting = true;
@@ -421,6 +553,20 @@ export class TownScene extends WorldScene {
           void net.goFarm(myId, 'Trang Trại Cá Nhân');
         }
       }
+    }
+
+    if (!this.exiting && x >= 38.5 * TILE && y >= 25.5 * TILE && y <= 30 * TILE) {
+      const myAppearance = this.layer?.self?.appearance;
+      const boatId = myAppearance?.boat ? normalizeBoatId(myAppearance.boat) : null;
+      if (boatId && x >= 39.3 * TILE) {
+        this.exiting = true;
+        play('pop');
+        void net.goOcean();
+      }
+    }
+
+    if (y >= 28.5 * TILE && x >= 37.5 * TILE && x < 39.3 * TILE) {
+      this.notifyBarricade();
     }
   }
 }
@@ -745,7 +891,7 @@ abstract class InteriorScene extends WorldScene {
   protected override onSelfMove(x: number, y: number) {
     if (!this.exiting && y >= 9.8 * TILE && x >= 6.5 * TILE && x <= 9.5 * TILE) {
       this.exiting = true;
-      void net.goTown();
+      void net.goTown(this.scene.key);
     }
   }
 
@@ -1200,7 +1346,7 @@ export class UniversityScene extends InteriorScene {
     const nearGate2 = x >= 47 * TILE && y >= 12 * TILE && y <= 15 * TILE;
     if (!this.exiting && (nearGate1 || nearGate2)) {
       this.exiting = true;
-      void net.goTown();
+      void net.goTown('university');
     }
   }
 
@@ -1256,7 +1402,7 @@ export class ComGaScene extends InteriorScene {
   protected override onSelfMove(x: number, y: number) {
     if (!this.exiting && y >= 9.2 * TILE && x >= 5.5 * TILE && x <= 8.5 * TILE) {
       this.exiting = true;
-      void net.goTown();
+      void net.goTown('comga');
     }
   }
 
@@ -1430,7 +1576,7 @@ export class BidaScene extends InteriorScene {
   protected override onSelfMove(x: number, y: number) {
     if (!this.exiting && y >= 10.4 * TILE && x >= 6.8 * TILE && x <= 9.2 * TILE) {
       this.exiting = true;
-      void net.goTown();
+      void net.goTown('bida');
     }
   }
 
@@ -1606,7 +1752,7 @@ export class CyberNetScene extends InteriorScene {
   protected override onSelfMove(x: number, y: number) {
     if (!this.exiting && y >= 10.4 * TILE && x >= 6.8 * TILE && x <= 9.2 * TILE) {
       this.exiting = true;
-      void net.goTown();
+      void net.goTown('cybernet');
     }
   }
   protected buildWorld() {
@@ -1727,6 +1873,7 @@ export class FarmScene extends WorldScene {
   private plotsData: FarmPlotData[] = [];
   private refreshing = false;
   private exiting = false;
+  private spawnCooldownUntil = 0;
 
   constructor() {
     super('farm');
@@ -1735,6 +1882,7 @@ export class FarmScene extends WorldScene {
   override create() {
     this.exiting = false;
     this.interactions = [];
+    this.spawnCooldownUntil = Date.now() + 1200;
     super.create();
   }
 
@@ -1754,12 +1902,12 @@ export class FarmScene extends WorldScene {
     const { width, height } = this.worldSize();
     const cam = this.cameras.main;
     const zoomMultiplier = useUi.getState().zoom;
-    // Map is 1536x1024. Clamp baseZoom to 1.0..1.5 on standard screens so the map doesn't feel oversized
+    // Set comfortable close-up zoom so the player is large and the farm feels compact and cozy around the avatar
     const baseZoom = Math.max(
-      0.75,
-      Math.min(1.5, Math.round(Math.min(this.scale.width / 960, this.scale.height / 640) * 10) / 10),
+      1.5,
+      Math.min(2.2, Math.round(Math.min(this.scale.width / 580, this.scale.height / 400) * 100) / 100),
     );
-    const zoom = Math.max(0.5, Math.min(3.0, Math.round(baseZoom * zoomMultiplier * 100) / 100));
+    const zoom = Math.max(0.75, Math.min(3.5, Math.round(baseZoom * zoomMultiplier * 100) / 100));
     cam.setZoom(zoom);
     const vw = this.scale.width / zoom;
     const vh = this.scale.height / zoom;
@@ -1772,11 +1920,17 @@ export class FarmScene extends WorldScene {
   }
 
   protected override onSelfMove(x: number, y: number) {
-    // Check gate exit to town (western portal row 2..4: col 0..1)
-    if (!this.exiting && x <= 1.5 * TILE && y >= 2 * TILE && y <= 5 * TILE) {
+    // Check gate exit to town (western portal rows 2..4 at column 0..1)
+    if (
+      !this.exiting &&
+      Date.now() >= this.spawnCooldownUntil &&
+      x <= 1.0 * TILE &&
+      y >= 2 * TILE &&
+      y <= 4.8 * TILE
+    ) {
       this.exiting = true;
       play('pop');
-      void net.goTown();
+      void net.goTown('farm');
     }
   }
 
@@ -1881,7 +2035,7 @@ export class FarmScene extends WorldScene {
     });
 
     // Center Park Bench
-    this.interactAt(740, 595, 'Ghế nghỉ chân', () => {
+    this.interactAt(790, 580, 'Ghế nghỉ chân', () => {
       play('pop');
       useUi.getState().toast({
         kind: 'info',
@@ -1891,7 +2045,7 @@ export class FarmScene extends WorldScene {
     });
 
     // Fishing Pond Dock
-    this.interactAt(1215, 435, 'Hồ câu cá', () => {
+    this.interactAt(1043, 465, 'Hồ câu cá', () => {
       play('pop');
       useUi.getState().toast({
         kind: 'info',
@@ -1901,11 +2055,11 @@ export class FarmScene extends WorldScene {
     });
 
     // Gate Exit to Town
-    this.interactAt(135, 130, 'Về thị trấn', () => {
+    this.interactAt(110, 140, 'Về thị trấn', () => {
       if (this.exiting) return;
       this.exiting = true;
       play('pop');
-      void net.goTown();
+      void net.goTown('farm');
     });
 
     // 3. 36 Plots Grid Setup
@@ -2026,6 +2180,261 @@ export class FarmScene extends WorldScene {
 
   override update(time: number, delta: number) {
     super.update(time, delta);
+    const self = this.layer?.self?.container;
+    const action =
+      self && !typing() && !useUi.getState().panel ? this.nearestInteraction(self.x, self.y) : undefined;
+    this.interactionHint?.setVisible(!!action);
+    if (action && self && this.interactionHint) {
+      this.interactionHint.setText('E · ' + action.label);
+      this.interactionHint.setPosition(self.x, self.y - 42);
+    }
+  }
+}
+
+export class OceanScene extends WorldScene {
+  private interactions: { x: number; y: number; run: () => void; label: string }[] = [];
+  private interactionHint: Phaser.GameObjects.Text | null = null;
+  public fishingController: InWorldFishingController | null = null;
+  public remoteFishingControllers = new Map<string, InWorldFishingController>();
+  private exiting = false;
+
+  constructor() {
+    super('ocean');
+  }
+
+  override create() {
+    this.exiting = false;
+    this.interactions = [];
+    super.create();
+
+    this.interactionHint = this.add
+      .text(0, 0, '', {
+        fontFamily: 'Inter Variable, Inter, system-ui, sans-serif',
+        fontSize: '11px',
+        fontStyle: '600',
+        color: '#f8fafc',
+        backgroundColor: 'rgba(12, 74, 110, 0.92)',
+        padding: { x: 7, y: 3 },
+        resolution: 2,
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(9999)
+      .setVisible(false);
+
+    const onKey = (event: KeyboardEvent) => {
+      const ui = useUi.getState();
+      if (event.repeat || typing() || ui.panel || ui.activity || document.querySelector('.backdrop')) return;
+      if (event.key.toLowerCase() !== 'e' || this.exiting || !this.layer?.self) return;
+      const { x, y } = this.layer.self.container;
+      this.nearestInteraction(x, y)?.run();
+    };
+    window.addEventListener('keydown', onKey);
+
+    this.events.once('shutdown', () => {
+      window.removeEventListener('keydown', onKey);
+      this.fishingController?.cleanup();
+      this.remoteFishingControllers.forEach((ctrl) => ctrl.cleanup());
+      this.remoteFishingControllers.clear();
+      if (townFishingController === this.fishingController) {
+        townFishingController = null;
+      }
+      this.interactionHint?.destroy();
+      this.interactionHint = null;
+      this.interactions = [];
+    });
+  }
+
+  getSelfPos(): { x: number; y: number } | null {
+    if (!this.layer?.self) return null;
+    return { x: this.layer.self.container.x, y: this.layer.self.container.y };
+  }
+
+  setSelfFishing(isFishing: boolean, facingDir?: number) {
+    this.layer?.setSelfFishing(isFishing, facingDir);
+  }
+
+  setSelfHeldFish(heldFish: { speciesId: string; sizeCm: number } | null) {
+    this.layer?.setSelfHeldFish(heldFish);
+  }
+
+  saySelf(text: string) {
+    this.layer?.saySelf(text);
+  }
+
+  protected worldSize() {
+    return { width: OCEAN_WIDTH, height: OCEAN_HEIGHT };
+  }
+
+  protected blockers() {
+    return OCEAN_BLOCKERS;
+  }
+
+  protected matchesRoom(room: Room) {
+    return room.name === 'ocean';
+  }
+
+  protected override fitCamera() {
+    const { width, height } = this.worldSize();
+    const cam = this.cameras.main;
+    const zoomMultiplier = useUi.getState().zoom;
+    const baseZoom = Math.max(
+      0.75,
+      Math.min(1.5, Math.round(Math.min(this.scale.width / 960, this.scale.height / 640) * 10) / 10),
+    );
+    const zoom = Math.max(0.5, Math.min(3.0, Math.round(baseZoom * zoomMultiplier * 100) / 100));
+    cam.setZoom(zoom);
+    const vw = this.scale.width / zoom;
+    const vh = this.scale.height / zoom;
+    cam.setBounds(
+      Math.min(0, (width - vw) / 2),
+      Math.min(0, (height - vh) / 2),
+      Math.max(width, vw),
+      Math.max(height, vh),
+    );
+  }
+
+  interactAt(x: number, y: number, label: string, run: () => void) {
+    this.interactions.push({ x, y, label, run });
+  }
+
+  private nearestInteraction(x: number, y: number) {
+    const nearest = this.interactions.reduce<(typeof this.interactions)[number] | undefined>(
+      (best, action) =>
+        !best || Math.hypot(action.x - x, action.y - y) < Math.hypot(best.x - x, best.y - y) ? action : best,
+      undefined,
+    );
+    return nearest && Math.hypot(nearest.x - x, nearest.y - y) <= 3 * TILE ? nearest : undefined;
+  }
+
+  private lastOceanZone: string | null = null;
+  protected override onSelfMove(x: number, y: number) {
+    // Return channel buoy at southwest (x <= 7 * TILE, y >= 20 * TILE && y <= 25 * TILE)
+    if (!this.exiting && x <= 7 * TILE && y >= 20 * TILE && y <= 25 * TILE) {
+      this.exiting = true;
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '⚓ Trở Về Bến Biên Hòa',
+        body: 'Thuyền đã cập bến cầu tàu Biên Hòa an toàn!',
+      });
+      void net.goTown('ocean');
+      return;
+    }
+
+    const oz = oceanZoneAt(x, y);
+    if (oz !== this.lastOceanZone) {
+      this.lastOceanZone = oz;
+      useUi.getState().setZone(oz as ZoneId);
+    }
+  }
+
+  protected buildWorld() {
+    // 1. Procedural Ocean Landscape
+    const texKey = 'ocean:landscape';
+    if (!this.textures.exists(texKey)) {
+      this.textures.addCanvas(texKey, paintOceanLandscape());
+    }
+    this.add.image(0, 0, texKey).setOrigin(0).setDepth(-10);
+
+    // 2. Ambient water shimmer
+    if (!useUi.getState().reducedMotion) {
+      const shimmer = this.add.graphics().setDepth(-9);
+      let tt = 0;
+      this.time.addEvent({
+        loop: true,
+        delay: 140,
+        callback: () => {
+          tt++;
+          shimmer.clear();
+          shimmer.fillStyle(0x38bdf8, 0.45);
+          for (let i = 0; i < 30; i++) {
+            const sx = (i * 137 + tt * 4) % OCEAN_WIDTH;
+            const sy = (i * 89 + tt * 2) % OCEAN_HEIGHT;
+            shimmer.fillRect(sx, sy, 7, 1);
+          }
+        },
+      });
+    }
+
+    // 3. Return Buoy interaction (x: 140, y: 720)
+    const returnTown = () => {
+      if (this.exiting) return;
+      this.exiting = true;
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: '⚓ Trở Về Thị Trấn',
+        body: 'Thuyền đã cập bến thị trấn an toàn!',
+      });
+      void net.goTown('ocean');
+    };
+    this.interactAt(140, 720, 'Về thị trấn', returnTown);
+
+    // 5. Fishing Controller
+    this.fishingController = new InWorldFishingController(this);
+    townFishingController = this.fishingController;
+    townSelfPosProvider = () => this.getSelfPos();
+  }
+
+  protected override onBind(room: Room) {
+    room.onMessage(
+      'fishing:remote_cast',
+      (msg: {
+        sessionId: string;
+        selfX: number;
+        selfY: number;
+        facingDir?: number;
+        shadowTier?: FishShadowTier;
+        biteInMs?: number;
+        shadowDelayMs?: number;
+        equippedRodId?: string;
+        nibbleCount?: number;
+        nibbleTimes?: number[];
+        nibbleOffsetsMs?: number[];
+        nibbleOrbitTurns?: number[];
+      }) => {
+        if (!msg?.sessionId) return;
+        this.remoteFishingControllers.get(msg.sessionId)?.cleanup();
+        const ctrl = new InWorldFishingController(this, { isRemote: true });
+        this.remoteFishingControllers.set(msg.sessionId, ctrl);
+        const equippedRod = FISHING_RODS[msg.equippedRodId ?? 'rod_twig'] ?? FISHING_RODS['rod_twig']!;
+        ctrl.startCast({
+          selfX: msg.selfX,
+          selfY: msg.selfY,
+          shadowTier: msg.shadowTier ?? 1,
+          nibbleCount: msg.nibbleCount ?? 5,
+          nibbleTimes:
+            msg.nibbleOffsetsMs?.map((offsetMs: number) => Date.now() + offsetMs) ?? msg.nibbleTimes ?? [],
+          nibbleOrbitTurns: msg.nibbleOrbitTurns,
+          biteInMs: msg.biteInMs ?? 15000,
+          shadowDelayMs: msg.shadowDelayMs ?? 8000,
+          equippedRod,
+        });
+      },
+    );
+
+    room.onMessage('fishing:remote_nibble', (msg: { sessionId: string; nibbleIndex?: number }) => {
+      if (!msg?.sessionId) return;
+      this.remoteFishingControllers.get(msg.sessionId)?.triggerRemoteNibble(msg.nibbleIndex ?? 0);
+    });
+
+    room.onMessage('fishing:remote_bite', (msg: { sessionId: string }) => {
+      if (!msg?.sessionId) return;
+      this.remoteFishingControllers.get(msg.sessionId)?.triggerRemoteBite();
+    });
+
+    room.onMessage('fishing:remote_stop', (msg: { sessionId: string }) => {
+      if (!msg?.sessionId) return;
+      this.remoteFishingControllers.get(msg.sessionId)?.cleanup();
+      this.remoteFishingControllers.delete(msg.sessionId);
+    });
+  }
+
+  override update(time: number, delta: number) {
+    super.update(time, delta);
+    this.fishingController?.update(time, delta);
+    this.remoteFishingControllers.forEach((ctrl) => ctrl.update(time, delta));
+
     const self = this.layer?.self?.container;
     const action =
       self && !typing() && !useUi.getState().panel ? this.nearestInteraction(self.x, self.y) : undefined;

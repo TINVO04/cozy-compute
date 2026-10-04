@@ -1,5 +1,11 @@
 import { fameTitle } from '@cozy/economy';
-import { normalizeRodId, sanitizeAppearance, STARTER_ITEMS, type Appearance } from '@cozy/game-data';
+import {
+  normalizeBoatId,
+  normalizeRodId,
+  sanitizeAppearance,
+  STARTER_ITEMS,
+  type Appearance,
+} from '@cozy/game-data';
 import type { Queryable, Tx } from '../db.js';
 import { postLedger } from '../ledger.js';
 
@@ -88,12 +94,14 @@ export async function resolvedAppearance(q: Queryable, userId: string): Promise<
   );
   const base = sanitizeAppearance(r.rows[0]?.appearance);
   const heldFish = (r.rows[0]?.held_fish ?? null) as Appearance['heldFish'];
-  const out: Appearance = { ...base, hat: null, top: null, face: null, rod: null, heldFish };
+  const out: Appearance = { ...base, hat: null, top: null, face: null, rod: null, boat: null, heldFish };
   for (const row of r.rows) {
     if (row.slot === 'hat' || row.slot === 'top' || row.slot === 'face') {
       out[row.slot] = row.sprite;
     } else if (row.slot === 'rod') {
       out.rod = row.item_id ?? (row.sprite ? normalizeRodId(row.sprite) : null);
+    } else if (row.slot === 'boat') {
+      out.boat = row.item_id ?? (row.sprite ? normalizeBoatId(row.sprite) : null);
     }
   }
   return out;

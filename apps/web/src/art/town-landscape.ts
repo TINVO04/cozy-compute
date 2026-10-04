@@ -244,29 +244,84 @@ export function paintTown(): HTMLCanvasElement {
       rect(ctx, '#9c7950', x, w.y + 9, 2, 5);
     }
   }
-  rect(ctx, '#3c7280', PIER.x - 3, PIER.y + 4, PIER.w + 6, PIER.h);
-  rect(ctx, '#71523a', PIER.x, PIER.y, PIER.w, PIER.h);
-  for (let y = PIER.y; y < PIER.y + PIER.h; y += 8) {
-    rect(ctx, '#b39062', PIER.x + 1, y, PIER.w - 2, 6);
-    rect(ctx, '#d2b27d', PIER.x + 1, y, PIER.w - 2, 1);
-    rect(ctx, '#866344', PIER.x + 18, y + 3, 12, 1);
-    rect(ctx, '#584638', PIER.x + 4, y + 3, 2, 2);
-    rect(ctx, '#584638', PIER.x + PIER.w - 6, y + 3, 2, 2);
-  }
-  for (const y of [PIER.y + 12, PIER.y + PIER.h - 16]) {
-    for (const x of [PIER.x - 3, PIER.x + PIER.w - 2]) {
-      rect(ctx, '#6b513e', x, y, 5, 12);
-      rect(ctx, '#e1c79a', x, y + 2, 5, 3);
-    }
+  // =========================================================================
+  // CẦU HÓA AN (TUYẾN NỐI BIÊN HÒA - BÌNH DƯƠNG)
+  // Modern concrete bridge deck, yellow road markings, streetlights & construction barrier
+  // =========================================================================
+  // Bridge shadow on river water
+  rect(ctx, '#0f766e', PIER.x - 6, PIER.y + 6, PIER.w + 12, PIER.h);
+
+  // Concrete substructure & asphalt bridge deck
+  rect(ctx, '#1e293b', PIER.x - 3, PIER.y, PIER.w + 6, PIER.h);
+  rect(ctx, '#334155', PIER.x - 1, PIER.y, PIER.w + 2, PIER.h);
+  rect(ctx, '#475569', PIER.x + 2, PIER.y, PIER.w - 4, PIER.h);
+
+  // White pedestrian safety curb borders
+  rect(ctx, '#f8fafc', PIER.x + 2, PIER.y, 2, PIER.h);
+  rect(ctx, '#f8fafc', PIER.x + PIER.w - 4, PIER.y, 2, PIER.h);
+
+  // Yellow dashed highway road centerline (Cầu Hóa An)
+  for (let my = PIER.y + 4; my < PIER.y + PIER.h - 26; my += 16) {
+    rect(ctx, '#fde047', PIER.x + Math.floor(PIER.w / 2) - 1, my, 2, 8);
   }
 
-  // Crosspiece on the shore joins the playable pier into a T shaped timber dock.
-  for (let y = PIER.y - 23; y < PIER.y; y += 6) {
-    rect(ctx, '#705137', PIER.x - 70, y, PIER.w + 140, 6);
-    rect(ctx, '#bb9867', PIER.x - 69, y, PIER.w + 138, 4);
-    rect(ctx, '#ddbf89', PIER.x - 69, y, PIER.w + 138, 1);
-    for (let x = PIER.x - 64; x < PIER.x + PIER.w + 65; x += 24) rect(ctx, '#73523a', x, y + 2, 2, 1);
+  // Steel safety railings (Lan can Cầu Hóa An xanh dương)
+  rect(ctx, '#0284c7', PIER.x - 3, PIER.y, 2, PIER.h);
+  rect(ctx, '#0284c7', PIER.x + PIER.w + 1, PIER.y, 2, PIER.h);
+  rect(ctx, '#38bdf8', PIER.x - 4, PIER.y, 1, PIER.h);
+  rect(ctx, '#38bdf8', PIER.x + PIER.w + 2, PIER.y, 1, PIER.h);
+
+  // Bridge railing posts & streetlamps along Cầu Hóa An
+  for (let py = PIER.y + 16; py < PIER.y + PIER.h - 20; py += 48) {
+    rect(ctx, '#64748b', PIER.x - 5, py, 3, 6);
+    rect(ctx, '#64748b', PIER.x + PIER.w + 2, py, 3, 6);
+    // Streetlamp fixture
+    rect(ctx, '#94a3b8', PIER.x - 7, py - 4, 2, 4);
+    rect(ctx, '#fef08a', PIER.x - 8, py - 6, 4, 3);
+    rect(ctx, '#94a3b8', PIER.x + PIER.w + 5, py - 4, 2, 4);
+    rect(ctx, '#fef08a', PIER.x + PIER.w + 4, py - 6, 4, 3);
   }
+
+  // Southern End: Construction Barricade towards Bình Dương (Rào chắn thi công)
+  const barY = PIER.y + PIER.h - 22;
+  // Road barrier frame
+  rect(ctx, '#1e293b', PIER.x + 2, barY, PIER.w - 4, 10);
+  // Red & White diagonal warning hazard stripes
+  for (let bx = PIER.x + 2; bx < PIER.x + PIER.w - 4; bx += 8) {
+    rect(ctx, '#ef4444', bx, barY + 1, 4, 8);
+    rect(ctx, '#ffffff', bx + 4, barY + 1, 4, 8);
+  }
+  // Construction safety warning cones on left & right
+  for (const cx of [PIER.x + 4, PIER.x + PIER.w - 12]) {
+    rect(ctx, '#ea580c', cx, barY - 6, 8, 6);
+    rect(ctx, '#f97316', cx + 1, barY - 10, 6, 4);
+    rect(ctx, '#ffffff', cx + 1, barY - 8, 6, 2);
+  }
+
+  // Yellow warning signpost (Biển báo thi công Cầu Hóa An)
+  rect(ctx, '#451a03', PIER.x + Math.floor(PIER.w / 2) - 1, barY - 18, 2, 8);
+  rect(ctx, '#fbbf24', PIER.x + 6, barY - 26, PIER.w - 12, 9);
+  rect(ctx, '#000000', PIER.x + 7, barY - 25, PIER.w - 14, 7);
+  rect(ctx, '#fde047', PIER.x + 10, barY - 23, PIER.w - 20, 3);
+
+  // Crosspiece on the shore joining highway promenade with Cầu Hóa An bridgehead
+  for (let y = PIER.y - 23; y < PIER.y; y += 6) {
+    rect(ctx, '#1e293b', PIER.x - 70, y, PIER.w + 140, 6);
+    rect(ctx, '#334155', PIER.x - 69, y, PIER.w + 138, 4);
+    rect(ctx, '#475569', PIER.x - 69, y, PIER.w + 138, 1);
+    for (let x = PIER.x - 64; x < PIER.x + PIER.w + 65; x += 24) rect(ctx, '#64748b', x, y + 2, 2, 1);
+  }
+
+  // Overhead highway sign at bridge entrance (CẦU HÓA AN)
+  rect(ctx, '#334155', PIER.x - 14, PIER.y - 36, 4, 28);
+  rect(ctx, '#334155', PIER.x + PIER.w + 10, PIER.y - 36, 4, 28);
+  rect(ctx, '#0f172a', PIER.x - 16, PIER.y - 42, PIER.w + 32, 16);
+  rect(ctx, '#0284c7', PIER.x - 15, PIER.y - 41, PIER.w + 30, 14);
+  rect(ctx, '#38bdf8', PIER.x - 14, PIER.y - 40, PIER.w + 28, 1);
+  ctx.font = '700 8px sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.fillText('CẦU HÓA AN', PIER.x + Math.floor(PIER.w / 2), PIER.y - 30);
   return canvas;
 }
 

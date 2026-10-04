@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { clampInput, isWalkable, stepMovement, PLAYER_SPEED, PLAYER_RADIUS } from './movement.js';
 import { FISH, DEFAULT_ACTIVITY_CONFIG, SHADOW_TIER_CONFIG } from './activities.js';
-import { ITEM_SEEDS, STARTER_ITEMS, FISHING_RODS } from './items.js';
+import { ITEM_SEEDS, STARTER_ITEMS, FISHING_RODS, BOATS } from './items.js';
 import { MAP_WIDTH, MAP_HEIGHT, BLOCKERS, SPAWN, zoneAt, pointInRect, ZONES } from './map.js';
 
 describe('game-data movement', () => {
@@ -108,7 +108,7 @@ describe('game-data items catalog', () => {
       allIds.add(item.id);
       expect(item.coinPrice).toBeGreaterThan(0);
       expect(item.name.length).toBeGreaterThan(0);
-      expect(['clothing', 'furniture', 'rod']).toContain(item.type);
+      expect(['clothing', 'furniture', 'rod', 'boat']).toContain(item.type);
     }
   });
 
@@ -117,6 +117,17 @@ describe('game-data items catalog', () => {
     for (const starter of STARTER_ITEMS) {
       expect(seedIds.has(starter.itemId)).toBe(true);
       expect(starter.quantity).toBeGreaterThan(0);
+    }
+  });
+
+  it('configures boats and speeds correctly', () => {
+    const boats = Object.values(BOATS);
+    expect(boats.length).toBeGreaterThanOrEqual(4);
+    for (const boat of boats) {
+      expect(boat.id).toMatch(/^boat_/);
+      expect(boat.coinPrice).toBeGreaterThan(0);
+      expect(boat.speed).toBeGreaterThan(100);
+      expect(['shallows', 'coastal', 'open_sea', 'abyss']).toContain(boat.seaZoneAccess);
     }
   });
 

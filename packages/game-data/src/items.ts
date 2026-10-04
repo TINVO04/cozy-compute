@@ -1,8 +1,8 @@
 import { GEN_Z_FURNITURE } from './furniture.js';
 export { GEN_Z_FURNITURE, GEN_Z_FURNITURE_IDS } from './furniture.js';
 
-export type ItemType = 'clothing' | 'furniture' | 'rod';
-export type ClothingSlot = 'hat' | 'top' | 'face' | 'rod';
+export type ItemType = 'clothing' | 'furniture' | 'rod' | 'boat';
+export type ClothingSlot = 'hat' | 'top' | 'face' | 'rod' | 'boat';
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary' | 'defiant' | 'sovereign';
 
 export const RARITY_LABELS: Record<Rarity, string> = {
@@ -113,6 +113,84 @@ export function normalizeRodId(rod?: string | null): string {
   return 'rod_twig';
 }
 
+export type SeaZoneAccess = 'shallows' | 'coastal' | 'open_sea' | 'abyss';
+
+export interface BoatConfig {
+  id: string;
+  name: string;
+  description: string;
+  coinPrice: number;
+  rarity: Rarity;
+  sprite: string;
+  speed: number; // movement speed (pixels/sec) when mounted on water
+  seaZoneAccess: SeaZoneAccess;
+  wakeColor?: string;
+}
+
+export const BOATS: Record<string, BoatConfig> = {
+  boat_coracle: {
+    id: 'boat_coracle',
+    name: 'Thuyền Thúng Nan Tre',
+    description:
+      'Thuyền thúng đan từ nan tre trét dầu rái truyền thống Nam Bộ. Nhẹ nhàng, bền bỉ, dạo êm ả vùng đầm lầy và cửa sông ven bờ.',
+    coinPrice: 1500,
+    rarity: 'common',
+    sprite: 'boat:coracle:#8b5a2b',
+    speed: 130,
+    seaZoneAccess: 'shallows',
+    wakeColor: '#bae6fd',
+  },
+  boat_sampan: {
+    id: 'boat_sampan',
+    name: 'Thuyền Gỗ Tam Bản',
+    description:
+      'Thuyền gỗ ba lá vững chãi lướt sóng êm ái, có mui lá dừa che nắng mưa. Đủ chắc chắn để vượt sóng ra các rạn san hô ven biển.',
+    coinPrice: 6000,
+    rarity: 'rare',
+    sprite: 'boat:sampan:#b47547',
+    speed: 170,
+    seaZoneAccess: 'coastal',
+    wakeColor: '#38bdf8',
+  },
+  boat_cutter: {
+    id: 'boat_cutter',
+    name: 'Ca Nô Composite Cao Tốc',
+    description:
+      'Ca nô thân sợi composite gắn động cơ công suất cao, lướt sóng xé gió với vệt bọt tuyết trắng xóa. Thoải mái vươn ra toàn bộ vịnh biển khơi.',
+    coinPrice: 22000,
+    rarity: 'epic',
+    sprite: 'boat:cutter:#0284c7',
+    speed: 230,
+    seaZoneAccess: 'open_sea',
+    wakeColor: '#e0f2fe',
+  },
+  boat_trawler: {
+    id: 'boat_trawler',
+    name: 'Tàu Viễn Dương Hoàng Kim',
+    description:
+      'Tàu đánh cá đại dương kiên cố bọc đồng, trang bị đèn cao áp rọi biển đêm và radar định vị. Khắc tinh bão tố, tiến thẳng vào Rãnh Biển Sâu săn cá Thần Thoại!',
+    coinPrice: 65000,
+    rarity: 'legendary',
+    sprite: 'boat:trawler:#f59e0b',
+    speed: 270,
+    seaZoneAccess: 'abyss',
+    wakeColor: '#fef08a',
+  },
+};
+
+/** Normalizes any boat identifier or sprite string into a valid canonical BoatConfig id */
+export function normalizeBoatId(boat?: string | null): string | null {
+  if (!boat) return null;
+  if (BOATS[boat]) return boat;
+  if (boat.includes('coracle')) return 'boat_coracle';
+  if (boat.includes('sampan')) return 'boat_sampan';
+  if (boat.includes('cutter')) return 'boat_cutter';
+  if (boat.includes('trawler')) return 'boat_trawler';
+  const match = Object.values(BOATS).find((b) => b.sprite === boat);
+  if (match) return match.id;
+  return null;
+}
+
 export interface ItemDefinitionSeed {
   id: string;
   type: ItemType;
@@ -140,6 +218,17 @@ export const ITEM_SEEDS: ItemDefinitionSeed[] = [
     rarity: r.rarity,
     coinPrice: r.coinPrice,
     sprite: r.sprite,
+  })),
+  // fishing boats
+  ...Object.values(BOATS).map((b) => ({
+    id: b.id,
+    type: 'boat' as const,
+    slot: 'boat' as const,
+    name: b.name,
+    description: b.description,
+    rarity: b.rarity,
+    coinPrice: b.coinPrice,
+    sprite: b.sprite,
   })),
   // clothing: hats
   {

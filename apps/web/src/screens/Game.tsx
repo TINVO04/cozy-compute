@@ -1,4 +1,4 @@
-import { ZONES, type ZoneId } from '@cozy/game-data';
+import { OCEAN_ZONES, ZONES, type ZoneId } from '@cozy/game-data';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BookOpen,
@@ -356,7 +356,10 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
 }
 
 const ZONE_ACTIONS: Partial<Record<ZoneId, { cta: string; hint: string }>> = {
-  pier: { cta: 'Thả cần câu', hint: 'Câu cá kiếm Xu và Danh tiếng' },
+  pier: {
+    cta: 'Lên thuyền / Thả cần',
+    hint: 'Cầu Hóa An & Bến Thuyền: Lái thuyền ra Sông Đồng Nai hoặc câu cá ven bến',
+  },
   fishing_shop: { cta: 'Mua cần câu & Ngư cụ', hint: 'Sắm cần câu xịn, tăng cơ hội săn cá khổng lồ' },
   delivery: { cta: 'Nhận đơn hàng', hint: 'Giao kiện hàng quanh thị trấn' },
   cafe: { cta: 'Bắt đầu ca làm', hint: 'Pha chế đồ uống cho khách hàng kỳ lạ' },
@@ -371,6 +374,22 @@ const ZONE_ACTIONS: Partial<Record<ZoneId, { cta: string; hint: string }>> = {
   bida: { cta: 'Vào quán Bida', hint: 'CLB Bida H2S Trảng Dài Biên Hòa (Giao lưu 1v1)' },
   cybernet: { cta: 'Vào Cyber Game', hint: 'Cyber Game HNT Trảng Dài' },
   farm_gate: { cta: 'Vào Trang Trại', hint: 'Trang trại nông thôn Nam Bộ' },
+  coral_reef: {
+    cta: 'Thả cần Làng Bè Tân Mai',
+    hint: 'Làng bè cá Tân Mai Biên Hòa: Săn cá lăng sông, cá điêu hồng & cá bống dừa',
+  },
+  open_sea: {
+    cta: 'Thả cần sông Đồng Nai',
+    hint: 'Dòng sông Đồng Nai mênh mông: Săn cá chép giòn, thát lát hoàng kim & cá sông lớn',
+  },
+  abyssal_trench: {
+    cta: 'Săn Thủy Quái Sông Sâu',
+    hint: 'Vực xoáy Vàm Sông Sâu hướng cửa biển: Vua cá Hô khổng lồ & Thần Long',
+  },
+  return_channel: {
+    cta: 'Về bến Biên Hòa',
+    hint: 'Phao luồng dẫn ngược dòng về cầu tàu thị trấn Biên Hòa',
+  },
 };
 
 function WorldHud({ me }: { me: Me }) {
@@ -394,8 +413,10 @@ function WorldHud({ me }: { me: Me }) {
     return () => clearInterval(t);
   }, []);
 
-  const action = room.kind === 'town' && zone ? ZONE_ACTIONS[zone] : undefined;
-  const zoneLabel = zone ? ZONES.find((z) => z.id === zone)?.label : null;
+  const action = (room.kind === 'town' || room.kind === 'ocean') && zone ? ZONE_ACTIONS[zone] : undefined;
+  const zoneLabel = zone
+    ? (ZONES.find((z) => z.id === zone)?.label ?? OCEAN_ZONES.find((z) => z.id === zone)?.label)
+    : null;
   const deliveringHere = delivery && zone === delivery.destination;
 
   function runAction() {
@@ -403,7 +424,16 @@ function WorldHud({ me }: { me: Me }) {
     play('click');
     switch (zone) {
       case 'pier':
+        if (me.appearance.boat) {
+          return void net.goOcean();
+        }
         return setActivity('fishing');
+      case 'coral_reef':
+      case 'open_sea':
+      case 'abyssal_trench':
+        return setActivity('fishing');
+      case 'return_channel':
+        return void net.goTown();
       case 'fishing_shop':
         return setPanel('shop-rods');
       case 'cafe':
@@ -513,13 +543,46 @@ function WorldHud({ me }: { me: Me }) {
               <Sparkles size={18} />
             </div>
             <div className="prompt-text">
-              <strong>{zoneLabel}</strong>
-              <span>{action.hint}</span>
+              <strong>
+                {zone === 'pier' && room.kind === 'town' ? 'Cầu Hóa An & Bến Thuyền Biên Hòa' : zoneLabel}
+              </strong>
+              <span>
+                {zone === 'pier' && room.kind === 'town'
+                  ? me.appearance.boat
+                    ? 'Thuyền đã neo sẵn sàng tại bến! Cầu Hóa An đi Bình Dương đang thi công. Lên thuyền du ngoạn Sông Đồng Nai.'
+                    : 'Cầu Hóa An đi Bình Dương đang thi công. Ghé Tiệm Bác Ba mua thuyền để du ngoạn Sông Đồng Nai hoặc câu cá tại bến.'
+                  : action.hint}
+              </span>
             </div>
-            <Button variant="primary" onClick={runAction}>
-              <span className="kbd">E</span>
-              {action.cta}
-            </Button>
+            {zone === 'pier' && room.kind === 'town' ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {me.appearance.boat ? (
+                  <>
+                    <Button variant="reward" onClick={() => void net.goOcean()}>
+                      <span className="kbd">E</span>⛵ Lái thuyền ra Sông Đồng Nai
+                    </Button>
+                    <Button variant="secondary" onClick={() => setActivity('fishing')}>
+                      🎣 Thả cần câu
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="primary" onClick={() => setActivity('fishing')}>
+                      <span className="kbd">E</span>
+                      🎣 Thả cần câu
+                    </Button>
+                    <Button variant="secondary" onClick={() => setPanel('shop-rods')}>
+                      ⛵ Tiệm Bác Ba (Mua thuyền)
+                    </Button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <Button variant="primary" onClick={runAction}>
+                <span className="kbd">E</span>
+                {action.cta}
+              </Button>
+            )}
           </div>
         ) : null}
       </div>
