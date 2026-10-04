@@ -18,7 +18,7 @@ export const TOWN_SCENERY: {
   { id: 'west-house', kind: 'house', rect: t(3, 12.5, 5, 2.5), color: '#777d78' },
   { id: 'west-blue-house', kind: 'house', rect: t(8, 23, 1.7, 3), color: '#5289ad' },
   { id: 'east-house', kind: 'house', rect: t(35, 12.5, 3, 3), color: '#876c4e' },
-  { id: 'buu-long', kind: 'pagoda', rect: t(43, 12, 3, 4), color: '#bc583d', label: 'CHÙA BỬU LONG' },
+  { id: 'buu-long', kind: 'pagoda', rect: t(43, 12, 3, 4), color: '#bc583d', label: 'CẦU HÓA AN' },
   { id: 'plaza-shrine', kind: 'shrine', rect: t(17.5, 23, 4, 1.5), color: '#b65036' },
   { id: 'dntu-monument', kind: 'monument', rect: t(28.3, 9.2, 3.5, 0.8), color: '#b91c1c', label: 'DNTU' },
   ...['#568caf', '#bf674b', '#848b8a', '#bfa575', '#c9704e', '#668c9f', '#dfd4b2'].map((color, i) => ({

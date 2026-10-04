@@ -27,7 +27,6 @@ import {
   getFarmPlotRect,
   getPlotUnlockPrice,
   FARM_POIS,
-  BOATS,
   OCEAN_BLOCKERS,
   OCEAN_HEIGHT,
   OCEAN_WIDTH,
@@ -35,6 +34,7 @@ import {
   oceanZoneAt,
   t,
   TILE,
+  PIER,
   ZONES,
   zoneAt,
   type FishShadowTier,
@@ -207,6 +207,20 @@ export class TownScene extends WorldScene {
   private exiting = false;
   private dockedBoatContainer: Phaser.GameObjects.Container | null = null;
   private lastBoatModel: string | null = '__init__';
+  private lastBarricadeToast = 0;
+  private spawnCooldownUntil = 0;
+
+  private notifyBarricade() {
+    const now = Date.now();
+    if (now - this.lastBarricadeToast < 4000) return;
+    this.lastBarricadeToast = now;
+    play('pop');
+    useUi.getState().toast({
+      kind: 'info',
+      title: '🚧 Cầu Hóa An (Hướng Bình Dương)',
+      body: 'Cầu Hóa An hướng đi Bình Dương đang thi công mở rộng và sẽ thông xe trong bản cập nhật kế tiếp! Hãy bước sang bến thuyền bên hông cầu để lái thuyền ra Sông Đồng Nai.',
+    });
+  }
 
   constructor() {
     super('town');
@@ -215,6 +229,8 @@ export class TownScene extends WorldScene {
   override create() {
     this.exiting = false;
     this.lastBoatModel = '__init__';
+    this.lastBarricadeToast = 0;
+    this.spawnCooldownUntil = Date.now() + 1200;
     super.create();
   }
 
@@ -319,8 +335,9 @@ export class TownScene extends WorldScene {
     const slipY = 27.5 * TILE;
 
     const pontoon = this.add.graphics().setDepth(slipY - 4);
-    pontoon.fillStyle(0x78350f, 0.9).fillRect(39.8 * TILE, 26.5 * TILE, 14, 38);
-    pontoon.fillStyle(0xa16207, 0.95).fillRect(40.1 * TILE, 26.5 * TILE, 4, 38);
+    pontoon.fillStyle(0x1e293b, 0.9).fillRect(39.8 * TILE, 26.5 * TILE, 14, 38);
+    pontoon.fillStyle(0x0284c7, 0.95).fillRect(40.0 * TILE, 26.5 * TILE, 10, 36);
+    pontoon.fillStyle(0x38bdf8, 1.0).fillRect(40.2 * TILE, 26.5 * TILE, 2, 36);
 
     const dockedBoatContainer = this.add.container(slipX + 16, slipY).setDepth(slipY);
     this.dockedBoatContainer = dockedBoatContainer;
@@ -363,6 +380,15 @@ export class TownScene extends WorldScene {
     dockedBoatContainer.setSize(56, 52).setInteractive({ useHandCursor: true });
     dockedBoatContainer.on('pointerdown', embarkBoat);
 
+    // Interactive Cầu Hóa An -> Bình Dương construction barricade
+    const barrierX = 39 * TILE;
+    const barrierY = PIER.y + PIER.h - 16;
+    const barHit = this.add
+      .zone(barrierX, barrierY, PIER.w + 16, 36)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    barHit.on('pointerdown', () => this.notifyBarricade());
+
     const onKey = (event: KeyboardEvent) => {
       const ui = useUi.getState();
       if (event.repeat || typing() || ui.panel || ui.activity || document.querySelector('.backdrop')) return;
@@ -370,6 +396,8 @@ export class TownScene extends WorldScene {
       const { x, y } = this.layer.self.container;
       if (Math.hypot(x - 39.5 * TILE, y - 27.5 * TILE) <= 3.5 * TILE) {
         embarkBoat();
+      } else if (Math.hypot(x - barrierX, y - barrierY) <= 3.0 * TILE) {
+        this.notifyBarricade();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -517,7 +545,7 @@ export class TownScene extends WorldScene {
     if (zone !== this.lastZone) {
       this.lastZone = zone;
       useUi.getState().setZone(zone);
-      if (!this.exiting && zone === 'farm_gate') {
+      if (!this.exiting && Date.now() >= this.spawnCooldownUntil && zone === 'farm_gate') {
         const myId = useUi.getState().myUserId;
         if (myId) {
           this.exiting = true;
@@ -535,6 +563,10 @@ export class TownScene extends WorldScene {
         play('pop');
         void net.goOcean();
       }
+    }
+
+    if (y >= 28.5 * TILE && x >= 37.5 * TILE && x < 39.3 * TILE) {
+      this.notifyBarricade();
     }
   }
 }
@@ -859,7 +891,7 @@ abstract class InteriorScene extends WorldScene {
   protected override onSelfMove(x: number, y: number) {
     if (!this.exiting && y >= 9.8 * TILE && x >= 6.5 * TILE && x <= 9.5 * TILE) {
       this.exiting = true;
-      void net.goTown();
+      void net.goTown(this.scene.key);
     }
   }
 
@@ -1314,7 +1346,7 @@ export class UniversityScene extends InteriorScene {
     const nearGate2 = x >= 47 * TILE && y >= 12 * TILE && y <= 15 * TILE;
     if (!this.exiting && (nearGate1 || nearGate2)) {
       this.exiting = true;
-      void net.goTown();
+      void net.goTown('university');
     }
   }
 
@@ -1370,7 +1402,7 @@ export class ComGaScene extends InteriorScene {
   protected override onSelfMove(x: number, y: number) {
     if (!this.exiting && y >= 9.2 * TILE && x >= 5.5 * TILE && x <= 8.5 * TILE) {
       this.exiting = true;
-      void net.goTown();
+      void net.goTown('comga');
     }
   }
 
@@ -1544,7 +1576,7 @@ export class BidaScene extends InteriorScene {
   protected override onSelfMove(x: number, y: number) {
     if (!this.exiting && y >= 10.4 * TILE && x >= 6.8 * TILE && x <= 9.2 * TILE) {
       this.exiting = true;
-      void net.goTown();
+      void net.goTown('bida');
     }
   }
 
@@ -1720,7 +1752,7 @@ export class CyberNetScene extends InteriorScene {
   protected override onSelfMove(x: number, y: number) {
     if (!this.exiting && y >= 10.4 * TILE && x >= 6.8 * TILE && x <= 9.2 * TILE) {
       this.exiting = true;
-      void net.goTown();
+      void net.goTown('cybernet');
     }
   }
   protected buildWorld() {
@@ -1841,6 +1873,7 @@ export class FarmScene extends WorldScene {
   private plotsData: FarmPlotData[] = [];
   private refreshing = false;
   private exiting = false;
+  private spawnCooldownUntil = 0;
 
   constructor() {
     super('farm');
@@ -1849,6 +1882,7 @@ export class FarmScene extends WorldScene {
   override create() {
     this.exiting = false;
     this.interactions = [];
+    this.spawnCooldownUntil = Date.now() + 1200;
     super.create();
   }
 
@@ -1868,12 +1902,12 @@ export class FarmScene extends WorldScene {
     const { width, height } = this.worldSize();
     const cam = this.cameras.main;
     const zoomMultiplier = useUi.getState().zoom;
-    // Map is 1536x1024. Clamp baseZoom to a compact 0.55..0.85 so the whole farm fits comfortably
+    // Set comfortable close-up zoom so the player is large and the farm feels compact and cozy around the avatar
     const baseZoom = Math.max(
-      0.55,
-      Math.min(0.85, Math.round(Math.min(this.scale.width / 1536, this.scale.height / 1024) * 100) / 100),
+      1.5,
+      Math.min(2.2, Math.round(Math.min(this.scale.width / 580, this.scale.height / 400) * 100) / 100),
     );
-    const zoom = Math.max(0.4, Math.min(2.5, Math.round(baseZoom * zoomMultiplier * 100) / 100));
+    const zoom = Math.max(0.75, Math.min(3.5, Math.round(baseZoom * zoomMultiplier * 100) / 100));
     cam.setZoom(zoom);
     const vw = this.scale.width / zoom;
     const vh = this.scale.height / zoom;
@@ -1886,11 +1920,17 @@ export class FarmScene extends WorldScene {
   }
 
   protected override onSelfMove(x: number, y: number) {
-    // Check gate exit to town (western portal row 2..4: col 0..1)
-    if (!this.exiting && x <= 1.5 * TILE && y >= 2 * TILE && y <= 5 * TILE) {
+    // Check gate exit to town (western portal rows 2..4 at column 0..1)
+    if (
+      !this.exiting &&
+      Date.now() >= this.spawnCooldownUntil &&
+      x <= 1.0 * TILE &&
+      y >= 2 * TILE &&
+      y <= 4.8 * TILE
+    ) {
       this.exiting = true;
       play('pop');
-      void net.goTown();
+      void net.goTown('farm');
     }
   }
 
@@ -1995,7 +2035,7 @@ export class FarmScene extends WorldScene {
     });
 
     // Center Park Bench
-    this.interactAt(740, 595, 'Ghế nghỉ chân', () => {
+    this.interactAt(790, 580, 'Ghế nghỉ chân', () => {
       play('pop');
       useUi.getState().toast({
         kind: 'info',
@@ -2005,7 +2045,7 @@ export class FarmScene extends WorldScene {
     });
 
     // Fishing Pond Dock
-    this.interactAt(1215, 435, 'Hồ câu cá', () => {
+    this.interactAt(1043, 465, 'Hồ câu cá', () => {
       play('pop');
       useUi.getState().toast({
         kind: 'info',
@@ -2015,11 +2055,11 @@ export class FarmScene extends WorldScene {
     });
 
     // Gate Exit to Town
-    this.interactAt(135, 130, 'Về thị trấn', () => {
+    this.interactAt(110, 140, 'Về thị trấn', () => {
       if (this.exiting) return;
       this.exiting = true;
       play('pop');
-      void net.goTown();
+      void net.goTown('farm');
     });
 
     // 3. 36 Plots Grid Setup
@@ -2157,7 +2197,6 @@ export class OceanScene extends WorldScene {
   public fishingController: InWorldFishingController | null = null;
   public remoteFishingControllers = new Map<string, InWorldFishingController>();
   private exiting = false;
-  private lighthouseBeam: Phaser.GameObjects.Graphics | null = null;
 
   constructor() {
     super('ocean');
@@ -2199,8 +2238,6 @@ export class OceanScene extends WorldScene {
       if (townFishingController === this.fishingController) {
         townFishingController = null;
       }
-      this.lighthouseBeam?.destroy();
-      this.lighthouseBeam = null;
       this.interactionHint?.destroy();
       this.interactionHint = null;
       this.interactions = [];
@@ -2271,8 +2308,8 @@ export class OceanScene extends WorldScene {
 
   private lastOceanZone: string | null = null;
   protected override onSelfMove(x: number, y: number) {
-    // Return channel buoy at northwest (x <= 5.5 * TILE, y <= 5.5 * TILE)
-    if (!this.exiting && x <= 5.5 * TILE && y <= 5.5 * TILE) {
+    // Return channel buoy at southwest (x <= 7 * TILE, y >= 20 * TILE && y <= 25 * TILE)
+    if (!this.exiting && x <= 7 * TILE && y >= 20 * TILE && y <= 25 * TILE) {
       this.exiting = true;
       play('pop');
       useUi.getState().toast({
@@ -2280,7 +2317,7 @@ export class OceanScene extends WorldScene {
         title: '⚓ Trở Về Bến Biên Hòa',
         body: 'Thuyền đã cập bến cầu tàu Biên Hòa an toàn!',
       });
-      void net.goTown();
+      void net.goTown('ocean');
       return;
     }
 
@@ -2288,17 +2325,6 @@ export class OceanScene extends WorldScene {
     if (oz !== this.lastOceanZone) {
       this.lastOceanZone = oz;
       useUi.getState().setZone(oz as ZoneId);
-      if (oz === 'abyssal_trench') {
-        const boatId = normalizeBoatId(this.layer?.self?.appearance.boat);
-        const boat = boatId ? BOATS[boatId] : null;
-        if (boat?.seaZoneAccess !== 'abyss') {
-          useUi.getState().toast({
-            kind: 'error',
-            title: '⚠️ Cảnh báo: Vực Xoáy Vàm Sông Sâu',
-            body: 'Dòng nước xoáy cuộn cực mạnh hướng cửa biển! Bạn cần Tàu Viễn Dương Hoàng Kim để săn thủy quái tại đây.',
-          });
-        }
-      }
     }
   }
 
@@ -2310,14 +2336,7 @@ export class OceanScene extends WorldScene {
     }
     this.add.image(0, 0, texKey).setOrigin(0).setDepth(-10);
 
-    // 2. Beacon rotating searchlight beam
-    this.lighthouseBeam = this.add.graphics().setDepth(450);
-    this.lighthouseBeam.setPosition(790, 390);
-    this.lighthouseBeam.fillStyle(0xfef08a, 0.22);
-    this.lighthouseBeam.slice(0, 0, 480, -0.28, 0.28, false);
-    this.lighthouseBeam.fillPath();
-
-    // 3. Ambient water shimmer
+    // 2. Ambient water shimmer
     if (!useUi.getState().reducedMotion) {
       const shimmer = this.add.graphics().setDepth(-9);
       let tt = 0;
@@ -2331,14 +2350,13 @@ export class OceanScene extends WorldScene {
           for (let i = 0; i < 30; i++) {
             const sx = (i * 137 + tt * 4) % OCEAN_WIDTH;
             const sy = (i * 89 + tt * 2) % OCEAN_HEIGHT;
-            if (sx > 600 && sx < 880 && sy > 400 && sy < 600) continue;
             shimmer.fillRect(sx, sy, 7, 1);
           }
         },
       });
     }
 
-    // 4. Return Buoy interaction (x: 140, y: 140)
+    // 3. Return Buoy interaction (x: 140, y: 720)
     const returnTown = () => {
       if (this.exiting) return;
       this.exiting = true;
@@ -2348,9 +2366,9 @@ export class OceanScene extends WorldScene {
         title: '⚓ Trở Về Thị Trấn',
         body: 'Thuyền đã cập bến thị trấn an toàn!',
       });
-      void net.goTown();
+      void net.goTown('ocean');
     };
-    this.interactAt(140, 140, 'Về thị trấn', returnTown);
+    this.interactAt(140, 720, 'Về thị trấn', returnTown);
 
     // 5. Fishing Controller
     this.fishingController = new InWorldFishingController(this);
@@ -2416,10 +2434,6 @@ export class OceanScene extends WorldScene {
     super.update(time, delta);
     this.fishingController?.update(time, delta);
     this.remoteFishingControllers.forEach((ctrl) => ctrl.update(time, delta));
-
-    if (this.lighthouseBeam && !useUi.getState().reducedMotion) {
-      this.lighthouseBeam.rotation = (time * 0.0006) % (Math.PI * 2);
-    }
 
     const self = this.layer?.self?.container;
     const action =

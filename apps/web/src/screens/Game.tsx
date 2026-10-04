@@ -356,7 +356,10 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
 }
 
 const ZONE_ACTIONS: Partial<Record<ZoneId, { cta: string; hint: string }>> = {
-  pier: { cta: 'Lên thuyền / Thả cần', hint: 'Bến Cầu Tàu: Xuất bến ra biển lớn hoặc thả cần câu' },
+  pier: {
+    cta: 'Lên thuyền / Thả cần',
+    hint: 'Cầu Hóa An & Bến Thuyền: Lái thuyền ra Sông Đồng Nai hoặc câu cá ven bến',
+  },
   fishing_shop: { cta: 'Mua cần câu & Ngư cụ', hint: 'Sắm cần câu xịn, tăng cơ hội săn cá khổng lồ' },
   delivery: { cta: 'Nhận đơn hàng', hint: 'Giao kiện hàng quanh thị trấn' },
   cafe: { cta: 'Bắt đầu ca làm', hint: 'Pha chế đồ uống cho khách hàng kỳ lạ' },
@@ -541,13 +544,13 @@ function WorldHud({ me }: { me: Me }) {
             </div>
             <div className="prompt-text">
               <strong>
-                {zone === 'pier' && room.kind === 'town' ? 'Cầu Tàu & Bến Thuyền Ra Khơi' : zoneLabel}
+                {zone === 'pier' && room.kind === 'town' ? 'Cầu Hóa An & Bến Thuyền Biên Hòa' : zoneLabel}
               </strong>
               <span>
                 {zone === 'pier' && room.kind === 'town'
                   ? me.appearance.boat
-                    ? 'Thuyền đã neo sẵn sàng! Xuất bến ra khơi săn cá quý hiếm.'
-                    : 'Thả cần câu tại hồ thị trấn hoặc ghé Tiệm Bác Ba sắm thuyền ra khơi.'
+                    ? 'Thuyền đã neo sẵn sàng tại bến! Cầu Hóa An đi Bình Dương đang thi công. Lên thuyền du ngoạn Sông Đồng Nai.'
+                    : 'Cầu Hóa An đi Bình Dương đang thi công. Ghé Tiệm Bác Ba mua thuyền để du ngoạn Sông Đồng Nai hoặc câu cá tại bến.'
                   : action.hint}
               </span>
             </div>
@@ -556,7 +559,7 @@ function WorldHud({ me }: { me: Me }) {
                 {me.appearance.boat ? (
                   <>
                     <Button variant="reward" onClick={() => void net.goOcean()}>
-                      <span className="kbd">E</span>⛵ Lên thuyền ra khơi
+                      <span className="kbd">E</span>⛵ Lái thuyền ra Sông Đồng Nai
                     </Button>
                     <Button variant="secondary" onClick={() => setActivity('fishing')}>
                       🎣 Thả cần câu

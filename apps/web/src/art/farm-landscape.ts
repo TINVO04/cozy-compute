@@ -70,10 +70,10 @@ if (typeof Image !== 'undefined') {
 
 export function paintAuthoritativeFarmPlotsField(ctx: CanvasRenderingContext2D): void {
   // 1. Cover the old baked 4x5 plots with lush matching pasture grass
-  const fx = 1040;
-  const fy = 525;
-  const fw = 445;
-  const fh = 415;
+  const fx = 1050;
+  const fy = 535;
+  const fw = 435;
+  const fh = 390;
   ctx.fillStyle = '#5ba83c';
   ctx.fillRect(fx, fy, fw, fh);
 

@@ -21,7 +21,7 @@ class Net {
   room: Room | null = null;
   private listeners = new Set<Listener>();
   private target:
-    | { name: 'town' }
+    | { name: 'town'; from?: string }
     | { name: 'apartment'; ownerId: string }
     | { name: 'company' }
     | { name: 'university' }
@@ -70,7 +70,7 @@ class Net {
     try {
       const room =
         target.name === 'town'
-          ? await this.client.joinOrCreate('town', { token })
+          ? await this.client.joinOrCreate('town', { token, from: target.from })
           : target.name === 'company'
             ? await this.client.joinOrCreate('company', { token })
             : target.name === 'university'
@@ -170,9 +170,11 @@ class Net {
     void this.connect(this.target);
   }
 
-  goTown() {
+  goTown(from?: string) {
+    const current = useUi.getState().room.kind;
+    const origin = from ?? (current !== 'town' ? current : undefined);
     useUi.getState().setRoom({ kind: 'town', label: 'Thị trấn' });
-    return this.connect({ name: 'town' });
+    return this.connect({ name: 'town', from: origin });
   }
 
   goApartment(ownerId: string, label: string) {
