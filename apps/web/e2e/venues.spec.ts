@@ -37,7 +37,7 @@ for (const kind of ['comga', 'bida', 'cybernet']) {
       preview.interiorUi.getState().setZoom(1.3);
       const after = scene.cameras.main.zoom;
       for (let i = 0; i < 10; i++)
-        scene.onSelfMove((kind === 'comga' ? 7 : 8) * 32, (kind === 'comga' ? 9 : 10.5) * 32);
+        scene.onSelfMove((kind === 'comga' ? 7 : 8) * 32, (kind === 'comga' ? 9.5 : 10.5) * 32);
       return { before, after, textures, exits: preview.exitRequests };
     }, kind);
     expect(result.textures).toContain(kind + ':interior');
