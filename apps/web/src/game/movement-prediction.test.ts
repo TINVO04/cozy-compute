@@ -67,7 +67,7 @@ describe('movement reconciliation', () => {
         for (let now = 0; now < 9000; now += frameMs) {
           const input = now < 5000 ? right : idle;
           if (now >= nextSend || input !== lastInput) {
-            seq++;
+            if (seq === 0 || input !== lastInput) seq++;
             const at = now + 80 + (seq % 4) * 15;
             packets.push({ at: Math.max(at, (packets.at(-1)?.at ?? 0) + 1), seq, input });
             nextSend = now + 50;
@@ -106,5 +106,14 @@ describe('movement reconciliation', () => {
     for (let i = 0; i < 1000; i++) prediction.predict(1, right, 16, wall);
     prediction.reconcile({ x: 100, y: 100, seq: 1, inputElapsedMs: 16 }, wall);
     expect(prediction.position.x).toBeLessThanOrEqual(105);
+  });
+
+  it('retains the unacknowledged tail after holding a direction beyond the history limit', () => {
+    const prediction = new MovementPrediction({ x: 100, y: 100 });
+    for (let i = 0; i < 1200; i++) prediction.predict(1, right, 10, world);
+    prediction.reconcile({ x: 1870, y: 100, seq: 1, inputElapsedMs: 11800 }, world);
+    expect(prediction.position.x).toBeCloseTo(1900);
+    prediction.reconcile({ x: 1885, y: 100, seq: 1, inputElapsedMs: 11900 }, world);
+    expect(prediction.position.x).toBeCloseTo(1900);
   });
 });

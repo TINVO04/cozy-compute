@@ -129,6 +129,7 @@ export abstract class BaseRoom extends Room<RoomState> {
       inputCount: 0,
       inputWindowStart: 0,
     });
+    p.speed = this.playerSpeedFor(this.data.get(client.sessionId)!, p);
     void this.publishPresence(session.userId);
   }
 
@@ -193,6 +194,7 @@ export abstract class BaseRoom extends Room<RoomState> {
   }
 
   protected tick(dtMs: number) {
+    this.state.simulationTime += dtMs;
     const w = this.world();
     const now = Date.now();
     const positions: Record<string, string> = {};
@@ -200,11 +202,12 @@ export abstract class BaseRoom extends Room<RoomState> {
     this.state.players.forEach((p, sid) => {
       const d = this.data.get(sid);
       if (!d) return;
+      p.speed = this.playerSpeedFor(d, p);
       const next = d.movement.advance({ x: p.x, y: p.y }, dtMs, {
         blockers: w.blockers,
         width: w.width,
         height: w.height,
-        speed: this.playerSpeedFor(d, p),
+        speed: p.speed,
       });
       p.seq = next.seq;
       p.inputElapsedMs = next.inputElapsedMs;
@@ -243,6 +246,12 @@ export abstract class BaseRoom extends Room<RoomState> {
     const p = this.playerForUser(userId);
     if (!p) return;
     p.appearance = JSON.stringify(appearance);
+    const sid = this.byUser.get(userId);
+    const d = sid ? this.data.get(sid) : undefined;
+    if (d && typeof appearance === 'object' && appearance !== null) {
+      d.session.appearance = appearance as SessionInfo['appearance'];
+      p.speed = this.playerSpeedFor(d, p);
+    }
     if (typeof statusText === 'string') p.status = statusText;
   }
 

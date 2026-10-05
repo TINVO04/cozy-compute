@@ -14,6 +14,7 @@ import { useUi } from '../lib/store';
 import { fishRenderDimensions, getSpeciesData } from '../art/fish';
 import { ensureFishTexture } from './fish-texture';
 import { MovementPrediction, smoothMovement } from './movement-prediction';
+import { MovementInterpolation } from './movement-interpolation';
 
 interface PlayerSnapshot {
   userId: string;
@@ -26,6 +27,7 @@ interface PlayerSnapshot {
   moving: boolean;
   seq: number;
   inputElapsedMs: number;
+  speed?: number;
   emote: string;
   connected: boolean;
   inEvent: boolean;
@@ -73,6 +75,8 @@ class Avatar {
   rodGlowContainer: Phaser.GameObjects.Container | null = null;
   rodTweens: Phaser.Tweens.Tween[] = [];
   boatSprite: Phaser.GameObjects.Image | null = null;
+  interpolation = new MovementInterpolation();
+  private animationState = '';
 
   constructor(
     private scene: Phaser.Scene,
@@ -617,6 +621,7 @@ class Avatar {
     this.updateHeldFish();
     this.updateEquippedRodEffect();
     const key = ensureAvatarTexture(this.scene, a);
+    this.updateHeldFishFacing();
     if (key === this.texKey) return;
     this.texKey = key;
     this.sprite.setTexture(key, this.dir * 3);
@@ -624,6 +629,7 @@ class Avatar {
   }
 
   setFacing(d: number) {
+    this.animationState = '';
     this.dir = d;
     this.moving = false;
     this.sprite.stop();
@@ -698,6 +704,9 @@ class Avatar {
   }
 
   updateAnim(force = false) {
+    const state = `${this.texKey}:${this.dir}:${this.moving}`;
+    if (!force && this.animationState === state) return;
+    this.animationState = state;
     const key = `${this.texKey}:walk${this.dir}`;
     if (this.moving) {
       if (force || this.sprite.anims.currentAnim?.key !== key || !this.sprite.anims.isPlaying)
@@ -729,7 +738,7 @@ class Avatar {
       this.boatSprite = this.scene.add.image(0, -4, tex).setOrigin(0.5, 0.7);
       this.container.add(this.boatSprite);
       this.container.sendToBack(this.boatSprite);
-    } else {
+    } else if (this.boatSprite.texture.key !== tex) {
       this.boatSprite.setTexture(tex);
     }
 
@@ -800,8 +809,9 @@ export class PlayerLayer {
   private seq = 0;
   private prediction: MovementPrediction | null = null;
   private sendAcc = 0;
-  private lastSent: MoveInput = { x: 0, y: 0 };
+  private lastSent: MoveInput | null = null;
   private cleanup: (() => void)[] = [];
+  private playerCleanup = new Map<string, (() => void)[]>();
   private world: { width: number; height: number; blockers: Rect[]; speed?: number };
   private $: ReturnType<typeof getStateCallbacks>;
 
@@ -825,6 +835,8 @@ export class PlayerLayer {
     this.cleanup.push(players.onAdd((p, sid) => this.add(p, sid), true));
     this.cleanup.push(
       players.onRemove((_p, sid) => {
+        this.playerCleanup.get(sid)?.forEach((fn) => fn());
+        this.playerCleanup.delete(sid);
         if (this.avatars.get(sid) === this.self) {
           this.self = null;
           this.prediction = null;
@@ -833,7 +845,9 @@ export class PlayerLayer {
         this.avatars.delete(sid);
       }),
     );
-    room.onMessage('chat', (m: { from: string; text: string }) => this.avatars.get(m.from)?.say(m.text));
+    this.cleanup.push(
+      room.onMessage('chat', (m: { from: string; text: string }) => this.avatars.get(m.from)?.say(m.text)),
+    );
 
     // Fallback sync: also inspect current room state directly if players already exist
     const rawState = room.state as unknown as { players?: Map<string, PlayerSnapshot> };
@@ -847,11 +861,19 @@ export class PlayerLayer {
 
     // Also listen to state updates in case initial snapshot was delayed
     const onState = (state: unknown) => {
-      const s = state as { players?: Map<string, PlayerSnapshot> };
+      const s = state as { players?: Map<string, PlayerSnapshot>; simulationTime?: number };
+      const receivedAt = performance.now();
       if (s?.players && typeof s.players.forEach === 'function') {
         s.players.forEach((p, sid) => {
           if (!this.avatars.has(sid)) {
             this.add(p, sid);
+          }
+          const avatar = this.avatars.get(sid);
+          if (avatar && avatar !== this.self && s.simulationTime !== undefined) {
+            avatar.interpolation.push(
+              { x: p.x, y: p.y, dir: p.dir, moving: p.moving, time: s.simulationTime },
+              receivedAt,
+            );
           }
         });
       }
@@ -900,30 +922,34 @@ export class PlayerLayer {
       av.container.setAlpha(p.connected ? 1 : 0.45);
       this.avatars.set(sid, av);
       if (isSelf) {
+        if (p.speed !== undefined) this.setWorldSpeed(p.speed);
         this.self = av;
         this.prediction = new MovementPrediction({ x: p.x, y: p.y });
         this.seq = p.seq;
-        this.lastSent = { x: 0, y: 0 };
+        this.lastSent = null;
         this.sendAcc = 50;
         this.scene.cameras.main.startFollow(av.container, true, 0.12, 0.12);
       }
       const $p = this.$(p as never) as unknown as Callbacks;
-      this.cleanup.push(
+      this.playerCleanup.set(sid, [
         $p.onChange(() => {
           if (isSelf) {
+            if (p.speed !== undefined) this.setWorldSpeed(p.speed);
             this.prediction?.reconcile(p, this.world);
           } else {
             av.target = { x: p.x, y: p.y };
-            av.dir = p.dir;
-            av.moving = p.moving;
-            av.updateAnim();
+            if (!(this.room.state as { simulationTime?: number }).simulationTime) {
+              av.dir = p.dir;
+              av.moving = p.moving;
+              av.updateAnim();
+            }
           }
           av.container.setAlpha(p.connected ? 1 : 0.45);
         }),
         $p.listen('appearance', (v) => av.setAppearance(parseAppearance(String(v)))),
         $p.listen('status', (v) => av.setStatus(String(v ?? ''))),
         $p.listen('emote', (v) => av.showEmote(String(v ?? ''))),
-      );
+      ]);
     } catch (err) {
       console.warn('[PlayerLayer] error adding avatar:', err);
     }
@@ -936,13 +962,14 @@ export class PlayerLayer {
   update(dtMs: number, time = 0) {
     if (!this.room.connection.isOpen) return;
     const dt = dtMs / 1000;
-    // Assign a sequence before predicting its frames. Moving: 20 Hz; idle keepalive: 1 Hz.
+    // A sequence identifies a direction change, not a redundant repeat of a held key.
+    // WebSockets are reliable: send changes immediately, with a 1 Hz keepalive.
     this.sendAcc += dtMs;
-    const changed = this.input.x !== this.lastSent.x || this.input.y !== this.lastSent.y;
-    const sendInterval = this.input.x || this.input.y ? 50 : 1000;
+    const changed = !this.lastSent || this.input.x !== this.lastSent.x || this.input.y !== this.lastSent.y;
+    const sendInterval = 1000;
     if (this.self && (this.seq === 0 || changed || this.sendAcc >= sendInterval)) {
       this.sendAcc = 0;
-      this.seq++;
+      if (this.seq === 0 || changed) this.seq++;
       this.lastSent = { ...this.input };
       this.room.send('input', { ...this.input, seq: this.seq });
     }
@@ -967,19 +994,30 @@ export class PlayerLayer {
       this.onSelfMove?.(next.x, next.y);
     }
     // interpolate remote players, run micro-animations, and depth-sort everyone by feet position
-    for (const [sid, av] of this.avatars) {
-      if (sid !== this.selfSessionId) {
-        const k = 1 - Math.exp(-dt * 10);
-        av.container.x += (av.target.x - av.container.x) * k;
-        av.container.y += (av.target.y - av.container.y) * k;
+    const now = performance.now();
+    for (const av of this.avatars.values()) {
+      if (av !== this.self) {
+        const sample = av.interpolation.sample(now);
+        if (sample) {
+          av.container.setPosition(sample.x, sample.y);
+          av.dir = sample.dir;
+          av.moving = sample.moving;
+          av.updateAnim();
+        } else {
+          const k = 1 - Math.exp(-dt * 10);
+          av.container.x += (av.target.x - av.container.x) * k;
+          av.container.y += (av.target.y - av.container.y) * k;
+        }
       }
       av.update(dtMs, time);
-      av.container.setDepth(av.container.y);
+      if (av.container.depth !== av.container.y) av.container.setDepth(av.container.y);
     }
   }
 
   destroy() {
     this.cleanup.forEach((fn) => fn());
+    this.playerCleanup.forEach((callbacks) => callbacks.forEach((fn) => fn()));
+    this.playerCleanup.clear();
     this.avatars.forEach((a) => a.destroy());
     this.avatars.clear();
   }

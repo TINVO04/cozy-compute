@@ -12,6 +12,7 @@ export class PlayerState extends Schema {
   @type('boolean') moving = false;
   @type('uint32') seq = 0;
   @type('number') inputElapsedMs = 0;
+  @type('number') speed = 150;
   @type('string') emote = '';
   @type('number') emoteAt = 0;
   @type('boolean') connected = true;
@@ -32,6 +33,7 @@ export class EventState extends Schema {
 }
 
 export class RoomState extends Schema {
+  @type('number') simulationTime = 0;
   @type('string') kind = 'town';
   @type('string') label = '';
   @type({ map: PlayerState }) players = new MapSchema<PlayerState>();

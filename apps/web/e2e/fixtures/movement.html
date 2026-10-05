@@ -12,7 +12,7 @@
       import { useUi } from '/src/lib/store.ts';
       import { COMPANY_BLOCKERS, COMPANY_COLS, COMPANY_ROWS, TILE } from '@cozy/game-data';
       const config = window.movementConfig;
-      useUi.setState({ reducedMotion: true, muted: true });
+      useUi.setState({ reducedMotion: false, muted: true });
       const room = await new Client(config.ws).joinOrCreate('company', { token: config.token });
       room.onMessage('*', () => {});
       window.movementRoom = room;
@@ -22,8 +22,10 @@
         lastReceiveAt = 0;
       const delay = () => 80 + (packet++ % 4) * 15;
       const send = room.send.bind(room);
+      window.movementInputPackets = 0;
       room.send = (type, message) => {
         if (type !== 'input') return send(type, message);
+        window.movementInputPackets++;
         lastSendAt = Math.max(performance.now() + delay(), lastSendAt + 1);
         setTimeout(() => {
           if (room.connection.isOpen) send(type, message);
@@ -55,6 +57,10 @@
               x: this.layer.self.container.x,
               y: this.layer.self.container.y,
               direction: window.movementInput.x,
+              delta,
+              remotes: [...this.layer.avatars.entries()]
+                .filter(([, avatar]) => avatar !== this.layer.self)
+                .map(([id, avatar]) => ({ id, x: avatar.container.x, y: avatar.container.y })),
             });
         }
       }
