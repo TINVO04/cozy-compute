@@ -31,7 +31,7 @@ test('production proxy serves the SPA, authenticated API and multiplayer over th
         displayName: `Proxy${randomUUID().slice(0, 8)}`,
       },
     });
-    expect(response.ok()).toBe(true);
+    expect(response.ok(), `Registration failed (${response.status()}): ${await response.text()}`).toBe(true);
     return (await response.json()) as { token: string };
   };
   const owner = await register(),

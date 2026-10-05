@@ -1,5 +1,9 @@
 # CI only. Uses an isolated Compose project and a test upstream in place of LiteLLM.
 services:
+  api:
+    environment:
+      # Both smoke tests register peers from one IP within a minute (10 + 2 accounts).
+      AUTH_RATE_LIMIT_PER_MIN: '100'
   caddy:
     ports: !override ['127.0.0.1::80']
     environment:
