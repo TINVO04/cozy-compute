@@ -252,80 +252,74 @@ export async function unlockPlot(
   plotIndex: number,
   idempotencyKey?: string,
 ) {
-  if (!Number.isInteger(plotIndex) || plotIndex < 0 || plotIndex >= TOTAL_FARM_PLOTS) {
-    throw badRequest('invalid_plot_index', 'Plot index must be between 0 and 35.');
-  }
-
-  const ledgerKey = idempotencyKey ? `farm:unlock:${userId}:${idempotencyKey}` : undefined;
-
-  const replay = async () => {
-    if (!ledgerKey) return null;
-    const existing = await ctx.db.query<{ balance_after: number; metadata: Record<string, unknown> | null }>(
-      'SELECT balance_after, metadata FROM ledger_entries WHERE idempotency_key = $1 AND user_id = $2',
-      [ledgerKey, userId],
-    );
-    if (existing.rows[0]) {
-      if (existing.rows[0].metadata?.plotIndex !== plotIndex) {
-        throw badRequest('idempotency_conflict', 'Idempotency key reused with different plot index.');
-      }
-      return { ok: true, plotIndex, coinBalance: existing.rows[0].balance_after };
+  return withTx(ctx.db, async (tx) => {
+    // Serialize provisioning, replay checks and mutation for this farm in one transaction.
+    await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', ['farm:' + userId]);
+    if (!Number.isInteger(plotIndex) || plotIndex < 0 || plotIndex >= TOTAL_FARM_PLOTS) {
+      throw badRequest('invalid_plot_index', 'Plot index must be between 0 and 35.');
     }
-    return null;
-  };
 
-  const prior = await replay();
-  if (prior) return prior;
+    const ledgerKey = idempotencyKey ? `farm:unlock:${userId}:${idempotencyKey}` : undefined;
 
-  const farm = await getOrCreateFarm(ctx.db, userId);
-  const plotRes = await ctx.db.query<FarmPlotRow>(
-    'SELECT * FROM farm_plots WHERE farm_id = $1 AND plot_index = $2',
-    [farm.id, plotIndex],
-  );
-  const plot = plotRes.rows[0];
-  if (!plot) throw notFound('Plot not found');
-  if (plot.is_unlocked) throw badRequest('already_unlocked', 'This plot is already unlocked.');
-
-  const unlockCost = plot.unlock_price > 0 ? plot.unlock_price : getPlotUnlockPrice(plotIndex);
-
-  try {
-    return await withTx(ctx.db, async (tx) => {
-      let newBal = 0;
-      if (unlockCost > 0) {
-        const b = await tx.query<{ coin: string }>('SELECT coin FROM balances WHERE user_id = $1', [userId]);
-        const currentCoin = Number(b.rows[0]?.coin ?? 0);
-        if (currentCoin < unlockCost) {
-          throw badRequest('insufficient_funds', 'Không đủ Xu để mở ô đất.');
-        }
-
-        const ledger = await postLedger(tx, {
-          userId,
-          currency: 'coin',
-          amount: -unlockCost,
-          reason: 'farm_plot_unlock',
-          referenceId: String(plotIndex),
-          idempotencyKey: ledgerKey,
-          metadata: { plotIndex, unlockCost },
-        });
-        newBal = ledger.balanceAfter;
-      } else {
-        const b = await tx.query<{ coin: string }>('SELECT coin FROM balances WHERE user_id = $1', [userId]);
-        newBal = Number(b.rows[0]?.coin ?? 0);
-      }
-
-      await tx.query(
-        'UPDATE farm_plots SET is_unlocked = true, updated_at = now() WHERE farm_id = $1 AND plot_index = $2',
-        [farm.id, plotIndex],
+    const replay = async () => {
+      if (!ledgerKey) return null;
+      const existing = await tx.query<{ balance_after: number; metadata: Record<string, unknown> | null }>(
+        'SELECT balance_after, metadata FROM ledger_entries WHERE idempotency_key = $1 AND user_id = $2',
+        [ledgerKey, userId],
       );
+      if (existing.rows[0]) {
+        if (existing.rows[0].metadata?.plotIndex !== plotIndex) {
+          throw badRequest('idempotency_conflict', 'Idempotency key reused with different plot index.');
+        }
+        return { ok: true, plotIndex, coinBalance: existing.rows[0].balance_after };
+      }
+      return null;
+    };
 
-      return { ok: true, plotIndex, coinBalance: newBal };
-    });
-  } catch (err) {
-    if ((err as { code?: string }).code === '23505') {
-      const again = await replay();
-      if (again) return again;
+    const prior = await replay();
+    if (prior) return prior;
+
+    const farm = await getOrCreateFarm(tx, userId);
+    const plotRes = await tx.query<FarmPlotRow>(
+      'SELECT * FROM farm_plots WHERE farm_id = $1 AND plot_index = $2',
+      [farm.id, plotIndex],
+    );
+    const plot = plotRes.rows[0];
+    if (!plot) throw notFound('Plot not found');
+    if (plot.is_unlocked) throw badRequest('already_unlocked', 'This plot is already unlocked.');
+
+    const unlockCost = plot.unlock_price > 0 ? plot.unlock_price : getPlotUnlockPrice(plotIndex);
+
+    let newBal = 0;
+    if (unlockCost > 0) {
+      const b = await tx.query<{ coin: string }>('SELECT coin FROM balances WHERE user_id = $1', [userId]);
+      const currentCoin = Number(b.rows[0]?.coin ?? 0);
+      if (currentCoin < unlockCost) {
+        throw badRequest('insufficient_funds', 'Không đủ Xu để mở ô đất.');
+      }
+
+      const ledger = await postLedger(tx, {
+        userId,
+        currency: 'coin',
+        amount: -unlockCost,
+        reason: 'farm_plot_unlock',
+        referenceId: String(plotIndex),
+        idempotencyKey: ledgerKey,
+        metadata: { plotIndex, unlockCost },
+      });
+      newBal = ledger.balanceAfter;
+    } else {
+      const b = await tx.query<{ coin: string }>('SELECT coin FROM balances WHERE user_id = $1', [userId]);
+      newBal = Number(b.rows[0]?.coin ?? 0);
     }
-    throw err;
-  }
+
+    await tx.query(
+      'UPDATE farm_plots SET is_unlocked = true, updated_at = now() WHERE farm_id = $1 AND plot_index = $2',
+      [farm.id, plotIndex],
+    );
+
+    return { ok: true, plotIndex, coinBalance: newBal };
+  });
 }
 
 export async function plantSeed(
@@ -756,61 +750,56 @@ export async function stockPondFish(ctx: AppContext, userId: string, fishSpecies
 }
 
 export async function upgradeWarehouse(ctx: AppContext, userId: string, idempotencyKey?: string) {
-  const farm = await getOrCreateFarm(ctx.db, userId);
-  const currentCapacity = farm.warehouse_capacity;
+  return withTx(ctx.db, async (tx) => {
+    // Serialize provisioning, replay checks and mutation for this farm in one transaction.
+    await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', ['farm:' + userId]);
+    const farm = await getOrCreateFarm(tx, userId);
+    const currentCapacity = farm.warehouse_capacity;
 
-  const currentTier = WAREHOUSE_UPGRADE_TIERS.find((t) => t.capacity === currentCapacity + 50);
-  const upgradeCost = currentTier ? currentTier.upgradeCostCoin : 2000;
-  const newCapacity = currentCapacity + 50;
+    const currentTier = WAREHOUSE_UPGRADE_TIERS.find((t) => t.capacity === currentCapacity + 50);
+    const upgradeCost = currentTier ? currentTier.upgradeCostCoin : 2000;
+    const newCapacity = currentCapacity + 50;
 
-  const ledgerKey = idempotencyKey ? `farm:warehouse:upgrade:${userId}:${idempotencyKey}` : undefined;
+    const ledgerKey = idempotencyKey ? `farm:warehouse:upgrade:${userId}:${idempotencyKey}` : undefined;
 
-  const replay = async () => {
-    if (!ledgerKey) return null;
-    const existing = await ctx.db.query<{ balance_after: number; metadata: Record<string, unknown> | null }>(
-      'SELECT balance_after, metadata FROM ledger_entries WHERE idempotency_key = $1 AND user_id = $2',
-      [ledgerKey, userId],
-    );
-    if (existing.rows[0]) {
-      const recordedCapacity = (existing.rows[0].metadata?.newCapacity as number) ?? farm.warehouse_capacity;
-      return { ok: true, newCapacity: recordedCapacity, coinBalance: existing.rows[0].balance_after };
-    }
-    return null;
-  };
+    const replay = async () => {
+      if (!ledgerKey) return null;
+      const existing = await tx.query<{ balance_after: number; metadata: Record<string, unknown> | null }>(
+        'SELECT balance_after, metadata FROM ledger_entries WHERE idempotency_key = $1 AND user_id = $2',
+        [ledgerKey, userId],
+      );
+      if (existing.rows[0]) {
+        const recordedCapacity =
+          (existing.rows[0].metadata?.newCapacity as number) ?? farm.warehouse_capacity;
+        return { ok: true, newCapacity: recordedCapacity, coinBalance: existing.rows[0].balance_after };
+      }
+      return null;
+    };
 
-  const prior = await replay();
-  if (prior) return prior;
+    const prior = await replay();
+    if (prior) return prior;
 
-  try {
-    return await withTx(ctx.db, async (tx) => {
-      const ledger = await postLedger(tx, {
-        userId,
-        currency: 'coin',
-        amount: -upgradeCost,
-        reason: 'farm_warehouse_upgrade',
-        referenceId: String(newCapacity),
-        idempotencyKey: ledgerKey,
-        metadata: { newCapacity, upgradeCost },
-      });
-
-      await tx.query('UPDATE farms SET warehouse_capacity = $1, updated_at = now() WHERE id = $2', [
-        newCapacity,
-        farm.id,
-      ]);
-
-      return {
-        ok: true,
-        newCapacity,
-        coinBalance: ledger.balanceAfter,
-      };
+    const ledger = await postLedger(tx, {
+      userId,
+      currency: 'coin',
+      amount: -upgradeCost,
+      reason: 'farm_warehouse_upgrade',
+      referenceId: String(newCapacity),
+      idempotencyKey: ledgerKey,
+      metadata: { newCapacity, upgradeCost },
     });
-  } catch (err) {
-    if ((err as { code?: string }).code === '23505') {
-      const again = await replay();
-      if (again) return again;
-    }
-    throw err;
-  }
+
+    await tx.query('UPDATE farms SET warehouse_capacity = $1, updated_at = now() WHERE id = $2', [
+      newCapacity,
+      farm.id,
+    ]);
+
+    return {
+      ok: true,
+      newCapacity,
+      coinBalance: ledger.balanceAfter,
+    };
+  });
 }
 
 export async function updateFarmSettings(
