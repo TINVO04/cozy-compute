@@ -3,6 +3,7 @@ import {
   FISHING_RODS,
   RARITY_LABELS,
   SHADOW_TIER_CONFIG,
+  type FishingConditions,
   type FishShadowTier,
   type Rarity,
   type RodConfig,
@@ -20,6 +21,7 @@ import { fishIcon, fishRenderDimensions, FISH_EFFECT_CLASS } from '../art/fish';
 import { chibiTrophyScene } from '../art/chibi';
 import { getTownSelfPosition, townFishingController } from '../game/scenes';
 import { net } from '../game/net';
+import { acceptWorldWeather } from '../game/weather-sync';
 import { useFishArt } from '../lib/use-fish-art';
 
 function rewardToast(coin: number, fame: number, title: string, tired?: boolean) {
@@ -114,6 +116,14 @@ export function FishingActivity() {
   const refresh = useRefreshEconomy();
   const [phase, setPhaseState] = useState<FishPhase>({ kind: 'idle' });
   const [resultView, setResultView] = useState<'chibi' | 'illustration'>('chibi');
+  const [castConditions, setCastConditions] = useState<FishingConditions | null>(null);
+  const { data: forecast } = useQuery({
+    queryKey: ['fishing-conditions'],
+    queryFn: () => api<FishingConditions>('/activities/fishing/conditions'),
+    refetchInterval: 30_000,
+    retry: false,
+  });
+  const conditions = phase.kind === 'idle' ? forecast : castConditions;
   const qc = useQueryClient();
   const { data: me } = useQuery<Me>({ queryKey: qk.me, queryFn: () => api<Me>('/me') });
   const phaseRef = useRef(phase);
@@ -197,8 +207,11 @@ export function FishingActivity() {
         nibbleOrbitTurns: number[];
         shadowDelayMs: number;
         equippedRod?: RodConfig;
+        conditions?: FishingConditions;
       }>('/activities/fishing/start', { body: {} });
       if (!mounted.current) return;
+      setCastConditions(r.conditions ?? null);
+      if (r.conditions) acceptWorldWeather(r.conditions.weather);
 
       const now = Date.now();
       const biteAt = now + r.biteInMs;
@@ -541,6 +554,24 @@ export function FishingActivity() {
 
   return (
     <div className="fishing-inworld-hud" role="region" aria-label="Giao diện câu cá ngoài thế giới">
+      {conditions && phase.kind !== 'result' && (
+        <div
+          className="fishing-status-chip"
+          aria-label="Điều kiện câu cá"
+          style={{
+            maxWidth: 'min(620px, 92vw)',
+            whiteSpace: 'normal',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            textAlign: 'center',
+          }}
+        >
+          <strong>
+            {conditions.weather.timeString} · {conditions.weather.conditionLabelVi}
+          </strong>
+          <span>{conditions.summary}</span>
+        </div>
+      )}
       {phase.kind === 'idle' && (
         <div className="fishing-status-chip" style={{ gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
           <Button

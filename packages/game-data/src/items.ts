@@ -1,8 +1,9 @@
+import { VEHICLES } from './vehicles.js';
 import { GEN_Z_FURNITURE } from './furniture.js';
 export { GEN_Z_FURNITURE, GEN_Z_FURNITURE_IDS } from './furniture.js';
 
-export type ItemType = 'clothing' | 'furniture' | 'rod' | 'boat';
-export type ClothingSlot = 'hat' | 'top' | 'face' | 'rod' | 'boat';
+export type ItemType = 'clothing' | 'furniture' | 'rod' | 'boat' | 'vehicle';
+export type ClothingSlot = 'hat' | 'top' | 'face' | 'rod' | 'boat' | 'vehicle';
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary' | 'defiant' | 'sovereign';
 
 export const RARITY_LABELS: Record<Rarity, string> = {
@@ -220,6 +221,16 @@ export const ITEM_SEEDS: ItemDefinitionSeed[] = [
     sprite: r.sprite,
   })),
   // fishing boats
+  ...Object.values(VEHICLES).map((v) => ({
+    id: v.id,
+    type: 'vehicle' as const,
+    slot: 'vehicle' as const,
+    name: v.name,
+    description: `Chạy nhanh gấp ${(v.speed / 150).toFixed(1)} lần đi bộ trên đường. V để lên / xuống xe.`,
+    rarity: 'common' as const,
+    coinPrice: v.price,
+    sprite: v.id,
+  })),
   ...Object.values(BOATS).map((b) => ({
     id: b.id,
     type: 'boat' as const,

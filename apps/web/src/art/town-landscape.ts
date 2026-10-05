@@ -1,4 +1,6 @@
 import {
+  TOWN_ROADS,
+  DEALER_DRIVEWAY,
   MAP_HEIGHT,
   MAP_WIDTH,
   PATHS,
@@ -84,12 +86,7 @@ export function paintTown(): HTMLCanvasElement {
   // Continuous concrete sidewalks serve entrances. Asphalt is a separate
   // connected street surface; only the central square has stone tile joints.
   for (const path of PATHS) rect(ctx, '#d8d8cf', path.x, path.y, path.w, path.h);
-  const streets = [
-    { x: 32, y: 332, w: 1472, h: 40 },
-    { x: 332, y: 320, w: 40, h: 576 },
-    { x: 1036, y: 320, w: 72, h: 576 },
-    { x: 96, y: 844, w: 1024, h: 40 },
-  ];
+  const streets = TOWN_ROADS;
   const onStreet = (x: number, y: number) => streets.some((r) => pointInRect(x, y, r));
   for (let y = 320; y < 896; y += 2) {
     for (let x = 32; x < 1504; x += 2) {
@@ -190,6 +187,11 @@ export function paintTown(): HTMLCanvasElement {
   rect(ctx, '#998d70', 17.5 * TILE - 10, 24.5 * TILE - 14, 4 * TILE + 20, 36);
   rect(ctx, '#d8ceb0', 17.5 * TILE - 8, 24.5 * TILE - 12, 4 * TILE + 16, 32);
 
+  rect(ctx, '#b6b6a8', DEALER_DRIVEWAY.x, DEALER_DRIVEWAY.y, DEALER_DRIVEWAY.w, DEALER_DRIVEWAY.h);
+  for (const x of [588, 636]) {
+    rect(ctx, '#f7ecc9', x, 796, 2, 34);
+    rect(ctx, '#f7ecc9', x, 828, 28, 2);
+  }
   // Café terrace and residential garden read as distinct little destinations.
   rect(ctx, '#b7ad89', 4 * TILE, 8 * TILE, 7 * TILE, 2 * TILE);
   for (let y = 8 * TILE; y < 10 * TILE; y += 8) {
@@ -213,12 +215,19 @@ export function paintTown(): HTMLCanvasElement {
     rect(ctx, '#c7bc8b', w.x - 5, w.y - 5, w.w + 5, w.h + 5);
     rect(ctx, C.waterDark, w.x, w.y, w.w, w.h);
     rect(ctx, C.water, w.x + 4, w.y + 5, w.w - 4, w.h - 5);
+    const pondDepth = ctx.createLinearGradient(w.x, w.y, w.x + w.w, w.y + w.h);
+    pondDepth.addColorStop(0, '#8dad8c');
+    pondDepth.addColorStop(0.3, '#619991');
+    pondDepth.addColorStop(0.7, '#457d79');
+    pondDepth.addColorStop(1, '#729a89');
+    ctx.fillStyle = pondDepth;
+    ctx.fillRect(w.x + 4, w.y + 5, w.w - 4, w.h - 5);
     rect(ctx, '#76d7e5', w.x + 4, w.y + 5, w.w - 4, 4);
     rect(ctx, '#76d7e5', w.x + 4, w.y + 5, 4, w.h - 5);
     for (let i = 0; i < 210; i++) {
       const x = w.x + 12 + rng() * (w.w - 24),
         y = w.y + 12 + rng() * (w.h - 24);
-      rect(ctx, i % 3 ? '#76d7e5' : '#38adc2', x, y, 4 + rng() * 12, 1);
+      rect(ctx, i % 3 ? 'rgba(190,220,203,0.3)' : 'rgba(36,86,78,0.25)', x, y, 4 + rng() * 12, 1);
     }
     for (const [dx, dy] of [
       [22, 40],
@@ -245,83 +254,207 @@ export function paintTown(): HTMLCanvasElement {
     }
   }
   // =========================================================================
-  // CẦU HÓA AN (TUYẾN NỐI BIÊN HÒA - BÌNH DƯƠNG)
-  // Modern concrete bridge deck, yellow road markings, streetlights & construction barrier
+  // CẦU HÓA AN — CHIẾC CẦU BÊ TÔNG DỰ ỨNG LỰC HIỆN ĐẠI VẮT QUA SÔNG ĐỒNG NAI
+  // Thiết kế chuẩn 3D cầu vượt sông: Mố cầu vững chãi, trụ cầu mũi rẽ sóng,
+  // dầm hộp vươn ra lòng sông, khe co giãn nhịp và lan can kim loại 3 chiều.
   // =========================================================================
-  // Bridge shadow on river water
-  rect(ctx, '#0f766e', PIER.x - 6, PIER.y + 6, PIER.w + 12, PIER.h);
 
-  // Concrete substructure & asphalt bridge deck
-  rect(ctx, '#1e293b', PIER.x - 3, PIER.y, PIER.w + 6, PIER.h);
-  rect(ctx, '#334155', PIER.x - 1, PIER.y, PIER.w + 2, PIER.h);
-  rect(ctx, '#475569', PIER.x + 2, PIER.y, PIER.w - 4, PIER.h);
+  // 1. ELEVATED BRIDGE DECK SHADOW OVER FLOWING RIVER WATER
+  // Bóng đổ dầm cầu in đậm xuống dòng nước Sông Đồng Nai phía dưới
+  // Phía Đông (bóng đổ theo hướng nắng ban ngày)
+  rect(ctx, 'rgba(4, 47, 46, 0.72)', PIER.x + PIER.w + 1, PIER.y + 6, 16, PIER.h - 6);
+  rect(ctx, 'rgba(6, 78, 59, 0.42)', PIER.x + PIER.w + 17, PIER.y + 10, 10, PIER.h - 10);
+  // Phía Tây (bóng đổ dưới dầm hộp biên vươn ra)
+  rect(ctx, 'rgba(4, 47, 46, 0.65)', PIER.x - 12, PIER.y + 4, 10, PIER.h - 4);
+  rect(ctx, 'rgba(6, 78, 59, 0.32)', PIER.x - 18, PIER.y + 8, 6, PIER.h - 8);
 
-  // White pedestrian safety curb borders
-  rect(ctx, '#f8fafc', PIER.x + 2, PIER.y, 2, PIER.h);
-  rect(ctx, '#f8fafc', PIER.x + PIER.w - 4, PIER.y, 2, PIER.h);
+  // 2. SUBMERGED REINFORCED CONCRETE PIERS & CUTWATERS (Trụ cầu bê tông & Mũi rẽ sóng)
+  // Các trụ cầu bê tông cốt thép cắm sâu dưới lòng sông Đồng Nai tại 3 nhịp cầu chính
+  const pierSpans = [PIER.y + 64, PIER.y + 152, PIER.y + 240];
+  for (const py of pierSpans) {
+    // Đế móng ngầm dưới lòng sông
+    rect(ctx, '#022c22', PIER.x - 14, py - 4, PIER.w + 28, 28);
 
-  // Yellow dashed highway road centerline (Cầu Hóa An)
+    // Trụ cầu phía Tây (vươn ra ngoài mép dầm cầu)
+    rect(ctx, '#0f172a', PIER.x - 13, py - 2, 11, 24);
+    rect(ctx, '#334155', PIER.x - 12, py - 1, 9, 22);
+    rect(ctx, '#64748b', PIER.x - 11, py, 7, 20);
+    rect(ctx, '#94a3b8', PIER.x - 10, py + 1, 3, 18); // Vệt sáng bê tông đúc
+
+    // Trụ cầu phía Đông
+    rect(ctx, '#0f172a', PIER.x + PIER.w + 2, py - 2, 11, 24);
+    rect(ctx, '#334155', PIER.x + PIER.w + 3, py - 1, 9, 22);
+    rect(ctx, '#64748b', PIER.x + PIER.w + 4, py, 7, 20);
+    rect(ctx, '#94a3b8', PIER.x + PIER.w + 5, py + 1, 3, 18);
+
+    // Dầm ngang liên kết trụ cầu (Cross-diaphragm beam under deck)
+    rect(ctx, '#1e293b', PIER.x - 4, py + 2, PIER.w + 8, 16);
+    rect(ctx, '#475569', PIER.x - 2, py + 4, PIER.w + 4, 12);
+
+    // Mũi rẽ sóng nhọn (Cutwater noses) quay về hướng thượng lưu chống xói lở
+    // Mũi rẽ sóng trụ Tây
+    ctx.fillStyle = '#475569';
+    ctx.beginPath();
+    ctx.moveTo(PIER.x - 8, py - 7);
+    ctx.lineTo(PIER.x - 13, py - 1);
+    ctx.lineTo(PIER.x - 3, py - 1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(PIER.x - 9, py - 5, 2, 4);
+
+    // Mũi rẽ sóng trụ Đông
+    ctx.fillStyle = '#475569';
+    ctx.beginPath();
+    ctx.moveTo(PIER.x + PIER.w + 7, py - 7);
+    ctx.lineTo(PIER.x + PIER.w + 2, py - 1);
+    ctx.lineTo(PIER.x + PIER.w + 12, py - 1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(PIER.x + PIER.w + 6, py - 5, 2, 4);
+
+    // Bọt nước trắng xóa & gợn sóng rẽ quanh chân trụ cầu
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.fillRect(PIER.x - 15, py - 3, 3, 2);
+    ctx.fillRect(PIER.x - 17, py + 4, 3, 1);
+    ctx.fillRect(PIER.x - 16, py + 18, 3, 2);
+    ctx.fillRect(PIER.x + PIER.w + 13, py - 3, 3, 2);
+    ctx.fillRect(PIER.x + PIER.w + 15, py + 4, 3, 1);
+    ctx.fillRect(PIER.x + PIER.w + 14, py + 18, 3, 2);
+  }
+
+  // 3. SHORE ABUTMENT WING-WALLS & BRIDGEHEAD PYLONS (Mố cầu bê tông trên bờ)
+  // Kết cấu mố cầu bằng đá granite và bê tông neo chặt vào bờ sông
+  for (let y = PIER.y - 18; y < PIER.y; y += 6) {
+    rect(ctx, '#0f172a', PIER.x - 36, y, PIER.w + 72, 6);
+    rect(ctx, '#334155', PIER.x - 35, y, PIER.w + 70, 4);
+    rect(ctx, '#64748b', PIER.x - 34, y, PIER.w + 68, 1);
+  }
+  // Mố cầu bê tông trắng vát chéo dẫn lối lên cầu
+  rect(ctx, '#cbd5e1', PIER.x - 18, PIER.y - 12, 14, 14);
+  rect(ctx, '#94a3b8', PIER.x - 17, PIER.y - 10, 12, 12);
+  rect(ctx, '#cbd5e1', PIER.x + PIER.w + 4, PIER.y - 12, 14, 14);
+  rect(ctx, '#94a3b8', PIER.x + PIER.w + 5, PIER.y - 10, 12, 12);
+
+  // Hai trụ tháp cổng cầu (Bridgehead Architectural Pylons) uy nghi đầu cầu
+  // Trụ tháp Tây
+  rect(ctx, '#0f172a', PIER.x - 13, PIER.y - 24, 10, 26);
+  rect(ctx, '#f8fafc', PIER.x - 12, PIER.y - 23, 8, 24);
+  rect(ctx, '#cbd5e1', PIER.x - 12, PIER.y - 23, 3, 24);
+  rect(ctx, '#b45309', PIER.x - 13, PIER.y - 27, 10, 4); // Chóp đồng viền vàng
+  rect(ctx, '#facc15', PIER.x - 9, PIER.y - 29, 2, 3);
+  rect(ctx, '#0284c7', PIER.x - 10, PIER.y - 16, 4, 6); // Huy hiệu cầu Hóa An xanh
+
+  // Trụ tháp Đông
+  rect(ctx, '#0f172a', PIER.x + PIER.w + 3, PIER.y - 24, 10, 26);
+  rect(ctx, '#f8fafc', PIER.x + PIER.w + 4, PIER.y - 23, 8, 24);
+  rect(ctx, '#cbd5e1', PIER.x + PIER.w + 4, PIER.y - 23, 3, 24);
+  rect(ctx, '#b45309', PIER.x + PIER.w + 3, PIER.y - 27, 10, 4);
+  rect(ctx, '#facc15', PIER.x + PIER.w + 7, PIER.y - 29, 2, 3);
+  rect(ctx, '#0284c7', PIER.x + PIER.w + 6, PIER.y - 16, 4, 6);
+
+  // 4. MAIN BRIDGE DECK GIRDERS & ASPHALT ROADWAY
+  // Dầm hộp biên bê tông dày dặn (Thấy rõ chiều dày kết cấu dầm cầu 3D)
+  rect(ctx, '#0f172a', PIER.x - 5, PIER.y, PIER.w + 10, PIER.h);
+  rect(ctx, '#334155', PIER.x - 4, PIER.y, PIER.w + 8, PIER.h);
+
+  // Dầm hộp bê tông chịu lực màu xám lộ ra ngoài mép lan can
+  rect(ctx, '#64748b', PIER.x - 4, PIER.y, 2, PIER.h);
+  rect(ctx, '#94a3b8', PIER.x - 3, PIER.y, 1, PIER.h);
+  rect(ctx, '#64748b', PIER.x + PIER.w + 2, PIER.y, 2, PIER.h);
+  rect(ctx, '#cbd5e1', PIER.x + PIER.w + 3, PIER.y, 1, PIER.h);
+
+  // Mặt đường nhựa cầu (Asphalt roadway surface)
+  rect(ctx, '#1e293b', PIER.x + 2, PIER.y, PIER.w - 4, PIER.h);
+  rect(ctx, '#334155', PIER.x + 4, PIER.y, PIER.w - 8, PIER.h);
+
+  // 5. RAISED PEDESTRIAN SIDEWALK CURBS (Vỉa hè người đi bộ hai bên mép cầu)
+  // Vỉa hè đi bộ bên Tây
+  rect(ctx, '#94a3b8', PIER.x - 2, PIER.y, 6, PIER.h);
+  rect(ctx, '#e2e8f0', PIER.x - 1, PIER.y, 4, PIER.h);
+  rect(ctx, '#cbd5e1', PIER.x + 3, PIER.y, 1, PIER.h); // Gờ bó vỉa granite
+  // Vỉa hè đi bộ bên Đông
+  rect(ctx, '#94a3b8', PIER.x + PIER.w - 4, PIER.y, 6, PIER.h);
+  rect(ctx, '#e2e8f0', PIER.x + PIER.w - 3, PIER.y, 4, PIER.h);
+  rect(ctx, '#cbd5e1', PIER.x + PIER.w - 4, PIER.y, 1, PIER.h);
+
+  // Vạch kẻ trắng biên an toàn xe chạy (Solid white edge lines)
+  rect(ctx, '#f8fafc', PIER.x + 5, PIER.y, 1, PIER.h);
+  rect(ctx, '#f8fafc', PIER.x + PIER.w - 6, PIER.y, 1, PIER.h);
+
+  // Vạch vàng đứt nét phân làn đường cao tốc (Yellow dashed centerline)
   for (let my = PIER.y + 4; my < PIER.y + PIER.h - 26; my += 16) {
     rect(ctx, '#fde047', PIER.x + Math.floor(PIER.w / 2) - 1, my, 2, 8);
   }
 
-  // Steel safety railings (Lan can Cầu Hóa An xanh dương)
-  rect(ctx, '#0284c7', PIER.x - 3, PIER.y, 2, PIER.h);
-  rect(ctx, '#0284c7', PIER.x + PIER.w + 1, PIER.y, 2, PIER.h);
-  rect(ctx, '#38bdf8', PIER.x - 4, PIER.y, 1, PIER.h);
+  // 6. TRANSVERSE STEEL FINGER EXPANSION JOINTS (Khe co giãn cầu tại các nhịp)
+  for (const py of pierSpans) {
+    // Rãnh khe co giãn cao su & thép
+    rect(ctx, '#0f172a', PIER.x + 4, py, PIER.w - 8, 3);
+    // Bản thép răng lược đan xen (Steel finger joint plates)
+    for (let jx = PIER.x + 5; jx < PIER.x + PIER.w - 6; jx += 4) {
+      rect(ctx, '#cbd5e1', jx, py, 2, 1);
+      rect(ctx, '#94a3b8', jx + 1, py + 1, 2, 1);
+      rect(ctx, '#cbd5e1', jx, py + 2, 2, 1);
+    }
+  }
+
+  // 7. 3D STRUCTURAL STEEL BRIDGE RAILINGS & STREETLIGHTS (Lan can cầu 3 chiều)
+  // Tay vịn trên cùng (Top safety handrail)
+  rect(ctx, '#0369a1', PIER.x - 3, PIER.y, 2, PIER.h);
+  rect(ctx, '#38bdf8', PIER.x - 2, PIER.y, 1, PIER.h);
+  rect(ctx, '#0369a1', PIER.x + PIER.w + 1, PIER.y, 2, PIER.h);
   rect(ctx, '#38bdf8', PIER.x + PIER.w + 2, PIER.y, 1, PIER.h);
 
-  // Bridge railing posts & streetlamps along Cầu Hóa An
-  for (let py = PIER.y + 16; py < PIER.y + PIER.h - 20; py += 48) {
-    rect(ctx, '#64748b', PIER.x - 5, py, 3, 6);
-    rect(ctx, '#64748b', PIER.x + PIER.w + 2, py, 3, 6);
-    // Streetlamp fixture
-    rect(ctx, '#94a3b8', PIER.x - 7, py - 4, 2, 4);
-    rect(ctx, '#fef08a', PIER.x - 8, py - 6, 4, 3);
-    rect(ctx, '#94a3b8', PIER.x + PIER.w + 5, py - 4, 2, 4);
-    rect(ctx, '#fef08a', PIER.x + PIER.w + 4, py - 6, 4, 3);
+  // Các con tiện và cột trụ lan can (Railing posts every 20px)
+  for (let ry = PIER.y + 4; ry < PIER.y + PIER.h - 10; ry += 20) {
+    // Trụ lan can Tây
+    rect(ctx, '#0c4a6e', PIER.x - 4, ry, 3, 5);
+    rect(ctx, '#0284c7', PIER.x - 3, ry + 1, 2, 4);
+    rect(ctx, '#e0f2fe', PIER.x - 3, ry + 1, 1, 2);
+    // Trụ lan can Đông
+    rect(ctx, '#0c4a6e', PIER.x + PIER.w + 1, ry, 3, 5);
+    rect(ctx, '#0284c7', PIER.x + PIER.w + 1, ry + 1, 2, 4);
+    rect(ctx, '#e0f2fe', PIER.x + PIER.w + 2, ry + 1, 1, 2);
   }
 
-  // Southern End: Construction Barricade towards Bình Dương (Rào chắn thi công)
-  const barY = PIER.y + PIER.h - 22;
-  // Road barrier frame
-  rect(ctx, '#1e293b', PIER.x + 2, barY, PIER.w - 4, 10);
-  // Red & White diagonal warning hazard stripes
-  for (let bx = PIER.x + 2; bx < PIER.x + PIER.w - 4; bx += 8) {
-    rect(ctx, '#ef4444', bx, barY + 1, 4, 8);
-    rect(ctx, '#ffffff', bx + 4, barY + 1, 4, 8);
+  // Đèn chiếu sáng cao áp gắn cần thép vươn ra lòng đường (Bridge streetlamps)
+  for (let py = PIER.y + 24; py < PIER.y + PIER.h - 20; py += 56) {
+    // Đèn bên Tây
+    rect(ctx, '#475569', PIER.x - 6, py, 3, 8);
+    rect(ctx, '#94a3b8', PIER.x - 8, py - 5, 3, 6);
+    rect(ctx, '#fef08a', PIER.x - 9, py - 6, 4, 3);
+
+    // Đèn bên Đông
+    rect(ctx, '#475569', PIER.x + PIER.w + 3, py, 3, 8);
+    rect(ctx, '#94a3b8', PIER.x + PIER.w + 5, py - 5, 3, 6);
+    rect(ctx, '#fef08a', PIER.x + PIER.w + 5, py - 6, 4, 3);
   }
-  // Construction safety warning cones on left & right
-  for (const cx of [PIER.x + 4, PIER.x + PIER.w - 12]) {
+
+  // 8. SOUTHERN END: CONSTRUCTION BARRICADE TOWARDS BÌNH DƯƠNG (Rào chắn thi công)
+  const barY = PIER.y + PIER.h - 22;
+  // Khung rào chắn thép
+  rect(ctx, '#0f172a', PIER.x + 2, barY, PIER.w - 4, 11);
+  rect(ctx, '#1e293b', PIER.x + 3, barY + 1, PIER.w - 6, 9);
+  // Dải phản quang sọc đỏ - trắng chuẩn công trình giao thông
+  for (let bx = PIER.x + 3; bx < PIER.x + PIER.w - 6; bx += 8) {
+    rect(ctx, '#dc2626', bx, barY + 1, 4, 9);
+    rect(ctx, '#ffffff', bx + 4, barY + 1, 4, 9);
+  }
+  // Cọc tiêu giao thông chóp nón phản quang (Traffic safety cones)
+  for (const cx of [PIER.x + 5, PIER.x + PIER.w - 13]) {
     rect(ctx, '#ea580c', cx, barY - 6, 8, 6);
     rect(ctx, '#f97316', cx + 1, barY - 10, 6, 4);
     rect(ctx, '#ffffff', cx + 1, barY - 8, 6, 2);
   }
 
-  // Yellow warning signpost (Biển báo thi công Cầu Hóa An)
-  rect(ctx, '#451a03', PIER.x + Math.floor(PIER.w / 2) - 1, barY - 18, 2, 8);
-  rect(ctx, '#fbbf24', PIER.x + 6, barY - 26, PIER.w - 12, 9);
-  rect(ctx, '#000000', PIER.x + 7, barY - 25, PIER.w - 14, 7);
-  rect(ctx, '#fde047', PIER.x + 10, barY - 23, PIER.w - 20, 3);
+  // Biển cảnh báo công trường màu vàng phản quang
+  rect(ctx, '#78350f', PIER.x + Math.floor(PIER.w / 2) - 1, barY - 18, 2, 8);
+  rect(ctx, '#000000', PIER.x + 5, barY - 26, PIER.w - 10, 9);
+  rect(ctx, '#fbbf24', PIER.x + 6, barY - 25, PIER.w - 12, 7);
+  rect(ctx, '#000000', PIER.x + 9, barY - 23, PIER.w - 18, 3);
 
-  // Crosspiece on the shore joining highway promenade with Cầu Hóa An bridgehead
-  for (let y = PIER.y - 23; y < PIER.y; y += 6) {
-    rect(ctx, '#1e293b', PIER.x - 70, y, PIER.w + 140, 6);
-    rect(ctx, '#334155', PIER.x - 69, y, PIER.w + 138, 4);
-    rect(ctx, '#475569', PIER.x - 69, y, PIER.w + 138, 1);
-    for (let x = PIER.x - 64; x < PIER.x + PIER.w + 65; x += 24) rect(ctx, '#64748b', x, y + 2, 2, 1);
-  }
-
-  // Overhead highway sign at bridge entrance (CẦU HÓA AN)
-  rect(ctx, '#334155', PIER.x - 14, PIER.y - 36, 4, 28);
-  rect(ctx, '#334155', PIER.x + PIER.w + 10, PIER.y - 36, 4, 28);
-  rect(ctx, '#0f172a', PIER.x - 16, PIER.y - 42, PIER.w + 32, 16);
-  rect(ctx, '#0284c7', PIER.x - 15, PIER.y - 41, PIER.w + 30, 14);
-  rect(ctx, '#38bdf8', PIER.x - 14, PIER.y - 40, PIER.w + 28, 1);
-  ctx.font = '700 8px sans-serif';
-  ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'center';
-  ctx.fillText('CẦU HÓA AN', PIER.x + Math.floor(PIER.w / 2), PIER.y - 30);
   return canvas;
 }
 
@@ -481,20 +614,6 @@ function paintVietProDevTownhouse(b: Building): HTMLCanvasElement {
     rect(ctx, '#d97706', lx, slatY, 1, slatH);
   }
 
-  // --- VIETNAM NATIONAL FLAG (Cờ đỏ sao vàng) on Floor 2 ---
-  ctx.strokeStyle = '#e2e8f0';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(slatX + 8, slatY + 12);
-  ctx.lineTo(slatX - 4, slatY - 4);
-  ctx.stroke();
-  const flagX = slatX - 16;
-  const flagY = slatY - 10;
-  rect(ctx, '#dc2626', flagX, flagY, 13, 9);
-  rect(ctx, '#b91c1c', flagX, flagY + 8, 13, 1);
-  rect(ctx, '#facc15', flagX + 4, flagY + 2, 5, 5);
-  rect(ctx, '#fde047', flagX + 5, flagY + 3, 3, 3);
-
   // 4. SIGNBOARD (Biển hiệu VietProDev Nền Trắng Sáng Chuẩn 100% Theo Ảnh Thực Tế)
   const signX = 8;
   const signW = w - 8; // 152px
@@ -553,10 +672,6 @@ function paintVietProDevTownhouse(b: Building): HTMLCanvasElement {
   const awnW = signW + 4;
   const awnY = signY + signH;
   const awnH = 12;
-
-  // Additional red flag at ground floor entrance
-  rect(ctx, '#dc2626', 14, awnY + 8, 8, 6);
-  rect(ctx, '#facc15', 16, awnY + 10, 3, 2);
 
   // 6. GROUND FLOOR ENTRANCE & GLASS DOORS (y: 160 to bottom)
   const gy = awnY + awnH - 2;
@@ -773,38 +888,33 @@ function paintDntuBuilding(b: Building): HTMLCanvasElement {
   rect(ctx, '#d4af37', pedX - 38, bottom - 6, 76, 4);
   rect(ctx, '#fef08a', pedX - 36, bottom - 4, 72, 2);
 
-  // 5. 3 FLAGPOLES IN FRONT OF MAIN ARCH (y: 90..130)
-  // Left Flag: DNTU Flag
+  // 5. 3 STAINLESS STEEL FLAGPOLES IN FRONT OF MAIN ARCH (y: 90..126)
+  // Left Flagpole (DNTU)
   ctx.strokeStyle = '#e2e8f0';
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(pedX - 16, 126);
   ctx.lineTo(pedX - 16, 96);
   ctx.stroke();
-  rect(ctx, '#ffffff', pedX - 27, 98, 11, 7);
-  rect(ctx, '#b91c1c', pedX - 23, 100, 3, 4);
+  rect(ctx, '#facc15', pedX - 17, 95, 3, 2); // Gold pole finial
 
-  // Center Flag: Vietnam National Flag
+  // Center Flagpole (Vietnam National Flag)
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(pedX, 126);
   ctx.lineTo(pedX, 90);
   ctx.stroke();
-  rect(ctx, '#dc2626', pedX + 1, 91, 14, 9);
-  rect(ctx, '#b91c1c', pedX + 1, 99, 14, 1);
-  rect(ctx, '#facc15', pedX + 5, 93, 5, 5);
-  rect(ctx, '#fde047', pedX + 6, 94, 3, 3);
+  rect(ctx, '#facc15', pedX - 1, 89, 3, 2); // Gold pole finial
 
-  // Right Flag: DNTU Flag
+  // Right Flagpole (DNTU)
   ctx.strokeStyle = '#e2e8f0';
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(pedX + 16, 126);
   ctx.lineTo(pedX + 16, 96);
   ctx.stroke();
-  rect(ctx, '#ffffff', pedX + 16, 98, 11, 7);
-  rect(ctx, '#b91c1c', pedX + 20, 100, 3, 4);
+  rect(ctx, '#facc15', pedX + 15, 95, 3, 2); // Gold pole finial
 
   // 6. TOP UNIVERSITY TITLE ON ARCH LEVEL
   const signW = 160;
@@ -948,6 +1058,15 @@ function paintComGaBuilding(b: Building): HTMLCanvasElement {
   drawWindow(14, 28, 28, 30); // Window 1 (left)
   drawWindow(92, 28, 26, 30); // Window 2 (center-right)
   drawWindow(124, 28, 26, 30); // Window 3 (far-right)
+
+  // Angled Flagpole on Floor 2 balcony beside Window 1 (Cột cờ ban công Cơm Gà 68)
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(14, 52);
+  ctx.lineTo(3, 38);
+  ctx.stroke();
+  rect(ctx, '#facc15', 2, 37, 2, 2); // Gold pole finial
 
   // Wall-mounted outdoor AC compressor unit (cục nóng máy lạnh)
   const acX = 50;
@@ -1414,7 +1533,250 @@ function paintCyberNetBuilding(b: Building): HTMLCanvasElement {
   return canvas;
 }
 
+/**
+ * Real-world Bcons Apartment Building ("Chung Cư Bcons Plaza / Bcons City Biên Hòa"):
+ * - Signature Bcons Contemporary Architecture:
+ *   - Rooftop: Modern flat architectural parapet, sky garden pergola & blue "BCONS" skyline sign (y: 6..42)
+ *   - Facade: Pearl-white base stucco accented with Bcons signature vertical terracotta-orange (#ea580c)
+ *     and deep navy (#1e3a8a) architectural color blocks running up the building (y: 42..196)
+ *   - Individual Residential Balconies with glass balustrades & charcoal AC compressor louver grilles
+ *   - Ground Floor Commercial Shophouse Podium: Grand glass lobby, Bcons Plaza 3D acrylic sign,
+ *     24/7 convenience store (WinMart/GS25 style) & resident cafe lounge (y: 196..253)
+ * - Zero window collision with entrance doors!
+ */
+export function paintBconsApartment(b: Building): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = b.rect.w + 8; // 264
+  canvas.height = b.rect.h + BUILDING_ROOF; // 256
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  const w = canvas.width; // 264
+  const bottom = canvas.height - 3; // 253
+  const eave = 42;
+
+  // 0. Base ground shadow
+  oval(ctx, 'rgba(15, 23, 42, 0.35)', w / 2, bottom + 1, w / 2 - 4, 5);
+
+  // 1. ROOFTOP PARAPET & SKYLINE CROWN (y: 6..42, 36px)
+  rect(ctx, '#0f172a', 4, 10, w - 8, eave - 10);
+  rect(ctx, '#1e293b', 6, 12, w - 12, eave - 12);
+  rect(ctx, '#0284c7', 4, 10, w - 8, 2); // Bcons blue neon top rim
+
+  // Rooftop Sky Garden Pergola (left side: x: 18..88)
+  rect(ctx, '#78350f', 18, 14, 70, 3);
+  for (let px = 22; px < 86; px += 8) {
+    rect(ctx, '#92400e', px, 14, 2, 16);
+    rect(ctx, '#15803d', px - 1, 12, 4, 3); // Rooftop climbing vines
+  }
+
+  // Rooftop Telecom Antennas & Solar Panels (right side: x: 174..246)
+  rect(ctx, '#1e293b', 178, 16, 56, 14);
+  rect(ctx, '#0284c7', 180, 18, 52, 10); // Blue solar panels
+  rect(ctx, '#475569', 242, 8, 2, 22); // Lightning rod / antenna spire
+  rect(ctx, '#ef4444', 241, 6, 4, 2); // Red aviation warning beacon
+
+  // BCONS Rooftop Skyline Logo Sign (center: x = 96..168, y: 12..36)
+  const logoBoxW = 72;
+  const logoBoxX = (w - logoBoxW) / 2;
+  rect(ctx, '#0f172a', logoBoxX, 14, logoBoxW, 20);
+  rect(ctx, '#0284c7', logoBoxX + 1, 15, logoBoxW - 2, 18);
+  rect(ctx, '#0369a1', logoBoxX + 2, 16, logoBoxW - 4, 16);
+
+  // Bcons Logo: Orange & Blue diamond crest + "BCONS"
+  rect(ctx, '#ea580c', logoBoxX + 6, 20, 8, 8); // Orange diamond
+  rect(ctx, '#38bdf8', logoBoxX + 10, 20, 4, 8);
+  ctx.font = '900 9px "Inter", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('BCONS', logoBoxX + 44, 25);
+
+  // 2. MAIN RESIDENTIAL FACADE (y: 42..196, 154px tall)
+  rect(ctx, '#1e293b', 4, eave, w - 8, 154);
+  rect(ctx, '#f8fafc', 6, eave + 1, w - 12, 152);
+
+  // Signature Bcons Vertical Terracotta-Orange & Navy Accent Bands running up the facade
+  rect(ctx, '#ea580c', 54, eave + 1, 12, 150);
+  rect(ctx, '#f97316', 56, eave + 1, 8, 150);
+  rect(ctx, '#ea580c', 198, eave + 1, 12, 150);
+  rect(ctx, '#f97316', 200, eave + 1, 8, 150);
+  rect(ctx, '#1e3a8a', 104, eave + 1, 8, 150);
+  rect(ctx, '#0f172a', 152, eave + 1, 8, 150);
+
+  // 5 Residential Apartment Balcony Suites (Bay Xs)
+  const bayXs = [14, 68, 114, 162, 214];
+
+  const drawBconsBalconySuite = (wx: number, wy: number) => {
+    const ww = 38;
+    const wh = 36;
+
+    // Outer structural window recess
+    rect(ctx, '#334155', wx - 1, wy - 1, ww + 2, wh + 2);
+    rect(ctx, '#ffffff', wx, wy, ww, wh);
+
+    // Sliding glass balcony doors (Xingfa dark grey aluminum frame & blue-tinted glass)
+    const glassW = ww - 10;
+    rect(ctx, '#0f172a', wx + 2, wy + 2, glassW, wh - 10);
+    rect(ctx, '#38bdf8', wx + 3, wy + 3, glassW - 2, wh - 12);
+    rect(ctx, '#e0f2fe', wx + 4, wy + 4, glassW - 4, wh - 14);
+
+    // Sheer linen curtain inside
+    rect(ctx, 'rgba(255, 255, 255, 0.9)', wx + 4, wy + 4, 4, wh - 14);
+
+    // Signature Bcons Detail: Lam che cục nóng điều hòa (AC Compressor Louver Grille)
+    const louverX = wx + ww - 9;
+    rect(ctx, '#0f172a', louverX, wy + 2, 7, wh - 6);
+    rect(ctx, '#334155', louverX + 1, wy + 3, 5, wh - 8);
+    for (let ly = wy + 4; ly < wy + wh - 6; ly += 4) {
+      rect(ctx, '#1e293b', louverX + 1, ly, 5, 2);
+      rect(ctx, '#475569', louverX + 1, ly, 5, 1);
+    }
+
+    // Modern Balcony Railing
+    rect(ctx, '#0f172a', wx, wy + wh - 12, ww, 12);
+    rect(ctx, 'rgba(224, 242, 254, 0.85)', wx + 1, wy + wh - 11, ww - 2, 10); // Tinted safety glass
+    rect(ctx, '#f8fafc', wx, wy + wh - 12, ww, 2); // Stainless steel top handrail
+    rect(ctx, '#64748b', wx, wy + wh - 2, ww, 2); // Bottom rail base
+
+    // Tiny apartment room number badge
+    rect(ctx, '#ea580c', wx + 3, wy + 3, 5, 3);
+  };
+
+  // --- TẦNG 3 (y: 52..88, 36px) ---
+  for (const bx of bayXs) {
+    drawBconsBalconySuite(bx, 52);
+  }
+
+  // Architectural dividing concrete horizontal molding
+  rect(ctx, '#cbd5e1', 6, 92, w - 12, 4);
+  rect(ctx, '#94a3b8', 6, 93, w - 12, 1);
+
+  // --- TẦNG 2 (y: 98..134, 36px) ---
+  for (const bx of bayXs) {
+    drawBconsBalconySuite(bx, 98);
+  }
+
+  // Architectural dividing concrete horizontal molding
+  rect(ctx, '#cbd5e1', 6, 138, w - 12, 4);
+  rect(ctx, '#94a3b8', 6, 139, w - 12, 1);
+
+  // --- TẦNG 1 (y: 144..180, 36px) ---
+  for (const bx of bayXs) {
+    drawBconsBalconySuite(bx, 144);
+  }
+
+  // 3. ARCHITECTURAL CANOPY & BCONS PLAZA SIGNBOARD (y: 186..206, 20px)
+  rect(ctx, '#0f172a', 4, 186, w - 8, 4);
+  rect(ctx, '#0284c7', 6, 188, w - 12, 2); // Bcons blue LED strip
+  rect(ctx, 'rgba(224, 242, 254, 0.75)', 8, 190, w - 16, 4); // Glass canopy overhang
+
+  // Luxury 3D Acrylic Signboard ("BCONS PLAZA - BIÊN HÒA")
+  const signW = 196;
+  const signX = (w - signW) / 2;
+  const signY = 192;
+  const signH = 15;
+  rect(ctx, '#0f172a', signX - 1, signY - 1, signW + 2, signH + 2);
+  rect(ctx, '#0284c7', signX, signY, signW, signH); // Bcons blue frame
+  rect(ctx, '#0f172a', signX + 1, signY + 1, signW - 2, signH - 2);
+
+  // Sign text with Bcons logo crest
+  rect(ctx, '#ea580c', signX + 6, signY + 3, 8, 8); // Orange Bcons emblem
+  rect(ctx, '#38bdf8', signX + 10, signY + 3, 4, 8);
+  ctx.font = '900 7px "Inter", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('CHUNG CƯ BCONS PLAZA · BIÊN HÒA', w / 2 + 6, signY + signH / 2);
+
+  // 4. GROUND FLOOR COMMERCIAL SHOPHOUSE PODIUM (y: 206..253, 47px tall!)
+  rect(ctx, '#0f172a', 6, 206, w - 12, bottom - 206);
+  rect(ctx, '#1e293b', 8, 208, w - 16, bottom - 208);
+
+  // Left Shophouse: 24/7 Convenience Store (WinMart / GS25 style - x: 14..94, y: 212..250)
+  const storeX = 14;
+  const storeW = 80;
+  rect(ctx, '#0f172a', storeX, 212, storeW, 38);
+  rect(ctx, 'rgba(254, 243, 199, 0.95)', storeX + 2, 214, storeW - 4, 34); // Glowing lit interior
+  rect(ctx, '#dc2626', storeX + 2, 214, storeW - 4, 6);
+  rect(ctx, '#facc15', storeX + 2, 219, storeW - 4, 2);
+  for (let sx = storeX + 6; sx < storeX + storeW - 12; sx += 14) {
+    rect(ctx, '#475569', sx, 226, 10, 18);
+    rect(ctx, '#f43f5e', sx + 1, 228, 8, 3); // Snack packages
+    rect(ctx, '#38bdf8', sx + 1, 234, 8, 3); // Drinks
+    rect(ctx, '#22c55e', sx + 1, 240, 8, 3);
+  }
+
+  // Right Shophouse: Bcons Resident Coffee & Co-Working Lounge (x: 170..250, y: 212..250)
+  const cafeX = 170;
+  const cafeW = 80;
+  rect(ctx, '#0f172a', cafeX, 212, cafeW, 38);
+  rect(ctx, 'rgba(254, 249, 195, 0.95)', cafeX + 2, 214, cafeW - 4, 34);
+  rect(ctx, '#451a03', cafeX + 2, 214, cafeW - 4, 6);
+  rect(ctx, '#ca8a04', cafeX + 2, 219, cafeW - 4, 2);
+  rect(ctx, '#78350f', cafeX + 16, 228, 48, 6);
+  rect(ctx, '#451a03', cafeX + 22, 234, 4, 12);
+  rect(ctx, '#451a03', cafeX + 54, 234, 4, 12);
+  rect(ctx, '#0284c7', cafeX + 6, 226, 8, 18); // Modern blue armchair
+  rect(ctx, '#f97316', cafeX + cafeW - 14, 226, 8, 18); // Orange Bcons armchair
+
+  // Central Grand Glass Entrance Lobby (doorX = 100, doorW = 64, y: 208..252)
+  const doorX = 4 + b.door.x * TILE - b.rect.x; // 100
+  const doorW = b.door.w * TILE; // 64
+  const dy = 208;
+  const dh = bottom - dy; // 45px
+
+  rect(ctx, '#0f172a', doorX - 2, dy, doorW + 4, dh);
+  rect(ctx, '#0284c7', doorX - 1, dy + 1, doorW + 2, dh - 1); // Bcons blue outer trim
+  rect(ctx, '#fef3c7', doorX + 2, dy + 2, doorW - 4, dh - 4);
+
+  // Checkered granite marble floor
+  for (let cy = dy + 16; cy < bottom - 2; cy += 8) {
+    for (let cx = doorX + 4; cx < doorX + doorW - 4; cx += 8) {
+      if ((Math.floor((cx - doorX) / 8) + Math.floor((cy - dy) / 8)) % 2 === 0) {
+        rect(ctx, '#fed7aa', cx, cy, 8, 8);
+      }
+    }
+  }
+
+  // Reception desk with Bcons Gold Logo
+  rect(ctx, '#1e293b', doorX + 16, dy + 14, 32, 12);
+  rect(ctx, '#ca8a04', doorX + 18, dy + 16, 28, 8);
+  rect(ctx, '#ea580c', doorX + doorW / 2 - 4, dy + 18, 8, 4); // Bcons emblem
+  rect(ctx, '#facc15', doorX + doorW / 2 - 5, dy + 4, 10, 4); // Chandelier light
+
+  // Double automatic sliding glass doors with stainless handles
+  const halfW = (doorW - 8) / 2;
+  rect(ctx, 'rgba(224, 242, 254, 0.75)', doorX + 2, dy + 2, halfW, dh - 6);
+  rect(ctx, '#cbd5e1', doorX + 2, dy + 2, halfW, 1);
+  rect(ctx, '#38bdf8', doorX + 2 + halfW - 3, dy + 12, 2, 16);
+  rect(ctx, 'rgba(224, 242, 254, 0.75)', doorX + halfW + 6, dy + 2, halfW, dh - 6);
+  rect(ctx, '#cbd5e1', doorX + halfW + 6, dy + 2, halfW, 1);
+  rect(ctx, '#38bdf8', doorX + halfW + 7, dy + 12, 2, 16);
+
+  // Red Welcome Carpet Runner
+  const matW = doorW - 12;
+  rect(ctx, '#991b1b', doorX + 6, bottom - 6, matW, 6);
+  rect(ctx, '#dc2626', doorX + 7, bottom - 5, matW - 2, 4);
+  rect(ctx, '#fef08a', doorX + 12, bottom - 4, matW - 12, 2);
+
+  // Granite entrance step
+  rect(ctx, '#cbd5e1', doorX - 4, bottom - 2, doorW + 8, 2);
+
+  // 4 Modern LED Pillar Lights
+  for (const lx of [doorX - 6, doorX + doorW + 4, 10, w - 14]) {
+    rect(ctx, '#0f172a', lx, 214, 4, 12);
+    rect(ctx, '#0284c7', lx + 1, 215, 2, 10);
+    rect(ctx, '#fef08a', lx, 218, 4, 4); // Bright white-yellow LED
+  }
+
+  return canvas;
+}
+
 export function paintBuilding(b: Building): HTMLCanvasElement {
+  if (b.id === 'apartments') {
+    return paintBconsApartment(b);
+  }
   if (b.id === 'vietprodev') {
     return paintVietProDevTownhouse(b);
   }

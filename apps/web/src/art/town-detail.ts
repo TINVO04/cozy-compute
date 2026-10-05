@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { paintVehicleDealer } from './vehicle';
 import {
   BUILDINGS,
   MAP_HEIGHT,
@@ -552,24 +553,53 @@ function paintScooter(color: string) {
 }
 
 function paintTempleGate() {
-  const c = canvas(110, 62),
+  const c = canvas(110, 68),
     ctx = c.getContext('2d')!;
-  oval(ctx, 'rgba(39,53,34,0.2)', 55, 58, 50, 4);
-  for (const x of [16, 85]) {
-    box(ctx, '#334155', x, 10, 7, 48);
-    box(ctx, '#64748b', x + 1, 11, 5, 44);
-    box(ctx, '#94a3b8', x + 1, 12, 2, 41);
-    box(ctx, '#1e293b', x - 3, 53, 13, 6);
-    box(ctx, '#475569', x - 3, 53, 13, 2);
+  oval(ctx, 'rgba(39,53,34,0.25)', 55, 62, 52, 5);
+
+  // 1. Stone plinth footings for 4 gate pillars
+  for (const x of [10, 32, 74, 96]) {
+    box(ctx, '#475569', x - 2, 56, 12, 8);
+    box(ctx, '#94a3b8', x - 1, 57, 10, 6);
   }
-  // Metallic blue highway bridgehead sign plate with white reflective border
-  box(ctx, '#1e293b', 12, 10, 86, 20);
-  box(ctx, '#0284c7', 14, 12, 82, 16);
-  box(ctx, '#ffffff', 15, 13, 80, 1);
-  box(ctx, '#38bdf8', 15, 14, 80, 1);
-  label(ctx, 'CẦU HÓA AN', 55, 22, 76, '#ffffff', 9);
-  box(ctx, '#0f172a', 10, 8, 90, 3);
-  box(ctx, '#38bdf8', 11, 8, 88, 1);
+
+  // 2. Red lacquer timber pillars
+  for (const x of [10, 32, 74, 96]) {
+    box(ctx, '#7f1d1d', x, 18, 8, 40);
+    box(ctx, '#991b1b', x + 1, 18, 6, 39);
+    box(ctx, '#b91c1c', x + 2, 18, 2, 39);
+  }
+
+  // 3. Central & flanking crossbeams (Xà ngang)
+  box(ctx, '#7f1d1d', 6, 22, 98, 6);
+  box(ctx, '#991b1b', 8, 23, 94, 4);
+
+  // 4. Central Signboard: "CHÙA BỬU LONG" (Hoành phi nền đỏ chữ vàng)
+  box(ctx, '#450a0a', 36, 28, 38, 14);
+  box(ctx, '#ca8a04', 37, 29, 36, 12);
+  box(ctx, '#991b1b', 38, 30, 34, 10);
+  label(ctx, 'VÕ ĐƯỜNG', 55, 38, 32, '#fef08a', 5.5);
+
+  // 5. Multi-tiered curved terracotta tiled roofs (Mái ngói cong cổ kính)
+  // Left & right flanking lower roofs
+  for (const rx of [4, 70]) {
+    box(ctx, '#7f1d1d', rx, 16, 36, 7);
+    box(ctx, '#c2410c', rx + 1, 14, 34, 5);
+    box(ctx, '#ea580c', rx + 2, 13, 32, 3);
+    // Upturned roof eaves
+    box(ctx, '#facc15', rx - 1, 12, 3, 3);
+    box(ctx, '#facc15', rx + 34, 12, 3, 3);
+  }
+
+  // Central higher grand roof tier
+  box(ctx, '#7f1d1d', 26, 10, 58, 8);
+  box(ctx, '#c2410c', 28, 7, 54, 7);
+  box(ctx, '#ea580c', 30, 5, 50, 4);
+  // Roof ridges & gold finials
+  box(ctx, '#facc15', 25, 4, 4, 4);
+  box(ctx, '#facc15', 81, 4, 4, 4);
+  box(ctx, '#facc15', 53, 2, 4, 4);
+
   return c;
 }
 function paintTempleWall(w: number, h: number) {
@@ -882,6 +912,7 @@ function paintDntuMonument() {
 
 export function paintScenery(s: Scenery) {
   if (s.kind === 'house') return paintHouse(s);
+  if (s.kind === 'dealer') return paintVehicleDealer();
   if (s.kind === 'pagoda' || s.kind === 'shrine') return paintTemple(s);
   if (s.kind === 'cart') return paintCart(s);
   if (s.kind === 'scooter') return paintScooter(s.color);
@@ -889,56 +920,305 @@ export function paintScenery(s: Scenery) {
   return paintPalm();
 }
 
-/** Flat shop frontage and white/blue apartment block have their own architecture. */
+/**
+ * Real-world Bcons Apartment Building ("Chung Cư Bcons Plaza / Bcons City Biên Hòa"):
+ * - Signature Bcons Contemporary Architecture:
+ *   - Rooftop: Modern flat architectural parapet, sky garden pergola & blue "BCONS" skyline sign (y: 6..42)
+ *   - Facade: Pearl-white base stucco accented with Bcons signature vertical terracotta-orange (#ea580c)
+ *     and deep navy (#1e3a8a) architectural color blocks running up the building (y: 42..196)
+ *   - Individual Residential Balconies with glass balustrades & charcoal AC compressor louver grilles
+ *   - Ground Floor Commercial Shophouse Podium: Grand glass lobby, Bcons Plaza 3D acrylic sign,
+ *     24/7 convenience store (WinMart/GS25 style) & resident cafe lounge (y: 196..253)
+ * - Zero window collision with entrance doors!
+ */
+function paintApartmentBuilding(b: Building): HTMLCanvasElement {
+  const c = canvas(b.rect.w + 8, b.rect.h + BUILDING_ROOF);
+  const ctx = c.getContext('2d')!;
+  const w = c.width; // 264
+  const base = c.height - 3; // 253
+  const eave = 42;
+
+  // 0. Base ground shadow
+  oval(ctx, 'rgba(15, 23, 42, 0.35)', w / 2, base + 1, w / 2 - 4, 5);
+
+  // 1. ROOFTOP PARAPET & SKYLINE CROWN (y: 6..42, 36px)
+  // Deep navy modern parapet crown rim
+  box(ctx, '#0f172a', 4, 10, w - 8, eave - 10);
+  box(ctx, '#1e293b', 6, 12, w - 12, eave - 12);
+  box(ctx, '#0284c7', 4, 10, w - 8, 2); // Bcons blue neon top rim
+
+  // Rooftop Sky Garden Pergola (left side: x: 18..88)
+  box(ctx, '#78350f', 18, 14, 70, 3);
+  for (let px = 22; px < 86; px += 8) {
+    box(ctx, '#92400e', px, 14, 2, 16);
+    box(ctx, '#15803d', px - 1, 12, 4, 3); // Rooftop climbing vines
+  }
+
+  // Rooftop Telecom Antennas & Solar Panels (right side: x: 174..246)
+  box(ctx, '#1e293b', 178, 16, 56, 14);
+  box(ctx, '#0284c7', 180, 18, 52, 10); // Blue solar panels
+  box(ctx, '#475569', 242, 8, 2, 22); // Lightning rod / antenna spire
+  box(ctx, '#ef4444', 241, 6, 4, 2); // Red aviation warning beacon
+
+  // BCONS Rooftop Skyline Logo Sign (center: x = 96..168, y: 12..36)
+  const logoBoxW = 72;
+  const logoBoxX = (w - logoBoxW) / 2;
+  box(ctx, '#0f172a', logoBoxX, 14, logoBoxW, 20);
+  box(ctx, '#0284c7', logoBoxX + 1, 15, logoBoxW - 2, 18);
+  box(ctx, '#0369a1', logoBoxX + 2, 16, logoBoxW - 4, 16);
+
+  // Bcons Logo: Orange & Blue diamond crest + "BCONS"
+  box(ctx, '#ea580c', logoBoxX + 6, 20, 8, 8); // Orange diamond
+  box(ctx, '#38bdf8', logoBoxX + 10, 20, 4, 8);
+  ctx.font = '900 9px "Inter", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('BCONS', logoBoxX + 44, 25);
+
+  // 2. MAIN RESIDENTIAL FACADE (y: 42..196, 154px tall)
+  // Base Pearl-White Stucco
+  box(ctx, '#1e293b', 4, eave, w - 8, 154);
+  box(ctx, '#f8fafc', 6, eave + 1, w - 12, 152);
+
+  // Signature Bcons Vertical Terracotta-Orange & Navy Accent Bands running up the facade
+  // Orange accent vertical column 1 (x: 54..66)
+  box(ctx, '#ea580c', 54, eave + 1, 12, 150);
+  box(ctx, '#f97316', 56, eave + 1, 8, 150);
+  // Orange accent vertical column 2 (x: 198..210)
+  box(ctx, '#ea580c', 198, eave + 1, 12, 150);
+  box(ctx, '#f97316', 200, eave + 1, 8, 150);
+  // Deep navy central framing vertical columns (x: 104..112 and x: 152..160)
+  box(ctx, '#1e3a8a', 104, eave + 1, 8, 150);
+  box(ctx, '#0f172a', 152, eave + 1, 8, 150);
+
+  // 5 Residential Apartment Balcony Suites (Bay Xs)
+  const bayXs = [14, 68, 114, 162, 214];
+
+  // Helper to draw modern Bcons apartment balcony suite with AC compressor louver
+  const drawBconsBalconySuite = (wx: number, wy: number) => {
+    const ww = 38;
+    const wh = 36;
+
+    // Outer structural window recess
+    box(ctx, '#334155', wx - 1, wy - 1, ww + 2, wh + 2);
+    box(ctx, '#ffffff', wx, wy, ww, wh);
+
+    // Sliding glass balcony doors (Xingfa dark grey aluminum frame & blue-tinted glass)
+    const glassW = ww - 10;
+    box(ctx, '#0f172a', wx + 2, wy + 2, glassW, wh - 10);
+    box(ctx, '#38bdf8', wx + 3, wy + 3, glassW - 2, wh - 12);
+    box(ctx, '#e0f2fe', wx + 4, wy + 4, glassW - 4, wh - 14);
+
+    // Sheer linen curtain inside
+    box(ctx, 'rgba(255, 255, 255, 0.9)', wx + 4, wy + 4, 4, wh - 14);
+
+    // Signature Bcons Detail: Lam che cục nóng điều hòa (AC Compressor Louver Grille)
+    // Vertical dark charcoal aluminum louvers on right side of balcony
+    const louverX = wx + ww - 9;
+    box(ctx, '#0f172a', louverX, wy + 2, 7, wh - 6);
+    box(ctx, '#334155', louverX + 1, wy + 3, 5, wh - 8);
+    for (let ly = wy + 4; ly < wy + wh - 6; ly += 4) {
+      box(ctx, '#1e293b', louverX + 1, ly, 5, 2);
+      box(ctx, '#475569', louverX + 1, ly, 5, 1);
+    }
+
+    // Modern Balcony Railing (Lower section: wy + wh - 12 to wy + wh)
+    box(ctx, '#0f172a', wx, wy + wh - 12, ww, 12);
+    box(ctx, 'rgba(224, 242, 254, 0.85)', wx + 1, wy + wh - 11, ww - 2, 10); // Tinted safety glass
+    box(ctx, '#f8fafc', wx, wy + wh - 12, ww, 2); // Stainless steel top handrail
+    box(ctx, '#64748b', wx, wy + wh - 2, ww, 2); // Bottom rail base
+
+    // Tiny apartment room number badge
+    box(ctx, '#ea580c', wx + 3, wy + 3, 5, 3);
+  };
+
+  // --- TẦNG 3 (y: 52..88, 36px) ---
+  for (const bx of bayXs) {
+    drawBconsBalconySuite(bx, 52);
+  }
+
+  // Architectural dividing concrete horizontal molding
+  box(ctx, '#cbd5e1', 6, 92, w - 12, 4);
+  box(ctx, '#94a3b8', 6, 93, w - 12, 1);
+
+  // --- TẦNG 2 (y: 98..134, 36px) ---
+  for (const bx of bayXs) {
+    drawBconsBalconySuite(bx, 98);
+  }
+
+  // Architectural dividing concrete horizontal molding
+  box(ctx, '#cbd5e1', 6, 138, w - 12, 4);
+  box(ctx, '#94a3b8', 6, 139, w - 12, 1);
+
+  // --- TẦNG 1 (y: 144..180, 36px) ---
+  for (const bx of bayXs) {
+    drawBconsBalconySuite(bx, 144);
+  }
+
+  // 3. ARCHITECTURAL CANOPY & BCONS PLAZA SIGNBOARD (y: 186..206, 20px)
+  // Modern steel-framed glass entrance canopy projecting forward
+  box(ctx, '#0f172a', 4, 186, w - 8, 4);
+  box(ctx, '#0284c7', 6, 188, w - 12, 2); // Bcons blue LED strip
+  box(ctx, 'rgba(224, 242, 254, 0.75)', 8, 190, w - 16, 4); // Glass canopy overhang
+
+  // Luxury 3D Acrylic Signboard ("BCONS PLAZA - BIÊN HÒA")
+  const signW = 196;
+  const signX = (w - signW) / 2;
+  const signY = 192;
+  const signH = 15;
+  box(ctx, '#0f172a', signX - 1, signY - 1, signW + 2, signH + 2);
+  box(ctx, '#0284c7', signX, signY, signW, signH); // Bcons blue frame
+  box(ctx, '#0f172a', signX + 1, signY + 1, signW - 2, signH - 2);
+
+  // Sign text with Bcons logo crest
+  box(ctx, '#ea580c', signX + 6, signY + 3, 8, 8); // Orange Bcons emblem
+  box(ctx, '#38bdf8', signX + 10, signY + 3, 4, 8);
+  ctx.font = '900 7px "Inter", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('CHUNG CƯ BCONS PLAZA · BIÊN HÒA', w / 2 + 6, signY + signH / 2);
+
+  // 4. GROUND FLOOR LOBBY & ENTRANCE (y: 208..253, 45px tall!)
+  // Polished dark charcoal granite cladding
+  box(ctx, '#0f172a', 6, 208, w - 12, base - 208);
+  box(ctx, '#1e293b', 8, 210, w - 16, base - 210);
+
+  // Granite vertical grooved seams
+  for (let gx = 18; gx < w - 18; gx += 24) {
+    box(ctx, '#334155', gx, 210, 1, base - 210);
+  }
+
+  // Flanking Commercial Shophouses
+  // Left Shophouse: 24/7 Convenience Store (WinMart / GS25 style - x: 14..94, y: 212..250)
+  const storeX = 14;
+  const storeW = 80;
+  box(ctx, '#0f172a', storeX, 212, storeW, 38);
+  box(ctx, 'rgba(254, 243, 199, 0.95)', storeX + 2, 214, storeW - 4, 34); // Glowing lit interior
+  // Red & Yellow store branding fascia header
+  box(ctx, '#dc2626', storeX + 2, 214, storeW - 4, 6);
+  box(ctx, '#facc15', storeX + 2, 219, storeW - 4, 2);
+  // Merchandise display racks inside store
+  for (let sx = storeX + 6; sx < storeX + storeW - 12; sx += 14) {
+    box(ctx, '#475569', sx, 226, 10, 18);
+    box(ctx, '#f43f5e', sx + 1, 228, 8, 3); // Snack packages
+    box(ctx, '#38bdf8', sx + 1, 234, 8, 3); // Drinks
+    box(ctx, '#22c55e', sx + 1, 240, 8, 3);
+  }
+
+  // Right Shophouse: Bcons Resident Coffee & Co-Working Lounge (x: 170..250, y: 212..250)
+  const cafeX = 170;
+  const cafeW = 80;
+  box(ctx, '#0f172a', cafeX, 212, cafeW, 38);
+  box(ctx, 'rgba(254, 249, 195, 0.95)', cafeX + 2, 214, cafeW - 4, 34);
+  // Coffee fascia header
+  box(ctx, '#451a03', cafeX + 2, 214, cafeW - 4, 6);
+  box(ctx, '#ca8a04', cafeX + 2, 219, cafeW - 4, 2);
+  // Coffee bar & seating
+  box(ctx, '#78350f', cafeX + 16, 228, 48, 6);
+  box(ctx, '#451a03', cafeX + 22, 234, 4, 12);
+  box(ctx, '#451a03', cafeX + 54, 234, 4, 12);
+  box(ctx, '#0284c7', cafeX + 6, 226, 8, 18); // Modern blue armchair
+  box(ctx, '#f97316', cafeX + cafeW - 14, 226, 8, 18); // Orange Bcons armchair
+
+  // Central Grand Glass Entrance Lobby (doorX = 100, doorW = 64)
+  const door = 4 + b.door.x * TILE - b.rect.x; // 100
+  const doorW = b.door.w * TILE; // 64
+  const dy = 210;
+  const dh = base - dy; // 43px
+
+  // Door outer structural frame
+  box(ctx, '#0f172a', door - 2, dy, doorW + 4, dh);
+  box(ctx, '#d4af37', door - 1, dy + 1, doorW + 2, dh - 1); // Gold outer trim
+
+  // Glowing warm interior lobby
+  box(ctx, '#fef3c7', door + 2, dy + 2, doorW - 4, dh - 4);
+  // Interior checkered marble floor
+  for (let cy = dy + 16; cy < base - 2; cy += 8) {
+    for (let cx = door + 4; cx < door + doorW - 4; cx += 8) {
+      if ((Math.floor((cx - door) / 8) + Math.floor((cy - dy) / 8)) % 2 === 0) {
+        box(ctx, '#fed7aa', cx, cy, 8, 8);
+      }
+    }
+  }
+
+  // Inside reception desk & modern chandelier
+  box(ctx, '#78350f', door + 18, dy + 12, 28, 12);
+  box(ctx, '#ca8a04', door + 20, dy + 14, 24, 8);
+  box(ctx, '#facc15', door + doorW / 2 - 4, dy + 4, 8, 4); // Chandelier light
+
+  // Double automatic sliding glass doors with brass handles
+  const halfW = (doorW - 8) / 2;
+  // Left glass door panel
+  box(ctx, 'rgba(224, 242, 254, 0.75)', door + 2, dy + 2, halfW, dh - 6);
+  box(ctx, '#cbd5e1', door + 2, dy + 2, halfW, 1);
+  box(ctx, '#d4af37', door + 2 + halfW - 3, dy + 12, 2, 16); // Brass handle
+  // Right glass door panel
+  box(ctx, 'rgba(224, 242, 254, 0.75)', door + halfW + 6, dy + 2, halfW, dh - 6);
+  box(ctx, '#cbd5e1', door + halfW + 6, dy + 2, halfW, 1);
+  box(ctx, '#d4af37', door + halfW + 7, dy + 12, 2, 16); // Brass handle
+
+  // Red Welcome Carpet Runner at entrance
+  const matW = doorW - 12;
+  box(ctx, '#991b1b', door + 6, base - 6, matW, 6);
+  box(ctx, '#dc2626', door + 7, base - 5, matW - 2, 4);
+  box(ctx, '#fef08a', door + 12, base - 4, matW - 12, 2);
+
+  // Polished granite entrance threshold step
+  box(ctx, '#cbd5e1', door - 4, base - 2, doorW + 8, 2);
+
+  // 4 Brass Carriage Sconces flanking the entrance & building corners
+  for (const lx of [door - 8, door + doorW + 6, 12, w - 16]) {
+    box(ctx, '#0f172a', lx, 218, 4, 8);
+    box(ctx, '#d4af37', lx + 1, 219, 2, 6);
+    box(ctx, '#fef08a', lx, 221, 4, 4); // Glowing warm filament
+  }
+
+  return c;
+}
+
+/** Flat shop frontage for fashion and furniture stores. */
 function paintModernBuilding(b: Building) {
-  const apartment = b.id === 'apartments',
-    fashion = b.id === 'fashion';
+  const fashion = b.id === 'fashion';
   const c = canvas(b.rect.w + 8, b.rect.h + BUILDING_ROOF),
     ctx = c.getContext('2d')!;
   const w = c.width,
     base = c.height - 3,
-    eave = apartment ? base - 112 : base - 90;
-  const wall = apartment ? '#e8e9d8' : fashion ? '#ead8e2' : '#dbe2c6';
+    eave = base - 90;
+  const wall = fashion ? '#ead8e2' : '#dbe2c6';
   oval(ctx, 'rgba(35,54,35,0.22)', w / 2, base, w / 2 - 4, 4);
   box(ctx, '#56645b', 3, eave, w - 6, base - eave);
   box(ctx, wall, 5, eave + 2, w - 10, base - eave - 4);
   box(ctx, shade(wall, -0.14), w - 18, eave + 2, 13, base - eave - 4);
-  if (apartment) {
-    tiles(ctx, 2, 15, w - 4, eave - 16, '#52688d');
-    box(ctx, '#345b79', 0, eave - 3, w, 6);
-    for (let x = 19; x < w - 25; x += 38) windowPane(ctx, x, eave + 13, 22, 27);
-    box(ctx, '#6d8c8b', 5, eave + 50, w - 10, 4);
-    box(ctx, '#ecedde', 5, eave + 51, w - 10, 2);
-    for (let x = 19; x < w - 25; x += 38) windowPane(ctx, x, base - 40, 22, 25);
-    dormer(ctx, w / 2 - 23, Math.max(23, eave - 57), 46, '#657b96');
-  } else {
-    box(ctx, '#514e54', 1, 12, w - 2, eave - 9);
-    box(ctx, fashion ? '#9b799f' : '#769578', 3, 14, w - 6, eave - 14);
-    for (let y = 20; y < eave - 5; y += 6) box(ctx, fashion ? '#af91b1' : '#8ba886', 4, y, w - 8, 1);
-    box(ctx, fashion ? '#6b4c75' : '#3b6d55', 0, eave - 3, w, 7);
-    const dx = 20,
-      dw = w - 40;
-    windowPane(ctx, dx, base - 55, dw, 43, fashion ? '#aa7b9a' : '#719b77');
-    if (fashion) {
-      dormer(ctx, w / 2 - 18, Math.max(16, eave - 47), 36, '#a28da5');
-      for (const x of [dx + 12, dx + dw - 22]) {
-        oval(ctx, '#d7b99c', x, base - 45, 4, 4);
-        box(ctx, '#c49cac', x - 6, base - 40, 12, 18);
-        box(ctx, '#69575f', x - 3, base - 22, 2, 9);
-        box(ctx, '#69575f', x + 2, base - 22, 2, 9);
-      }
-    } else {
-      box(ctx, '#b38f5e', dx + 6, base - 34, dw - 12, 19);
-      box(ctx, '#d0b681', dx + 8, base - 37, dw - 16, 12);
-      box(ctx, '#f0d99b', dx + 12, base - 34, 16, 8);
-      // White mullions distinguish the furniture display from the entrance.
-      for (let x = dx + dw / 4; x < dx + dw; x += dw / 4) box(ctx, '#eee8d1', x, base - 54, 2, 41);
-      box(ctx, '#eee8d1', dx, base - 34, dw, 2);
+
+  box(ctx, '#514e54', 1, 12, w - 2, eave - 9);
+  box(ctx, fashion ? '#9b799f' : '#769578', 3, 14, w - 6, eave - 14);
+  for (let y = 20; y < eave - 5; y += 6) box(ctx, fashion ? '#af91b1' : '#8ba886', 4, y, w - 8, 1);
+  box(ctx, fashion ? '#6b4c75' : '#3b6d55', 0, eave - 3, w, 7);
+  const dx = 20,
+    dw = w - 40;
+  windowPane(ctx, dx, base - 55, dw, 43, fashion ? '#aa7b9a' : '#719b77');
+  if (fashion) {
+    dormer(ctx, w / 2 - 18, Math.max(16, eave - 47), 36, '#a28da5');
+    for (const x of [dx + 12, dx + dw - 22]) {
+      oval(ctx, '#d7b99c', x, base - 45, 4, 4);
+      box(ctx, '#c49cac', x - 6, base - 40, 12, 18);
+      box(ctx, '#69575f', x - 3, base - 22, 2, 9);
+      box(ctx, '#69575f', x + 2, base - 22, 2, 9);
     }
+  } else {
+    box(ctx, '#b38f5e', dx + 6, base - 34, dw - 12, 19);
+    box(ctx, '#d0b681', dx + 8, base - 37, dw - 16, 12);
+    box(ctx, '#f0d99b', dx + 12, base - 34, 16, 8);
+    // White mullions distinguish the furniture display from the entrance.
+    for (let x = dx + dw / 4; x < dx + dw; x += dw / 4) box(ctx, '#eee8d1', x, base - 54, 2, 41);
+    box(ctx, '#eee8d1', dx, base - 34, dw, 2);
   }
-  const sign = b.id === 'apartments' ? 'CHUNG CƯ' : fashion ? 'THREADBARE' : 'SOFA SO GOOD';
-  box(ctx, apartment ? '#eff0dc' : fashion ? '#715075' : '#34684e', 12, eave + 6, w - 24, 18);
-  label(ctx, sign, w / 2, eave + 15, w - 32, apartment ? '#48728a' : '#f3e7d3', 11);
+
+  const sign = fashion ? 'THREADBARE' : 'SOFA SO GOOD';
+  box(ctx, fashion ? '#715075' : '#34684e', 12, eave + 6, w - 24, 18);
+  label(ctx, sign, w / 2, eave + 15, w - 32, '#f3e7d3', 11);
   const door = 4 + b.door.x * TILE - b.rect.x;
   box(ctx, '#3e5051', door + 16, base - 42, b.door.w * TILE - 32, 40);
   box(ctx, '#a4c5c4', door + 18, base - 40, b.door.w * TILE - 36, 36);
@@ -948,7 +1228,8 @@ function paintModernBuilding(b: Building) {
 }
 
 function paintReferenceBuilding(b: Building) {
-  if (['fashion', 'furniture', 'apartments'].includes(b.id)) return paintModernBuilding(b);
+  if (b.id === 'apartments') return paintApartmentBuilding(b);
+  if (['fashion', 'furniture'].includes(b.id)) return paintModernBuilding(b);
   const c = paintBuilding(b),
     ctx = c.getContext('2d')!,
     w = c.width,
@@ -1017,6 +1298,25 @@ export function buildDetailedTown(scene: Phaser.Scene) {
       .setOrigin(0.5, 1)
       .setDepth(s.rect.y + s.rect.h);
   }
+  scene.add
+    .text(624, 695, 'GARA BẠC HÀ', {
+      fontFamily: 'sans-serif',
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#fff1bd',
+      resolution: 2,
+    })
+    .setOrigin(0.5)
+    .setDepth(786);
+  scene.add
+    .text(624, 816, 'MUA XE · E', {
+      fontFamily: 'sans-serif',
+      fontSize: '10px',
+      color: '#254544',
+      resolution: 2,
+    })
+    .setOrigin(0.5)
+    .setDepth(-7);
   for (const p of TOWN_PROPS) {
     const key = texture(`prop:${p.kind}`, () => paintProp(p.kind));
     scene.add

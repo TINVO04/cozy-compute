@@ -27,6 +27,7 @@ import {
   getFarmPlotRect,
   getPlotUnlockPrice,
   FARM_POIS,
+  FARM_GARDEN,
   OCEAN_BLOCKERS,
   OCEAN_HEIGHT,
   OCEAN_WIDTH,
@@ -44,7 +45,7 @@ import {
 import { getStateCallbacks, type Room } from 'colyseus.js';
 import Phaser from 'phaser';
 import { duckGrid } from '../art/items';
-import { paintFarmLandscape } from '../art/farm-landscape';
+import { decorateFarm } from '../art/farm-scenery';
 import { paintOceanLandscape } from '../art/ocean-landscape';
 import { ensureBoatTexture } from '../art/boat';
 import {
@@ -53,7 +54,9 @@ import {
   paintPoultryCoop,
   paintPigPen,
   paintGoatPen,
+  paintCattlePasture,
   paintPlotTile,
+  paintWaterwheelAerator,
 } from '../art/farm-props';
 import { api } from '../lib/api';
 import { APT_ART_SIDE, APT_ART_TOP } from '../art/apartment';
@@ -82,10 +85,29 @@ import { APT_TILE, paintApartment } from '../art/town';
 import { buildDetailedTown } from '../art/town-detail';
 import { play } from '../lib/sound';
 import { useUi } from '../lib/store';
-import { ensureAtmosphereTextures, setupTownLighting, setupTownParticles } from './atmosphere';
+import {
+  cleanupAtmosphere,
+  ensureAtmosphereTextures,
+  setupTownLighting,
+  setupTownParticles,
+  updateAtmosphere,
+} from './atmosphere';
+import { WindSystem } from './wind-system';
+import { PrecipitationSystem } from './precipitation-system';
+import { calculateBienHoaLighting } from './weather-engine';
+import { createTraffic } from './traffic';
+import { TownLifeLayer } from './town-life';
+import type { TownActor } from '@cozy/game-data';
 import { net } from './net';
 import { PlayerLayer } from './players';
 import { InWorldFishingController } from './fishing';
+import { RiverSurface } from './river-surface';
+import { BridgeTraffic } from './bridge-traffic';
+import { RIVER_BRIDGE } from '@cozy/game-data';
+import { boatPose } from './river-motion';
+import { FarmLivestockManager } from './farm-livestock';
+import { FarmLivingPropsSystem } from './farm-living-props';
+import { loadTiledFarmMap } from './tiled-farm';
 
 /** Keyboard input is ignored while typing in React inputs. */
 function typing(): boolean {
@@ -95,7 +117,7 @@ function typing(): boolean {
   );
 }
 
-abstract class WorldScene extends Phaser.Scene {
+export abstract class WorldScene extends Phaser.Scene {
   protected layer: PlayerLayer | null = null;
   protected keys!: Record<
     'up' | 'down' | 'left' | 'right' | 'w' | 'a' | 's' | 'd',
@@ -184,7 +206,12 @@ abstract class WorldScene extends Phaser.Scene {
   override update(time: number, delta: number) {
     if (!this.layer) return;
     const k = this.keys;
-    const blocked = typing() || useUi.getState().activity !== null || useUi.getState().editingApartment;
+    const blocked =
+      !!document.querySelector('.martial-backdrop') ||
+      typing() ||
+      useUi.getState().panel !== null ||
+      useUi.getState().activity !== null ||
+      useUi.getState().editingApartment;
     const x = blocked ? 0 : (k.right.isDown || k.d.isDown ? 1 : 0) - (k.left.isDown || k.a.isDown ? 1 : 0);
     const y = blocked ? 0 : (k.down.isDown || k.s.isDown ? 1 : 0) - (k.up.isDown || k.w.isDown ? 1 : 0);
     this.layer.setInput({ x, y });
@@ -200,6 +227,9 @@ export function getTownSelfPosition(): { x: number; y: number } {
 }
 
 export class TownScene extends WorldScene {
+  private townLife: TownLifeLayer | null = null;
+  private offTownDialogue: (() => void) | null = null;
+  private updateTraffic: (() => void) | null = null;
   private ducks = new Map<string, Phaser.GameObjects.Image>();
   private deliveryMarker: Phaser.GameObjects.Container | null = null;
   public fishingController: InWorldFishingController | null = null;
@@ -209,6 +239,8 @@ export class TownScene extends WorldScene {
   private lastBoatModel: string | null = '__init__';
   private lastBarricadeToast = 0;
   private spawnCooldownUntil = 0;
+  private windSystem: WindSystem | null = null;
+  private precipSystem: PrecipitationSystem | null = null;
 
   private notifyBarricade() {
     const now = Date.now();
@@ -283,9 +315,31 @@ export class TownScene extends WorldScene {
 
   override update(time: number, delta: number) {
     super.update(time, delta);
+    const actors = (net.room?.state as { townActors?: { values(): IterableIterator<TownActor> } } | undefined)
+      ?.townActors;
+    this.townLife?.update(actors ? [...actors.values()] : [], time, delta);
+    this.updateTraffic?.();
     this.syncDockedBoat();
     this.fishingController?.update(time, delta);
     this.remoteFishingControllers.forEach((ctrl) => ctrl.update(time, delta));
+    this.windSystem?.update(time, delta);
+    this.precipSystem?.update(time, delta);
+    updateAtmosphere(this, time, delta);
+    const dockBoat = this.dockedBoatContainer?.list[0] as Phaser.GameObjects.Image | undefined;
+    if (dockBoat && this.dockedBoatContainer) {
+      const ui = useUi.getState();
+      const pose = boatPose(
+        time,
+        this.dockedBoatContainer.x,
+        this.dockedBoatContainer.y,
+        this.lastBoatModel ?? 'boat_coracle',
+        1,
+        false,
+        ui.weather.windSpeedKmh * 0.35,
+        ui.reducedMotion,
+      );
+      dockBoat.setY(pose.heave).setRotation(pose.roll);
+    }
   }
 
   protected worldSize() {
@@ -302,6 +356,28 @@ export class TownScene extends WorldScene {
 
   protected buildWorld() {
     buildDetailedTown(this);
+    this.townLife = new TownLifeLayer(
+      this,
+      () => this.getSelfPos(),
+      (id) => net.room?.send('town:talk', { id }),
+    );
+    this.add
+      .text(1440, 308, 'HANG NGỌC →', {
+        fontSize: '12px',
+        color: '#fff3c9',
+        backgroundColor: '#32423c',
+        padding: { x: 8, y: 6 },
+      })
+      .setOrigin(0.5)
+      .setDepth(1200);
+    const offCave = net.onRoomMessage('cave:travel', () => {
+      if (useUi.getState().room.kind === 'town') void net.goCave();
+    });
+    this.events.once('shutdown', offCave);
+    this.updateTraffic = createTraffic(
+      this,
+      () => (net.room?.state as { serverTime?: number } | undefined)?.serverTime ?? 0,
+    );
     if (!this.textures.exists('duck')) this.textures.addCanvas('duck', duckGrid().toCanvas(2));
     // water shimmer
     if (!useUi.getState().reducedMotion) {
@@ -326,6 +402,13 @@ export class TownScene extends WorldScene {
 
     setupTownLighting(this);
     setupTownParticles(this);
+
+    this.windSystem = new WindSystem(this);
+    this.windSystem.init();
+
+    this.precipSystem = new PrecipitationSystem(this);
+    this.precipSystem.init();
+
     this.fishingController = new InWorldFishingController(this);
     townFishingController = this.fishingController;
     townSelfPosProvider = () => this.getSelfPos();
@@ -341,18 +424,8 @@ export class TownScene extends WorldScene {
 
     const dockedBoatContainer = this.add.container(slipX + 16, slipY).setDepth(slipY);
     this.dockedBoatContainer = dockedBoatContainer;
+    this.updateTraffic?.();
     this.syncDockedBoat();
-
-    if (!useUi.getState().reducedMotion) {
-      this.tweens.add({
-        targets: dockedBoatContainer,
-        y: slipY - 3,
-        duration: 1200,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-    }
 
     const dockHit = this.add
       .zone(slipX + 8, slipY, 64, 60)
@@ -406,6 +479,10 @@ export class TownScene extends WorldScene {
       if (s.delivery !== prev.delivery) this.drawDeliveryMarker();
     });
     this.events.once('shutdown', () => {
+      this.offTownDialogue?.();
+      this.offTownDialogue = null;
+      this.townLife?.destroy();
+      this.townLife = null;
       window.removeEventListener('keydown', onKey);
       this.unsubscribe?.();
       this.fishingController?.cleanup();
@@ -413,6 +490,11 @@ export class TownScene extends WorldScene {
       this.remoteFishingControllers.clear();
       townFishingController = null;
       townSelfPosProvider = null;
+      this.windSystem?.cleanup();
+      this.windSystem = null;
+      this.precipSystem?.cleanup();
+      this.precipSystem = null;
+      cleanupAtmosphere();
     });
     this.drawDeliveryMarker();
   }
@@ -437,6 +519,10 @@ export class TownScene extends WorldScene {
   }
 
   protected override onBind(room: Room) {
+    this.offTownDialogue?.();
+    this.offTownDialogue = room.onMessage('town:dialogue', (reply: { name: string; text: string }) =>
+      this.townLife?.dialogue(reply),
+    );
     const $ = getStateCallbacks(room);
     type DuckMap = {
       onAdd: (cb: (d: { x: number; y: number }, k: string) => void, i?: boolean) => void;
@@ -541,6 +627,21 @@ export class TownScene extends WorldScene {
 
   private lastZone: string | null = null;
   protected override onSelfMove(x: number, y: number) {
+    if (
+      !this.exiting &&
+      Date.now() >= this.spawnCooldownUntil &&
+      x > 1378 &&
+      x < 1416 &&
+      y > 520 &&
+      y < 562
+    ) {
+      this.spawnCooldownUntil = Date.now() + 1500;
+      net.goMartial();
+    }
+    if (!this.exiting && Date.now() >= this.spawnCooldownUntil && x >= 46.5 * TILE && y >= 320 && y <= 384) {
+      this.spawnCooldownUntil = Date.now() + 1200;
+      net.send('cave:travel', {});
+    }
     const zone = zoneAt(x, y);
     if (zone !== this.lastZone) {
       this.lastZone = zone;
@@ -1874,6 +1975,9 @@ export class FarmScene extends WorldScene {
   private refreshing = false;
   private exiting = false;
   private spawnCooldownUntil = 0;
+  private livestock: FarmLivestockManager | null = null;
+  private livingProps: FarmLivingPropsSystem | null = null;
+  private tiledMap: Phaser.Tilemaps.Tilemap | null = null;
 
   constructor() {
     super('farm');
@@ -1883,6 +1987,18 @@ export class FarmScene extends WorldScene {
     this.exiting = false;
     this.interactions = [];
     this.spawnCooldownUntil = Date.now() + 1200;
+    this.events.once('shutdown', () => {
+      this.livestock?.destroy();
+      this.livestock = null;
+      this.livingProps?.cleanup();
+      this.livingProps = null;
+      this.tiledMap?.destroy();
+      this.tiledMap = null;
+      this.interactions = [];
+      this.interactionHint?.destroy();
+      this.interactionHint = null;
+      this.plotSprites.clear();
+    });
     super.create();
   }
 
@@ -1902,10 +2018,10 @@ export class FarmScene extends WorldScene {
     const { width, height } = this.worldSize();
     const cam = this.cameras.main;
     const zoomMultiplier = useUi.getState().zoom;
-    // Set comfortable close-up zoom so the player is large and the farm feels compact and cozy around the avatar
+    // Match the town's viewing distance while keeping nearby routes visible.
     const baseZoom = Math.max(
-      1.5,
-      Math.min(2.2, Math.round(Math.min(this.scale.width / 580, this.scale.height / 400) * 100) / 100),
+      0.9,
+      Math.min(1.5, Math.round(Math.min(this.scale.width / 960, this.scale.height / 640) * 100) / 100),
     );
     const zoom = Math.max(0.75, Math.min(3.5, Math.round(baseZoom * zoomMultiplier * 100) / 100));
     cam.setZoom(zoom);
@@ -1939,6 +2055,23 @@ export class FarmScene extends WorldScene {
   }
 
   private nearestInteraction(x: number, y: number) {
+    // Check nearest animated animal first (within 48px)
+    const animal = this.livestock?.getNearestAnimal(x, y, 48);
+    if (animal) {
+      const isCow = animal.texture.key === 'sprout:cow';
+      return {
+        x: animal.x,
+        y: animal.y,
+        label: isCow ? 'Vuốt ve bò sữa' : 'Vuốt ve gà ri',
+        run: () => {
+          this.livestock?.interactWithAnimal(
+            animal,
+            isCow ? 'Bò sữa thong thả nhai cỏ! 🐄' : 'Gà ri mổ thóc vui vẻ! 🐔',
+          );
+        },
+      };
+    }
+
     const nearest = this.interactions.reduce<(typeof this.interactions)[number] | undefined>(
       (best, action) =>
         !best || Math.hypot(action.x - x, action.y - y) < Math.hypot(best.x - x, best.y - y) ? action : best,
@@ -1948,27 +2081,37 @@ export class FarmScene extends WorldScene {
   }
 
   protected buildWorld() {
-    // 1. Procedural Landscape Base
-    if (!this.textures.exists('farm:landscape')) {
-      this.textures.addCanvas('farm:landscape', paintFarmLandscape());
-    }
-    this.add.image(0, 0, 'farm:landscape').setOrigin(0, 0).setDepth(-10);
+    this.tiledMap = loadTiledFarmMap(this).map;
 
-    // 2. Props & Buildings
+    // 2. Animated Livestock Manager (Sprout Lands chickens and cows with wander AI)
+    const livestock = new FarmLivestockManager(this);
+    this.livestock = livestock;
+    void livestock.loadAssets().then(() => {
+      if (this.scene.isActive() && this.livestock === livestock) {
+        livestock.spawnLivestock();
+      }
+    });
+
+    // 3. Living Props & Ambient Dynamics (water caustics, sparkles, chimney smoke, lanterns)
+    this.livingProps = new FarmLivingPropsSystem(this);
+    this.livingProps.init(FARM_POIS.aquaculture_pond);
+    for (const tree of decorateFarm(this)) this.livingProps.registerTree(tree);
+
+    // 4. Props & Buildings
     if (!this.textures.exists('farm:shop_bac_sau')) {
       this.textures.addCanvas('farm:shop_bac_sau', paintShopBacSau());
     }
     const shopP = FARM_POIS.shop_bac_sau;
     const shopSprite = this.add
-      .image(shopP.x + shopP.w / 2, shopP.y + shopP.h / 2, 'farm:shop_bac_sau')
-      .setOrigin(0.5, 0.5)
+      .image(shopP.x + shopP.w / 2, shopP.y + shopP.h, 'farm:shop_bac_sau')
+      .setOrigin(0.5, 1.0)
       .setDepth(shopP.y + shopP.h);
     const openShop = () => {
       play('pop');
       useUi.getState().setPanel('farm-shop');
     };
     shopSprite.setInteractive({ useHandCursor: true }).on('pointerdown', openShop);
-    this.interactAt(shopP.x + shopP.w / 2, shopP.y + shopP.h + 20, 'Tiệm Bác Sáu', openShop);
+    this.interactAt(shopP.x + shopP.w / 2, shopP.y + shopP.h + 10, 'Tiệm Bác Sáu', openShop);
 
     // Silo Warehouse
     if (!this.textures.exists('farm:silo_warehouse')) {
@@ -1976,66 +2119,57 @@ export class FarmScene extends WorldScene {
     }
     const siloP = FARM_POIS.silo_warehouse;
     const siloSprite = this.add
-      .image(siloP.x + siloP.w / 2, siloP.y + siloP.h / 2, 'farm:silo_warehouse')
-      .setOrigin(0.5, 0.5)
+      .image(siloP.x + siloP.w / 2, siloP.y + siloP.h, 'farm:silo_warehouse')
+      .setOrigin(0.5, 1.0)
       .setDepth(siloP.y + siloP.h);
     const openSilo = () => {
       play('pop');
       useUi.getState().setPanel('farm-silo');
     };
     siloSprite.setInteractive({ useHandCursor: true }).on('pointerdown', openSilo);
-    this.interactAt(siloP.x + siloP.w / 2, siloP.y + siloP.h + 20, 'Nhà kho Silo', openSilo);
+    this.interactAt(siloP.x + siloP.w / 2, siloP.y + siloP.h + 10, 'Nhà kho Silo', openSilo);
 
-    // Barns
-    if (!this.textures.exists('farm:poultry_coop')) {
-      this.textures.addCanvas('farm:poultry_coop', paintPoultryCoop());
+    // All pens share terrain depth, allowing animals and players to stand inside.
+    for (const [id, painter] of [
+      ['poultry_coop', paintPoultryCoop],
+      ['pig_pen', paintPigPen],
+      ['goat_pen', paintGoatPen],
+      ['cattle_pasture', paintCattlePasture],
+    ] as const) {
+      const p = FARM_POIS[id],
+        key = 'farm:' + id;
+      if (!this.textures.exists(key)) this.textures.addCanvas(key, painter());
+      this.add.image(p.x, p.y, key).setOrigin(0).setDepth(-6);
     }
     const poultryP = FARM_POIS.poultry_coop;
-    this.add
-      .image(poultryP.x + poultryP.w / 2, poultryP.y + poultryP.h / 2, 'farm:poultry_coop')
-      .setOrigin(0.5, 0.5)
-      .setDepth(poultryP.y + poultryP.h);
-    this.interactAt(poultryP.x + poultryP.w / 2, poultryP.y - 18, 'Chuồng gia cầm', () => {
+    this.interactAt(poultryP.x + poultryP.w / 2, poultryP.y + poultryP.h + 10, 'Chuồng gia cầm', () => {
       play('pop');
       useUi
         .getState()
         .toast({ kind: 'info', title: 'Chuồng Gia Cầm', body: 'Gà ri và vịt xiêm đang mổ thóc khỏe mạnh.' });
     });
 
-    if (!this.textures.exists('farm:pig_pen')) {
-      this.textures.addCanvas('farm:pig_pen', paintPigPen());
-    }
-    const pigP = FARM_POIS.pig_pen;
-    this.add
-      .image(pigP.x + pigP.w / 2, pigP.y + pigP.h / 2, 'farm:pig_pen')
-      .setOrigin(0.5, 0.5)
-      .setDepth(pigP.y + pigP.h);
-    this.interactAt(pigP.x + pigP.w / 2, pigP.y - 18, 'Chuồng heo', () => {
-      play('pop');
-      useUi
-        .getState()
-        .toast({ kind: 'info', title: 'Chuồng Heo', body: 'Đàn heo sọc dưa đang lăn bùn thỏa thích.' });
-    });
-
-    if (!this.textures.exists('farm:goat_pen')) {
-      this.textures.addCanvas('farm:goat_pen', paintGoatPen());
-    }
-    const goatP = FARM_POIS.goat_pen;
-    this.add
-      .image(goatP.x + goatP.w / 2, goatP.y + goatP.h / 2, 'farm:goat_pen')
-      .setOrigin(0.5, 0.5)
-      .setDepth(goatP.y + goatP.h);
-    this.interactAt(goatP.x + goatP.w / 2, goatP.y - 18, 'Chuồng dê & cừu', () => {
+    const cattleP = FARM_POIS.cattle_pasture;
+    this.interactAt(cattleP.x + cattleP.w / 2, cattleP.y + cattleP.h + 10, 'Đồng cỏ bò sữa', () => {
       play('pop');
       useUi.getState().toast({
         kind: 'info',
-        title: 'Chuồng Dê & Cừu',
-        body: 'Đàn cừu lông trắng muốt đang gặm cỏ thanh bình bên máng cỏ khô.',
+        title: 'Đồng Cỏ Bò Sữa',
+        body: 'Đàn bò sữa gặm cỏ thanh bình bên máng cỏ khô.',
       });
     });
 
-    // Center Park Bench
-    this.interactAt(790, 580, 'Ghế nghỉ chân', () => {
+    // Center Park Bench & Ancient Stone Well
+    this.interactAt(FARM_GARDEN.well.x + 16, FARM_GARDEN.well.y + 42, 'Giếng nước cổ', () => {
+      play('pop');
+      useUi.getState().toast({
+        kind: 'info',
+        title: 'Giếng Nước Cổ',
+        body: 'Dòng nước giếng ngầm mát lạnh trong vắt của nông trang.',
+      });
+    });
+
+    this.interactAt(FARM_GARDEN.bench.x + 32, FARM_GARDEN.bench.y + 42, 'Ghế nghỉ chân', () => {
       play('pop');
       useUi.getState().toast({
         kind: 'info',
@@ -2044,18 +2178,43 @@ export class FarmScene extends WorldScene {
       });
     });
 
-    // Fishing Pond Dock
-    this.interactAt(1043, 465, 'Hồ câu cá', () => {
-      play('pop');
-      useUi.getState().toast({
-        kind: 'info',
-        title: 'Hồ Cá Nông Trại',
-        body: 'Mặt hồ phẳng lặng trong vắt với hoa sen nở ngát hương và thuyền gỗ neo bên bến.',
+    // Fishing Pond Dock & Waterwheel Aerator
+    if (!this.textures.exists('farm:waterwheel_aerator')) {
+      this.textures.addCanvas('farm:waterwheel_aerator', paintWaterwheelAerator(0));
+    }
+    const aeratorX = FARM_POIS.aquaculture_pond.x + 240;
+    const aeratorY = FARM_POIS.aquaculture_pond.y + 128;
+    const aerator = this.add
+      .image(aeratorX, aeratorY, 'farm:waterwheel_aerator')
+      .setOrigin(0.5, 0.5)
+      .setDepth(aeratorY);
+
+    if (!useUi.getState().reducedMotion) {
+      this.tweens.add({
+        targets: aerator,
+        angle: 360,
+        duration: 3500,
+        repeat: -1,
+        ease: 'Linear',
       });
-    });
+    }
+
+    this.interactAt(
+      FARM_POIS.aquaculture_pond.x - 16,
+      FARM_POIS.aquaculture_pond.y + 128,
+      'Cầu tàu câu cá',
+      () => {
+        play('pop');
+        useUi.getState().toast({
+          kind: 'info',
+          title: 'Hồ Cá Nông Trại',
+          body: 'Mặt hồ phẳng lặng trong vắt với hoa sen nở ngát hương và thuyền gỗ neo bên bến.',
+        });
+      },
+    );
 
     // Gate Exit to Town
-    this.interactAt(110, 140, 'Về thị trấn', () => {
+    this.interactAt(96, 130, 'Về thị trấn', () => {
       if (this.exiting) return;
       this.exiting = true;
       play('pop');
@@ -2180,6 +2339,7 @@ export class FarmScene extends WorldScene {
 
   override update(time: number, delta: number) {
     super.update(time, delta);
+    this.livingProps?.update(time, delta);
     const self = this.layer?.self?.container;
     const action =
       self && !typing() && !useUi.getState().panel ? this.nearestInteraction(self.x, self.y) : undefined;
@@ -2192,11 +2352,25 @@ export class FarmScene extends WorldScene {
 }
 
 export class OceanScene extends WorldScene {
+  private riverSurface: RiverSurface | null = null;
+  private bridgeTraffic: BridgeTraffic | null = null;
+  private bridgeClock = { server: 0, received: 0 };
+
+  getFishingSeatOffset(x: number, y: number) {
+    for (const avatar of this.layer?.avatars.values() ?? []) {
+      if (Math.hypot(avatar.container.x - x, avatar.container.y - y) < 12) {
+        return { x: avatar.sprite.x, y: avatar.sprite.y - avatar.baseSpriteY };
+      }
+    }
+    return { x: 0, y: 0 };
+  }
   private interactions: { x: number; y: number; run: () => void; label: string }[] = [];
   private interactionHint: Phaser.GameObjects.Text | null = null;
   public fishingController: InWorldFishingController | null = null;
   public remoteFishingControllers = new Map<string, InWorldFishingController>();
   private exiting = false;
+  private precipSystem: PrecipitationSystem | null = null;
+  private ambientOverlay: Phaser.GameObjects.Rectangle | null = null;
 
   constructor() {
     super('ocean');
@@ -2204,6 +2378,7 @@ export class OceanScene extends WorldScene {
 
   override create() {
     this.exiting = false;
+    this.lastOceanZone = null;
     this.interactions = [];
     super.create();
 
@@ -2232,12 +2407,20 @@ export class OceanScene extends WorldScene {
 
     this.events.once('shutdown', () => {
       window.removeEventListener('keydown', onKey);
+      this.riverSurface?.destroy();
+      this.riverSurface = null;
+      this.bridgeTraffic?.destroy();
+      this.bridgeTraffic = null;
       this.fishingController?.cleanup();
       this.remoteFishingControllers.forEach((ctrl) => ctrl.cleanup());
       this.remoteFishingControllers.clear();
       if (townFishingController === this.fishingController) {
         townFishingController = null;
       }
+      this.precipSystem?.cleanup();
+      this.precipSystem = null;
+      this.ambientOverlay?.destroy();
+      this.ambientOverlay = null;
       this.interactionHint?.destroy();
       this.interactionHint = null;
       this.interactions = [];
@@ -2336,25 +2519,16 @@ export class OceanScene extends WorldScene {
     }
     this.add.image(0, 0, texKey).setOrigin(0).setDepth(-10);
 
-    // 2. Ambient water shimmer
-    if (!useUi.getState().reducedMotion) {
-      const shimmer = this.add.graphics().setDepth(-9);
-      let tt = 0;
-      this.time.addEvent({
-        loop: true,
-        delay: 140,
-        callback: () => {
-          tt++;
-          shimmer.clear();
-          shimmer.fillStyle(0x38bdf8, 0.45);
-          for (let i = 0; i < 30; i++) {
-            const sx = (i * 137 + tt * 4) % OCEAN_WIDTH;
-            const sy = (i * 89 + tt * 2) % OCEAN_HEIGHT;
-            shimmer.fillRect(sx, sy, 7, 1);
-          }
-        },
-      });
-    }
+    this.riverSurface = new RiverSurface(this);
+    // Raised bridge deck occludes boats navigating between its physical piers.
+    this.add
+      .image(0, 0, texKey)
+      .setName('river:bridge-deck')
+      .setOrigin(0)
+      .setCrop(0, RIVER_BRIDGE.top - 32, OCEAN_WIDTH, RIVER_BRIDGE.bottom - RIVER_BRIDGE.top + 56)
+      .setDepth(1100);
+    this.bridgeClock = { server: 0, received: 0 };
+    this.bridgeTraffic = new BridgeTraffic(this);
 
     // 3. Return Buoy interaction (x: 140, y: 720)
     const returnTown = () => {
@@ -2374,6 +2548,18 @@ export class OceanScene extends WorldScene {
     this.fishingController = new InWorldFishingController(this);
     townFishingController = this.fishingController;
     townSelfPosProvider = () => this.getSelfPos();
+
+    // 6. Ambient Day/Night 24h lighting filter for Song Dong Nai
+    this.ambientOverlay = this.add
+      .rectangle(0, 0, OCEAN_WIDTH, OCEAN_HEIGHT, 0x070a24)
+      .setName('river:ambient')
+      .setOrigin(0)
+      .setDepth(2600)
+      .setAlpha(0);
+
+    // 7. River rain & lightning system
+    this.precipSystem = new PrecipitationSystem(this);
+    this.precipSystem.init();
   }
 
   protected override onBind(room: Room) {
@@ -2432,8 +2618,22 @@ export class OceanScene extends WorldScene {
 
   override update(time: number, delta: number) {
     super.update(time, delta);
+    this.riverSurface?.update(time);
+    const server = (net.room?.state as { serverTime?: number } | undefined)?.serverTime ?? 0;
+    if (server && server !== this.bridgeClock.server) this.bridgeClock = { server, received: time };
+    this.bridgeTraffic?.update(
+      server ? server + Math.min(1000, time - this.bridgeClock.received) : Date.now(),
+    );
     this.fishingController?.update(time, delta);
     this.remoteFishingControllers.forEach((ctrl) => ctrl.update(time, delta));
+    this.precipSystem?.update(time, delta);
+
+    if (this.ambientOverlay) {
+      const weather = useUi.getState().weather;
+      const target = calculateBienHoaLighting(weather.solarHour, weather);
+      this.ambientOverlay.fillColor = target.color;
+      this.ambientOverlay.alpha = Phaser.Math.Linear(this.ambientOverlay.alpha, target.alpha, 0.05);
+    }
 
     const self = this.layer?.self?.container;
     const action =

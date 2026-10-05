@@ -1,9 +1,13 @@
+import { VehicleShopPanel } from './panels/VehicleShopPanel';
+import { VehicleControls } from './panels/VehicleControls';
+import { ShowroomHud } from './panels/ShowroomHud';
 import { OCEAN_ZONES, ZONES, type ZoneId } from '@cozy/game-data';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BookOpen,
   CalendarDays,
   ChevronDown,
+  CloudSun,
   Compass,
   LogOut,
   Map as MapIcon,
@@ -22,6 +26,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { avatarPortrait } from '../art/avatar';
+import { MartialHud } from './panels/MartialHud';
 import { GameCanvas } from '../game/GameCanvas';
 import { net } from '../game/net';
 import { townFishingController } from '../game/scenes';
@@ -47,8 +52,10 @@ import { FarmPasswordModal } from './panels/FarmPasswordModal';
 import { FarmPlotModal } from './panels/FarmPlotModal';
 import { FarmSiloPanel } from './panels/FarmSiloPanel';
 import { FarmShopPanel } from './panels/FarmShopPanel';
+import { AdminWeatherModal } from './admin/AdminWeatherModal';
 import { Sidebar } from './Sidebar';
 import { Brand } from './Brand';
+import { CaveHud } from './panels/CaveHud';
 import { Button, CoinIcon, Spinner } from '../ui/primitives';
 
 const EMOTES = [
@@ -67,6 +74,7 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
   const setPanel = useUi((s) => s.setPanel);
   const activity = useUi((s) => s.activity);
   const room = useUi((s) => s.room);
+  const [weatherModalOpen, setWeatherModalOpen] = useState(false);
 
   useEffect(() => {
     useUi.getState().setMyUserId(me.id);
@@ -99,11 +107,14 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
 
   return (
     <div className="shell">
-      <TopBar me={me} onSignedOut={onSignedOut} />
+      <TopBar me={me} onSignedOut={onSignedOut} onOpenWeatherModal={() => setWeatherModalOpen(true)} />
       <div className="stage">
         <main className="world" aria-label={room.label}>
           <GameCanvas />
-          <WorldHud me={me} />
+          {room.kind === 'martial' ? <MartialHud /> : null}
+          {room.kind === 'cave' ? <CaveHud /> : null}
+          <WorldHud me={me} onOpenWeatherModal={() => setWeatherModalOpen(true)} />
+          {room.kind === 'showroom' ? <ShowroomHud /> : null}
           {activity === 'fishing' ? <FishingActivity /> : null}
           {activity === 'cafe' ? <CafeActivity /> : null}
           <ConnectionOverlay />
@@ -111,6 +122,7 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
           {room.kind === 'apartment' && room.ownerId && room.ownerId !== me.id ? (
             <ApartmentGuestView key={room.ownerId} ownerId={room.ownerId} />
           ) : null}
+          {panel === 'shop-vehicles' ? <VehicleShopPanel me={me} onClose={() => setPanel(null)} /> : null}
           {panel === 'shop-fashion' ? <ShopPanel kind="clothing" onClose={() => setPanel(null)} /> : null}
           {panel === 'shop-furniture' ? <ShopPanel kind="furniture" onClose={() => setPanel(null)} /> : null}
           {panel === 'shop-rods' ? <FishingShopPanel me={me} onClose={() => setPanel(null)} /> : null}
@@ -141,11 +153,20 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
         <Sidebar me={me} />
       </div>
       <PlayerCardModal />
+      {weatherModalOpen ? <AdminWeatherModal onClose={() => setWeatherModalOpen(false)} /> : null}
     </div>
   );
 }
 
-function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
+function TopBar({
+  me,
+  onSignedOut,
+  onOpenWeatherModal,
+}: {
+  me: Me;
+  onSignedOut: () => void;
+  onOpenWeatherModal: () => void;
+}) {
   const panel = useUi((s) => s.panel);
   const setPanel = useUi((s) => s.setPanel);
   const room = useUi((s) => s.room);
@@ -182,7 +203,7 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
   }, [menu]);
 
   const nav: {
-    id: Panel | 'town' | 'admin';
+    id: Panel | 'town' | 'admin' | 'weather';
     label: string;
     icon: React.ReactNode;
     onClick: () => void;
@@ -214,6 +235,13 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
     },
     ...(me.role === 'admin'
       ? [
+          {
+            id: 'weather' as const,
+            label: 'Thời tiết (Test)',
+            icon: <CloudSun size={17} color="#38bdf8" />,
+            onClick: onOpenWeatherModal,
+            current: false,
+          },
           {
             id: 'admin' as const,
             label: 'Quản trị',
@@ -356,9 +384,14 @@ function TopBar({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
 }
 
 const ZONE_ACTIONS: Partial<Record<ZoneId, { cta: string; hint: string }>> = {
+  martial: { cta: 'Vào Đại hội Võ thuật', hint: 'Học chiêu, luyện kiếm và tỷ thí cùng người chơi' },
   pier: {
     cta: 'Lên thuyền / Thả cần',
-    hint: 'Cầu Hóa An & Bến Thuyền: Lái thuyền ra Sông Đồng Nai hoặc câu cá ven bến',
+    hint: 'Bến nhỏ có cá thường · Đi thuyền ra sông để câu cá hiếm, giá trị hơn',
+  },
+  vehicle_shop: {
+    cta: 'Vào phòng trưng bày',
+    hint: 'Vào gara xem xe đạp, xe máy và ô tô · Mua ngay tại bục xe',
   },
   fishing_shop: { cta: 'Mua cần câu & Ngư cụ', hint: 'Sắm cần câu xịn, tăng cơ hội săn cá khổng lồ' },
   delivery: { cta: 'Nhận đơn hàng', hint: 'Giao kiện hàng quanh thị trấn' },
@@ -375,30 +408,32 @@ const ZONE_ACTIONS: Partial<Record<ZoneId, { cta: string; hint: string }>> = {
   cybernet: { cta: 'Vào Cyber Game', hint: 'Cyber Game HNT Trảng Dài' },
   farm_gate: { cta: 'Vào Trang Trại', hint: 'Trang trại nông thôn Nam Bộ' },
   coral_reef: {
-    cta: 'Thả cần Làng Bè Tân Mai',
-    hint: 'Làng bè cá Tân Mai Biên Hòa: Săn cá lăng sông, cá điêu hồng & cá bống dừa',
+    cta: 'Thả cần thượng nguồn',
+    hint: 'Cá nước ngọt hiếm: cá lóc, cá koi, cá hồi · Có cơ hội gặp cá sử thi',
   },
   open_sea: {
     cta: 'Thả cần sông Đồng Nai',
-    hint: 'Dòng sông Đồng Nai mênh mông: Săn cá chép giòn, thát lát hoàng kim & cá sông lớn',
+    hint: 'Giữa dòng: cá hiếm và sử thi · Cơ hội cá quý cao hơn thượng nguồn',
   },
   abyssal_trench: {
     cta: 'Săn Thủy Quái Sông Sâu',
-    hint: 'Vực xoáy Vàm Sông Sâu hướng cửa biển: Vua cá Hô khổng lồ & Thần Long',
+    hint: 'Hạ lưu sâu: cá quý và thần ngư · Cần Tàu Viễn Dương Hoàng Kim',
   },
   return_channel: {
     cta: 'Về bến Biên Hòa',
     hint: 'Phao luồng dẫn ngược dòng về cầu tàu thị trấn Biên Hòa',
   },
+  angler_dock: { cta: 'Câu cá chân cầu', hint: 'Cá sông hiếm dưới chân Cầu Hóa An' },
 };
 
-function WorldHud({ me }: { me: Me }) {
+function WorldHud({ me, onOpenWeatherModal }: { me: Me; onOpenWeatherModal: () => void }) {
   const zone = useUi((s) => s.zone);
   const room = useUi((s) => s.room);
   const panel = useUi((s) => s.panel);
   const activity = useUi((s) => s.activity);
   const delivery = useUi((s) => s.delivery);
   const zoom = useUi((s) => s.zoom);
+  const weather = useUi((s) => s.weather);
   const setPanel = useUi((s) => s.setPanel);
   const setActivity = useUi((s) => s.setActivity);
   const [emotes, setEmotes] = useState(false);
@@ -423,17 +458,22 @@ function WorldHud({ me }: { me: Me }) {
     if (!zone) return;
     play('click');
     switch (zone) {
+      case 'martial':
+        return void net.goMartial();
       case 'pier':
         if (me.appearance.boat) {
           return void net.goOcean();
         }
         return setActivity('fishing');
       case 'coral_reef':
+      case 'angler_dock':
       case 'open_sea':
       case 'abyssal_trench':
         return setActivity('fishing');
       case 'return_channel':
         return void net.goTown();
+      case 'vehicle_shop':
+        return net.send('showroom:enter', {});
       case 'fishing_shop':
         return setPanel('shop-rods');
       case 'cafe':
@@ -506,6 +546,23 @@ function WorldHud({ me }: { me: Me }) {
             <Compass size={14} style={{ color: 'var(--primary)', flex: 'none' }} />
             <span>{room.kind === 'town' ? (zoneLabel ?? 'Thị trấn') : room.label}</span>
           </div>
+          <button
+            className="location-chip"
+            style={{
+              cursor: me.role === 'admin' ? 'pointer' : 'default',
+              border: weather.isOverridden ? '1px solid #ca8a04' : '1px solid rgba(255, 255, 255, 0.1)',
+              background: weather.isOverridden ? 'rgba(234, 179, 8, 0.18)' : 'rgba(15, 23, 42, 0.8)',
+            }}
+            onClick={() => me.role === 'admin' && onOpenWeatherModal()}
+            title={`Thời tiết Biên Hòa: ${weather.conditionLabelVi} · Nhiệt độ ${weather.temperatureC}°C · Gió ${weather.windSpeedKmh} km/h ${me.role === 'admin' ? '(Nhấn để mở Bảng test thời tiết & thời gian)' : ''}`}
+          >
+            <span className="dot" style={{ backgroundColor: weather.isOverridden ? '#facc15' : '#22c55e' }} />
+            <CloudSun size={14} style={{ color: '#38bdf8', flex: 'none' }} />
+            <span>
+              Biên Hòa {weather.temperatureC}°C · {weather.timeString}
+              {me.role === 'admin' ? ' ⚡' : ''}
+            </span>
+          </button>
           {room.kind === 'apartment' ||
           room.kind === 'company' ||
           room.kind === 'university' ||
@@ -549,8 +606,8 @@ function WorldHud({ me }: { me: Me }) {
               <span>
                 {zone === 'pier' && room.kind === 'town'
                   ? me.appearance.boat
-                    ? 'Thuyền đã neo sẵn sàng tại bến! Cầu Hóa An đi Bình Dương đang thi công. Lên thuyền du ngoạn Sông Đồng Nai.'
-                    : 'Cầu Hóa An đi Bình Dương đang thi công. Ghé Tiệm Bác Ba mua thuyền để du ngoạn Sông Đồng Nai hoặc câu cá tại bến.'
+                    ? 'Câu cá thường ngay bến nhỏ, hoặc lên thuyền ra sông săn cá hiếm và cá lớn.'
+                    : 'Bến nhỏ có cá thường. Ghé Tiệm Bác Ba mua và trang bị thuyền để ra sông câu cá giá trị hơn.'
                   : action.hint}
               </span>
             </div>
@@ -588,6 +645,7 @@ function WorldHud({ me }: { me: Me }) {
       </div>
 
       <div className="hud-tools">
+        <VehicleControls me={me} />
         <div style={{ position: 'relative' }}>
           <button
             className="hud-tool"

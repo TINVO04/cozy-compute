@@ -98,6 +98,16 @@ export class InWorldFishingController {
     return this.facingDir;
   }
 
+  private seatOffset(x: number, y: number) {
+    return (
+      (
+        this.scene as Phaser.Scene & {
+          getFishingSeatOffset?: (x: number, y: number) => { x: number; y: number };
+        }
+      ).getFishingSeatOffset?.(x, y) ?? { x: 0, y: 0 }
+    );
+  }
+
   triggerRemoteNibble(index: number) {
     if (!this.active || this.playedNibbles.has(index)) return;
     this.bobberJitter = (Math.random() - 0.5) * 8;
@@ -123,7 +133,9 @@ export class InWorldFishingController {
 
     const { selfX, selfY } = params;
     let facingDir = 1;
-    if (selfY >= 910) {
+    if (this.scene.scene.key === 'ocean') {
+      facingDir = selfX < 120 ? 2 : 1;
+    } else if (selfY >= 910) {
       facingDir = 0;
     } else if (selfX > 1248) {
       facingDir = 2;
@@ -168,7 +180,14 @@ export class InWorldFishingController {
     let approachDy = 50;
     let facingDir = 1; // 1 = facing left
 
-    if (selfY >= 910) {
+    if (this.scene.scene.key === 'ocean') {
+      // Cast across the current, keeping the float inside the river at either bank.
+      facingDir = selfX < 120 ? 2 : 1;
+      waterX = selfX + (facingDir === 2 ? 56 : -56);
+      waterY = selfY > 950 ? selfY - 20 : selfY + 12;
+      approachDx = facingDir === 2 ? 30 : -30;
+      approachDy = selfY > 900 ? -40 : 40;
+    } else if (selfY >= 910) {
       // End of pier: cast southward into open lake
       waterX = selfX;
       waterY = selfY + 56;
@@ -380,7 +399,10 @@ export class InWorldFishingController {
     if (!this.params) return;
 
     const now = Date.now();
-    const { selfX, selfY, nibbleTimes, shadowTier } = this.params;
+    const { nibbleTimes, shadowTier } = this.params;
+    const offset = this.seatOffset(this.params.selfX, this.params.selfY);
+    const selfX = this.params.selfX + offset.x;
+    const selfY = this.params.selfY + offset.y;
     const rod = this.params.equippedRod ?? FISHING_RODS['rod_twig']!;
     const tierCfg = SHADOW_TIER_CONFIG[shadowTier] ?? SHADOW_TIER_CONFIG[1];
 
@@ -641,8 +663,9 @@ export class InWorldFishingController {
   }
 
   private drawRodOnly(time: number) {
-    const selfX = this.readySelfX;
-    const selfY = this.readySelfY;
+    const offset = this.seatOffset(this.readySelfX, this.readySelfY);
+    const selfX = this.readySelfX + offset.x;
+    const selfY = this.readySelfY + offset.y;
     const rod = this.readyRod ?? FISHING_RODS['rod_twig']!;
 
     let handX = selfX;

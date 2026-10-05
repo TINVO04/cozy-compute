@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Living town verification</title>
+    <style>
+      body {
+        margin: 0;
+        background: #92b879;
+      }
+      canvas {
+        image-rendering: pixelated;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import Phaser from 'phaser';
+      import { TownLifeSimulation } from '@cozy/game-data';
+      import { TownLifeLayer } from '/src/game/town-life.ts';
+      import { buildDetailedTown } from '/src/art/town-detail.ts';
+      class Preview extends Phaser.Scene {
+        constructor() {
+          super('life');
+        }
+        create() {
+          buildDetailedTown(this);
+          this.sim = new TownLifeSimulation();
+          this.player = this.add.circle(768, 700, 6, 0xf9db89).setDepth(700);
+          this.life = new TownLifeLayer(
+            this,
+            () => this.player,
+            (id) => {
+              const reply = this.sim.talk(id, this.player);
+              if (reply) this.life.dialogue(reply);
+            },
+          );
+          this.keys = this.input.keyboard.createCursorKeys();
+          this.cameras.main.setZoom(1.5).centerOn(768, 550);
+          this.events.once('shutdown', () => this.life.destroy());
+          window.lifePreview = this;
+        }
+        update(time, delta) {
+          const dt = Math.min(delta, 100);
+          this.player.x += ((this.keys.right.isDown ? 1 : 0) - (this.keys.left.isDown ? 1 : 0)) * dt * 0.15;
+          this.player.y += ((this.keys.down.isDown ? 1 : 0) - (this.keys.up.isDown ? 1 : 0)) * dt * 0.15;
+          this.sim.update(dt, time, [this.player]);
+          this.life.update(this.sim.actors, time, dt);
+        }
+      }
+      new Phaser.Game({
+        type: Phaser.CANVAS,
+        width: 1280,
+        height: 720,
+        pixelArt: true,
+        roundPixels: true,
+        banner: false,
+        audio: { noAudio: true },
+        scene: Preview,
+      });
+    </script>
+  </body>
+</html>

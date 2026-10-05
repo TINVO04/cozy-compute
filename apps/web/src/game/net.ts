@@ -21,6 +21,9 @@ class Net {
   room: Room | null = null;
   private listeners = new Set<Listener>();
   private target:
+    | { name: 'cave'; ownerId: string }
+    | { name: 'martial' }
+    | { name: 'showroom' }
     | { name: 'town'; from?: string }
     | { name: 'apartment'; ownerId: string }
     | { name: 'company' }
@@ -69,25 +72,30 @@ class Net {
     }
     try {
       const room =
-        target.name === 'town'
-          ? await this.client.joinOrCreate('town', { token, from: target.from })
-          : target.name === 'company'
-            ? await this.client.joinOrCreate('company', { token })
-            : target.name === 'university'
-              ? await this.client.joinOrCreate('university', { token })
-              : target.name === 'comga'
-                ? await this.client.joinOrCreate('comga', { token })
-                : target.name === 'bida' || target.name === 'cybernet'
-                  ? await this.client.joinOrCreate(target.name, { token })
-                  : target.name === 'ocean'
-                    ? await this.client.joinOrCreate('ocean', { token })
-                    : target.name === 'farm'
-                      ? await this.client.joinOrCreate('farm', {
-                          token,
-                          ownerId: target.ownerId,
-                          farmToken: target.farmToken,
-                        })
-                      : await this.client.joinOrCreate('apartment', { token, ownerId: target.ownerId });
+        target.name === 'cave'
+          ? await this.client.joinOrCreate('cave', { token, ownerId: target.ownerId })
+          : target.name === 'town'
+            ? await this.client.joinOrCreate('town', { token, from: target.from })
+            : target.name === 'company'
+              ? await this.client.joinOrCreate('company', { token })
+              : target.name === 'university'
+                ? await this.client.joinOrCreate('university', { token })
+                : target.name === 'comga'
+                  ? await this.client.joinOrCreate('comga', { token })
+                  : target.name === 'bida' ||
+                      target.name === 'cybernet' ||
+                      target.name === 'martial' ||
+                      target.name === 'showroom'
+                    ? await this.client.joinOrCreate(target.name, { token })
+                    : target.name === 'ocean'
+                      ? await this.client.joinOrCreate('ocean', { token })
+                      : target.name === 'farm'
+                        ? await this.client.joinOrCreate('farm', {
+                            token,
+                            ownerId: target.ownerId,
+                            farmToken: target.farmToken,
+                          })
+                        : await this.client.joinOrCreate('apartment', { token, ownerId: target.ownerId });
       if (gen !== this.generation) {
         await room.leave(true).catch(() => undefined);
         return;
@@ -97,13 +105,28 @@ class Net {
       if (gen !== this.generation) return;
       console.warn('[net] join failed', err);
       const msg = err instanceof Error ? err.message : String(err);
-      if (target.name === 'apartment' || target.name === 'farm') {
+      if (
+        target.name === 'showroom' ||
+        target.name === 'martial' ||
+        target.name === 'apartment' ||
+        target.name === 'farm' ||
+        target.name === 'cave'
+      ) {
         useUi.getState().toast({
           kind: 'error',
-          title: target.name === 'farm' ? 'Không thể vào trang trại' : 'Không thể vào căn hộ',
+          title:
+            target.name === 'showroom'
+              ? 'Chưa thể vào Gara Bạc Hà'
+              : target.name === 'martial'
+                ? 'Chưa thể vào võ đường'
+                : target.name === 'farm'
+                  ? 'Không thể vào trang trại'
+                  : 'Không thể vào căn hộ',
           body: msg,
         });
-        return this.connect({ name: 'town' });
+        useUi.getState().setRoom({ kind: 'town', label: 'Thị trấn' });
+        void this.connect({ name: 'town' });
+        return;
       }
       this.scheduleRetry();
     }
@@ -116,6 +139,18 @@ class Net {
     const ui = useUi.getState();
     ui.setConnection('online');
     sessionStorage.setItem('cozy.reconnect', room.reconnectionToken);
+    room.onMessage('showroom:travel', () => {
+      const ui = useUi.getState();
+      ui.setPanel(null);
+      ui.setZone(null);
+      ui.setRoom({ kind: 'showroom', label: 'Phòng trưng bày · Gara Bạc Hà' });
+      void this.connect({ name: 'showroom' });
+    });
+    room.onMessage('martial:travel', () => {
+      useUi.getState().setZone(null);
+      useUi.getState().setRoom({ kind: 'martial', label: 'Đại hội Võ thuật' });
+      void this.connect({ name: 'martial' });
+    });
     room.onMessage('chat', (m: { from: string; userId: string; name: string; text: string; at: number }) =>
       useUi.getState().pushChat(m),
     );
@@ -171,15 +206,31 @@ class Net {
   }
 
   goTown(from?: string) {
+    useUi.getState().setPanel(null);
+    useUi.getState().setZone(null);
+    useUi.getState().setShowroomVehicle(null);
     const current = useUi.getState().room.kind;
     const origin = from ?? (current !== 'town' ? current : undefined);
     useUi.getState().setRoom({ kind: 'town', label: 'Thị trấn' });
     return this.connect({ name: 'town', from: origin });
   }
 
+  goCave() {
+    const ownerId = useUi.getState().myUserId;
+    if (!ownerId) return;
+    useUi.getState().setZone(null);
+    useUi.getState().setPanel(null);
+    useUi.getState().setRoom({ kind: 'cave', label: 'Cửa Hang Ngọc' });
+    return this.connect({ name: 'cave', ownerId });
+  }
+
   goApartment(ownerId: string, label: string) {
     useUi.getState().setRoom({ kind: 'apartment', ownerId, label });
     return this.connect({ name: 'apartment', ownerId });
+  }
+
+  goMartial() {
+    this.send('martial:travel', {});
   }
 
   goCompany(label = 'Văn Phòng VietProDev') {

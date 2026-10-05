@@ -13,7 +13,9 @@
   },
   "dependencies": {
     "@cozy/economy": "workspace:*",
+    "@cozy/game-assets": "workspace:*",
     "@cozy/game-data": "workspace:*",
+    "@cozy/map-editor": "workspace:*",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource/pixelify-sans": "^5.2.7",
     "@tanstack/react-query": "^5.90.2",

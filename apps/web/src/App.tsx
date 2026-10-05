@@ -8,6 +8,7 @@ import { useMe } from './lib/queries';
 import { Spinner, Toasts } from './ui/primitives';
 
 const AdminScreen = lazy(() => import('./screens/admin/Admin'));
+const EditorApp = lazy(() => import('./editor/EditorApp'));
 
 function FullLoader() {
   return (
@@ -70,6 +71,14 @@ function Authed({ onSignedOut }: { onSignedOut: () => void }) {
   return (
     <Routes>
       <Route path="/" element={<GameScreen me={me.data} onSignedOut={onSignedOut} />} />
+      <Route
+        path="/editor"
+        element={
+          <Suspense fallback={<FullLoader />}>
+            <EditorApp />
+          </Suspense>
+        }
+      />
       <Route
         path="/admin/*"
         element={

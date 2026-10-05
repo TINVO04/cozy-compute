@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>River fishing verification</title>
+    <style>
+      body {
+        margin: 0;
+      }
+      canvas {
+        display: block;
+        image-rendering: pixelated;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import Phaser from 'phaser';
+      import { OceanScene } from '/src/game/scenes.ts';
+      import { Avatar } from '/src/game/players.ts';
+      import { DEFAULT_APPEARANCE } from '@cozy/game-data';
+      import { useUi } from '/src/lib/store.ts';
+      import { startWeatherSync } from '/src/game/weather-sync.ts';
+      const stopWeather = startWeatherSync();
+      window.addEventListener('pagehide', stopWeather, { once: true });
+      useUi.setState({ reducedMotion: false, muted: true });
+      class Preview extends OceanScene {
+        create() {
+          super.create();
+          this.cameras.main.setZoom(Math.min(innerWidth / 1536, innerHeight / 1024)).centerOn(768, 512);
+          this.previewBoats = ['boat_coracle', 'boat_sampan', 'boat_cutter', 'boat_trawler'].map(
+            (boat, i) => {
+              const avatar = new Avatar(
+                this,
+                boat,
+                ['Thuyền thúng', 'Tam bản', 'Ca nô', 'Tàu lớn'][i],
+                { ...DEFAULT_APPEARANCE, boat },
+                430 + i * 220,
+                760,
+                false,
+              );
+              avatar.dir = 2;
+              avatar.updateAnim(true);
+              return avatar;
+            },
+          );
+          window.riverScene = this;
+        }
+        update(time, delta) {
+          super.update(time, delta);
+          this.previewBoats?.forEach((boat) => boat.update(delta, time));
+        }
+      }
+      window.riverPreview = new Phaser.Game({
+        type: Phaser.CANVAS,
+        pixelArt: true,
+        roundPixels: true,
+        scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
+        audio: { noAudio: true },
+        banner: false,
+        scene: [Preview],
+      });
+      window.setReducedRiverMotion = (reducedMotion) => useUi.setState({ reducedMotion });
+      window.riverWeatherState = () => useUi.getState().weather;
+      window.setRiverWeather = (override) => useUi.getState().setWeatherOverride(override);
+    </script>
+  </body>
+</html>

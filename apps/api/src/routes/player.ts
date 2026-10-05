@@ -225,7 +225,10 @@ export function playerRoutes(app: FastifyInstance, ctx: AppContext) {
   app.post('/inventory/equip', async (req) => {
     const user = requireUser(req);
     const b = z
-      .object({ itemId: z.string().max(60).nullable(), slot: z.enum(['hat', 'top', 'face', 'rod', 'boat']) })
+      .object({
+        itemId: z.string().max(60).nullable(),
+        slot: z.enum(['hat', 'top', 'face', 'rod', 'boat', 'vehicle']),
+      })
       .parse(req.body);
     return { appearance: await shop.equip(ctx, user.id, b.itemId, b.slot) };
   });

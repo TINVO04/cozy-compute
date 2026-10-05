@@ -1,0 +1,176 @@
+.cave-status {
+  position: absolute;
+  top: 72px;
+  left: 16px;
+  width: min(300px, calc(100% - 32px));
+  padding: 16px;
+  border: 1px solid #627e7a;
+  border-radius: 12px;
+  background: #14252ef2;
+  color: #e5f2e8;
+  box-shadow: 0 8px 24px #09131d40;
+  pointer-events: none;
+}
+.cave-eyebrow {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #afd8c9;
+}
+.cave-health-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0;
+  font-size: 13px;
+}
+.cave-status progress {
+  width: 100%;
+  height: 8px;
+  accent-color: #91d8ae;
+  display: block;
+  margin-bottom: 8px;
+}
+.cave-status small {
+  color: #c6d4dd;
+}
+.cave-resource-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: #c7dddb;
+}
+.cave-resource-row b {
+  color: #ffe2a6;
+}
+.cave-actions {
+  position: absolute;
+  bottom: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+.cave-prompt {
+  color: #f5ecd9;
+  background: #14232fed;
+  border: 1px solid #506968;
+  border-radius: 8px;
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 12px;
+}
+.cave-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.cave-action-buttons kbd {
+  font-size: 10px;
+  opacity: 0.85;
+}
+.cave-energy {
+  margin-top: 10px;
+  font-size: 11px;
+  color: #b4ddf2;
+}
+.cave-energy progress {
+  margin-top: 5px;
+  accent-color: #86ccea;
+}
+.cave-skillbar {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 5px;
+  width: min(760px, calc(100vw - 32px));
+}
+.cave-skill {
+  display: grid;
+  gap: 4px;
+  position: relative;
+  padding: 8px 4px;
+  min-height: 64px;
+  border: 1px solid;
+  border-radius: 7px;
+  background: #152730f5;
+  color: #f3ead7;
+  cursor: pointer;
+  font: inherit;
+}
+.cave-skill kbd {
+  color: #ffe0a0;
+  font-size: 11px;
+}
+.cave-skill strong {
+  font-size: 10px;
+}
+.cave-skill small {
+  font-size: 9px;
+  color: #b5cdd6;
+}
+.cave-skill:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.cave-skill:focus-visible {
+  outline: 3px solid #fff0b5;
+  outline-offset: 2px;
+}
+.cave-skill:hover:enabled {
+  background: #304a52;
+}
+@media (max-width: 620px) {
+  .cave-skillbar {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.cave-shop-balance {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  color: #f5d797;
+}
+.cave-shop-list {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+}
+.cave-shop-item {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 12px;
+  background: #ffffff06;
+  border: 1px solid #ffffff12;
+  border-radius: 8px;
+}
+.cave-shop-item > div:not(.cave-sword) {
+  flex: 1;
+}
+.cave-shop-item small {
+  display: block;
+  margin-top: 4px;
+  color: #aebcc8;
+}
+.cave-sword {
+  font-size: 32px;
+}
+.cave-trade-message {
+  margin-top: 16px;
+  min-height: 24px;
+  color: #bcd5cd;
+}
+@media (max-height: 650px) {
+  .cave-status {
+    top: 60px;
+    padding: 8px 12px;
+  }
+  .cave-actions {
+    bottom: 48px;
+  }
+}

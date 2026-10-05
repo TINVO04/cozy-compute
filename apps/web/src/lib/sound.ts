@@ -3,6 +3,12 @@ import { useUi } from './store';
 let ctx: AudioContext | null = null;
 
 type Cue =
+  | 'cave_swing'
+  | 'cave_hit'
+  | 'cave_hurt'
+  | 'cave_mine'
+  | 'cave_loot'
+  | 'cave_defeat'
   | 'coin'
   | 'click'
   | 'error'
@@ -26,9 +32,17 @@ type Cue =
   | 'cyber_order'
   | 'farm_water'
   | 'farm_harvest'
-  | 'farm_plant';
+  | 'farm_plant'
+  | 'thunder'
+  | 'wind_gust';
 
 const CUES: Record<Cue, { f: number[]; d: number; type: OscillatorType; vol: number }> = {
+  cave_swing: { f: [390, 230, 120], d: 0.025, type: 'triangle', vol: 0.045 },
+  cave_hit: { f: [140, 65, 95], d: 0.035, type: 'triangle', vol: 0.075 },
+  cave_hurt: { f: [185, 90], d: 0.07, type: 'sine', vol: 0.06 },
+  cave_mine: { f: [1450, 850, 410], d: 0.025, type: 'sine', vol: 0.045 },
+  cave_loot: { f: [784, 1175, 1568], d: 0.06, type: 'sine', vol: 0.04 },
+  cave_defeat: { f: [220, 155, 82], d: 0.055, type: 'triangle', vol: 0.05 },
   coin: { f: [988, 1319], d: 0.08, type: 'square', vol: 0.05 },
   click: { f: [660], d: 0.03, type: 'triangle', vol: 0.05 },
   error: { f: [220, 180], d: 0.1, type: 'sawtooth', vol: 0.04 },
@@ -53,6 +67,8 @@ const CUES: Record<Cue, { f: number[]; d: number; type: OscillatorType; vol: num
   farm_water: { f: [280, 360, 420], d: 0.08, type: 'triangle', vol: 0.06 },
   farm_harvest: { f: [587, 880, 1174], d: 0.1, type: 'triangle', vol: 0.07 },
   farm_plant: { f: [220, 330], d: 0.06, type: 'sine', vol: 0.05 },
+  thunder: { f: [85, 70, 58, 48, 40], d: 0.38, type: 'sawtooth', vol: 0.12 },
+  wind_gust: { f: [140, 210, 175, 120], d: 0.28, type: 'sine', vol: 0.08 },
 };
 
 /** Tiny synthesized sound effects — no audio assets required. */

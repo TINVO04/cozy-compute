@@ -1,4 +1,5 @@
 import { TOWN_SCENERY, TOWN_TEMPLE_WALLS } from './town-scenery.js';
+import { RIVER_BRIDGE } from './river-bridge.js';
 
 export const TILE = 32;
 export const MAP_COLS = 48;
@@ -24,6 +25,7 @@ export const t = (x: number, y: number, w: number, h: number): Rect => ({
 export type OceanZoneId = 'coral_reef' | 'angler_dock' | 'open_sea' | 'abyssal_trench' | 'return_channel';
 
 export type ZoneId =
+  | 'martial'
   | 'plaza'
   | 'cafe'
   | 'fashion'
@@ -39,6 +41,7 @@ export type ZoneId =
   | 'comga'
   | 'cybernet'
   | 'bida'
+  | 'vehicle_shop'
   | 'farm_gate'
   | OceanZoneId;
 
@@ -163,6 +166,18 @@ export const BUILDINGS: Building[] = [
 ];
 
 export const ZONES: Zone[] = [
+  {
+    id: 'martial',
+    label: 'Đại hội Võ thuật',
+    prompt: 'Vào võ đường',
+    rect: { x: 1354, y: 520, w: 88, h: 86 },
+  },
+  {
+    id: 'vehicle_shop',
+    label: 'Gara Bạc Hà',
+    prompt: 'Vào phòng trưng bày xe',
+    rect: { x: 584, y: 788, w: 80, h: 58 },
+  },
   {
     id: 'farm_gate',
     label: 'Cổng Nông Trại',
@@ -311,7 +326,8 @@ export const BLOCKERS: Rect[] = [
   // Western town border: rows 0-9 and rows 12-31 are blocked, rows 10-11 left open for farm gate portal
   t(0, 0, 1, 10),
   t(0, 12, 1, MAP_ROWS - 12),
-  t(MAP_COLS - 1, 0, 1, MAP_ROWS),
+  t(MAP_COLS - 1, 0, 1, 10),
+  t(MAP_COLS - 1, 12, 1, MAP_ROWS - 12),
 ];
 
 export const PIER: Rect = t(38, 20, 2, 10);
@@ -319,6 +335,9 @@ export const WATER: Rect[] = [t(35, 20, 13, 12)];
 
 /** A connected promenade, with short spurs to every usable entrance. */
 export const PATHS: Rect[] = [
+  { x: 1248, y: 592, w: 168, h: 32 },
+  { x: 1378, y: 520, w: 38, h: 104 },
+  t(46, 10, 2, 2),
   t(0, 10, 2, 2),
   t(1, 10, 46, 2),
   t(10, 10, 2, 18),
@@ -339,6 +358,7 @@ export const PATHS: Rect[] = [
   t(11, 22, 6, 4),
   t(27, 25, 8, 2),
   t(32, 18, 8, 2),
+  { x: 584, y: 788, w: 80, h: 58 },
 ];
 export const PLAZA: Rect = t(17, 12, 13, 8);
 export const SPAWN = { x: 24 * TILE, y: 19 * TILE };
@@ -601,124 +621,106 @@ export interface FarmZone {
   rect: Rect;
 }
 
+export const FARM_POIS = {
+  shop_bac_sau: t(6, 6, 7, 4),
+  silo_warehouse: t(17, 4, 7, 5),
+  aquaculture_pond: t(29, 5, 13, 8),
+  poultry_coop: t(3, 15, 11, 5),
+  pig_pen: t(3, 24, 10, 5),
+  cattle_pasture: t(17, 24, 8, 5),
+  goat_pen: t(17, 17, 7, 4),
+  crops_field: t(33, 17, 12, 12),
+};
+
 export const FARM_ZONES: FarmZone[] = [
-  {
-    id: 'farm_gate',
-    label: 'Cổng Về Thị Trấn',
-    prompt: 'Trở về thị trấn',
-    rect: t(0, 2, 2, 3),
-  },
+  { id: 'farm_gate', label: 'Cổng Về Thị Trấn', prompt: 'Trở về thị trấn', rect: FARM_GATE_PORTAL },
   {
     id: 'farm_shop',
     label: 'Tiệm Nông Nghiệp Bác Sáu',
     prompt: 'Ghé tiệm Bác Sáu',
-    rect: { x: 211, y: 223, w: 211, h: 100 },
+    rect: FARM_POIS.shop_bac_sau,
   },
   {
     id: 'farm_warehouse',
     label: 'Nhà Kho Nông Sản Silo',
     prompt: 'Mở kho Silo',
-    rect: { x: 538, y: 171, w: 230, h: 145 },
+    rect: FARM_POIS.silo_warehouse,
   },
-  {
-    id: 'farm_pond',
-    label: 'Ao Thủy Sản & Guồng Nước',
-    prompt: 'Quản lý ao cá',
-    rect: { x: 890, y: 206, w: 346, h: 230 },
-  },
-  {
-    id: 'barn_poultry',
-    label: 'Chuồng Gia Cầm (Gà & Vịt)',
-    prompt: 'Chăm sóc gia cầm',
-    rect: { x: 77, y: 469, w: 371, h: 155 },
-  },
-  {
-    id: 'barn_cattle',
-    label: 'Chuồng Bò Sữa',
-    prompt: 'Chăm sóc bò sữa',
-    rect: { x: 531, y: 743, w: 250, h: 155 },
-  },
-  {
-    id: 'barn_pig',
-    label: 'Chuồng Heo Mọi',
-    prompt: 'Chăm sóc đàn heo',
-    rect: { x: 77, y: 743, w: 352, h: 155 },
-  },
-  {
-    id: 'barn_goat',
-    label: 'Chuồng Dê & Cừu',
-    prompt: 'Chăm sóc dê cừu',
-    rect: { x: 531, y: 743, w: 250, h: 155 },
-  },
-  {
-    id: 'farm_plots',
-    label: 'Khu Đất Trồng Trọt',
-    prompt: 'Canh tác nông sản',
-    rect: { x: 1050, y: 535, w: 435, h: 390 },
-  },
+  { id: 'farm_pond', label: 'Ao Thủy Sản', prompt: 'Ngắm ao cá', rect: FARM_POIS.aquaculture_pond },
+  { id: 'barn_poultry', label: 'Chuồng Gia Cầm', prompt: 'Chăm sóc gia cầm', rect: FARM_POIS.poultry_coop },
+  { id: 'barn_cattle', label: 'Đồng Cỏ Bò Sữa', prompt: 'Chăm sóc bò sữa', rect: FARM_POIS.cattle_pasture },
+  { id: 'barn_pig', label: 'Chuồng Heo', prompt: 'Thăm đàn heo', rect: FARM_POIS.pig_pen },
+  { id: 'barn_goat', label: 'Chuồng Dê & Cừu', prompt: 'Thăm dê cừu', rect: FARM_POIS.goat_pen },
+  { id: 'farm_plots', label: 'Khu Đất Trồng Trọt', prompt: 'Canh tác nông sản', rect: FARM_POIS.crops_field },
 ];
 
-export const FARM_POIS = {
-  shop_bac_sau: { x: 211, y: 223, w: 211, h: 86 },
-  silo_warehouse: { x: 538, y: 171, w: 230, h: 131 },
-  aquaculture_pond: { x: 890, y: 206, w: 346, h: 223 },
-  poultry_coop: { x: 77, y: 469, w: 371, h: 143 },
-  cattle_pasture: { x: 531, y: 743, w: 250, h: 143 },
-  pig_pen: { x: 77, y: 743, w: 352, h: 143 },
-  goat_pen: { x: 531, y: 743, w: 250, h: 143 },
-  crops_field: { x: 1050, y: 535, w: 435, h: 390 },
+export const FARM_PATHS: Rect[] = [
+  t(0, 2, 7, 3),
+  t(4, 4, 2, 9),
+  t(4, 11, 40, 3),
+  t(14, 11, 2, 19),
+  t(26, 11, 3, 19),
+  t(3, 21, 26, 2),
+  t(26, 14, 20, 2),
+  t(30, 14, 2, 16),
+  t(6, 9, 7, 3),
+  t(17, 8, 7, 4),
+];
+export const FARM_GARDEN = {
+  well: t(20, 13, 1, 1),
+  bench: t(23, 15, 2, 1),
+  trees: [
+    [18, 15],
+    [3, 7],
+    [14, 6],
+    [26, 5],
+    [44, 6],
+    [44, 11],
+    [2, 23],
+    [15, 29],
+    [28, 30],
+  ] as const,
 };
 
-/** 36-plot grid specifications (6x6 layout) */
 export const FARM_PLOT_TOTAL = 36;
 export const FARM_PLOT_COLS = 6;
 export const FARM_PLOT_ROWS = 6;
 export const FARM_STARTER_PLOTS = [0, 1, 2, 3] as const;
 
 export function getFarmPlotRect(index: number): Rect {
-  if (index < 0 || index >= FARM_PLOT_TOTAL) {
-    throw new Error(`Invalid plot index: ${index}. Must be 0..35.`);
-  }
-  const col = index % FARM_PLOT_COLS;
-  const row = Math.floor(index / FARM_PLOT_COLS);
-  const pw = 58;
-  const ph = 46;
-  const startX = 1070;
-  const startY = 550;
-  const stepX = 68;
-  const stepY = 62;
+  if (!Number.isInteger(index) || index < 0 || index >= FARM_PLOT_TOTAL)
+    throw new Error('Invalid plot index');
   return {
-    x: startX + col * stepX,
-    y: startY + row * stepY,
-    w: pw,
-    h: ph,
+    x: FARM_POIS.crops_field.x + (index % 6) * 64,
+    y: FARM_POIS.crops_field.y + Math.floor(index / 6) * 64,
+    w: 56,
+    h: 48,
   };
 }
 
 export const FARM_BLOCKERS: Rect[] = [
-  // Outer perimeter fence & walls
-  t(0, 0, FARM_COLS, 1), // Top boundary fence
-  t(0, FARM_ROWS - 1, FARM_COLS, 1), // Bottom boundary wall
-  t(FARM_COLS - 1, 0, 1, FARM_ROWS), // East boundary canal/fence
-  t(0, 0, 1, 2), // West boundary north of gate
-  t(0, 5, 1, FARM_ROWS - 5), // West boundary south of gate (rows 2..4 left open for gate exit)
-
-  // Structural building footprints with generous walking margins
-  { x: 211, y: 223, w: 211, h: 86 }, // Tiệm Nông Nghiệp Bác Sáu stall
-  { x: 538, y: 171, w: 230, h: 131 }, // Nhà Kho Nông Sản Silo house
-  { x: 890, y: 206, w: 346, h: 223 }, // Ao Thủy Sản deep water basin
-
-  // Livestock barn enclosure perimeter fences (with clear corridors)
-  { x: 77, y: 469, w: 371, h: 143 }, // Chuồng Gia Cầm
-  { x: 77, y: 743, w: 352, h: 143 }, // Chuồng Heo Mọi
-  { x: 531, y: 743, w: 250, h: 143 }, // Chuồng Dê & Cừu
-
-  // Center park obstacles
-  { x: 627, y: 514, w: 32, h: 29 }, // Center park tree trunk
-  { x: 736, y: 554, w: 109, h: 29 }, // Center park bench
-  { x: 774, y: 480, w: 58, h: 34 }, // Center park bulletin board
-  { x: 909, y: 560, w: 90, h: 51 }, // Center park hay bale
-  { x: 685, y: 669, w: 346, h: 23 }, // Center park south dividing fence
+  t(0, 0, FARM_COLS, 1),
+  t(0, FARM_ROWS - 1, FARM_COLS, 1),
+  t(FARM_COLS - 1, 0, 1, FARM_ROWS),
+  t(0, 0, 1, 2),
+  t(0, 5, 1, FARM_ROWS - 5),
+  FARM_POIS.shop_bac_sau,
+  FARM_POIS.silo_warehouse,
+  FARM_POIS.aquaculture_pond,
+  FARM_GARDEN.well,
+  FARM_GARDEN.bench,
+  ...FARM_GARDEN.trees.map(([x, y]) => ({ x: x * TILE - 8, y: y * TILE - 12, w: 16, h: 12 })),
+  // Pen rails have a two-tile entrance centered on their southern side.
+  ...[FARM_POIS.poultry_coop, FARM_POIS.pig_pen, FARM_POIS.cattle_pasture, FARM_POIS.goat_pen].flatMap(
+    (p) => [
+      { x: p.x, y: p.y, w: p.w, h: 8 },
+      { x: p.x, y: p.y, w: 8, h: p.h },
+      { x: p.x + p.w - 8, y: p.y, w: 8, h: p.h },
+      { x: p.x, y: p.y + p.h - 8, w: p.w / 2 - TILE, h: 8 },
+      { x: p.x + p.w / 2 + TILE, y: p.y + p.h - 8, w: p.w / 2 - TILE, h: 8 },
+      { x: p.x + 16, y: p.y + 12, w: 80, h: 48 },
+    ],
+  ),
 ];
 
 /** Consolidated Farm Map authoritative metadata */
@@ -800,10 +802,12 @@ export const OCEAN_BLOCKERS: Rect[] = [
   t(OCEAN_COLS - 1, 0, 1, OCEAN_ROWS), // East edge
 
   // Cầu Hóa An bridge concrete pillars (massive piers in river bed with open navigable channels)
-  { x: 240, y: 446, w: 32, h: 96 },
-  { x: 580, y: 446, w: 32, h: 96 },
-  { x: 920, y: 446, w: 32, h: 96 },
-  { x: 1260, y: 446, w: 32, h: 96 },
+  ...RIVER_BRIDGE.pierXs.map((x) => ({
+    x,
+    y: RIVER_BRIDGE.top - 6,
+    w: 32,
+    h: RIVER_BRIDGE.bottom - RIVER_BRIDGE.top + 18,
+  })),
 ];
 
 /**
@@ -814,6 +818,12 @@ export function getTownReturnSpawn(from?: string): { x: number; y: number } {
   if (!from) return SPAWN;
   const key = from.toLowerCase().trim();
   switch (key) {
+    case 'showroom':
+      return { x: 624, y: 824 };
+    case 'martial':
+      return { x: 1398, y: 618 };
+    case 'cave':
+      return { x: 45.5 * TILE, y: 11 * TILE };
     case 'farm':
     case 'farm_gate':
       return TOWN_FARM_PORTAL_SPAWN;
@@ -862,7 +872,9 @@ export const OCEAN_MAP = {
 } as const;
 
 export function oceanZoneAt(x: number, y: number): OceanZoneId | null {
-  for (const z of OCEAN_ZONES) {
+  // Specific grounds (deep water and the return channel) override the broad river reach.
+  for (let i = OCEAN_ZONES.length - 1; i >= 0; i--) {
+    const z = OCEAN_ZONES[i]!;
     if (x >= z.rect.x && x < z.rect.x + z.rect.w && y >= z.rect.y && y < z.rect.y + z.rect.h) return z.id;
   }
   return null;

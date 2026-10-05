@@ -213,7 +213,7 @@ describe('Empirical Map Geometry & Town Portal Challenge', () => {
   // ==========================================================================
   describe('Blocker Interference Analysis', () => {
     it('verifies that the western gate path t(0, 10, 2, 2) has zero overlap with any BLOCKER', () => {
-      const gatePath = PATHS[0]!; // t(0, 10, 2, 2)
+      const gatePath = PATHS.find((path) => path.x === 0 && path.y === 10 * TILE)!; // t(0, 10, 2, 2)
       expect(gatePath).toEqual({ x: 0, y: 10 * TILE, w: 2 * TILE, h: 2 * TILE });
 
       for (let i = 0; i < BLOCKERS.length; i++) {

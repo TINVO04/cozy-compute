@@ -94,12 +94,23 @@ export async function resolvedAppearance(q: Queryable, userId: string): Promise<
   );
   const base = sanitizeAppearance(r.rows[0]?.appearance);
   const heldFish = (r.rows[0]?.held_fish ?? null) as Appearance['heldFish'];
-  const out: Appearance = { ...base, hat: null, top: null, face: null, rod: null, boat: null, heldFish };
+  const out: Appearance = {
+    ...base,
+    hat: null,
+    top: null,
+    face: null,
+    rod: null,
+    boat: null,
+    vehicle: null,
+    heldFish,
+  };
   for (const row of r.rows) {
     if (row.slot === 'hat' || row.slot === 'top' || row.slot === 'face') {
       out[row.slot] = row.sprite;
     } else if (row.slot === 'rod') {
       out.rod = row.item_id ?? (row.sprite ? normalizeRodId(row.sprite) : null);
+    } else if (row.slot === 'vehicle') {
+      out.vehicle = row.item_id;
     } else if (row.slot === 'boat') {
       out.boat = row.item_id ?? (row.sprite ? normalizeBoatId(row.sprite) : null);
     }

@@ -1,8 +1,23 @@
+import { MARTIAL_DOOR, caveNear } from '@cozy/game-data';
+import { randomUUID } from 'node:crypto';
+import { TownLifeSimulation } from '@cozy/game-data';
+import { TownActorState } from '../schema.js';
+import {
+  drivingSpeed,
+  onRoad,
+  onDriveway,
+  vehicleById,
+  redLightCrossing,
+  TRAFFIC_LABELS,
+  TRAFFIC_FINES,
+  PLAYER_SPEED,
+  type TrafficViolation,
+} from '@cozy/game-data';
 import type { Client } from '@colyseus/core';
 import { BLOCKERS, getTownReturnSpawn, MAP_HEIGHT, MAP_WIDTH, SPAWN } from '@cozy/game-data';
 import type { SessionInfo } from '../api.js';
 import { DuckState, EventState, type PlayerState } from '../schema.js';
-import { BaseRoom, getDeps, type WorldSpec } from './base.js';
+import { BaseRoom, getDeps, type WorldSpec, type ClientData } from './base.js';
 
 interface ActiveEvent {
   eventId: string;
@@ -15,7 +30,29 @@ interface ActiveEvent {
 const DUCK_RADIUS = 22;
 
 export class TownRoom extends BaseRoom {
+  private townLife = new TownLifeSimulation();
+
+  private syncTownLife() {
+    const active = new Set(this.townLife.actors.map((actor) => actor.id));
+    for (const id of this.state.townActors.keys()) {
+      if (!active.has(id)) this.state.townActors.delete(id);
+    }
+    for (const actor of this.townLife.actors) {
+      let state = this.state.townActors.get(actor.id);
+      if (!state) {
+        state = new TownActorState();
+        this.state.townActors.set(actor.id, state);
+      }
+      Object.assign(state, actor);
+    }
+  }
   override maxClients = 150;
+  private trafficStepMs = 50;
+  private traffic = new Map<string, { x: number; y: number; offRoadMs: number; lastFine: number }>();
+  private pendingFines = new Map<
+    string,
+    { ticketId: string; violation: TrafficViolation; retryAt: number; busy: boolean }
+  >();
   private participants = new Set<string>();
   private eventTimer: NodeJS.Timeout | undefined;
 
@@ -30,7 +67,80 @@ export class TownRoom extends BaseRoom {
   override onCreate() {
     this.setup();
     this.state.kind = 'town';
+    this.onMessage('showroom:enter', async (client) => {
+      const p = this.state.players.get(client.sessionId);
+      if (!p?.connected || !onDriveway(p.x, p.y)) {
+        client.send('notice', {
+          kind: 'warning',
+          text: 'Đến cửa Gara Bạc Hà ở phía nam quảng trường để vào.',
+        });
+        return;
+      }
+      try {
+        await getDeps().redis.set('showroom:entry:' + p.userId, '1', 'EX', 30);
+        p.vehicle = '';
+        client.send('showroom:travel', {});
+      } catch {
+        client.send('notice', { kind: 'warning', text: 'Chưa mở được cửa gara. Hãy thử lại.' });
+      }
+    });
+    this.onMessage('martial:travel', async (client) => {
+      const p = this.state.players.get(client.sessionId);
+      if (!p?.connected || !caveNear(p, MARTIAL_DOOR, 100)) return;
+      try {
+        await getDeps().redis.set('martial:entry:' + p.userId, '1', 'EX', 30);
+        client.send('martial:travel', {});
+      } catch {
+        client.send('notice', { kind: 'warning', text: 'Chưa mở được võ đường. Hãy thử lại.' });
+      }
+    });
+    this.syncTownLife();
+    this.onMessage('town:talk', (client, message: unknown) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player?.connected || !message || typeof message !== 'object') return;
+      const reply = this.townLife.talk((message as { id?: unknown }).id, player);
+      if (!reply) return;
+      this.syncTownLife();
+      client.send('town:dialogue', reply);
+    });
+    this.onMessage('vehicle:toggle', (client) => {
+      const p = this.state.players.get(client.sessionId);
+      if (!p) return;
+      if (p.vehicle) {
+        p.vehicle = '';
+        return;
+      }
+      const vehicle = vehicleById(this.sessionFor(client.sessionId)?.appearance.vehicle);
+      const text = !vehicle
+        ? 'Hãy mua và chọn xe tại Gara Bạc Hà trước.'
+        : this.pendingFines.has(p.userId)
+          ? 'Đang xử lý biên bản giao thông, vui lòng chờ.'
+          : !onRoad(p.x, p.y) && !onDriveway(p.x, p.y)
+            ? 'Đến lòng đường hoặc sân gara để lên xe.'
+            : '';
+      if (text) {
+        client.send('notice', { kind: 'warning', text });
+        return;
+      }
+      p.vehicle = vehicle!.id;
+      this.traffic.set(client.sessionId, {
+        x: p.x,
+        y: p.y,
+        offRoadMs: 0,
+        lastFine: this.traffic.get(client.sessionId)?.lastFine ?? 0,
+      });
+    });
     this.state.label = 'Town';
+    this.onMessage('cave:travel', async (client) => {
+      const p = this.state.players.get(client.sessionId);
+      if (!p || p.x < 46 * 32 || p.y < 320 || p.y > 384) return;
+      try {
+        await getDeps().redis.set(`cave:entry:${p.userId}`, '1', 'EX', 30);
+        client.send('cave:travel', {});
+      } catch {
+        client.send('notice', { kind: 'warning', text: 'Chưa thể mở lối vào hang. Hãy thử lại.' });
+      }
+    });
     this.eventTimer = setInterval(() => void this.syncEvent(), 1000);
     void this.syncEvent();
 
@@ -144,7 +254,68 @@ export class TownRoom extends BaseRoom {
     });
   }
 
+  protected override playerSpeedFor(_d: ClientData, p: PlayerState) {
+    return p.vehicle ? drivingSpeed(p.vehicle, p.x, p.y) : PLAYER_SPEED;
+  }
+
+  protected override tick(dtMs: number) {
+    this.trafficStepMs = Math.max(0, Math.min(250, dtMs));
+    this.state.serverTime = Date.now();
+    super.tick(dtMs);
+    this.townLife.update(
+      dtMs,
+      this.state.serverTime,
+      [...this.state.players.values()].filter((p) => p.connected),
+    );
+    this.syncTownLife();
+    for (const [userId, fine] of this.pendingFines) {
+      if (!fine.busy && Date.now() >= fine.retryAt) void this.settleFine(userId, fine);
+    }
+    for (const sid of this.traffic.keys()) if (!this.state.players.has(sid)) this.traffic.delete(sid);
+  }
+
+  private async settleFine(
+    userId: string,
+    fine: { ticketId: string; violation: TrafficViolation; retryAt: number; busy: boolean },
+  ) {
+    fine.busy = true;
+    try {
+      const result = await getDeps().api.trafficFine(userId, fine.ticketId, fine.violation);
+      this.pendingFines.delete(userId);
+      this.clientForUser(userId)?.send('traffic:fine', {
+        ...result,
+        violation: fine.violation,
+        text: `${TRAFFIC_LABELS[fine.violation]}: phạt ${result.charged} Coin${result.charged < TRAFFIC_FINES[fine.violation] ? ' (giới hạn theo số dư)' : ''}. Xe đã dừng, nhấn V để lên lại trên đường.`,
+      });
+    } catch {
+      fine.busy = false;
+      fine.retryAt = Date.now() + 2000;
+    }
+  }
+
   protected override afterMove(p: PlayerState, _sessionId: string) {
+    const now = Date.now();
+    const prev = this.traffic.get(_sessionId);
+    if (p.vehicle && prev) {
+      const moving = p.x !== prev.x || p.y !== prev.y;
+      const offRoad = !onRoad(p.x, p.y) && !onDriveway(p.x, p.y);
+      prev.offRoadMs = moving && offRoad ? prev.offRoadMs + this.trafficStepMs : 0;
+      const violation: TrafficViolation | null = redLightCrossing(prev, p, now)
+        ? 'red_light'
+        : prev.offRoadMs >= 1000
+          ? 'off_road'
+          : null;
+      if (violation && now - prev.lastFine >= 5000 && !this.pendingFines.has(p.userId)) {
+        prev.lastFine = now;
+        p.vehicle = '';
+        this.pendingFines.set(p.userId, { ticketId: randomUUID(), violation, retryAt: 0, busy: false });
+      }
+    }
+    if (prev) {
+      prev.x = p.x;
+      prev.y = p.y;
+    }
+
     const ev = this.state.event;
     if (!ev || !p.inEvent || Date.now() > ev.endsAt) return;
     ev.ducks.forEach((duck, id) => {

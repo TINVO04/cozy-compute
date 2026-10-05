@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Cave visual verification</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #14252e;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+        image-rendering: pixelated;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="hud"></div>
+    <script type="module" src="./cave-hud.tsx"></script>
+    <script type="module">
+      import Phaser from 'phaser';
+      import { CaveScene } from '/src/game/cave-scene.ts';
+      import { useCave } from '/src/game/cave-state.ts';
+      import { useUi } from '/src/lib/store.ts';
+      import { caveFloor } from '@cozy/game-data';
+      import { net } from '/src/game/net.ts';
+      import { caveCreatureFrame } from '/src/art/cave-creatures.ts';
+      window.creatureFrame = caveCreatureFrame;
+      window.setReduced = (reducedMotion) => useUi.setState({ reducedMotion });
+      window.showMartial = (effect) => net.messageHandlers.get('cave:martial')?.forEach((fn) => fn(effect));
+      window.sent = [];
+      net.send = (type, message) => window.sent.push({ type, ...message });
+      useUi.setState({ muted: true, room: { kind: 'cave', label: 'Hang Ngọc' }, zoom: 0.75 });
+      window.cavePreview = new Phaser.Game({
+        type: Phaser.CANVAS,
+        pixelArt: true,
+        roundPixels: true,
+        scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
+        audio: { noAudio: true },
+        banner: false,
+        scene: [CaveScene],
+      });
+      window.showFloor = (floor) => {
+        const scene = window.cavePreview.scene.getScene('cave');
+        scene.drawGround(floor);
+        scene.cameras.main.centerOn(480, 320);
+        useCave.getState().setSnapshot({
+          floor,
+          hp: 100,
+          account: { weapon: 'iron', resources: { stone: 3, iron: 2, crystal: 0 }, coin: 120 },
+          ...(floor ? caveFloor(floor) : { enemies: [], ores: [] }),
+          cleared: false,
+          combat: {
+            now: 1000,
+            learned: ['slash', 'spin', 'guard', 'heal'],
+            energy: 70,
+            cooldowns: { guard: 3000 },
+            casting: null,
+            guardUntil: 0,
+          },
+        });
+        useUi.setState({ connection: 'online' });
+      };
+      window.showEffect = (effect) => window.cavePreview.scene.getScene('cave').effect(effect);
+    </script>
+  </body>
+</html>

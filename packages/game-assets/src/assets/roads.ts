@@ -1,0 +1,40 @@
+import type { AssetDefinition } from '../types/asset.js';
+
+export const ROAD_ASSETS: AssetDefinition[] = [
+  {
+    id: 'road-dirt-path',
+    category: 'roads',
+    name: 'Đường Mòn Đất Nện (Dirt Trail)',
+    texture: '/farm/tiled/sprout_tileset.png',
+    visualBounds: { width: 32, height: 32 },
+    footprint: { tileWidth: 1, tileHeight: 1 },
+    anchor: { x: 0.5, y: 0.5 },
+    collision: { solid: false },
+    tags: ['road', 'dirt', 'trail', 'rural', 'path', 'vietnamese'],
+    styleVersion: 1,
+  },
+  {
+    id: 'road-concrete-rural',
+    category: 'roads',
+    name: 'Đường Bê Tông Nông Thôn (Rural Concrete Road)',
+    texture: '/farm/tiled/sprout_tileset.png',
+    visualBounds: { width: 32, height: 32 },
+    footprint: { tileWidth: 1, tileHeight: 1 },
+    anchor: { x: 0.5, y: 0.5 },
+    collision: { solid: false },
+    tags: ['road', 'concrete', 'street', 'dong-nai', 'bien-hoa'],
+    styleVersion: 1,
+  },
+  {
+    id: 'road-wooden-bridge',
+    category: 'roads',
+    name: 'Cầu Khỉ / Cầu Gỗ Bắt Qua Kênh (Wooden Canal Bridge)',
+    texture: '/farm/tiled/sprout_tileset.png',
+    visualBounds: { width: 32, height: 32 },
+    footprint: { tileWidth: 1, tileHeight: 1 },
+    anchor: { x: 0.5, y: 0.5 },
+    collision: { solid: false },
+    tags: ['road', 'bridge', 'wooden', 'canal', 'crossing', 'vietnamese'],
+    styleVersion: 1,
+  },
+];

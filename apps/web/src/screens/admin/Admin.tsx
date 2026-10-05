@@ -3,10 +3,12 @@ import {
   Activity,
   ArrowLeft,
   Bot,
+  CloudSun,
   Fish,
   Flag,
   Gauge,
   KeyRound,
+  Map as MapIcon,
   Receipt,
   ScrollText,
   Server,
@@ -22,9 +24,11 @@ import { PolicyPage } from './Policy';
 import { ServerPage } from './Server';
 import { AuditPage, FlagsPage, KeysPage, LedgerPage, PlayersPage, ReportsPage, UsagePage } from './Tables';
 import { FishAdminPage } from './FishAdmin';
+import { WeatherAdminPage } from './WeatherAdmin';
 
 const NAV = [
   ['', 'Tổng quan', Gauge],
+  ['weather', 'Thời tiết & Ánh sáng', CloudSun],
   ['fish', 'Từ điển cá & Size', Fish],
   ['models', 'Mô hình AI', Bot],
   ['policy', 'Quy tắc & Hạn mức', Settings2],
@@ -45,7 +49,7 @@ export default function AdminScreen() {
     <div className="admin">
       <nav className="admin-nav" aria-label="Quản trị">
         <Brand />
-        <div style={{ padding: '0 0 12px', borderBottom: '1px solid var(--line)', marginBottom: 8 }}>
+        <div style={{ padding: '0 0 12px', borderBottom: '1px solid var(--line)', marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <button
             className="btn btn-secondary"
             style={{
@@ -61,6 +65,24 @@ export default function AdminScreen() {
             onClick={() => navigate('/')}
           >
             <ArrowLeft size={16} /> Quay lại Game
+          </button>
+          <button
+            className="btn btn-primary"
+            style={{
+              width: '100%',
+              justifyContent: 'center',
+              gap: 8,
+              fontWeight: 600,
+              fontSize: 13,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              background: '#059669',
+              borderColor: '#10b981',
+            }}
+            onClick={() => navigate('/editor')}
+          >
+            <MapIcon size={16} /> Map Editor (32px)
           </button>
         </div>
         {NAV.map(([id, label, Icon]) => (
@@ -137,6 +159,7 @@ export default function AdminScreen() {
           />
           <Route path="audit" element={<AuditPage />} />
           <Route path="server" element={<ServerPage />} />
+          <Route path="weather" element={<WeatherAdminPage />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </main>

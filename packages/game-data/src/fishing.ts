@@ -16,3 +16,20 @@ export function rollFishingSequence(rng: () => number, shadowDelayMs: number, ni
   }
   return { nibbleOffsetsMs, nibbleOrbitTurns, biteInMs: nextNibbleMs };
 }
+import { FISH } from './activities.js';
+import type { OceanZoneId } from './map.js';
+
+/** Location is resolved by the server; better rods never unlock river fish at the town pond. */
+export function fishingGround(zone: OceanZoneId | 'town_pond') {
+  const deep = zone === 'abyssal_trench';
+  const fish = FISH.filter((species) =>
+    zone === 'town_pond'
+      ? species.habitat === 'freshwater' && species.rarity === 'common'
+      : species.rarity !== 'common' &&
+        (deep
+          ? species.habitat === 'freshwater' || species.habitat === 'mythic'
+          : species.habitat === 'freshwater' && ['rare', 'epic'].includes(species.rarity)),
+  );
+  const bonus = deep ? 2.5 : zone === 'open_sea' ? 1.5 : zone === 'coral_reef' ? 1 : 0;
+  return { fish, bonus };
+}

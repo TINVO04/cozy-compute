@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "art_direction_brief": "docs/design/cave-art.md",
+  "assets": [
+    {
+      "id": "cave-worlds",
+      "path": "apps/web/src/art/cave-world.ts",
+      "role": "entrance, five floors and ore textures",
+      "status": "implemented",
+      "technical": { "dimensions": "960x640", "frames": 6, "filtering": "nearest" },
+      "source": {
+        "kind": "authored",
+        "creator": "repository implementation",
+        "created_at": "2026-10-05",
+        "license": "repository terms",
+        "prompt_or_source_record": "User requested cave detail matching the town. Existing tree and prop functions reused."
+      },
+      "verification": {
+        "native_scale_reviewed": false,
+        "in_engine_reviewed": false,
+        "technical_checks_passed": true,
+        "approved_by": ""
+      }
+    },
+    {
+      "id": "cave-creatures",
+      "path": "apps/web/src/art/cave-creatures.ts",
+      "role": "slime, bat and golem animation strips",
+      "status": "implemented",
+      "technical": {
+        "dimensions": "96x112 per frame",
+        "alpha": true,
+        "frames": 8,
+        "anchor": "0.5,0.89",
+        "filtering": "nearest"
+      },
+      "source": {
+        "kind": "authored",
+        "creator": "repository implementation",
+        "created_at": "2026-10-05",
+        "license": "repository terms",
+        "prompt_or_source_record": "Original PixelGrid creatures and animation frames."
+      },
+      "verification": {
+        "native_scale_reviewed": false,
+        "in_engine_reviewed": false,
+        "technical_checks_passed": true,
+        "approved_by": ""
+      }
+    }
+  ]
+}

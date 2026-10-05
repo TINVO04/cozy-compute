@@ -4,18 +4,24 @@ export { drawFurniture } from './furniture';
 
 import { chibiItemIcon } from './chibi';
 import { boatIcon } from './boat';
+import { vehicleCanvas } from './vehicle';
 export { boatIcon } from './boat';
 
 /** Icon for any catalogue item, using HD Chibi mannequins for clothing, physical materials for furniture, and boat models. */
 export function itemIcon(
   sprite: string,
-  type: 'clothing' | 'furniture' | 'rod' | 'boat',
+  type: 'clothing' | 'furniture' | 'rod' | 'boat' | 'vehicle',
   size = { w: 1, h: 1 },
   scale = 3,
 ): string {
   const key = `${sprite}|${type}|${size.w}x${size.h}|${scale}`;
   const hit = iconCache.get(key);
   if (hit) return hit;
+  if (type === 'vehicle') {
+    const url = vehicleCanvas(sprite).toDataURL();
+    iconCache.set(key, url);
+    return url;
+  }
 
   if (type === 'boat') {
     const url = boatIcon(sprite, 2);
