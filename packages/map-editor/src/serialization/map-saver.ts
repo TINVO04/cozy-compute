@@ -18,16 +18,14 @@ export class MapSaver {
     if (shouldValidate) {
       const validation = MapValidator.validate(map, options.registry);
       if (!validation.valid) {
-        throw new Error(
-          `Cannot save invalid MapDefinition:\n- ${validation.errors.join('\n- ')}`
-        );
+        throw new Error(`Cannot save invalid MapDefinition:\n- ${validation.errors.join('\n- ')}`);
       }
     }
 
     // Update metadata timestamp
     map.metadata.updatedAt = new Date().toISOString();
 
-    const indentation = options.pretty ?? true ? 2 : 0;
+    const indentation = (options.pretty ?? true) ? 2 : 0;
     return JSON.stringify(map, null, indentation);
   }
 }

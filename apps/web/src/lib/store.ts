@@ -8,6 +8,10 @@ import {
 
 export type Panel =
   | 'cave-shop'
+  | 'resident'
+  | 'farm-care'
+  | 'kitchen'
+  | 'aquarium'
   | null
   | 'shop-vehicles'
   | 'shop-fashion'

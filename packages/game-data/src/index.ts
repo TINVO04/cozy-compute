@@ -14,3 +14,4 @@ export * from './cave.js';
 export * from './martial.js';
 export * from './town-life.js';
 export * from './river-bridge.js';
+export * from './resident.js';

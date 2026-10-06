@@ -3,7 +3,7 @@ import { useEditorStore } from '../hooks/useEditorStore.js';
 import { CheckCircle2, Crosshair, ZoomIn, Layers } from 'lucide-react';
 
 export const BottomStatusBar: React.FC = () => {
-  const { cursorTile, cursorPixel, activeTool, activeLayerId, zoom, map, isDirty } = useEditorStore();
+  const { cursorTile, cursorPixel, activeLayerId, zoom, map, isDirty } = useEditorStore();
 
   if (!map) return null;
 

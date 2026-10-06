@@ -157,6 +157,29 @@ function Card({ userId, onClose }: { userId: string; onClose: () => void }) {
       </p>
       {p.isSelf ? null : (
         <div className="stack" style={{ gap: 8 }}>
+          <Button
+            onClick={() => {
+              onClose();
+              useUi.getState().setFarmOwnerId(p.id);
+              useUi.getState().setPanel('farm-password');
+            }}
+          >
+            Ghé nông trại
+          </Button>
+          {p.isFriend ? (
+            <Button
+              onClick={() => {
+                void api('/api/party', {
+                  body: { kind: 'invite', value: p.id },
+                  idempotencyKey: crypto.randomUUID(),
+                })
+                  .then(() => useUi.getState().toast({ kind: 'success', title: 'Đã gửi lời mời tổ đội' }))
+                  .catch(toastError);
+              }}
+            >
+              Mời vào tổ đội
+            </Button>
+          ) : null}
           <div className="row">
             <Button
               variant={p.isFriend ? 'secondary' : 'primary'}

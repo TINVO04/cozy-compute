@@ -1,5 +1,8 @@
 import {
   BAC_SAU_SHOP_ITEMS,
+  CROPS,
+  ANIMALS,
+  POND_FISHES,
   DAILY_MARKET_CONTRACTS,
   type FarmShopItemDef,
   type MarketContractDef,
@@ -22,6 +25,7 @@ interface WarehouseItem {
 }
 
 interface FarmMeResponse {
+  completedContracts?: string[];
   farm: { ownerId: string };
   warehouse: { capacity: number; items: WarehouseItem[] };
   todayContracts?: MarketContractDef[];
@@ -40,6 +44,12 @@ export function FarmShopPanel({ me, onClose }: { me: Me; onClose: () => void }) 
   });
 
   const warehouseItems = data?.warehouse.items ?? [];
+  const sellableItems = warehouseItems.filter(
+    (item) =>
+      Object.values(CROPS).some((c) => c.harvestItemId === item.itemId) ||
+      Object.values(ANIMALS).some((a) => a.yieldItemId === item.itemId) ||
+      Object.values(POND_FISHES).some((f) => f.harvestItemId === item.itemId),
+  );
   const contracts = data?.todayContracts ?? DAILY_MARKET_CONTRACTS;
 
   const getQty = (id: string) => quantities[id] ?? 1;
@@ -88,6 +98,7 @@ export function FarmShopPanel({ me, onClose }: { me: Me; onClose: () => void }) 
     try {
       const res = await api<{ ok: boolean; coinEarned: number; fameEarned: number }>('/api/farm/shop/sell', {
         method: 'POST',
+        idempotencyKey: crypto.randomUUID(),
         body: { itemId: item.itemId, quantity: qty },
       });
       play('coin');
@@ -115,6 +126,7 @@ export function FarmShopPanel({ me, onClose }: { me: Me; onClose: () => void }) 
         '/api/farm/shop/sell',
         {
           method: 'POST',
+          idempotencyKey: crypto.randomUUID(),
           body: {
             itemId: contract.requiredItemId,
             quantity: contract.requiredQuantity,
@@ -359,12 +371,12 @@ export function FarmShopPanel({ me, onClose }: { me: Me; onClose: () => void }) 
                 paddingRight: 4,
               }}
             >
-              {warehouseItems.length === 0 ? (
+              {sellableItems.length === 0 ? (
                 <div style={{ color: '#a8a29e', textAlign: 'center', padding: '36px 0', fontSize: 13 }}>
                   Kho Silo đang trống, chưa có nông sản hoặc sản phẩm chăn nuôi để bán sỉ.
                 </div>
               ) : (
-                warehouseItems.map((item) => {
+                sellableItems.map((item) => {
                   const qty = Math.min(getQty(item.itemId), item.quantity);
                   return (
                     <div
@@ -466,7 +478,8 @@ export function FarmShopPanel({ me, onClose }: { me: Me; onClose: () => void }) 
             >
               {contracts.map((c) => {
                 const stock = warehouseItems.find((it) => it.itemId === c.requiredItemId)?.quantity ?? 0;
-                const satisfied = stock >= c.requiredQuantity;
+                const completed = data?.completedContracts?.includes(c.id) ?? false;
+                const satisfied = stock >= c.requiredQuantity && !completed;
                 return (
                   <div
                     key={c.id}

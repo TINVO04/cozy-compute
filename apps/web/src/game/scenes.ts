@@ -483,6 +483,7 @@ export class TownScene extends WorldScene {
       this.offTownDialogue = null;
       this.townLife?.destroy();
       this.townLife = null;
+      this.updateTraffic = null;
       window.removeEventListener('keydown', onKey);
       this.unsubscribe?.();
       this.fishingController?.cleanup();
@@ -818,6 +819,10 @@ export class ApartmentScene extends WorldScene {
     this.furniture.forEach((f) => f.destroy());
     this.furniture = objects.map((o) => {
       const img = this.furnitureImage(o);
+      if (o.itemId === 'furn_aquarium')
+        img.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+          if (!useUi.getState().editingApartment) useUi.getState().setPanel('aquarium');
+        });
       const rotated = o.rotation === 90 || o.rotation === 270;
       const h = rotated ? o.size.w : o.size.h;
       img.setDepth(o.itemId.includes('rug') ? -5 : (o.y + h) * APT_TILE - 4);
@@ -1586,11 +1591,7 @@ export class ComGaScene extends InteriorScene {
       .setInteractive({ useHandCursor: true });
     fryerHit.on('pointerdown', () => {
       play('pop');
-      useUi.getState().toast({
-        kind: 'reward',
-        title: '🍗 Chảo Xối Mỡ Da Giòn Nóng Hổi',
-        body: 'Tiếng mỡ sôi xèo xèo vàng óng. Đùi gà góc tư thơm lừng giòn rụm vừa xối mỡ xong, lớp da giòn tan hấp dẫn!',
-      });
+      useUi.getState().setPanel('kitchen');
     });
     this.interactAt(2.5 * TILE, 3.2 * TILE, 'Bếp chiên gà', () => fryerHit.emit('pointerdown'));
 
@@ -1601,11 +1602,7 @@ export class ComGaScene extends InteriorScene {
       .setInteractive({ useHandCursor: true });
     riceHit.on('pointerdown', () => {
       play('pop');
-      useUi.getState().toast({
-        kind: 'info',
-        title: '🍚 Nồi Cơm Chiên Cà Chua & Tô Xúp Nóng',
-        body: 'Hạt cơm chiên tỏi cà chua đỏ hồng tơi xốp, thơm mùi mỡ gà, đi kèm canh xúp súp hầm xương ngọt lịm.',
-      });
+      useUi.getState().setPanel('kitchen');
     });
     this.interactAt(11.5 * TILE, 3.2 * TILE, 'Quầy cơm chiên', () => riceHit.emit('pointerdown'));
 
@@ -2144,9 +2141,7 @@ export class FarmScene extends WorldScene {
     const poultryP = FARM_POIS.poultry_coop;
     this.interactAt(poultryP.x + poultryP.w / 2, poultryP.y + poultryP.h + 10, 'Chuồng gia cầm', () => {
       play('pop');
-      useUi
-        .getState()
-        .toast({ kind: 'info', title: 'Chuồng Gia Cầm', body: 'Gà ri và vịt xiêm đang mổ thóc khỏe mạnh.' });
+      useUi.getState().setPanel('farm-care');
     });
 
     const cattleP = FARM_POIS.cattle_pasture;
@@ -2157,6 +2152,31 @@ export class FarmScene extends WorldScene {
         title: 'Đồng Cỏ Bò Sữa',
         body: 'Đàn bò sữa gặm cỏ thanh bình bên máng cỏ khô.',
       });
+    });
+    if (!this.textures.exists('farm:pig_pen')) {
+      this.textures.addCanvas('farm:pig_pen', paintPigPen());
+    }
+    const pigP = FARM_POIS.pig_pen;
+    this.add
+      .image(pigP.x + pigP.w / 2, pigP.y + pigP.h / 2, 'farm:pig_pen')
+      .setOrigin(0.5, 0.5)
+      .setDepth(pigP.y + pigP.h);
+    this.interactAt(pigP.x + pigP.w / 2, pigP.y - 18, 'Chuồng heo', () => {
+      play('pop');
+      useUi.getState().setPanel('farm-care');
+    });
+
+    if (!this.textures.exists('farm:goat_pen')) {
+      this.textures.addCanvas('farm:goat_pen', paintGoatPen());
+    }
+    const goatP = FARM_POIS.goat_pen;
+    this.add
+      .image(goatP.x + goatP.w / 2, goatP.y + goatP.h / 2, 'farm:goat_pen')
+      .setOrigin(0.5, 0.5)
+      .setDepth(goatP.y + goatP.h);
+    this.interactAt(goatP.x + goatP.w / 2, goatP.y - 18, 'Chuồng dê & cừu', () => {
+      play('pop');
+      useUi.getState().setPanel('farm-care');
     });
 
     // Center Park Bench & Ancient Stone Well
@@ -2171,13 +2191,8 @@ export class FarmScene extends WorldScene {
 
     this.interactAt(FARM_GARDEN.bench.x + 32, FARM_GARDEN.bench.y + 42, 'Ghế nghỉ chân', () => {
       play('pop');
-      useUi.getState().toast({
-        kind: 'info',
-        title: 'Ghế Nghỉ Chân',
-        body: 'Ngồi nghỉ ngơi dưới bóng cây xanh mát giữa trang trại bình yên.',
-      });
+      useUi.getState().toast({ kind: 'info', title: 'Ghế nghỉ chân', body: 'Nghỉ một lát dưới tán cây.' });
     });
-
     // Fishing Pond Dock & Waterwheel Aerator
     if (!this.textures.exists('farm:waterwheel_aerator')) {
       this.textures.addCanvas('farm:waterwheel_aerator', paintWaterwheelAerator(0));
@@ -2205,11 +2220,7 @@ export class FarmScene extends WorldScene {
       'Cầu tàu câu cá',
       () => {
         play('pop');
-        useUi.getState().toast({
-          kind: 'info',
-          title: 'Hồ Cá Nông Trại',
-          body: 'Mặt hồ phẳng lặng trong vắt với hoa sen nở ngát hương và thuyền gỗ neo bên bến.',
-        });
+        useUi.getState().setPanel('farm-care');
       },
     );
 
@@ -2267,6 +2278,10 @@ export class FarmScene extends WorldScene {
       if (nearest) nearest.run();
     });
 
+    const refresh = () => void this.fetchFarmState();
+    window.addEventListener('farm:refresh', refresh);
+    this.events.once('shutdown', () => window.removeEventListener('farm:refresh', refresh));
+    this.time.addEvent({ delay: 5000, loop: true, callback: refresh });
     void this.fetchFarmState();
   }
 
@@ -2277,7 +2292,11 @@ export class FarmScene extends WorldScene {
       const res = await api<{
         farm: { isPublic: boolean; hasPassword: boolean };
         plots: FarmPlotData[];
-      }>('/api/farm/me');
+      }>(
+        useUi.getState().room.ownerId === useUi.getState().myUserId
+          ? '/api/farm/me'
+          : `/api/farm/visit/${useUi.getState().room.ownerId}`,
+      );
       if (res?.plots) {
         this.plotsData = res.plots;
         this.updatePlotsVisuals();

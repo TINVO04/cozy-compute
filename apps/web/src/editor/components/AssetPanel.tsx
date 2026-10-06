@@ -1,10 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useEditorStore } from '../hooks/useEditorStore.js';
-import {
-  defaultAssetRegistry,
-  type AssetCategory,
-  type AssetDefinition,
-} from '@cozy/game-assets';
+import { defaultAssetRegistry, type AssetCategory } from '@cozy/game-assets';
 import { Search, Trees, Home, Flower2, Dog, Fence, User, Mountain, Route } from 'lucide-react';
 
 const CATEGORIES: Array<{ id: AssetCategory; label: string; icon: React.ReactNode }> = [
@@ -84,9 +80,7 @@ export const AssetPanel: React.FC = () => {
       {/* Asset Cards Grid */}
       <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
         {filteredAssets.length === 0 ? (
-          <div className="text-center py-8 text-xs text-slate-500">
-            Không tìm thấy asset nào phù hợp.
-          </div>
+          <div className="text-center py-8 text-xs text-slate-500">Không tìm thấy asset nào phù hợp.</div>
         ) : (
           filteredAssets.map((asset) => {
             const isSelected = selectedAssetId === asset.id;
@@ -102,12 +96,8 @@ export const AssetPanel: React.FC = () => {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-medium text-slate-200 truncate">
-                      {asset.name}
-                    </h4>
-                    <p className="text-[10px] text-slate-400 font-mono truncate">
-                      {asset.id}
-                    </p>
+                    <h4 className="text-xs font-medium text-slate-200 truncate">{asset.name}</h4>
+                    <p className="text-[10px] text-slate-400 font-mono truncate">{asset.id}</p>
                   </div>
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-300 font-mono shrink-0">
                     {asset.footprint.tileWidth}x{asset.footprint.tileHeight}

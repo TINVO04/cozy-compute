@@ -29,13 +29,15 @@ function main() {
 
     if (validation.warnings.length > 0) {
       console.warn(`⚠️ Warnings (${validation.warnings.length}):`);
-      validation.warnings.forEach((warn, i) => console.warn(`  - ${warn}`));
+      validation.warnings.forEach((warn) => console.warn(`  - ${warn}`));
     }
 
     console.log('✅ Validation PASSED 100%!');
     console.log(`- Map ID: ${map.id} (v${map.version})`);
     console.log(`- Tile Size: ${map.tileSize}px (Strict 32px Grid)`);
-    console.log(`- Dimensions: ${map.width}x${map.height} tiles (${map.width * map.tileSize}x${map.height * map.tileSize}px)`);
+    console.log(
+      `- Dimensions: ${map.width}x${map.height} tiles (${map.width * map.tileSize}x${map.height * map.tileSize}px)`,
+    );
     console.log(`- Total Layers: ${map.layers.length}`);
     console.log(`- Gameplay Zones: ${map.zones.length}`);
     console.log(`- Farm Plots: ${map.farmPlots.length}`);

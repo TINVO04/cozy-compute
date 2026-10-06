@@ -25,7 +25,7 @@
 ## 3. Độ phân giải, Viền nét & Điểm ảnh (Pixel Art Standards)
 
 - **Pixel Density:** Điểm ảnh sắc nét (Sharp pixel clusters), dùng giải thuật **Nearest-Neighbor**, tỷ lệ điểm ảnh $1:1$ đồng nhất giữa tất cả các vật thể. Tuyệt đối không để xảy ra hiện tượng "pixel bleeding" (vật to pixel hạt to, vật nhỏ pixel mịn).
-- **Edge Treatment (Viền):** 
+- **Edge Treatment (Viền):**
   - Viền mỏng $1\text{px}$ màu tối hòa hợp với màu vật thể (colored dark outline, ví dụ viền nâu đậm cho gỗ, xanh lá đậm cho tán cây).
   - Hạn chế dùng viền đen thuần thô cứng (`#000000`) trừ khi cần phân tách rõ với nền quá sáng.
 
@@ -36,15 +36,18 @@
 Khi ra lệnh cho AI (Gemini Imagen 3, Stable Diffusion, FLUX, v.v.) sinh sprite riêng lẻ:
 
 ### 4.1 Nền Chroma Key bắt buộc
+
 - **Màu nền:** Bắt buộc sử dụng nền đơn sắc **Magenta `#FF00FF`** hoặc **Green `#00FF00`**.
 - **CẤM nền trắng (`#FFFFFF`):** Nền trắng sẽ làm các công cụ tách nền tự động xóa mất các chi tiết màu trắng tự nhiên của asset (áo trắng, lòng trắng mắt, hoa màu trắng, trứng, rèm cửa sổ).
 
 ### 4.2 Quy tắc bóng đổ mặt đất (NO Baked Ground Shadows)
+
 - **CẤM bóng đổ mềm xuống đất:** Prompt bắt buộc phải có `"STRICTLY NO soft ground shadows, NO ambient occlusion, NO baked shadow on ground"`.
 - **Lý do:** Bóng đổ mềm màu xám vẽ sẵn trên ảnh khi đặt lên nền cỏ hoặc bùn đất khác màu sẽ để lại quầng xám loang lổ rất bẩn.
 - **Giải pháp:** Bóng đổ dưới chân vật thể trong game được render động bằng code (ellipse shadow) hoặc sprite bóng mờ bán trong suốt riêng biệt.
 
 ### 4.3 Công thức Prompt chuẩn cho AI Sprite
+
 ```text
 Isolated 2D RPG pixel art asset of a [TÊN VẬT THỂ: ví dụ PRODUCE STALL / MANGO TREE / WOODEN FENCE],
 Cozy Vietnamese rural farm aesthetic, Sprout Lands and Studio Ghibli inspired,
@@ -60,15 +63,15 @@ STRICTLY NO soft ground shadows, NO ambient occlusion, NO ground terrain blendin
 
 Tất cả asset sau khi tách nền phải được căn chỉnh (snap) về đúng bội số nguyên của lưới $32\text{px}$:
 
-| Nhóm đối tượng | Kích thước Tiles | Kích thước Pixel ($W \times H$) | Ví dụ thực tế |
-|---|---|---|---|
-| **Avatar / Nhân vật** | $1 \times 1$ | $32 \times 32\text{ px}$ | Người chơi, NPC nông dân, thương lái |
-| **Cây nhỏ / Đèn / Tre** | $1 \times 2$ | $32 \times 64\text{ px}$ | Bụi tre, cột đèn đường, luồng chuối nhỏ |
-| **Cây ăn trái vừa** | $2 \times 2$ | $64 \times 64\text{ px}$ | Cây ổi, chanh, bụi hoa lớn |
-| **Cây lớn cổ thụ** | $2 \times 3$ hoặc $3 \times 3$ | $64 \times 96\text{ px}$ hoặc $96 \times 96\text{ px}$ | Cây xoài, dừa nước, cây đa đầu làng |
-| **Kiosk / Quầy hàng** | $3 \times 3$ | $96 \times 96\text{ px}$ | Quầy trái cây, sạp báo, quầy nước mía |
-| **Nhà nhỏ / Chòi nghỉ** | $3 \times 3$ hoặc $4 \times 3$ | $96 \times 96\text{ px}$ hoặc $128 \times 96\text{ px}$ | Chòi câu cá, trạm gác, chuồng gà |
-| **Nhà lớn / Kho bãi** | $4 \times 4$ hoặc $5 \times 4$ | $128 \times 128\text{ px}$ hoặc $160 \times 128\text{ px}$ | Nhà cấp 4 mái ngói, kho thóc, chuồng bò |
+| Nhóm đối tượng          | Kích thước Tiles               | Kích thước Pixel ($W \times H$)                            | Ví dụ thực tế                           |
+| ----------------------- | ------------------------------ | ---------------------------------------------------------- | --------------------------------------- |
+| **Avatar / Nhân vật**   | $1 \times 1$                   | $32 \times 32\text{ px}$                                   | Người chơi, NPC nông dân, thương lái    |
+| **Cây nhỏ / Đèn / Tre** | $1 \times 2$                   | $32 \times 64\text{ px}$                                   | Bụi tre, cột đèn đường, luồng chuối nhỏ |
+| **Cây ăn trái vừa**     | $2 \times 2$                   | $64 \times 64\text{ px}$                                   | Cây ổi, chanh, bụi hoa lớn              |
+| **Cây lớn cổ thụ**      | $2 \times 3$ hoặc $3 \times 3$ | $64 \times 96\text{ px}$ hoặc $96 \times 96\text{ px}$     | Cây xoài, dừa nước, cây đa đầu làng     |
+| **Kiosk / Quầy hàng**   | $3 \times 3$                   | $96 \times 96\text{ px}$                                   | Quầy trái cây, sạp báo, quầy nước mía   |
+| **Nhà nhỏ / Chòi nghỉ** | $3 \times 3$ hoặc $4 \times 3$ | $96 \times 96\text{ px}$ hoặc $128 \times 96\text{ px}$    | Chòi câu cá, trạm gác, chuồng gà        |
+| **Nhà lớn / Kho bãi**   | $4 \times 4$ hoặc $5 \times 4$ | $128 \times 128\text{ px}$ hoặc $160 \times 128\text{ px}$ | Nhà cấp 4 mái ngói, kho thóc, chuồng bò |
 
 ---
 

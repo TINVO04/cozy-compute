@@ -275,7 +275,7 @@ describe('packages/map-editor', () => {
           decorationDensity: 'medium',
           farmPlotCount: 8,
         },
-        defaultAssetRegistry
+        defaultAssetRegistry,
       );
 
       expect(generatedMap.tileSize).toBe(32);
@@ -307,7 +307,7 @@ describe('packages/map-editor', () => {
           density: 'medium',
           idPrefix: 'deco_test',
         },
-        defaultAssetRegistry
+        defaultAssetRegistry,
       );
 
       expect(decoObjects.length).toBeGreaterThan(0);

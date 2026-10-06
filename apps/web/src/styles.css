@@ -3355,3 +3355,59 @@ img.pixel,
     transform: translateY(-6px) rotate(1.2deg);
   }
 }
+.resident-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.resident-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 16px;
+}
+.resident-card {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.resident-card h3,
+.resident-card p {
+  margin: 0;
+}
+.resident-card small {
+  color: var(--primary);
+}
+.resident-card progress {
+  width: 100%;
+  accent-color: var(--primary);
+}
+.resident-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.resident-card select {
+  min-height: 44px;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+}
+.resident-card select:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.resident-chat {
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  padding: 12px;
+  background: var(--surface-2);
+  border-radius: 8px;
+}

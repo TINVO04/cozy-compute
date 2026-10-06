@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { Client } from '@colyseus/core';
 import {
   BIDA_BLOCKERS,
@@ -16,10 +17,11 @@ import {
   TILE,
   type BidaBall,
 } from '@cozy/game-data';
-import { BaseRoom, type WorldSpec } from './base.js';
+import { BaseRoom, getDeps, type WorldSpec } from './base.js';
 
 export interface BidaTable {
   id: string;
+  matchId?: string;
   name: string;
   mode: '8ball' | 'carom' | 'practice';
   hostId: string;
@@ -60,6 +62,7 @@ export class BidaRoom extends BaseRoom {
     return [...this.tables.values()].some((t) => this.isMember(t, sid));
   }
   private tables = new Map<string, BidaTable>();
+  private spectators = new Map<string, string>();
 
   protected world(): WorldSpec {
     return {
@@ -78,6 +81,15 @@ export class BidaRoom extends BaseRoom {
     this.setup();
     this.state.kind = 'bida';
     this.state.label = 'CLB Bida H2S Trảng Dài Biên Hòa';
+    this.onMessage('bida:watch', (client, msg: { tableId?: string }) => {
+      const table = typeof msg?.tableId === 'string' ? this.tables.get(msg.tableId) : undefined;
+      if (!table || this.hasTable(client.sessionId) || table.mode === 'practice') return;
+      this.spectators.set(client.sessionId, table.id);
+      client.send('bida:table_start', { ...table, simulating: this.shots.has(table.id), spectating: true });
+    });
+    this.onMessage('bida:unwatch', (client) => {
+      this.spectators.delete(client.sessionId);
+    });
 
     this.onMessage('bida:get_tables', (client) => {
       client.send('bida:tables_update', this.getTableSummaries());
@@ -102,6 +114,7 @@ export class BidaRoom extends BaseRoom {
 
         const table: BidaTable = {
           id: tableId,
+          matchId: randomUUID(),
           name,
           mode,
           hostId: client.sessionId,
@@ -137,6 +150,7 @@ export class BidaRoom extends BaseRoom {
       table.guestUserId = p.userId;
       table.guestName = p.name;
       table.status = 'playing';
+      table.matchId = randomUUID();
       table.balls = table.mode === 'carom' ? createCaromRack() : createStandard8BallRack();
       table.turn = table.hostId;
 
@@ -231,6 +245,7 @@ export class BidaRoom extends BaseRoom {
 
       table.balls = table.mode === 'carom' ? createCaromRack() : createStandard8BallRack();
       table.status = 'playing';
+      table.matchId = randomUUID();
       table.score1 = 0;
       table.score2 = 0;
       table.turn = table.hostId;
@@ -432,6 +447,7 @@ export class BidaRoom extends BaseRoom {
   }
 
   override async onLeave(client: Client, consented: boolean) {
+    this.spectators.delete(client.sessionId);
     await super.onLeave(client, consented);
     if (this.state.players.has(client.sessionId)) return;
     for (const [tableId] of this.tables) {
@@ -481,9 +497,39 @@ export class BidaRoom extends BaseRoom {
   }
 
   private sendToTable(table: BidaTable, event: string, payload: unknown) {
+    if (event === 'bida:game_over' && table.mode !== 'practice' && table.guestUserId && table.matchId) {
+      const winner = (payload as { winnerId: string }).winnerId;
+      if (winner === table.hostId || winner === table.guestId) {
+        const result = {
+          id: table.matchId,
+          hostId: table.hostUserId,
+          guestId: table.guestUserId,
+          winnerId: winner === table.hostId ? table.hostUserId : table.guestUserId,
+          mode: table.mode,
+        };
+        void getDeps()
+          .api.bidaResult(result)
+          .catch(() => {
+            this.clock.setTimeout(() => {
+              void getDeps()
+                .api.bidaResult(result)
+                .catch((error) => console.error('bida result persistence failed', error));
+            }, 2000);
+          });
+      }
+    }
     for (const c of this.clients) {
-      if (c.sessionId === table.hostId || (table.guestId && c.sessionId === table.guestId)) {
-        c.send(event, payload);
+      if (
+        c.sessionId === table.hostId ||
+        (table.guestId && c.sessionId === table.guestId) ||
+        this.spectators.get(c.sessionId) === table.id
+      ) {
+        c.send(
+          event,
+          event === 'bida:table_start' && this.spectators.get(c.sessionId) === table.id
+            ? { ...table, spectating: true }
+            : payload,
+        );
       }
     }
   }

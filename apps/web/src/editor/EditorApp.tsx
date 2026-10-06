@@ -8,12 +8,21 @@ import { MapCanvas } from './components/MapCanvas.js';
 import { BottomStatusBar } from './components/BottomStatusBar.js';
 import { MapLoader, type MapDefinition } from '@cozy/map-editor';
 import { defaultAssetRegistry } from '@cozy/game-assets';
-import { ArrowLeft, Compass, Sparkles } from 'lucide-react';
+import { ArrowLeft, Compass } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
 export const EditorApp: React.FC = () => {
-  const { map, setMap, setActiveTool, undo, redo, toggleGrid, toggleCollision, deleteObject, selectedObjectId } =
-    useEditorStore();
+  const {
+    map,
+    setMap,
+    setActiveTool,
+    undo,
+    redo,
+    toggleGrid,
+    toggleCollision,
+    deleteObject,
+    selectedObjectId,
+  } = useEditorStore();
   const [loading, setLoading] = useState(true);
   const [activeSidebarTab, setActiveSidebarTab] = useState<'assets' | 'layers'>('assets');
   const navigate = useNavigate();

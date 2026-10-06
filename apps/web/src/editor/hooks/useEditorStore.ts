@@ -1,11 +1,5 @@
 import { create } from 'zustand';
-import type {
-  MapDefinition,
-  MapObject,
-  MapLayer,
-  MapObjectLayer,
-  MapTileLayer,
-} from '@cozy/map-editor';
+import type { MapDefinition, MapObject } from '@cozy/map-editor';
 import {
   UndoRedoManager,
   AddObjectCommand,

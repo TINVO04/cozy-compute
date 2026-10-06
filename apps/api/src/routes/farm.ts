@@ -115,7 +115,8 @@ export function farmRoutes(app: FastifyInstance, ctx: AppContext) {
       contractId: z.string().optional(),
     });
     const body = schema.parse(req.body);
-    return farmService.sellShopProduce(ctx, user.id, body.itemId, body.quantity, body.contractId);
+    const key = req.headers['idempotency-key'] ? idem(req.headers as Record<string, unknown>) : undefined;
+    return farmService.sellShopProduce(ctx, user.id, body.itemId, body.quantity, body.contractId, key);
   });
 
   // 10. Animal Feed

@@ -39,6 +39,7 @@ export interface TableSummary {
 }
 
 interface ActiveMatch {
+  spectating?: boolean;
   simulating?: boolean;
   online?: boolean;
   id: string;
@@ -286,6 +287,7 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
 
   const isMyTurn = Boolean(
     activeMatch &&
+    !activeMatch.spectating &&
     activeMatch.status === 'playing' &&
     (activeMatch.mode === 'practice' ||
       activeMatch.isLocal2P ||
@@ -997,11 +999,11 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
       return;
     }
 
-    net.send('bida:join_table', { tableId: tbl.id });
+    net.send(tbl.status === 'playing' ? 'bida:watch' : 'bida:join_table', { tableId: tbl.id });
   };
 
   const handleRematch = () => {
-    if (!activeMatch) return;
+    if (!activeMatch || activeMatch.spectating) return;
     play('click');
 
     if (!activeMatch.online) {
@@ -1031,7 +1033,7 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
     if (!activeMatch) return;
     play('click');
     if (activeMatch.online && net.isConnected()) {
-      net.send('bida:leave_table', { tableId: activeMatch.id });
+      net.send(activeMatch.spectating ? 'bida:unwatch' : 'bida:leave_table', { tableId: activeMatch.id });
     }
     if (simulationRef.current !== null) clearInterval(simulationRef.current);
     simulationRef.current = null;
@@ -1234,7 +1236,7 @@ export function BidaArenaPanel({ me, onClose }: { me: Me; onClose: () => void })
 
                       <div className="row" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
                         <Button variant="primary" size="sm" onClick={() => handleJoinTable(tbl)}>
-                          <Play size={13} /> Vào Bàn Đấu
+                          <Play size={13} /> {tbl.status === 'playing' ? 'Xem trận' : 'Vào Bàn Đấu'}
                         </Button>
                       </div>
                     </div>

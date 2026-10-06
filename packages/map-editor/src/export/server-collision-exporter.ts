@@ -41,7 +41,7 @@ export class ServerCollisionExporter {
    */
   public static exportForServer(
     map: MapDefinition,
-    registry: AssetRegistry = defaultAssetRegistry
+    registry: AssetRegistry = defaultAssetRegistry,
   ): ServerMapData {
     const blockers: ServerRect[] = [];
 

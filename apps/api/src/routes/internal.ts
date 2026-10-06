@@ -40,6 +40,24 @@ export function internalRoutes(app: FastifyInstance, ctx: AppContext) {
       .parse(req.body);
     return issueTrafficFine(ctx, b.userId, b.ticketId, b.violation);
   });
+  app.post('/internal/bida/result', async (req) => {
+    requireInternal(req, ctx.config.INTERNAL_SECRET);
+    const b = z
+      .object({
+        id: z.string().uuid(),
+        hostId: z.string().uuid(),
+        guestId: z.string().uuid(),
+        winnerId: z.string().uuid(),
+        mode: z.enum(['8ball', 'carom']),
+      })
+      .parse(req.body);
+    if (b.hostId === b.guestId || ![b.hostId, b.guestId].includes(b.winnerId)) throw forbidden();
+    await ctx.db.query(
+      'INSERT INTO bida_matches(id,host_id,guest_id,winner_id,mode) VALUES($1,$2,$3,$4,$5) ON CONFLICT(id) DO NOTHING',
+      [b.id, b.hostId, b.guestId, b.winnerId, b.mode],
+    );
+    return { ok: true };
+  });
   app.post('/internal/session', async (req) => {
     requireInternal(req, ctx.config.INTERNAL_SECRET);
     const { token } = z.object({ token: z.string().max(200) }).parse(req.body);
@@ -112,10 +130,11 @@ export function internalRoutes(app: FastifyInstance, ctx: AppContext) {
       return { allowed: true, isOwner: true };
     }
 
-    const farmRes = await ctx.db.query<{ is_public: boolean; password_hash: string | null }>(
-      'SELECT is_public, password_hash FROM farms WHERE user_id = $1',
-      [b.ownerId],
-    );
+    const farmRes = await ctx.db.query<{
+      is_public: boolean;
+      password_hash: string | null;
+      access_version: string;
+    }>('SELECT is_public, password_hash, access_version FROM farms WHERE user_id = $1', [b.ownerId]);
     const farm = farmRes.rows[0];
     if (!farm) return { allowed: false, isOwner: false };
 
@@ -127,8 +146,12 @@ export function internalRoutes(app: FastifyInstance, ctx: AppContext) {
       const stored = await ctx.redis.get(`fauth:${b.farmToken}`);
       if (stored) {
         try {
-          const parsed = JSON.parse(stored) as { ownerId: string; visitorId: string };
-          if (parsed.ownerId === b.ownerId && parsed.visitorId === b.visitorId) {
+          const parsed = JSON.parse(stored) as { ownerId: string; visitorId: string; farmVersion?: string };
+          if (
+            parsed.ownerId === b.ownerId &&
+            parsed.visitorId === b.visitorId &&
+            parsed.farmVersion === farm.access_version
+          ) {
             return { allowed: true, isOwner: false };
           }
         } catch {

@@ -6,6 +6,7 @@ Load and apply the `image-to-interactive-map` skill immediately.
 Target image or input instructions: "$ARGUMENTS".
 
 Execute the 6-step pipeline:
+
 1. Input Analysis & Canvas Fit: Inspect the image, maintain 100% 1:1 native pixel scale without fractional scaling or blur.
 2. Semantic Slicing & Defringing: Extract individual buildings, pens, pond, crops, and props into clean RGBA PNGs using `.agents/skills/image-to-interactive-map/scripts/slice_and_defringe.py` to eliminate all white halos.
 3. Seamless Outpainting: Center the 1:1 map into the 1536x1024 canvas and extend natural borders using `.agents/skills/image-to-interactive-map/scripts/outpaint_canvas.py`.

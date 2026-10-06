@@ -12,22 +12,16 @@ export const LayerPanel: React.FC = () => {
       <div className="flex items-center justify-between p-3 border-b border-slate-700">
         <div className="flex items-center gap-1.5">
           <Layers size={14} className="text-emerald-400" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Quản lý Layer
-          </span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Quản lý Layer</span>
         </div>
-        <span className="text-[10px] text-slate-500 font-mono">
-          {map.layers.length} layers
-        </span>
+        <span className="text-[10px] text-slate-500 font-mono">{map.layers.length} layers</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         {map.layers.map((layer) => {
           const isActive = activeLayerId === layer.id;
           const isObjectLayer = layer.type === 'objectgroup';
-          const objectCount = isObjectLayer
-            ? (layer as { objects?: unknown[] }).objects?.length ?? 0
-            : 0;
+          const objectCount = isObjectLayer ? ((layer as { objects?: unknown[] }).objects?.length ?? 0) : 0;
 
           return (
             <div
@@ -49,7 +43,11 @@ export const LayerPanel: React.FC = () => {
                   className="text-slate-400 hover:text-white p-0.5 rounded transition-colors"
                   title={layer.visible ? 'Ẩn layer' : 'Hiện layer'}
                 >
-                  {layer.visible ? <Eye size={14} className="text-emerald-400" /> : <EyeOff size={14} className="text-slate-500" />}
+                  {layer.visible ? (
+                    <Eye size={14} className="text-emerald-400" />
+                  ) : (
+                    <EyeOff size={14} className="text-slate-500" />
+                  )}
                 </button>
 
                 <div className="flex items-center gap-1.5 min-w-0">
@@ -68,9 +66,7 @@ export const LayerPanel: React.FC = () => {
                     {objectCount} objs
                   </span>
                 ) : (
-                  <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
-                    tile
-                  </span>
+                  <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">tile</span>
                 )}
                 <span>z:{layer.depth}</span>
               </div>

@@ -9,7 +9,7 @@ export class AddObjectCommand implements Command {
   constructor(
     private map: MapDefinition,
     private layerId: string,
-    private object: MapObject
+    private object: MapObject,
   ) {
     this.name = `Add Object ${object.id} (${object.assetId})`;
   }
@@ -44,7 +44,7 @@ export class MoveObjectCommand implements Command {
     private layerId: string,
     private objectId: string,
     private newX: number,
-    private newY: number
+    private newY: number,
   ) {
     this.name = `Move Object ${objectId}`;
   }
@@ -84,7 +84,7 @@ export class DeleteObjectCommand implements Command {
   constructor(
     private map: MapDefinition,
     private layerId: string,
-    private objectId: string
+    private objectId: string,
   ) {
     this.name = `Delete Object ${objectId}`;
   }
@@ -108,11 +108,7 @@ export class DeleteObjectCommand implements Command {
     if (!this.deletedObject || this.deletedIndex === -1) return;
     const layer = this.map.layers.find((l) => l.id === this.layerId);
     if (layer && layer.type === 'objectgroup') {
-      (layer as MapObjectLayer).objects.splice(
-        this.deletedIndex,
-        0,
-        { ...this.deletedObject }
-      );
+      (layer as MapObjectLayer).objects.splice(this.deletedIndex, 0, { ...this.deletedObject });
     }
   }
 }
@@ -125,7 +121,7 @@ export class PaintTileCommand implements Command {
     private map: MapDefinition,
     private layerId: string,
     private tileIndex: number,
-    private newGid: number
+    private newGid: number,
   ) {
     this.name = `Paint Tile [${tileIndex}] to ${newGid}`;
   }

@@ -57,7 +57,7 @@ export const MapCanvas: React.FC = () => {
         };
       }
     });
-  }, [map, selectedAssetId]);
+  }, [map, selectedAssetId, loadedImages]);
 
   // Main Canvas Render Loop
   const render = useCallback(() => {
@@ -286,7 +286,17 @@ export const MapCanvas: React.FC = () => {
     }
 
     ctx.restore();
-  }, [map, zoom, showGrid, showCollision, activeTool, selectedObjectId, selectedAssetId, cursorTile, loadedImages]);
+  }, [
+    map,
+    zoom,
+    showGrid,
+    showCollision,
+    activeTool,
+    selectedObjectId,
+    selectedAssetId,
+    cursorTile,
+    loadedImages,
+  ]);
 
   useEffect(() => {
     render();
@@ -361,10 +371,7 @@ export const MapCanvas: React.FC = () => {
             const ox = obj.x - asset.visualBounds.width * asset.anchor.x;
             const oy = obj.y - asset.visualBounds.height * asset.anchor.y;
             return (
-              x >= ox &&
-              x <= ox + asset.visualBounds.width &&
-              y >= oy &&
-              y <= oy + asset.visualBounds.height
+              x >= ox && x <= ox + asset.visualBounds.width && y >= oy && y <= oy + asset.visualBounds.height
             );
           });
           if (target) {

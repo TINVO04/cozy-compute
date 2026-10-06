@@ -47,9 +47,9 @@ export class TownActorState extends Schema {
 }
 
 export class RoomState extends Schema {
-  @type('number') simulationTime = 0;
   @type({ map: TownActorState }) townActors = new MapSchema<TownActorState>();
   @type('number') serverTime = 0;
+  @type('number') simulationTime = 0;
   @type('string') kind = 'town';
   @type('string') label = '';
   @type({ map: PlayerState }) players = new MapSchema<PlayerState>();

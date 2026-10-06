@@ -16,10 +16,7 @@ export class MapLoader {
   /**
    * Parse and validate a MapDefinition from JSON string or raw object.
    */
-  public static load(
-    input: string | Record<string, unknown>,
-    options: LoadMapOptions = {}
-  ): LoadMapResult {
+  public static load(input: string | Record<string, unknown>, options: LoadMapOptions = {}): LoadMapResult {
     let parsed: unknown;
     if (typeof input === 'string') {
       try {

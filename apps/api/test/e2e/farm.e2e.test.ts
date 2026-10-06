@@ -246,6 +246,16 @@ describe('Cozy Farm System E2E Specification', () => {
 
       it('F2.5: waters an unlocked plot and records the moisture timestamp', async () => {
         const owner = await register(h);
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'seed_rice', quantity: 1 },
+        });
+        await api(h, 'POST', '/api/farm/plots/plant', {
+          token: owner.token,
+          body: { plotIndex: 0, seedItemId: 'seed_rice' },
+        });
+
         const res = await api(h, 'POST', '/api/farm/plots/water', {
           token: owner.token,
           body: { farmOwnerId: owner.id, plotIndex: 0 },
@@ -336,7 +346,7 @@ describe('Cozy Farm System E2E Specification', () => {
 
         expect(harvestRes.status).toBe(200);
         expect(harvestRes.body.ok).toBe(true);
-        expect(harvestRes.body.harvestedItem).toBe('crop_rice');
+        expect(harvestRes.body.harvestedItem).toBe('crop_rice_harvest');
         expect(harvestRes.body.quantity).toBeGreaterThanOrEqual(1);
 
         // Plot is now cleared
@@ -426,6 +436,15 @@ describe('Cozy Farm System E2E Specification', () => {
 
       it('F4.2: awards friendship Fame points to the helpful visitor', async () => {
         const host = await register(h);
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: host.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'seed_rice', quantity: 1 },
+        });
+        await api(h, 'POST', '/api/farm/plots/plant', {
+          token: host.token,
+          body: { plotIndex: 0, seedItemId: 'seed_rice' },
+        });
         const visitor = await register(h);
         const initialFame = await getProfileFame(visitor.id);
 
@@ -637,7 +656,7 @@ describe('Cozy Farm System E2E Specification', () => {
         const owner = await register(h);
         const me = await api(h, 'GET', '/api/farm/me', { token: owner.token });
         const types = me.body.animals.map((a: { type: string }) => a.type);
-        expect(types).toContain('poultry');
+        expect(types).toContain('chicken');
         expect(types).toContain('cow');
         expect(types).toContain('pig');
         expect(types).toContain('goat');
@@ -679,7 +698,7 @@ describe('Cozy Farm System E2E Specification', () => {
         });
 
         const meBefore = await api(h, 'GET', '/api/farm/me', { token: owner.token });
-        const chicken = meBefore.body.animals.find((a: { type: string }) => a.type === 'poultry')!;
+        const chicken = meBefore.body.animals.find((a: { type: string }) => a.type === 'chicken')!;
 
         const feedRes = await api(h, 'POST', '/api/farm/animals/feed', {
           token: owner.token,
@@ -698,6 +717,11 @@ describe('Cozy Farm System E2E Specification', () => {
         const owner = await register(h);
         await makeEligible(h, owner.id, 5000);
 
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_fingerling_tra', quantity: 1 },
+        });
         const stockRes = await api(h, 'POST', '/api/farm/pond/stock', {
           token: owner.token,
           body: { fishSpecies: 'tra' },
@@ -713,11 +737,30 @@ describe('Cozy Farm System E2E Specification', () => {
         const owner = await register(h);
         await makeEligible(h, owner.id, 5000);
 
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_fingerling_basa', quantity: 1 },
+        });
         const stockRes = await api(h, 'POST', '/api/farm/pond/stock', {
           token: owner.token,
           body: { fishSpecies: 'basa' },
         });
         const initialWeight = stockRes.body.fish.weightKg;
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'feed_aquatic', quantity: 1 },
+        });
+        expect(
+          (
+            await api(h, 'POST', '/api/farm/care', {
+              token: owner.token,
+              headers: { 'Idempotency-Key': randomUUID() },
+              body: { kind: 'pond-feed', id: stockRes.body.fish.id },
+            })
+          ).status,
+        ).toBe(200);
 
         // Advance simulated time by several days
         h.clock.now += 3 * 86400 * 1000;

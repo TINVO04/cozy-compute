@@ -1,6 +1,7 @@
 import { VehicleShopPanel } from './panels/VehicleShopPanel';
 import { VehicleControls } from './panels/VehicleControls';
 import { ShowroomHud } from './panels/ShowroomHud';
+import { ResidentPanel } from './panels/ResidentPanel';
 import { OCEAN_ZONES, ZONES, type ZoneId } from '@cozy/game-data';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -138,6 +139,22 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
           {panel === 'profile' ? (
             <BackpackPanel me={me} initialTab="profile" onClose={() => setPanel(null)} />
           ) : null}
+          {(['resident', 'farm-care', 'kitchen', 'aquarium'] as const).some((p) => p === panel) ? (
+            <ResidentPanel
+              key={panel}
+              me={me}
+              initialTab={
+                panel === 'farm-care'
+                  ? 'farm'
+                  : panel === 'kitchen'
+                    ? 'kitchen'
+                    : panel === 'aquarium'
+                      ? 'aquarium'
+                      : 'quests'
+              }
+              onClose={() => setPanel(null)}
+            />
+          ) : null}
           {panel === 'events' ? <EventsPanel onClose={() => setPanel(null)} /> : null}
           {panel === 'ai' ? <AiPanel onClose={() => setPanel(null)} /> : null}
           {panel === 'apartments' ? <ApartmentsPanel me={me} onClose={() => setPanel(null)} /> : null}
@@ -209,6 +226,13 @@ function TopBar({
     onClick: () => void;
     current: boolean;
   }[] = [
+    {
+      id: 'resident',
+      label: 'Sổ cư dân',
+      icon: <CalendarDays size={17} />,
+      onClick: () => setPanel('resident'),
+      current: panel === 'resident',
+    },
     {
       id: 'town',
       label: 'Thị trấn',

@@ -1,5 +1,6 @@
 import {
   FISHING_RODS,
+  FISH,
   HAIR_COLORS,
   HAIR_STYLES,
   RARITY_LABELS,
@@ -238,7 +239,14 @@ export function BackpackPanel({
     if (!me.appearance.heldFish) return null;
     return fishList.find((f) => f.speciesId === me.appearance.heldFish?.speciesId);
   }, [me.appearance.heldFish, fishList]);
-  const totalBackpackCoin = useMemo(() => fishList.reduce((acc, f) => acc + f.coinValue, 0), [fishList]);
+  const sellableFish = useMemo(
+    () => fishList.filter((f) => !f.favorite && f.aquariumSlot === null && !f.isHeld),
+    [fishList],
+  );
+  const totalBackpackCoin = useMemo(
+    () => sellableFish.reduce((acc, f) => acc + f.coinValue, 0),
+    [sellableFish],
+  );
   const ownedClothing = (shop.data ?? []).filter(
     (i) => (i.type === 'clothing' || i.type === 'rod' || i.type === 'boat') && i.owned > 0,
   );
@@ -354,9 +362,9 @@ export function BackpackPanel({
 
               <div className="row" style={{ gap: 8 }}>
                 <Button variant="secondary" size="sm" onClick={() => setPanel('fishdex')}>
-                  <BookOpen size={14} /> Từ Điển Cá ({discoveredCount}/55)
+                  <BookOpen size={14} /> Từ Điển Cá ({discoveredCount}/{FISH.length})
                 </Button>
-                {fishList.length > 0 ? (
+                {sellableFish.length > 0 ? (
                   <Button
                     variant="reward"
                     size="sm"
@@ -593,6 +601,7 @@ export function BackpackPanel({
                         <Button
                           size="sm"
                           variant="reward"
+                          disabled={fish.favorite || fish.aquariumSlot !== null || fish.isHeld}
                           loading={sellFishMutation.isPending}
                           onClick={() => sellFishMutation.mutate(fish.id)}
                         >
@@ -1440,7 +1449,7 @@ export function BackpackPanel({
       {confirmSellAll ? (
         <ConfirmDialog
           title="Bán tất cả cá trong balo?"
-          body={`Bạn có chắc chắn muốn bán toàn bộ ${fishList.length} con cá trong balo để nhận +${num(totalBackpackCoin)} Xu?`}
+          body={`Bán ${sellableFish.length} con cá chưa được giữ hoặc trưng bày để nhận +${num(totalBackpackCoin)} Xu? Cá yêu thích, cá trong bể và cá đang cầm được giữ lại.`}
           confirmLabel={`Bán tất cả (+${num(totalBackpackCoin)} Xu)`}
           loading={sellAllFishMutation.isPending}
           onConfirm={() => sellAllFishMutation.mutate()}

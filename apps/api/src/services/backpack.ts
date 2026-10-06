@@ -1,7 +1,7 @@
 import { FISH } from '@cozy/game-data';
 import type { AppContext } from '../context.js';
 import { withTx, type Queryable } from '../db.js';
-import { notFound } from '../errors.js';
+import { badRequest, notFound } from '../errors.js';
 import { postLedger } from '../ledger.js';
 import { resolvedAppearance } from './players.js';
 
@@ -12,6 +12,8 @@ export interface BackpackFishItem {
   weightKg: number;
   sizeCategory: 'small' | 'standard' | 'large' | 'giant';
   isHeld: boolean;
+  favorite: boolean;
+  aquariumSlot: number | null;
   caughtAt: string;
   name: string;
   rarity: string;
@@ -41,9 +43,11 @@ export async function getBackpackFish(q: Queryable, userId: string): Promise<Bac
     weight_kg: string;
     size_category: 'small' | 'standard' | 'large' | 'giant';
     is_held: boolean;
+    is_favorite: boolean;
+    aquarium_slot: number | null;
     caught_at: Date;
   }>(
-    `SELECT id, species_id, size_cm, weight_kg, size_category, is_held, caught_at
+    `SELECT id, species_id, size_cm, weight_kg, size_category, is_held, is_favorite, aquarium_slot, caught_at
        FROM user_fish_inventory
       WHERE user_id = $1
       ORDER BY caught_at DESC`,
@@ -62,6 +66,8 @@ export async function getBackpackFish(q: Queryable, userId: string): Promise<Bac
       weightKg,
       sizeCategory: row.size_category,
       isHeld: row.is_held,
+      favorite: row.is_favorite,
+      aquariumSlot: row.aquarium_slot,
       caughtAt: row.caught_at.toISOString(),
       name: species?.name ?? row.species_id,
       rarity: species?.rarity ?? 'common',
@@ -124,8 +130,10 @@ export async function sellFish(ctx: AppContext, userId: string, inventoryId: str
       size_cm: string;
       size_category: 'small' | 'standard' | 'large' | 'giant';
       is_held: boolean;
+      is_favorite: boolean;
+      aquarium_slot: number | null;
     }>(
-      `SELECT species_id, size_cm, size_category, is_held
+      `SELECT species_id, size_cm, size_category, is_held, is_favorite, aquarium_slot
          FROM user_fish_inventory
         WHERE id = $1 AND user_id = $2
         FOR UPDATE`,
@@ -133,6 +141,8 @@ export async function sellFish(ctx: AppContext, userId: string, inventoryId: str
     );
     const fish = r.rows[0];
     if (!fish) throw notFound('Fish not found in backpack.');
+    if (fish.is_favorite || fish.aquarium_slot !== null)
+      throw badRequest('fish_protected', 'Hãy bỏ yêu thích và đưa cá ra khỏi bể trước khi bán.');
 
     const coin = calculateFishCoinValue(fish.species_id, fish.size_category);
 
@@ -169,8 +179,10 @@ export async function sellAllFish(ctx: AppContext, userId: string) {
       size_cm: string;
       size_category: 'small' | 'standard' | 'large' | 'giant';
       is_held: boolean;
+      is_favorite: boolean;
+      aquarium_slot: number | null;
     }>(
-      `SELECT id, species_id, size_cm, size_category, is_held FROM user_fish_inventory WHERE user_id = $1 FOR UPDATE`,
+      `SELECT id, species_id, size_cm, size_category, is_held FROM user_fish_inventory WHERE user_id = $1 AND NOT is_favorite AND aquarium_slot IS NULL AND NOT is_held FOR UPDATE`,
       [userId],
     );
 
@@ -185,7 +197,10 @@ export async function sellAllFish(ctx: AppContext, userId: string) {
       if (fish.is_held) hadHeld = true;
     }
 
-    await tx.query(`DELETE FROM user_fish_inventory WHERE user_id = $1`, [userId]);
+    await tx.query(
+      `DELETE FROM user_fish_inventory WHERE user_id = $1 AND NOT is_favorite AND aquarium_slot IS NULL AND NOT is_held`,
+      [userId],
+    );
 
     let appearance = null;
     if (hadHeld) {

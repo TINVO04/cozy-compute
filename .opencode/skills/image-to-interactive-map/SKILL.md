@@ -12,6 +12,7 @@ This skill guides the agent in autonomously transforming static concept images, 
 ## 1. Architectural Foundations (The 3 Core Pillars)
 
 ### 1.1 Pillar 1: Tiled / LDtk Grid Standard (No Float Guessing)
+
 - **Zero Coordinate Guessing**: Game worlds must **never** rely on arbitrary, hard-coded float coordinates or raw multi-hundred-line canvas `fillRect` primitives that overlap and clash.
 - **The $32\text{px}$ Integer Matrix ($48 \times 32$ Grid)**:
   All maps are structured as standard 2D integer GID matrices compatible with Tiled Map Editor (`.tmx` / `.json`) and Phaser 3's native tilemap loader (`this.load.tilemapTiledJSON(...)`).
@@ -24,6 +25,7 @@ This skill guides the agent in autonomously transforming static concept images, 
   6. `POIs` (`objectgroup`): Interaction zones mapping 1:1 to server `POIS` and `ZONES`.
 
 ### 1.2 Pillar 2: Professional Asset Extraction & Zero-Halo Matting
+
 - **The "Divide & Conquer" Rule**: Never ask AI to draw an entire map with baked ground and buildings blended together. Request **isolated modular architecture and props** on solid background.
 - **Optimal Prompt Formula**:
   ```text
@@ -39,6 +41,7 @@ This skill guides the agent in autonomously transforming static concept images, 
 - **Integer Tile Budget Snapping**: Snaps all assets to clean $32\text{px}$ tile budgets using Nearest-Neighbor decimation so pixel density is uniform across all objects.
 
 ### 1.3 Pillar 3: Automated Visual Verification (Playwright MCP)
+
 - The agent does not blindly guess visual results.
 - Using Playwright and the Playwright MCP server, the agent autonomously launches a headless browser, renders the live game scene, checks console errors, verifies camera bounds, and inspects visual screenshots to guarantee zero overlaps, zero ghost duplicates, and flawless aesthetics.
 
@@ -72,25 +75,33 @@ Every map generated under this skill must incorporate dynamic living animations:
 The skill provides production Python and Node.js utilities in `scripts/`:
 
 ### 3.1 `build_tiled_farm_pipeline.py`
+
 Builds standard Tiled 32x32 Tileset Atlas and official `farm_map.json`:
+
 ```bash
 python scripts/build_tiled_farm_pipeline.py
 ```
 
 ### 3.2 `slice_and_defringe.py`
+
 Cleans, defringes, strips ground shadows, and snaps an isolated AI sprite to integer tile budgets:
+
 ```bash
 python scripts/slice_and_defringe.py -i assets/ai_shop.png -o public/farm/shop_bac_sau.png --budget medium_building --chroma white
 ```
 
 ### 3.3 `place_modular_asset.py`
+
 Composites an isolated sprite onto a designated map slot and outputs the collision blocker coordinates:
+
 ```bash
 python scripts/place_modular_asset.py -m public/farm/farm_background_crisp.png -s public/farm/shop_bac_sau.png --slot shop_bac_sau -o public/farm/farm_background_crisp.png
 ```
 
 ### 3.4 `outpaint_canvas.py`
+
 Extends a 1:1 pixel art map to the standard $1536 \times 1024$ viewport without stretching or blurring:
+
 ```bash
 python scripts/outpaint_canvas.py -s docs/design/screen.png -o public/farm/farm_background_crisp.png --target-width 1536 --target-height 1024 --offset-x 96 --offset-y 88
 ```

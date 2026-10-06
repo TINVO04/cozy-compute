@@ -1,5 +1,4 @@
 import type { MapDefinition, MapZone, MapFarmPlot } from '../types/map.js';
-import type { MapTileLayer, MapObjectLayer } from '../types/layer.js';
 import type { MapObject } from '../types/object.js';
 import { defaultAssetRegistry, type AssetRegistry } from '@cozy/game-assets';
 import { MapValidator } from '../validation/map-validator.js';
@@ -26,7 +25,7 @@ export class AIMapGenerator {
    */
   public static generate(
     spec: MapGenerationSpec,
-    registry: AssetRegistry = defaultAssetRegistry
+    registry: AssetRegistry = defaultAssetRegistry,
   ): MapDefinition {
     const width = spec.width ?? 48;
     const height = spec.height ?? 32;
@@ -235,7 +234,8 @@ export class AIMapGenerator {
     }
 
     // 4. Decoration pass based on density
-    const densityMultiplier = spec.decorationDensity === 'high' ? 12 : spec.decorationDensity === 'low' ? 3 : 6;
+    const densityMultiplier =
+      spec.decorationDensity === 'high' ? 12 : spec.decorationDensity === 'low' ? 3 : 6;
     const wildflower = availableTrees.find((t) => t.id.includes('flower'));
     const waterJar = availableProps.find((p) => p.id.includes('jar'));
     const lamp = availableProps.find((p) => p.id.includes('lamp'));

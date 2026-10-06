@@ -263,6 +263,8 @@ export interface BackpackFish {
   weightKg: number;
   sizeCategory: 'small' | 'standard' | 'large' | 'giant';
   isHeld: boolean;
+  favorite: boolean;
+  aquariumSlot: number | null;
   caughtAt: string;
   name: string;
   rarity: string;

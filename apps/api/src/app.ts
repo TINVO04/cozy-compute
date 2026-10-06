@@ -9,6 +9,7 @@ import { AppError } from './errors.js';
 import { metrics } from './metrics.js';
 import { adminRoutes } from './routes/admin.js';
 import { farmRoutes } from './routes/farm.js';
+import { residentRoutes } from './routes/resident.js';
 import { internalRoutes } from './routes/internal.js';
 import { playerRoutes } from './routes/player.js';
 import { weatherRoutes } from './routes/weather.js';
@@ -157,5 +158,6 @@ export async function buildApp(
   adminRoutes(app, full);
   internalRoutes(app, full);
   farmRoutes(app, full);
+  residentRoutes(app, full);
   return { app, ctx: full };
 }

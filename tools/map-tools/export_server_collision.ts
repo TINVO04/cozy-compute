@@ -7,8 +7,7 @@ import { defaultAssetRegistry } from '../../packages/game-assets/src/index.js';
 function main() {
   const args = process.argv.slice(2);
   const inputPath = args[0] || 'maps/farm-dong-nai.json';
-  const outputPath =
-    args[1] || inputPath.replace(/\.json$/, '.server-collision.json');
+  const outputPath = args[1] || inputPath.replace(/\.json$/, '.server-collision.json');
 
   const fullInputPath = path.resolve(process.cwd(), inputPath);
   if (!fs.existsSync(fullInputPath)) {
@@ -24,7 +23,9 @@ function main() {
     const { map, validation } = MapLoader.load(raw, { registry: defaultAssetRegistry });
 
     if (!validation.valid) {
-      console.error(`❌ Cannot export invalid map (${validation.errors.length} errors). Run validate_map first.`);
+      console.error(
+        `❌ Cannot export invalid map (${validation.errors.length} errors). Run validate_map first.`,
+      );
       process.exit(1);
     }
 

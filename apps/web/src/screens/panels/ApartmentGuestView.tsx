@@ -5,6 +5,7 @@ import { game } from '../../game/GameCanvas';
 import { api, type Apartment } from '../../lib/api';
 import { qk } from '../../lib/queries';
 import { Button, ErrorState, LoadingState } from '../../ui/primitives';
+import { useUi } from '../../lib/store';
 import { Guestbook } from './Guestbook';
 
 /** Visitors see the same saved theme and objects as the owner, without editing rights. */
@@ -51,6 +52,7 @@ export function ApartmentGuestView({ ownerId }: { ownerId: string }) {
   return (
     <>
       <div className="hud-bottom">
+        <Button onClick={() => useUi.getState().setPanel('aquarium')}>Bể cá & kỷ niệm</Button>
         <Button onClick={() => setGuestbook(true)}>
           <BookOpen size={16} /> Lưu bút
         </Button>

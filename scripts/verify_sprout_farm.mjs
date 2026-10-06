@@ -29,7 +29,8 @@ import fs from 'fs';
   }
 
   // 2. Load the background image in browser and verify resolution and rendering
-  const bgUrl = 'file:///' + path.resolve('apps/web/public/farm/farm_background_crisp.png').replace(/\\/g, '/');
+  const bgUrl =
+    'file:///' + path.resolve('apps/web/public/farm/farm_background_crisp.png').replace(/\\/g, '/');
   await page.goto(bgUrl);
   const info = await page.evaluate(() => {
     const img = document.querySelector('img');

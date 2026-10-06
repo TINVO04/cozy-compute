@@ -21,7 +21,7 @@ export class AIDecorator {
    */
   public static decorateArea(
     options: DecorateAreaOptions,
-    registry: AssetRegistry = defaultAssetRegistry
+    registry: AssetRegistry = defaultAssetRegistry,
   ): MapObject[] {
     const { bounds, tags, density = 'medium', existingObjects = [], idPrefix = 'deco' } = options;
 

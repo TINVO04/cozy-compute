@@ -14,7 +14,7 @@ export class MapValidator {
    */
   public static validate(
     map: MapDefinition,
-    registry: AssetRegistry = defaultAssetRegistry
+    registry: AssetRegistry = defaultAssetRegistry,
   ): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -41,7 +41,7 @@ export class MapValidator {
         const expectedLength = map.width * map.height;
         if (tileLayer.data.length !== expectedLength) {
           errors.push(
-            `TileLayer "${layer.name}" has ${tileLayer.data.length} tiles, expected ${expectedLength} (${map.width}x${map.height}).`
+            `TileLayer "${layer.name}" has ${tileLayer.data.length} tiles, expected ${expectedLength} (${map.width}x${map.height}).`,
           );
         }
       } else if (layer.type === 'objectgroup') {
@@ -59,19 +59,17 @@ export class MapValidator {
           // Check if asset exists in Registry
           const asset = registry.get(obj.assetId);
           if (!asset) {
-            errors.push(
-              `Object "${obj.id}" references unregistered assetId: "${obj.assetId}".`
-            );
+            errors.push(`Object "${obj.id}" references unregistered assetId: "${obj.assetId}".`);
           } else {
             // Position bounds check
             if (obj.x < 0 || obj.x > mapPixelWidth) {
               warnings.push(
-                `Object "${obj.id}" X position (${obj.x}px) is outside map width (${mapPixelWidth}px).`
+                `Object "${obj.id}" X position (${obj.x}px) is outside map width (${mapPixelWidth}px).`,
               );
             }
             if (obj.y < 0 || obj.y > mapPixelHeight) {
               warnings.push(
-                `Object "${obj.id}" Y position (${obj.y}px) is outside map height (${mapPixelHeight}px).`
+                `Object "${obj.id}" Y position (${obj.y}px) is outside map height (${mapPixelHeight}px).`,
               );
             }
           }
@@ -88,7 +86,7 @@ export class MapValidator {
         plot.tileY + plot.tileHeight > map.height
       ) {
         errors.push(
-          `FarmPlot "${plot.id}" bounds (${plot.tileX}, ${plot.tileY}, ${plot.tileWidth}, ${plot.tileHeight}) exceed map bounds.`
+          `FarmPlot "${plot.id}" bounds (${plot.tileX}, ${plot.tileY}, ${plot.tileWidth}, ${plot.tileHeight}) exceed map bounds.`,
         );
       }
     }

@@ -51,6 +51,16 @@ export class ApiClient {
     return this.post<SessionInfo>('/internal/session', { token });
   }
 
+  bidaResult(result: {
+    id: string;
+    hostId: string;
+    guestId: string;
+    winnerId: string;
+    mode: '8ball' | 'carom';
+  }) {
+    return this.post('/internal/bida/result', result);
+  }
+
   apartment(ownerId: string, viewerId: string | null) {
     return this.post<{
       allowed: boolean;

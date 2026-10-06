@@ -35,14 +35,16 @@ interface FarmMeResponse {
 export function FarmPlotModal({ me, onClose }: { me: Me; onClose: () => void }) {
   const plotIndex = useUi((s) => s.activePlotIndex);
   const qc = useQueryClient();
+  const ownerId = useUi((s) => s.room.ownerId) ?? me.id;
   const [selectedSeed, setSelectedSeed] = useState<string>('');
   const [useFertilizer, setUseFertilizer] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const { data, refetch, isLoading } = useQuery({
-    queryKey: ['farm', 'me'],
-    queryFn: () => api<FarmMeResponse>('/api/farm/me'),
+    queryKey: ['farm', ownerId],
+    queryFn: () => api<FarmMeResponse>(ownerId === me.id ? '/api/farm/me' : `/api/farm/visit/${ownerId}`),
+    refetchInterval: 5000,
   });
 
   if (plotIndex === null || plotIndex === undefined) return null;
@@ -54,7 +56,7 @@ export function FarmPlotModal({ me, onClose }: { me: Me; onClose: () => void }) 
 
   const availableSeeds =
     data?.warehouse.items.filter((item) => item.itemId.startsWith('seed_') && item.quantity > 0) ?? [];
-  const fertilizerItem = data?.warehouse.items.find((item) => item.itemId === 'item_phan_vi_sinh');
+  const fertilizerItem = data?.warehouse.items.find((item) => item.itemId === 'fertilizer_bio');
   const hasFertilizer = (fertilizerItem?.quantity ?? 0) > 0;
 
   // Unlock Plot
@@ -70,6 +72,7 @@ export function FarmPlotModal({ me, onClose }: { me: Me; onClose: () => void }) 
       play('coin');
       useUi.getState().toast({ kind: 'reward', title: `Đã mở khóa ô đất #${plotIndex + 1} thành công!` });
       await refetch();
+      window.dispatchEvent(new Event('farm:refresh'));
       await qc.invalidateQueries({ queryKey: ['me'] });
     } catch (err) {
       play('error');
@@ -102,6 +105,7 @@ export function FarmPlotModal({ me, onClose }: { me: Me; onClose: () => void }) 
         useUi.getState().toast({ kind: 'info', title: `Đã tưới nước cho ô đất #${plotIndex + 1}!` });
       }
       await refetch();
+      window.dispatchEvent(new Event('farm:refresh'));
       await qc.invalidateQueries({ queryKey: ['me'] });
     } catch (err) {
       play('error');
@@ -132,6 +136,7 @@ export function FarmPlotModal({ me, onClose }: { me: Me; onClose: () => void }) 
       play('farm_plant');
       useUi.getState().toast({ kind: 'success', title: `Đã gieo hạt giống vào ô đất #${plotIndex + 1}!` });
       await refetch();
+      window.dispatchEvent(new Event('farm:refresh'));
     } catch (err) {
       play('error');
       setErrorMsg(err instanceof ApiError ? err.message : 'Không thể gieo hạt.');
@@ -159,6 +164,7 @@ export function FarmPlotModal({ me, onClose }: { me: Me; onClose: () => void }) 
         body: `Thu được ${res.quantity}x ${res.harvestedItem} chuyển thẳng vào kho Silo!`,
       });
       await refetch();
+      window.dispatchEvent(new Event('farm:refresh'));
     } catch (err) {
       play('error');
       setErrorMsg(err instanceof ApiError ? err.message : 'Không thể thu hoạch nông sản.');
@@ -316,7 +322,7 @@ export function FarmPlotModal({ me, onClose }: { me: Me; onClose: () => void }) 
                 <Button
                   variant="ghost"
                   onClick={() => void handleWater()}
-                  disabled={actionLoading || !!plot?.wateredAt}
+                  disabled={actionLoading || !!plot?.wateredAt || !plot?.cropId}
                   style={{
                     padding: '4px 10px',
                     fontSize: 12,

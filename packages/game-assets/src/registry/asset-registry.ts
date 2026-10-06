@@ -1,8 +1,4 @@
-import type {
-  AssetCategory,
-  AssetDefinition,
-  AssetFilterCriteria,
-} from '../types/asset.js';
+import type { AssetCategory, AssetDefinition, AssetFilterCriteria } from '../types/asset.js';
 
 export class AssetRegistry {
   private static instance: AssetRegistry | null = null;
@@ -96,22 +92,14 @@ export class AssetRegistry {
       if (criteria.solidOnly && !asset.collision.solid) {
         return false;
       }
-      if (
-        criteria.maxTileWidth !== undefined &&
-        asset.footprint.tileWidth > criteria.maxTileWidth
-      ) {
+      if (criteria.maxTileWidth !== undefined && asset.footprint.tileWidth > criteria.maxTileWidth) {
         return false;
       }
-      if (
-        criteria.maxTileHeight !== undefined &&
-        asset.footprint.tileHeight > criteria.maxTileHeight
-      ) {
+      if (criteria.maxTileHeight !== undefined && asset.footprint.tileHeight > criteria.maxTileHeight) {
         return false;
       }
       if (criteria.tags && criteria.tags.length > 0) {
-        const hasAllTags = criteria.tags.every((tag) =>
-          asset.tags.includes(tag.toLowerCase())
-        );
+        const hasAllTags = criteria.tags.every((tag) => asset.tags.includes(tag.toLowerCase()));
         if (!hasAllTags) {
           return false;
         }

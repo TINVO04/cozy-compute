@@ -1,6 +1,8 @@
 import type { Client } from '@colyseus/core';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { BaseRoom } from './base.js';
+import { BaseRoom, setDeps } from './base.js';
+import type { ApiClient } from '../api.js';
+import type { Redis } from 'ioredis';
 import { BidaRoom, type BidaTable } from './bida.js';
 import { PlayerState, RoomState } from '../schema.js';
 
@@ -23,6 +25,10 @@ describe('authoritative billiards room', () => {
   };
 
   beforeEach(() => {
+    setDeps({
+      api: { bidaResult: vi.fn().mockResolvedValue({ ok: true }) } as unknown as ApiClient,
+      redis: {} as Redis,
+    });
     handlers = new Map();
     vi.spyOn(BaseRoom.prototype as unknown as { setup(): void }, 'setup').mockImplementation(() => undefined);
     vi.spyOn(BaseRoom.prototype as unknown as { tick(dt: number): void }, 'tick').mockImplementation(
@@ -49,6 +55,22 @@ describe('authoritative billiards room', () => {
     internals = room as unknown as RoomInternals;
   });
   afterEach(() => vi.restoreAllMocks());
+
+  it('lets spectators watch but rejects their shots and rematches', () => {
+    const t = start();
+    send('bida:watch', outsider, { tableId: t.id });
+    expect(outsider.send).toHaveBeenCalledWith(
+      'bida:table_start',
+      expect.objectContaining({ spectating: true }),
+    );
+    const before = structuredClone(t);
+    send('bida:shot', outsider, { tableId: t.id, angle: 0, power: 80 });
+    send('bida:rematch', outsider, { tableId: t.id });
+    expect(t).toEqual(before);
+    send('bida:shot', host, { tableId: t.id, angle: 0, power: 80 });
+    expect(outsider.send).toHaveBeenCalledWith('bida:shot_executed', expect.anything());
+    send('bida:unwatch', outsider);
+  });
 
   it('ignores fabricated settled balls and wins, including outsider practice claims', () => {
     const t = start('practice');

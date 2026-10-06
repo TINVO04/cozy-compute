@@ -438,6 +438,10 @@ export async function completeFishing(ctx: AppContext, userId: string, runId: st
       [userId, fish.id, size.sizeCm, size.weightKg, size.sizeCategory, now],
     );
     const backpackFishId = invRes.rows[0]?.id;
+    await tx.query(
+      'INSERT INTO fishing_catches(id,user_id,species_id,weight_kg,caught_at) VALUES($1,$2,$3,$4,$5)',
+      [backpackFishId, userId, fish.id, size.weightKg, now],
+    );
 
     // Set held fish on profile and publish appearance
     const held = {

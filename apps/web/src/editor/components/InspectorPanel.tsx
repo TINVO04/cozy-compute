@@ -5,13 +5,12 @@ import type { MapObjectLayer } from '@cozy/map-editor';
 import { Sliders, Trash2, ShieldAlert, Footprints, Info } from 'lucide-react';
 
 export const InspectorPanel: React.FC = () => {
-  const { map, selectedObjectId, moveObject, deleteObject, selectObject } = useEditorStore();
+  const { map, selectedObjectId, moveObject, deleteObject } = useEditorStore();
 
   if (!map) return null;
 
   // Find the selected object across all object layers
   let selectedObject = null;
-  let containingLayerId = '';
 
   if (selectedObjectId) {
     for (const layer of map.layers) {
@@ -19,7 +18,6 @@ export const InspectorPanel: React.FC = () => {
         const obj = (layer as MapObjectLayer).objects.find((o) => o.id === selectedObjectId);
         if (obj) {
           selectedObject = obj;
-          containingLayerId = layer.id;
           break;
         }
       }
@@ -217,9 +215,7 @@ export const InspectorPanel: React.FC = () => {
 
               <div className="flex items-center justify-between">
                 <span className="text-slate-400">Chuẩn lưới:</span>
-                <span className="font-mono text-emerald-400 font-semibold">
-                  32 x 32 px
-                </span>
+                <span className="font-mono text-emerald-400 font-semibold">32 x 32 px</span>
               </div>
 
               <div className="flex items-center justify-between">

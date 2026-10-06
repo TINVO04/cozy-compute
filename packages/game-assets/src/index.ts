@@ -6,7 +6,8 @@ import { FARMING_ASSETS } from './assets/farming.js';
 import { ANIMAL_ASSETS } from './assets/animals.js';
 import { PROP_ASSETS } from './assets/props.js';
 import { CHARACTER_ASSETS } from './assets/characters.js';
-import { AssetRegistry, defaultAssetRegistry } from './registry/asset-registry.js';
+import { defaultAssetRegistry } from './registry/asset-registry.js';
+import type { AssetRegistry } from './registry/asset-registry.js';
 import type { AssetDefinition } from './types/asset.js';
 
 export * from './types/asset.js';

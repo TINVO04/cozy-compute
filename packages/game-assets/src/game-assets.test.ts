@@ -1,10 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  AssetRegistry,
-  defaultAssetRegistry,
-  ALL_BUILTIN_ASSETS,
-  populateRegistryWithBuiltins,
-} from './index.js';
+import { describe, it, expect } from 'vitest';
+import { AssetRegistry, defaultAssetRegistry, ALL_BUILTIN_ASSETS } from './index.js';
 import type { AssetDefinition } from './types/asset.js';
 
 describe('AssetRegistry & Game Assets', () => {
@@ -77,13 +72,13 @@ describe('AssetRegistry & Game Assets', () => {
 
     customRegistry.register(testAsset);
     expect(() => customRegistry.register(testAsset)).toThrowError(
-      'Asset with ID "test-rock-01" is already registered.'
+      'Asset with ID "test-rock-01" is already registered.',
     );
   });
 
   it('should throw when require() is called for non-existent asset', () => {
     expect(() => defaultAssetRegistry.require('non-existent-asset-id')).toThrowError(
-      'Required asset "non-existent-asset-id" was not found in AssetRegistry.'
+      'Required asset "non-existent-asset-id" was not found in AssetRegistry.',
     );
   });
 });

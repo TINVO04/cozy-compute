@@ -49,7 +49,16 @@ export default function AdminScreen() {
     <div className="admin">
       <nav className="admin-nav" aria-label="Quản trị">
         <Brand />
-        <div style={{ padding: '0 0 12px', borderBottom: '1px solid var(--line)', marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div
+          style={{
+            padding: '0 0 12px',
+            borderBottom: '1px solid var(--line)',
+            marginBottom: 8,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+          }}
+        >
           <button
             className="btn btn-secondary"
             style={{
