@@ -1513,9 +1513,10 @@ describe('Cozy Farm System E2E Specification', () => {
       );
       const unlockResponses = await Promise.all(unlockPromises);
 
-      // Every request returns 200 (or 404 if pre-M2) with identical payload
-      const validStatuses = unlockResponses.map((r) => r.status);
-      expect(new Set(validStatuses).size).toBe(1);
+      for (const response of unlockResponses) {
+        expect(response.status, JSON.stringify(response.body)).toBe(200);
+        expect(response.body).toEqual(unlockResponses[0]!.body);
+      }
 
       // Upgrade warehouse with duplicate key burst
       const upgradeKey = randomUUID();
@@ -1526,8 +1527,19 @@ describe('Cozy Farm System E2E Specification', () => {
         }),
       );
       const upgradeResponses = await Promise.all(upgradePromises);
-      const upgradeStatuses = upgradeResponses.map((r) => r.status);
-      expect(new Set(upgradeStatuses).size).toBe(1);
+      for (const response of upgradeResponses) {
+        expect(response.status, JSON.stringify(response.body)).toBe(200);
+        expect(response.body).toEqual(upgradeResponses[0]!.body);
+        expect(response.body.newCapacity).toBe(150);
+      }
+      const charges = await h.ctx.db.query<{ reason_type: string; count: number }>(
+        `SELECT reason_type, count(*)::int AS count FROM ledger_entries
+         WHERE user_id = $1 AND reason_type IN ('farm_plot_unlock', 'farm_warehouse_upgrade')
+         GROUP BY reason_type`,
+        [owner.id],
+      );
+      expect(charges.rows).toHaveLength(2);
+      charges.rows.forEach((charge) => expect(charge.count).toBe(1));
     });
 
     it('S4.4: heavy inflow storage exhaustion and progressive multi-tier expansion (100 -> 150 -> 200)', async () => {
