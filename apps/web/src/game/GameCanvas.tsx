@@ -1,6 +1,10 @@
 import Phaser from 'phaser';
+import { ShowroomScene } from './showroom-scene';
+import { MartialScene } from './martial-scene';
 import { useEffect, useRef } from 'react';
 import { useUi } from '../lib/store';
+import { startWeatherSync } from './weather-sync';
+import { CaveScene } from './cave-scene';
 import {
   ApartmentScene,
   BidaScene,
@@ -16,6 +20,7 @@ import {
 export let game: Phaser.Game | null = null;
 
 export function GameCanvas() {
+  useEffect(() => startWeatherSync(), []);
   const ref = useRef<HTMLDivElement>(null);
   const roomKind = useUi((s) => s.room.kind);
 
@@ -33,6 +38,9 @@ export function GameCanvas() {
       banner: false,
       scene: [
         TownScene,
+        ShowroomScene,
+        MartialScene,
+        CaveScene,
         ApartmentScene,
         CompanyScene,
         UniversityScene,

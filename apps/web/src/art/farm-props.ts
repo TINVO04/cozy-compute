@@ -1,4 +1,5 @@
-import { FARM_POIS } from '@cozy/game-data';
+import { FARM_POIS, getFarmPlotRect } from '@cozy/game-data';
+import { farmBuilding, paintFarmPen } from './farm-scenery';
 
 function rect(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number) {
   ctx.fillStyle = color;
@@ -14,92 +15,117 @@ function oval(ctx: CanvasRenderingContext2D, color: string, x: number, y: number
 
 /**
  * 1. Quầy Bán Hàng (Tiệm Nông Nghiệp Bác Sáu).
- * Pre-rendered background mode: transparent interactive hitbox canvas.
+ * Modular artwork aligned with the authoritative footprint.
  */
 export function paintShopBacSau(): HTMLCanvasElement {
   const p = FARM_POIS.shop_bac_sau;
-  const c = document.createElement('canvas');
-  c.width = p.w;
-  c.height = p.h;
-  return c;
+  return farmBuilding(p, 'TIỆM BÁC SÁU', 0xaf7057);
 }
 
 /**
  * 2. Nhà Kho Nông Sản Silo.
- * Clean country timber cottage matching reference:
- * - Terracotta red tile roof with neat ridges
- * - Warm horizontal log wood siding
- * - Bold red signboard "Kho Nông Sản"
- * - Double wooden doors with iron ring handles
- * - Glass windows with white frames & blooming yellow marigold flowerboxes
- * - Glowing warm lantern by door
- * - Straw scarecrow & burlap grain sacks beside wall
+ * Modular artwork aligned with the authoritative footprint.
  */
 export function paintSiloWarehouse(): HTMLCanvasElement {
   const p = FARM_POIS.silo_warehouse;
-  const c = document.createElement('canvas');
-  c.width = p.w;
-  c.height = p.h;
-  return c;
+  return farmBuilding(p, 'KHO NÔNG SẢN', 0x778767);
 }
 
 /**
  * 3. Chuồng Gà (Poultry Coop).
- * Pre-rendered background mode: transparent interactive hitbox canvas.
+ * Modular artwork aligned with the authoritative footprint.
  */
 export function paintPoultryCoop(): HTMLCanvasElement {
   const p = FARM_POIS.poultry_coop;
-  const c = document.createElement('canvas');
-  c.width = p.w;
-  c.height = p.h;
-  return c;
+  return paintFarmPen(p, '#ad7659');
 }
 
 /**
  * 4. Chuồng Heo (Pig Pen).
- * Pre-rendered background mode: transparent interactive hitbox canvas.
+ * Modular artwork aligned with the authoritative footprint.
  */
 export function paintPigPen(): HTMLCanvasElement {
   const p = FARM_POIS.pig_pen;
-  const c = document.createElement('canvas');
-  c.width = p.w;
-  c.height = p.h;
-  return c;
+  return paintFarmPen(p, '#b48069');
 }
 
 /**
  * 5. Chuồng Cừu (Sheep Pen).
- * Pre-rendered background mode: transparent interactive hitbox canvas.
+ * Modular artwork aligned with the authoritative footprint.
  */
 export function paintGoatPen(): HTMLCanvasElement {
   const p = FARM_POIS.goat_pen;
-  const c = document.createElement('canvas');
-  c.width = p.w;
-  c.height = p.h;
-  return c;
+  return paintFarmPen(p, '#82916b', true);
 }
 
 /**
  * 6. Chuồng Bò (Cattle Pasture).
- * Pre-rendered background mode: transparent interactive hitbox canvas.
+ * Modular artwork aligned with the authoritative footprint.
  */
 export function paintCattlePasture(): HTMLCanvasElement {
   const p = FARM_POIS.cattle_pasture;
-  const c = document.createElement('canvas');
-  c.width = p.w;
-  c.height = p.h;
-  return c;
+  return paintFarmPen(p, '#a47658', true);
 }
 
 /**
  * 7. Guồng Nước Sục Khí Ao Cá (Waterwheel Aerator).
- * Pre-rendered background mode: transparent interactive hitbox canvas.
+ * Authentic rotating 4-paddle waterwheel aerator with water foam spray:
+ * - Floating pontoons and drive shaft motor
+ * - 4 aeration paddle blades throwing crystalline water droplets
  */
-export function paintWaterwheelAerator(_angle = 0): HTMLCanvasElement {
+export function paintWaterwheelAerator(angle = 0): HTMLCanvasElement {
   const size = 64;
   const c = document.createElement('canvas');
   c.width = size;
   c.height = size;
+  const ctx = c.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  const cx = size / 2;
+  const cy = size / 2;
+
+  // 1. Water foam circle
+  ctx.fillStyle = 'rgba(224, 242, 254, 0.7)';
+  ctx.beginPath();
+  ctx.arc(cx, cy + 6, 22, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(cx, cy + 6, 16, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. Rotating Wheel Hub & Paddles
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate((angle * Math.PI) / 180);
+
+  // 4 Paddle blades
+  for (let i = 0; i < 4; i++) {
+    ctx.rotate(Math.PI / 2);
+    // Paddle spoke
+    rect(ctx, '#0284c7', -2, -18, 4, 18);
+    rect(ctx, '#38bdf8', -1, -18, 2, 18);
+    // Perforated aeration paddle blade
+    rect(ctx, '#f8fafc', -7, -22, 14, 6);
+    rect(ctx, '#38bdf8', -6, -21, 12, 4);
+    rect(ctx, '#ffffff', -4, -20, 2, 2);
+    rect(ctx, '#ffffff', 2, -20, 2, 2);
+  }
+
+  // Center brass axis hub
+  oval(ctx, '#0f172a', 0, 0, 6, 6);
+  oval(ctx, '#ca8a04', 0, 0, 4, 4);
+  oval(ctx, '#fde047', 0, 0, 2, 2);
+  ctx.restore();
+
+  // 3. Spray droplets flung into air
+  for (let d = 0; d < 8; d++) {
+    const da = ((angle + d * 45) * Math.PI) / 180;
+    const dr = 18 + ((d * 7) % 8);
+    rect(ctx, '#ffffff', Math.round(cx + Math.cos(da) * dr), Math.round(cy + Math.sin(da) * dr), 2, 2);
+  }
+
   return c;
 }
 
@@ -112,10 +138,9 @@ export function paintPlotTile(
   isWatered: boolean,
   cropId?: string,
   stage?: 'seed' | 'sprout' | 'blooming' | 'mature',
-  price?: number,
+  _price?: number,
 ): HTMLCanvasElement {
-  const w = 58;
-  const h = 46;
+  const { w, h } = getFarmPlotRect(0);
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
@@ -132,23 +157,9 @@ export function paintPlotTile(
     rect(ctx, '#478c2e', w - 10, h - 12, 3, 3);
     rect(ctx, '#6dbd47', w - 9, h - 13, 2, 2);
 
-    // Wooden sign stake
-    rect(ctx, '#381e0b', w / 2 - 2, h / 2 - 8, 4, 18);
-    rect(ctx, '#78350f', w / 2 - 1, h / 2 - 8, 2, 18);
-    // Wooden plaque
-    rect(ctx, '#451a03', w / 2 - 14, h / 2 - 18, 28, 14);
-    rect(ctx, '#b45309', w / 2 - 13, h / 2 - 17, 26, 12);
-    rect(ctx, '#d97706', w / 2 - 12, h / 2 - 16, 24, 10);
-    // Padlock icon
-    rect(ctx, '#1c1917', w / 2 - 4, h / 2 - 14, 8, 6);
-    rect(ctx, '#fde047', w / 2 - 3, h / 2 - 13, 6, 4);
-
-    if (price) {
-      ctx.font = 'bold 7px sans-serif';
-      ctx.fillStyle = '#fef08a';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${price} C`, w / 2, h - 5);
-    }
+    // A quiet corner marker keeps unopened plots legible without 32 large signs.
+    rect(ctx, '#b39a70', w - 12, h - 12, 7, 7);
+    rect(ctx, '#6c5b40', w - 10, h - 15, 3, 4);
     return c;
   }
 

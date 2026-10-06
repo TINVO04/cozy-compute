@@ -1,8 +1,15 @@
 import type { ZoneId } from '@cozy/game-data';
 import { create } from 'zustand';
+import {
+  type AdminWeatherOverride,
+  type WeatherTelemetry,
+  resolveEffectiveTelemetry,
+} from '../game/weather-engine';
 
 export type Panel =
+  | 'cave-shop'
   | null
+  | 'shop-vehicles'
   | 'shop-fashion'
   | 'shop-furniture'
   | 'shop-rods'
@@ -56,7 +63,19 @@ interface UiState {
   zone: ZoneId | null;
   connection: 'connecting' | 'online' | 'reconnecting' | 'offline';
   room: {
-    kind: 'town' | 'apartment' | 'company' | 'university' | 'comga' | 'bida' | 'cybernet' | 'farm' | 'ocean';
+    kind:
+      | 'martial'
+      | 'town'
+      | 'showroom'
+      | 'apartment'
+      | 'company'
+      | 'university'
+      | 'comga'
+      | 'bida'
+      | 'cybernet'
+      | 'farm'
+      | 'ocean'
+      | 'cave';
     ownerId?: string;
     label: string;
   };
@@ -65,6 +84,8 @@ interface UiState {
   delivery: DeliveryJob | null;
   inspectUserId: string | null;
   cyberStation: string | null;
+  showroomVehicle: string | null;
+  setShowroomVehicle: (id: string | null) => void;
   editingApartment: boolean;
   reducedMotion: boolean;
   muted: boolean;
@@ -89,6 +110,13 @@ interface UiState {
   setMuted: (v: boolean) => void;
   zoom: number;
   setZoom: (z: number | ((prev: number) => number)) => void;
+  weather: WeatherTelemetry;
+  weatherOverride: AdminWeatherOverride | null;
+  setWeatherTelemetry: (weather: WeatherTelemetry) => void;
+  setWeatherOverride: (override: Partial<AdminWeatherOverride> | null) => void;
+  resetWeatherOverride: () => void;
+  triggerLightning: () => void;
+  triggerWindGust: () => void;
 }
 
 let nextId = 1;
@@ -104,9 +132,13 @@ export const useUi = create<UiState>((set) => ({
   delivery: null,
   inspectUserId: null,
   cyberStation: null,
+  showroomVehicle: null,
+  setShowroomVehicle: (showroomVehicle) => set({ showroomVehicle }),
   editingApartment: false,
   activePlotIndex: null,
   farmOwnerId: null,
+  weather: resolveEffectiveTelemetry(null, null),
+  weatherOverride: null,
   reducedMotion:
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   muted: localStorage.getItem('cozy.muted') === '1',
@@ -152,6 +184,50 @@ export const useUi = create<UiState>((set) => ({
         // localStorage may be disabled or full
       }
       return { zoom: clamped };
+    });
+  },
+  setWeatherTelemetry: (weather) => set({ weather }),
+  setWeatherOverride: (override) => {
+    set((s) => {
+      if (!override) {
+        const next = resolveEffectiveTelemetry(null, null);
+        return { weatherOverride: null, weather: next };
+      }
+      const merged: AdminWeatherOverride = {
+        enabled: true,
+        ...(s.weatherOverride ?? {}),
+        ...override,
+      };
+      const next = resolveEffectiveTelemetry(merged, null);
+      return { weatherOverride: merged, weather: next };
+    });
+  },
+  resetWeatherOverride: () => {
+    set(() => {
+      const next = resolveEffectiveTelemetry(null, null);
+      return { weatherOverride: null, weather: next };
+    });
+  },
+  triggerLightning: () => {
+    const now = Date.now();
+    set((s) => {
+      const ov = s.weatherOverride ?? { enabled: true };
+      const nextOv: AdminWeatherOverride = { ...ov, enabled: true, lightningAt: now };
+      return {
+        weatherOverride: nextOv,
+        weather: { ...s.weather, lightningTriggeredAt: now },
+      };
+    });
+  },
+  triggerWindGust: () => {
+    const now = Date.now();
+    set((s) => {
+      const ov = s.weatherOverride ?? { enabled: true };
+      const nextOv: AdminWeatherOverride = { ...ov, enabled: true, windGustAt: now };
+      return {
+        weatherOverride: nextOv,
+        weather: { ...s.weather, windGustTriggeredAt: now },
+      };
     });
   },
 }));

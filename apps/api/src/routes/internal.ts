@@ -1,3 +1,4 @@
+import { issueTrafficFine } from '../services/traffic.js';
 import { timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -5,6 +6,7 @@ import { resolveSession } from '../auth.js';
 import type { AppContext } from '../context.js';
 import { forbidden, unauthorized } from '../errors.js';
 import { resolvedAppearance } from '../services/players.js';
+import { caveTransaction } from '../services/cave.js';
 
 function requireInternal(req: FastifyRequest, secret: string) {
   const given = Buffer.from(String(req.headers['x-internal-secret'] ?? ''));
@@ -14,6 +16,30 @@ function requireInternal(req: FastifyRequest, secret: string) {
 
 /** Endpoints used only by the realtime server. Protected by a shared secret and never routed publicly. */
 export function internalRoutes(app: FastifyInstance, ctx: AppContext) {
+  app.post('/internal/cave', async (req) => {
+    requireInternal(req, ctx.config.INTERNAL_SECRET);
+    const body = z
+      .object({
+        userId: z.string().uuid(),
+        action: z.enum(['load', 'buy', 'sell', 'loot']),
+        requestId: z.string().min(1).max(160),
+        item: z.string().max(30).optional(),
+        quantity: z.number().int().min(1).max(20).optional(),
+      })
+      .parse(req.body);
+    return caveTransaction(ctx, body);
+  });
+  app.post('/internal/traffic-fine', async (req) => {
+    requireInternal(req, ctx.config.INTERNAL_SECRET);
+    const b = z
+      .object({
+        userId: z.string().uuid(),
+        ticketId: z.string().uuid(),
+        violation: z.enum(['red_light', 'off_road']),
+      })
+      .parse(req.body);
+    return issueTrafficFine(ctx, b.userId, b.ticketId, b.violation);
+  });
   app.post('/internal/session', async (req) => {
     requireInternal(req, ctx.config.INTERNAL_SECRET);
     const { token } = z.object({ token: z.string().max(200) }).parse(req.body);

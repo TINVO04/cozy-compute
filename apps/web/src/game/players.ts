@@ -1,5 +1,8 @@
 import {
   DEFAULT_APPEARANCE,
+  drivingSpeed,
+  vehicleById,
+  PLAYER_SPEED,
   normalizeBoatId,
   type Appearance,
   type MoveInput,
@@ -9,18 +12,22 @@ import { getStateCallbacks, type Room } from 'colyseus.js';
 import type Phaser from 'phaser';
 import { AVATAR_FEET_OFFSET, ensureAvatarTexture } from './avatars';
 import { spawnFootstepDust, spawnWaterWake } from './atmosphere';
+import { ensureVehicleTexture } from '../art/vehicle';
 import { ensureBoatTexture } from '../art/boat';
 import { useUi } from '../lib/store';
 import { fishRenderDimensions, getSpeciesData } from '../art/fish';
 import { ensureFishTexture } from './fish-texture';
 import { MovementPrediction, smoothMovement } from './movement-prediction';
 import { MovementInterpolation } from './movement-interpolation';
+import { boatPose } from './river-motion';
+import { VehicleLights } from './vehicle-lights';
 
 interface PlayerSnapshot {
   userId: string;
   name: string;
   status: string;
   appearance: string;
+  vehicle: string;
   x: number;
   y: number;
   dir: number;
@@ -49,7 +56,7 @@ const EMOTE_ICON: Record<string, string> = {
   thumbs: '👍',
 };
 
-class Avatar {
+export class Avatar {
   container: Phaser.GameObjects.Container;
   sprite: Phaser.GameObjects.Sprite;
   shadow: Phaser.GameObjects.Ellipse;
@@ -77,6 +84,10 @@ class Avatar {
   boatSprite: Phaser.GameObjects.Image | null = null;
   interpolation = new MovementInterpolation();
   private animationState = '';
+  vehicle = '';
+  vehicleSprite: Phaser.GameObjects.Image | null = null;
+  private ridingTwoWheeler = false;
+  private vehicleLights: VehicleLights | null = null;
 
   constructor(
     private scene: Phaser.Scene,
@@ -708,7 +719,7 @@ class Avatar {
     if (!force && this.animationState === state) return;
     this.animationState = state;
     const key = `${this.texKey}:walk${this.dir}`;
-    if (this.moving) {
+    if (this.moving && this.scene.scene.key !== 'ocean') {
       if (force || this.sprite.anims.currentAnim?.key !== key || !this.sprite.anims.isPlaying)
         this.sprite.play(key, true);
     } else {
@@ -742,17 +753,54 @@ class Avatar {
       this.boatSprite.setTexture(tex);
     }
 
-    this.sprite.setY(this.baseSpriteY - 2);
+    const ui = useUi.getState();
+    const pose = boatPose(
+      time,
+      this.container.x,
+      this.container.y,
+      boatId,
+      dir,
+      this.moving,
+      ui.weather.windSpeedKmh,
+      ui.reducedMotion,
+    );
+    this.boatSprite.setY(-4 + pose.heave).setRotation(pose.roll);
+    // The passenger shares the hull's pivot, while name tags stay level.
+    const seatY = this.baseSpriteY - 2;
+    this.sprite.setPosition(-Math.sin(pose.roll) * seatY, Math.cos(pose.roll) * seatY + pose.heave);
+    this.sprite.setRotation(pose.roll);
   }
 
   update(dtMs: number, time: number) {
+    const driving = Boolean(this.vehicle) && this.scene.scene.key === 'town';
+    if (driving && !this.vehicleLights) this.vehicleLights = new VehicleLights(this.scene);
+    this.vehicleLights?.update(driving ? this.vehicle : '', this.container.x, this.container.y, this.dir);
+    const kind = vehicleById(this.vehicle)?.kind;
+    const riding = driving && (kind === 'bicycle' || kind === 'motorcycle');
+    if (riding !== this.ridingTwoWheeler) {
+      this.ridingTwoWheeler = riding;
+      if (riding) this.sprite.setCrop(0, 0, 32, 40);
+      else this.sprite.setCrop();
+    }
+    this.sprite.setVisible(!driving || riding);
+    this.heldFishContainer?.setVisible(!driving);
+    this.rodGlowContainer?.setVisible(!driving);
+    if (driving) {
+      const frame = riding && this.moving && !useUi.getState().reducedMotion ? Math.floor(time / 160) % 2 : 0;
+      const key = ensureVehicleTexture(this.scene, this.vehicle, this.dir, frame);
+      if (!this.vehicleSprite) {
+        this.vehicleSprite = this.scene.add.image(0, -14, key);
+        this.container.addAt(this.vehicleSprite, 1);
+      }
+      this.vehicleSprite.setTexture(key).setVisible(true);
+    } else this.vehicleSprite?.setVisible(false);
     if (this.scene.scene.key === 'ocean') {
       this.updateBoat(time);
       if (this.moving && !useUi.getState().reducedMotion) {
         this.dustTimer += dtMs;
         if (this.dustTimer >= 180) {
           this.dustTimer = 0;
-          spawnWaterWake(this.scene, this.container.x, this.container.y);
+          spawnWaterWake(this.scene, this.container.x, this.container.y, this.dir);
         }
       }
     } else if (this.moving) {
@@ -771,6 +819,11 @@ class Avatar {
       }
     }
 
+    if (riding) {
+      this.sprite.stop();
+      this.sprite.setFrame(this.dir * 3);
+      this.sprite.y = this.baseSpriteY - 4;
+    }
     if (this.heldFishContainer && !useUi.getState().reducedMotion) {
       const bob = Math.sin(time * 0.0035 + this.breathSeed) * 1.5;
       this.heldFishContainer.setY(this.heldFishBaseY + bob);
@@ -778,6 +831,7 @@ class Avatar {
   }
 
   destroy() {
+    this.vehicleLights?.destroy();
     this.bubbleTimer?.remove();
     this.clearHeldFishEffects();
     this.clearRodEffects();
@@ -802,6 +856,13 @@ const parseAppearance = (raw: string): Appearance => {
  * function the server uses and reconciled against authoritative state; others are interpolated.
  */
 export class PlayerLayer {
+  private scripted = new Map<
+    string,
+    { from: { x: number; y: number }; to: { x: number; y: number }; elapsed: number; duration: number }
+  >();
+  scriptedMove(sid: string, from: { x: number; y: number }, to: { x: number; y: number }, duration: number) {
+    this.scripted.set(sid, { from: { x: from.x, y: from.y }, to, elapsed: 0, duration });
+  }
   avatars = new Map<string, Avatar>();
   self: Avatar | null = null;
   selfSessionId = '';
@@ -918,6 +979,7 @@ export class PlayerLayer {
       const myId = useUi.getState().myUserId;
       const isSelf = sid === this.selfSessionId || (Boolean(myId) && p.userId === myId);
       const av = new Avatar(this.scene, p.userId, p.name, parseAppearance(p.appearance), p.x, p.y, isSelf);
+      av.vehicle = p.vehicle || '';
       av.setStatus(p.status);
       av.container.setAlpha(p.connected ? 1 : 0.45);
       this.avatars.set(sid, av);
@@ -933,7 +995,10 @@ export class PlayerLayer {
       const $p = this.$(p as never) as unknown as Callbacks;
       this.playerCleanup.set(sid, [
         $p.onChange(() => {
-          if (isSelf) {
+          av.vehicle = p.vehicle || '';
+          if (isSelf && !this.scripted.has(sid)) {
+            if (this.scene.scene.key === 'town')
+              this.world.speed = av.vehicle ? drivingSpeed(av.vehicle, p.x, p.y) : PLAYER_SPEED;
             if (p.speed !== undefined) this.setWorldSpeed(p.speed);
             this.prediction?.reconcile(p, this.world);
           } else {
@@ -974,10 +1039,12 @@ export class PlayerLayer {
       this.room.send('input', { ...this.input, seq: this.seq });
     }
     // local prediction
-    if (this.self && this.prediction) {
+    if (this.self && this.prediction && !this.scripted.has(this.selfSessionId)) {
       const av = this.self;
       const moving = this.input.x !== 0 || this.input.y !== 0;
       const before = this.prediction.position;
+      if (this.scene.scene.key === 'town')
+        this.world.speed = av.vehicle ? drivingSpeed(av.vehicle, before.x, before.y) : PLAYER_SPEED;
       const next = this.prediction.predict(this.seq, this.input, dtMs, this.world);
       const display = smoothMovement(av.container, before, next, dtMs);
       av.container.setPosition(display.x, display.y);
@@ -995,8 +1062,21 @@ export class PlayerLayer {
     }
     // interpolate remote players, run micro-animations, and depth-sort everyone by feet position
     const now = performance.now();
-    for (const av of this.avatars.values()) {
-      if (av !== this.self) {
+    for (const [sid, av] of this.avatars) {
+      const motion = this.scripted.get(sid);
+      if (motion) {
+        motion.elapsed = Math.min(motion.duration, motion.elapsed + dtMs);
+        const t = motion.elapsed / motion.duration;
+        av.container.setPosition(
+          motion.from.x + (motion.to.x - motion.from.x) * t,
+          motion.from.y + (motion.to.y - motion.from.y) * t,
+        );
+        if (t >= 1) {
+          this.scripted.delete(sid);
+          if (sid === this.selfSessionId) this.prediction = new MovementPrediction(motion.to);
+          else av.target = { ...motion.to };
+        }
+      } else if (sid !== this.selfSessionId) {
         const sample = av.interpolation.sample(now);
         if (sample) {
           av.container.setPosition(sample.x, sample.y);
@@ -1015,6 +1095,7 @@ export class PlayerLayer {
   }
 
   destroy() {
+    this.scripted.clear();
     this.cleanup.forEach((fn) => fn());
     this.playerCleanup.forEach((callbacks) => callbacks.forEach((fn) => fn()));
     this.playerCleanup.clear();

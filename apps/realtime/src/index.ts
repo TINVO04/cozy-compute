@@ -12,6 +12,9 @@ import { FarmRoom } from './rooms/farm.js';
 import { BidaRoom } from './rooms/bida.js';
 import { OceanRoom } from './rooms/ocean.js';
 import { TownRoom } from './rooms/town.js';
+import { ShowroomRoom } from './rooms/showroom.js';
+import { MartialRoom } from './rooms/martial.js';
+import { CaveRoom } from './rooms/cave.js';
 import { UniversityRoom } from './rooms/university.js';
 
 const PORT = Number(process.env.REALTIME_PORT ?? 2567);
@@ -66,6 +69,9 @@ const gameServer = new Server({
   greet: false,
 });
 gameServer.define('town', TownRoom);
+gameServer.define('showroom', ShowroomRoom);
+gameServer.define('martial', MartialRoom);
+gameServer.define('cave', CaveRoom).filterBy(['ownerId']);
 gameServer.define('apartment', ApartmentRoom).filterBy(['ownerId']);
 gameServer.define('company', CompanyRoom);
 gameServer.define('university', UniversityRoom);

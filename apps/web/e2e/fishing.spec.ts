@@ -62,7 +62,7 @@ test('rapid reel inputs submit once and Space preserves the catch result', async
       window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space', bubbles: true }));
     }
   });
-  await expect(page.getByRole('status')).toContainText('Đang thu cần');
+  await expect(page.getByRole('status').filter({ hasText: 'Đang thu cần' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Bạn đã câu được Cá Chép!' })).toBeVisible();
   for (let i = 0; i < 8; i++) await page.keyboard.press('Space');
   await page.getByRole('button', { name: /Cầm cần câu tiếp/ }).focus();

@@ -1,4 +1,4 @@
-import type { Appearance } from '@cozy/game-data';
+import type { Appearance, TrafficViolation, CaveAccount } from '@cozy/game-data';
 
 export interface SessionInfo {
   userId: string;
@@ -11,6 +11,15 @@ export interface SessionInfo {
 }
 
 export class ApiClient {
+  cave(body: {
+    userId: string;
+    action: 'load' | 'buy' | 'sell' | 'loot';
+    requestId: string;
+    item?: string;
+    quantity?: number;
+  }) {
+    return this.post<CaveAccount>('/internal/cave', body);
+  }
   constructor(
     private readonly baseUrl: string,
     private readonly secret: string,
@@ -28,6 +37,14 @@ export class ApiClient {
       throw new Error(err.error?.message ?? `api ${path} ${res.status}`);
     }
     return (await res.json()) as T;
+  }
+
+  trafficFine(userId: string, ticketId: string, violation: TrafficViolation) {
+    return this.post<{ charged: number; coin: number }>('/internal/traffic-fine', {
+      userId,
+      ticketId,
+      violation,
+    });
   }
 
   session(token: string) {

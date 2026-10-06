@@ -13,6 +13,10 @@ import type { PlayerState } from '../schema.js';
 import { BaseRoom, type WorldSpec } from './base.js';
 
 export class OceanRoom extends BaseRoom {
+  protected override tick(dtMs: number) {
+    this.state.serverTime = Date.now();
+    super.tick(dtMs);
+  }
   override maxClients = 150;
 
   protected world(): WorldSpec {

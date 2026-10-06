@@ -70,7 +70,11 @@ describe('auth', () => {
 describe('fishing', () => {
   it('catches a Chí Tôn variant with server-owned rewards, inventory and journal identity', async () => {
     const player = await register(h);
-    at(player.id, 'pier');
+    h.positions.set(player.id, { room: 'ocean', x: 1100, y: 800, at: h.clock.now });
+    await h.ctx.db.query(
+      `INSERT INTO inventory_items (user_id, item_id, quantity, equipped_slot) VALUES ($1, 'boat_trawler', 1, 'boat')`,
+      [player.id],
+    );
     // The highest RNG roll selects the final species; completion uses the stored server candidate.
     h.rngQueue.push(0.999999);
     const start = await api(h, 'POST', '/activities/fishing/start', { token: player.token });
@@ -114,7 +118,7 @@ describe('fishing', () => {
     expect(start.body.nibbleCount).toBe(8);
     expect(start.body.nibbleOffsetsMs).toHaveLength(8);
     expect(start.body.nibbleOrbitTurns).toHaveLength(8);
-    expect(start.body.biteInMs).toBe(57560);
+    expect(start.body.biteInMs).toBe(45560 + start.body.shadowDelayMs);
     const latestReactionMs = start.body.reactionWindowMs + 2000 + 400;
     expect(Date.parse(start.body.expiresAt) - Date.parse(start.body.startedAt)).toBeGreaterThan(
       start.body.biteInMs + latestReactionMs,

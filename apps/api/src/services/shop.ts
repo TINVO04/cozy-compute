@@ -8,7 +8,7 @@ import { completeOnboardingStep, resolvedAppearance } from './players.js';
 
 interface ItemRow {
   id: string;
-  type: 'clothing' | 'furniture' | 'rod';
+  type: 'clothing' | 'furniture' | 'rod' | 'boat' | 'vehicle';
   slot: string | null;
   name: string;
   description: string;
@@ -93,16 +93,36 @@ async function purchase(
   ledgerKey: string,
 ) {
   return withTx(ctx.db, async (tx) => {
+    await tx.query('SELECT user_id FROM balances WHERE user_id = $1 FOR UPDATE', [userId]);
+    const prior = await tx.query<{ balance_after: number }>(
+      'SELECT balance_after FROM ledger_entries WHERE idempotency_key = $1 AND user_id = $2',
+      [ledgerKey, userId],
+    );
+    if (prior.rows[0]) return { replayed: true, coin: prior.rows[0].balance_after };
     const item = await tx.query<ItemRow>('SELECT * FROM item_definitions WHERE id = $1', [itemId]);
     const def = item.rows[0];
     if (!def || !def.enabled) throw notFound('That item is not for sale.');
-    if ((def.type === 'clothing' || def.type === 'rod') && quantity !== 1)
+    if (def.type === 'vehicle') {
+      const raw = await ctx.redis.hget('positions', userId);
+      let position: { room?: string; at?: number } | null = null;
+      try {
+        position = raw ? JSON.parse(raw) : null;
+      } catch {
+        /* Missing or stale presence cannot authorize a purchase. */
+      }
+      if (position?.room !== 'showroom' || !position.at || Date.now() - position.at > 15000)
+        throw badRequest('visit_showroom', 'Hãy vào phòng trưng bày Gara Bạc Hà để mua xe.');
+    }
+    if ((def.type === 'clothing' || def.type === 'rod' || def.type === 'vehicle') && quantity !== 1)
       throw badRequest('invalid_quantity', 'Trang phục và cần câu chỉ mua từng cái một.');
     const owned = await tx.query<{ quantity: number }>(
       'SELECT quantity FROM inventory_items WHERE user_id = $1 AND item_id = $2',
       [userId, itemId],
     );
-    if ((def.type === 'clothing' || def.type === 'rod') && (owned.rows[0]?.quantity ?? 0) > 0)
+    if (
+      (def.type === 'clothing' || def.type === 'rod' || def.type === 'vehicle') &&
+      (owned.rows[0]?.quantity ?? 0) > 0
+    )
       throw conflict('already_owned', 'Bạn đã sở hữu vật phẩm này rồi.');
     const total = def.coin_price * quantity;
     const ledger = await postLedger(tx, {
@@ -140,9 +160,10 @@ export async function equip(
   ctx: AppContext,
   userId: string,
   itemId: string | null,
-  slot: 'hat' | 'top' | 'face' | 'rod' | 'boat',
+  slot: 'hat' | 'top' | 'face' | 'rod' | 'boat' | 'vehicle',
 ) {
   await withTx(ctx.db, async (tx) => {
+    await tx.query('SELECT user_id FROM balances WHERE user_id = $1 FOR UPDATE', [userId]);
     await tx.query(
       'UPDATE inventory_items SET equipped_slot = NULL WHERE user_id = $1 AND equipped_slot = $2',
       [userId, slot],
@@ -159,7 +180,7 @@ export async function equip(
       const r = await tx.query(
         `UPDATE inventory_items i SET equipped_slot = $3
            FROM item_definitions d
-          WHERE i.user_id = $1 AND i.item_id = $2 AND d.id = i.item_id AND (d.type = 'clothing' OR d.type = 'rod' OR d.type = 'boat') AND d.slot = $3 AND i.quantity > 0`,
+          WHERE i.user_id = $1 AND i.item_id = $2 AND d.id = i.item_id AND (d.type = 'clothing' OR d.type = 'rod' OR d.type = 'boat' OR d.type = 'vehicle') AND d.slot = $3 AND i.quantity > 0`,
         [userId, itemId, slot],
       );
       if (!r.rowCount) throw notFound('You do not own that item.');

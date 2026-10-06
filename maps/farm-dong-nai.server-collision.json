@@ -1,0 +1,388 @@
+{
+  "mapId": "farm-dong-nai-01",
+  "tileSize": 32,
+  "width": 48,
+  "height": 32,
+  "pixelWidth": 1536,
+  "pixelHeight": 1024,
+  "blockers": [
+    {
+      "x": 624,
+      "y": 96,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 656,
+      "y": 96,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 688,
+      "y": 96,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 720,
+      "y": 96,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 752,
+      "y": 96,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 784,
+      "y": 96,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 816,
+      "y": 96,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 848,
+      "y": 96,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 880,
+      "y": 96,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 912,
+      "y": 96,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 944,
+      "y": 96,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 976,
+      "y": 96,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 160,
+      "y": 160,
+      "w": 128,
+      "h": 64
+    },
+    {
+      "x": 432,
+      "y": 128,
+      "w": 96,
+      "h": 64
+    },
+    {
+      "x": 320,
+      "y": 128,
+      "w": 64,
+      "h": 64
+    },
+    {
+      "x": 672,
+      "y": 160,
+      "w": 64,
+      "h": 32
+    },
+    {
+      "x": 64,
+      "y": 416,
+      "w": 64,
+      "h": 32
+    },
+    {
+      "x": 64,
+      "y": 544,
+      "w": 64,
+      "h": 32
+    },
+    {
+      "x": 64,
+      "y": 672,
+      "w": 64,
+      "h": 32
+    },
+    {
+      "x": 48,
+      "y": 768,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 80,
+      "y": 768,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 112,
+      "y": 768,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 1312,
+      "y": 160,
+      "w": 64,
+      "h": 32
+    },
+    {
+      "x": 1376,
+      "y": 160,
+      "w": 64,
+      "h": 32
+    },
+    {
+      "x": 144,
+      "y": 128,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 528,
+      "y": 160,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 80,
+      "y": 64,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 848,
+      "y": 192,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 1040,
+      "y": 192,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 272,
+      "y": 192,
+      "w": 32,
+      "h": 32
+    },
+    {
+      "x": 464,
+      "y": 192,
+      "w": 32,
+      "h": 32
+    }
+  ],
+  "zones": [
+    {
+      "id": "farm_gate",
+      "label": "Cổng Nông Trại Đồng Nai",
+      "prompt": "Nhấn E để trở về Thị Trấn",
+      "rect": {
+        "x": 32,
+        "y": 64,
+        "w": 64,
+        "h": 96
+      }
+    },
+    {
+      "id": "shop_bac_sau",
+      "label": "Tiệm Tạp Hóa Nông Sản Bác Sáu",
+      "prompt": "Nhấn E để mở cửa hàng nông sản",
+      "rect": {
+        "x": 448,
+        "y": 128,
+        "w": 96,
+        "h": 96
+      }
+    },
+    {
+      "id": "aquaculture_pond",
+      "label": "Ao Nuôi Thủy Sản Nam Bộ",
+      "prompt": "Nhấn E để câu cá / kiểm tra quạt nước",
+      "rect": {
+        "x": 960,
+        "y": 576,
+        "w": 192,
+        "h": 128
+      }
+    },
+    {
+      "id": "cow_pasture",
+      "label": "Khu Chăn Thả Bò Vàng",
+      "prompt": "Nhấn E để chăm sóc đàn bò",
+      "rect": {
+        "x": 800,
+        "y": 160,
+        "w": 160,
+        "h": 128
+      }
+    }
+  ],
+  "farmPlots": [
+    {
+      "id": "plot_00",
+      "rect": {
+        "x": 576,
+        "y": 288,
+        "w": 96,
+        "h": 96
+      },
+      "soilType": "loam",
+      "purchasable": true,
+      "price": 100
+    },
+    {
+      "id": "plot_01",
+      "rect": {
+        "x": 704,
+        "y": 288,
+        "w": 96,
+        "h": 96
+      },
+      "soilType": "loam",
+      "purchasable": true,
+      "price": 200
+    },
+    {
+      "id": "plot_02",
+      "rect": {
+        "x": 832,
+        "y": 288,
+        "w": 96,
+        "h": 96
+      },
+      "soilType": "loam",
+      "purchasable": true,
+      "price": 300
+    },
+    {
+      "id": "plot_03",
+      "rect": {
+        "x": 960,
+        "y": 288,
+        "w": 96,
+        "h": 96
+      },
+      "soilType": "loam",
+      "purchasable": true,
+      "price": 400
+    },
+    {
+      "id": "plot_04",
+      "rect": {
+        "x": 576,
+        "y": 416,
+        "w": 96,
+        "h": 96
+      },
+      "soilType": "loam",
+      "purchasable": true,
+      "price": 500
+    },
+    {
+      "id": "plot_05",
+      "rect": {
+        "x": 704,
+        "y": 416,
+        "w": 96,
+        "h": 96
+      },
+      "soilType": "loam",
+      "purchasable": true,
+      "price": 600
+    },
+    {
+      "id": "plot_06",
+      "rect": {
+        "x": 832,
+        "y": 416,
+        "w": 96,
+        "h": 96
+      },
+      "soilType": "loam",
+      "purchasable": true,
+      "price": 700
+    },
+    {
+      "id": "plot_07",
+      "rect": {
+        "x": 960,
+        "y": 416,
+        "w": 96,
+        "h": 96
+      },
+      "soilType": "loam",
+      "purchasable": true,
+      "price": 800
+    },
+    {
+      "id": "plot_08",
+      "rect": {
+        "x": 576,
+        "y": 544,
+        "w": 96,
+        "h": 96
+      },
+      "soilType": "loam",
+      "purchasable": true,
+      "price": 900
+    },
+    {
+      "id": "plot_09",
+      "rect": {
+        "x": 704,
+        "y": 544,
+        "w": 96,
+        "h": 96
+      },
+      "soilType": "loam",
+      "purchasable": true,
+      "price": 1000
+    },
+    {
+      "id": "plot_10",
+      "rect": {
+        "x": 832,
+        "y": 544,
+        "w": 96,
+        "h": 96
+      },
+      "soilType": "loam",
+      "purchasable": true,
+      "price": 1100
+    },
+    {
+      "id": "plot_11",
+      "rect": {
+        "x": 960,
+        "y": 544,
+        "w": 96,
+        "h": 96
+      },
+      "soilType": "loam",
+      "purchasable": true,
+      "price": 1200
+    }
+  ]
+}

@@ -11,6 +11,7 @@ import { adminRoutes } from './routes/admin.js';
 import { farmRoutes } from './routes/farm.js';
 import { internalRoutes } from './routes/internal.js';
 import { playerRoutes } from './routes/player.js';
+import { weatherRoutes } from './routes/weather.js';
 
 export async function buildApp(
   ctx: Omit<AppContext, 'log'>,
@@ -152,6 +153,7 @@ export async function buildApp(
   });
 
   playerRoutes(app, full);
+  weatherRoutes(app, full);
   adminRoutes(app, full);
   internalRoutes(app, full);
   farmRoutes(app, full);

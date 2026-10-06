@@ -49,10 +49,13 @@ export function stepMovement(
   const dy = (input.y / len) * speed * dt;
   let x = pos.x;
   let y = pos.y;
-  const nx = Math.max(PLAYER_RADIUS, Math.min(width - PLAYER_RADIUS, x + dx));
-  if (!collides(nx, y, blockers)) x = nx;
-  const ny = Math.max(12, Math.min(height - 4, y + dy));
-  if (!collides(x, ny, blockers)) y = ny;
+  const steps = speed > PLAYER_SPEED ? Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 4)) : 1;
+  for (let i = 0; i < steps; i++) {
+    const nx = Math.max(PLAYER_RADIUS, Math.min(width - PLAYER_RADIUS, x + dx / steps));
+    if (!collides(nx, y, blockers)) x = nx;
+    const ny = Math.max(12, Math.min(height - 4, y + dy / steps));
+    if (!collides(x, ny, blockers)) y = ny;
+  }
   return { x, y };
 }
 

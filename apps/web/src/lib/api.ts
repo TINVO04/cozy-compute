@@ -97,6 +97,7 @@ export interface Me {
 }
 
 export interface ShopItem {
+  enabled: boolean;
   id: string;
   type: ItemType;
   slot: ClothingSlot | null;

@@ -22,6 +22,7 @@
       import Phaser from 'phaser';
       import { FarmScene } from '/src/game/scenes.ts';
       import { useUi } from '/src/lib/store.ts';
+      window.farmUi = useUi;
       useUi.setState({ reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
       window.farmPreview = new Phaser.Game({
         type: Phaser.CANVAS,

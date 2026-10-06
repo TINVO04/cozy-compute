@@ -1,4 +1,4 @@
-import { TILE } from '@cozy/game-data';
+import { TILE, RIVER_BRIDGE } from '@cozy/game-data';
 
 export const OCEAN_COLS = 48;
 export const OCEAN_ROWS = 32;
@@ -27,13 +27,29 @@ export function paintOceanLandscape(): HTMLCanvasElement {
   // 1. ALLUVIAL RIVER WATER (SÔNG ĐỒNG NAI)
   // =========================================================================
   const baseGrad = ctx.createLinearGradient(0, 0, 0, OCEAN_HEIGHT);
-  baseGrad.addColorStop(0, '#064e3b'); // Upstream NW: rich emerald river water
-  baseGrad.addColorStop(0.4, '#042f2e'); // Upper river channel
-  baseGrad.addColorStop(0.5, '#03332e'); // Under Cầu Hóa An
-  baseGrad.addColorStop(0.7, '#022c22'); // Lower river channel
-  baseGrad.addColorStop(1, '#064e3b'); // South river reach
+  baseGrad.addColorStop(0, '#779b83');
+  baseGrad.addColorStop(0.15, '#477e73');
+  baseGrad.addColorStop(0.4, '#32675f');
+  baseGrad.addColorStop(0.55, '#285952');
+  baseGrad.addColorStop(0.8, '#3f7568');
+  baseGrad.addColorStop(1, '#82977a');
   ctx.fillStyle = baseGrad;
   ctx.fillRect(0, 0, OCEAN_WIDTH, OCEAN_HEIGHT);
+
+  // The deep downstream pool blends into the current instead of a hard zone rectangle.
+  const depth = ctx.createRadialGradient(1140, 815, 30, 1140, 815, 420);
+  depth.addColorStop(0, 'rgba(12, 44, 46, 0.7)');
+  depth.addColorStop(0.55, 'rgba(20, 54, 53, 0.4)');
+  depth.addColorStop(1, 'rgba(20, 54, 53, 0)');
+  ctx.fillStyle = depth;
+  ctx.fillRect(700, 600, 836, 390);
+  // Mud shelves and reeds stay on the non-navigable bank margins.
+  for (let x = 0; x < OCEAN_WIDTH; x += 9) {
+    const edge = 3 + Math.sin(x * 0.043) * 3;
+    ctx.fillStyle = '#8b9270';
+    ctx.fillRect(x, 32, 10, edge);
+    ctx.fillRect(x, 990 - edge, 10, edge);
+  }
 
   // Flowing river current streaks
   ctx.fillStyle = 'rgba(52, 211, 153, 0.08)';
@@ -116,19 +132,19 @@ export function paintOceanLandscape(): HTMLCanvasElement {
   // 3. CẦU HÓA AN (BIÊN HÒA - BÌNH DƯƠNG) — THE GRAND TWIN HIGHWAY BRIDGES
   // Centered in the middle of the river across the entire width (x: 0..1536, y: 450..538)
   // =========================================================================
-  const bridgeY1 = 450; // Cầu Hóa An mới (Bắc)
-  const bridgeH1 = 36;
-  const bridgeGap = 16;
-  const bridgeY2 = bridgeY1 + bridgeH1 + bridgeGap; // 502: Cầu Hóa An cũ (Nam)
-  const bridgeH2 = 36; // ends at 538
-  const bridgeTotalH = bridgeY2 + bridgeH2 - bridgeY1; // 88px total deck span
+  const bridgeY1 = RIVER_BRIDGE.top;
+  const bridgeH1 = RIVER_BRIDGE.deckHeight;
+  const bridgeGap = RIVER_BRIDGE.gap;
+  const bridgeY2 = bridgeY1 + bridgeH1 + bridgeGap;
+  const bridgeH2 = RIVER_BRIDGE.deckHeight;
+  const bridgeTotalH = RIVER_BRIDGE.bottom - bridgeY1;
 
   // Bridge shadow cast on the emerald water
   ctx.fillStyle = 'rgba(2, 44, 34, 0.72)';
   ctx.fillRect(0, bridgeY1 + 10, OCEAN_WIDTH, bridgeTotalH + 26);
 
   // --- Concrete Bridge Piers (Trụ cầu bê tông cắm xuống lòng sông Đồng Nai) ---
-  const pierXs = [240, 580, 920, 1260];
+  const pierXs = RIVER_BRIDGE.pierXs;
   for (const px of pierXs) {
     // Underwater pier footing shadow & water cutwater
     ctx.fillStyle = '#064e3b';
@@ -184,8 +200,8 @@ export function paintOceanLandscape(): HTMLCanvasElement {
 
   // White lane lines
   ctx.fillStyle = '#f8fafc';
-  ctx.fillRect(0, bridgeY1 + 5, OCEAN_WIDTH, 1.5);
-  ctx.fillRect(0, bridgeY1 + bridgeH1 - 6, OCEAN_WIDTH, 1.5);
+  ctx.fillRect(0, bridgeY1 + 5, OCEAN_WIDTH, 2);
+  ctx.fillRect(0, bridgeY1 + bridgeH1 - 6, OCEAN_WIDTH, 2);
 
   // Yellow dashed highway road centerline (Deck 1)
   ctx.fillStyle = '#fde047';
@@ -213,8 +229,8 @@ export function paintOceanLandscape(): HTMLCanvasElement {
 
   // White lane lines
   ctx.fillStyle = '#f8fafc';
-  ctx.fillRect(0, bridgeY2 + 5, OCEAN_WIDTH, 1.5);
-  ctx.fillRect(0, bridgeY2 + bridgeH2 - 6, OCEAN_WIDTH, 1.5);
+  ctx.fillRect(0, bridgeY2 + 5, OCEAN_WIDTH, 2);
+  ctx.fillRect(0, bridgeY2 + bridgeH2 - 6, OCEAN_WIDTH, 2);
 
   // Yellow dashed highway road centerline (Deck 2)
   ctx.fillStyle = '#fde047';
@@ -230,75 +246,24 @@ export function paintOceanLandscape(): HTMLCanvasElement {
   ctx.fillRect(0, bridgeY2 + 1, OCEAN_WIDTH, 1);
   ctx.fillRect(0, bridgeY2 + bridgeH2 - 2, OCEAN_WIDTH, 1);
 
-  // --- Traffic on Cầu Hóa An: Cars, Buses, Container Trucks & Motorbikes ---
-  // Deck 1 (Heading West -> Bình Dương)
-  const drawCar = (x: number, y: number, color: string, w = 24, h = 12) => {
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = '#38bdf8';
-    ctx.fillRect(x + 4, y + 2, w - 8, h - 4);
-    // Headlights (facing left)
-    ctx.fillStyle = '#fef08a';
-    ctx.fillRect(x - 1, y + 2, 2, 2);
-    ctx.fillRect(x - 1, y + h - 4, 2, 2);
-    // Taillights
-    ctx.fillStyle = '#ef4444';
-    ctx.fillRect(x + w - 1, y + 2, 2, 2);
-    ctx.fillRect(x + w - 1, y + h - 4, 2, 2);
-  };
-
-  const drawTruck = (x: number, y: number, cabColor: string, contColor: string) => {
-    // Container body
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(x + 14, y - 1, 38, 14);
-    ctx.fillStyle = contColor;
-    ctx.fillRect(x + 15, y, 36, 12);
-    // Cab
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(x - 1, y - 1, 16, 14);
-    ctx.fillStyle = cabColor;
-    ctx.fillRect(x, y, 14, 12);
-    ctx.fillStyle = '#38bdf8';
-    ctx.fillRect(x + 2, y + 2, 6, 8);
-    // Headlights
-    ctx.fillStyle = '#fef08a';
-    ctx.fillRect(x - 1, y + 2, 2, 2);
-    ctx.fillRect(x - 1, y + 8, 2, 2);
-  };
-
-  // Deck 1 Vehicles
-  drawCar(180, bridgeY1 + 8, '#f8fafc', 22, 10); // White sedan
-  drawTruck(360, bridgeY1 + 18, '#dc2626', '#0284c7'); // Red/Blue Container truck
-  drawCar(620, bridgeY1 + 8, '#10b981', 20, 10); // Green delivery van
-  drawCar(850, bridgeY1 + 19, '#eab308', 18, 9); // Yellow taxi
-  drawCar(1120, bridgeY1 + 8, '#ef4444', 22, 10); // Red sports car
-  drawCar(1350, bridgeY1 + 18, '#64748b', 24, 11); // Silver SUV
-
-  // Deck 2 Vehicles (Heading East -> Biên Hòa)
-  const drawCarEast = (x: number, y: number, color: string, w = 24, h = 12) => {
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = '#38bdf8';
-    ctx.fillRect(x + 4, y + 2, w - 8, h - 4);
-    // Headlights (facing right)
-    ctx.fillStyle = '#fef08a';
-    ctx.fillRect(x + w - 1, y + 2, 2, 2);
-    ctx.fillRect(x + w - 1, y + h - 4, 2, 2);
-    // Taillights
-    ctx.fillStyle = '#ef4444';
-    ctx.fillRect(x - 1, y + 2, 2, 2);
-    ctx.fillRect(x - 1, y + h - 4, 2, 2);
-  };
-
-  drawCarEast(120, bridgeY2 + 8, '#0284c7', 26, 11); // Blue Biên Hòa Bus
-  drawCarEast(420, bridgeY2 + 19, '#f8fafc', 22, 10); // White car
-  drawTruck(710, bridgeY2 + 8, '#ea580c', '#334155'); // Orange tractor trailer
-  drawCarEast(980, bridgeY2 + 19, '#dc2626', 20, 10); // Red sedan
-  drawCarEast(1280, bridgeY2 + 8, '#f59e0b', 22, 10); // Gold crossover
+  // Broad raised pedestrian paths, stone joints and crisp guardrail uprights.
+  for (const deckY of [bridgeY1, bridgeY2]) {
+    ctx.fillStyle = '#a8b3ac';
+    ctx.fillRect(0, deckY + 4, OCEAN_WIDTH, 12);
+    ctx.fillRect(0, deckY + 66, OCEAN_WIDTH, 8);
+    ctx.fillStyle = '#d9dfce';
+    ctx.fillRect(0, deckY + 16, OCEAN_WIDTH, 2);
+    ctx.fillRect(0, deckY + 64, OCEAN_WIDTH, 2);
+    for (let x = 0; x < OCEAN_WIDTH; x += 20) {
+      ctx.fillStyle = '#7d918e';
+      ctx.fillRect(x, deckY + 5, 1, 10);
+      ctx.fillStyle = '#15516b';
+      ctx.fillRect(x, deckY - 2, 3, 6);
+      ctx.fillRect(x, deckY + 74, 3, 6);
+      ctx.fillStyle = '#a6e4e5';
+      ctx.fillRect(x, deckY - 2, 2, 1);
+    }
+  }
 
   // --- Streetlamps along Cầu Hóa An ---
   for (let lx = 16; lx < OCEAN_WIDTH; lx += 64) {
@@ -317,13 +282,13 @@ export function paintOceanLandscape(): HTMLCanvasElement {
 
   // Highway Gantry Sign at entrance of Cầu Hóa An (x: 480, y: bridgeY1 - 22)
   ctx.fillStyle = '#1e293b';
-  ctx.fillRect(440, bridgeY1 - 26, 180, 18);
+  ctx.fillRect(390, bridgeY1 - 30, 280, 22);
   ctx.fillStyle = '#0284c7';
-  ctx.fillRect(442, bridgeY1 - 24, 176, 14);
+  ctx.fillRect(392, bridgeY1 - 28, 276, 18);
   ctx.fillStyle = '#38bdf8';
-  ctx.fillRect(443, bridgeY1 - 23, 174, 1);
+  ctx.fillRect(393, bridgeY1 - 27, 274, 1);
   ctx.fillStyle = '#ffffff';
-  ctx.font = '700 8.5px sans-serif';
+  ctx.font = '700 11px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('CẦU HÓA AN (BIÊN HÒA ⇄ BÌNH DƯƠNG)', 530, bridgeY1 - 14);
 
@@ -333,8 +298,8 @@ export function paintOceanLandscape(): HTMLCanvasElement {
   // =========================================================================
   const buoys = [
     { x: 140, y: 720, color: '#10b981', label: 'VỀ BẾN BIÊN HÒA' },
-    { x: 1380, y: 720, color: '#38bdf8', label: 'LUỒNG HẠ LƯU' },
-    { x: 760, y: 360, color: '#fde047', label: 'LUỒNG THƯỢNG NGUỒN' },
+    { x: 1380, y: 720, color: '#f6cf84', label: 'NƯỚC SÂU · CÁ QUÝ' },
+    { x: 760, y: 360, color: '#bde1c4', label: 'THƯỢNG NGUỒN · CÁ HIẾM' },
   ];
 
   for (const b of buoys) {
@@ -364,7 +329,8 @@ export function paintOceanLandscape(): HTMLCanvasElement {
     ctx.font = '700 9px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-    ctx.fillRect(b.x - 52, b.y + 16, 104, 15);
+    const labelWidth = ctx.measureText(b.label).width + 16;
+    ctx.fillRect(b.x - labelWidth / 2, b.y + 16, labelWidth, 15);
     ctx.fillStyle = b.color;
     ctx.fillText(b.label, b.x, b.y + 27);
   }

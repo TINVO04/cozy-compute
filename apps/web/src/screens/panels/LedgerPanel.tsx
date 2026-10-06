@@ -21,6 +21,7 @@ const REASONS: Record<string, string> = {
   delivery: 'Giao hàng',
   cafe: 'Làm thêm quán cafe',
   event_reward: 'Thưởng sự kiện',
+  traffic_fine: 'Phạt vi phạm giao thông',
   shop_purchase: 'Mua sắm tại cửa hàng',
   ai_mint: 'Đổi thưởng AI Credit',
   ai_key_allocate: 'Tạo khóa API',

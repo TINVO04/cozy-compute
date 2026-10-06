@@ -18,7 +18,7 @@ export function getDeps(): Deps {
   return deps;
 }
 
-interface ClientData {
+export interface ClientData {
   session: SessionInfo;
   movement: AuthoritativeMovement;
   lastChatAt: number[];
@@ -252,6 +252,7 @@ export abstract class BaseRoom extends Room<RoomState> {
       d.session.appearance = appearance as SessionInfo['appearance'];
       p.speed = this.playerSpeedFor(d, p);
     }
+    if (p.vehicle && p.vehicle !== (appearance as SessionInfo['appearance'])?.vehicle) p.vehicle = '';
     if (typeof statusText === 'string') p.status = statusText;
   }
 

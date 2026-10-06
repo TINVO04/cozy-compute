@@ -23,6 +23,9 @@ import {
   getFishShadowTier,
   oceanZoneAt,
   rollFishingSequence,
+  fishingGround,
+  fishingConditions,
+  fishForConditions,
   type ActivityConfigMap,
   type FishShadowTier,
   type RodConfig,
@@ -33,6 +36,7 @@ import { withTx, type Queryable, type Tx } from '../db.js';
 import { AppError, badRequest, conflict, notFound } from '../errors.js';
 import { postLedger } from '../ledger.js';
 import { metrics } from '../metrics.js';
+import { worldWeather } from './weather.js';
 import { checkTimingPatterns, raiseFlag } from './abuse.js';
 import { completeOnboardingStep, resolvedAppearance } from './players.js';
 
@@ -205,12 +209,15 @@ export async function startFishing(ctx: AppContext, userId: string) {
     await requireAt(ctx, userId, 'pier');
   } else {
     // In ocean, player must have an equipped boat
+    if (!pos || ctx.now().getTime() - pos.at >= 15_000) {
+      throw new AppError(409, 'not_at_location', 'Hãy trở lại thuyền trước khi thả câu.');
+    }
     const equippedBoatRes = await ctx.db.query<{ item_id: string }>(
       `SELECT item_id FROM inventory_items WHERE user_id = $1 AND equipped_slot = 'boat'`,
       [userId],
     );
     const boatId = equippedBoatRes.rows[0]?.item_id;
-    if (!boatId) {
+    if (!boatId || !BOATS[boatId]) {
       throw new AppError(409, 'no_boat_equipped', 'Bạn cần trang bị thuyền trước khi câu cá ngoài khơi.');
     }
     const boat = BOATS[boatId];
@@ -220,7 +227,7 @@ export async function startFishing(ctx: AppContext, userId: string) {
       throw new AppError(
         409,
         'abyss_access_denied',
-        'Vực thẳm Abyssal Trench có bão tố dữ dội! Bạn cần Tàu Viễn Dương Hoàng Kim để săn thủy quái tại đây.',
+        'Vùng nước sâu hạ lưu có dòng chảy mạnh. Bạn cần Tàu Viễn Dương Hoàng Kim để câu cá tại đây.',
       );
     }
   }
@@ -234,25 +241,24 @@ export async function startFishing(ctx: AppContext, userId: string) {
   const rod: RodConfig = FISHING_RODS[equippedRodId] ?? FISHING_RODS['rod_twig']!;
 
   // Reaction window adjusted by rod quality
-  const reactionWindowMs = cfg.reactionWindowMs + (rod.reactionBonusMs ?? 0);
+  const conditions = fishingConditions(await worldWeather(ctx));
+  const reactionWindowMs = Math.max(
+    700,
+    Math.round((cfg.reactionWindowMs + (rod.reactionBonusMs ?? 0)) * conditions.reactionMultiplier),
+  );
 
   // Pre-roll fish candidate for authoritative shadow tier
-  let fishTable = FISH;
-  let seaZoneBonus = 0;
   const oceanZone = isOcean && pos ? oceanZoneAt(pos.x, pos.y) : null;
-  if (isOcean) {
-    const oceanFish = FISH.filter((f) => f.habitat === 'ocean' || f.habitat === 'mythic');
-    if (oceanFish.length > 0) fishTable = oceanFish;
-    seaZoneBonus =
-      oceanZone === 'abyssal_trench'
-        ? 2.5
-        : oceanZone === 'open_sea'
-          ? 1.5
-          : oceanZone === 'coral_reef'
-            ? 1.0
-            : 0.4;
-  }
-  const pendingFish = rollFish(ctx.rng, 0, reactionWindowMs, fishTable, rod.shadowBonus + seaZoneBonus);
+  const { fish: fishTable, bonus: seaZoneBonus } = fishingGround(
+    isOcean ? (oceanZone ?? 'angler_dock') : 'town_pond',
+  );
+  const pendingFish = rollFish(
+    ctx.rng,
+    0,
+    reactionWindowMs,
+    fishForConditions(fishTable, conditions),
+    rod.shadowBonus + seaZoneBonus,
+  );
 
   // Read current size overrides from settings
   const fishSizesRes = await ctx.db.query<{ value: unknown }>(
@@ -272,7 +278,7 @@ export async function startFishing(ctx: AppContext, userId: string) {
   const nibbleCount = 4 + Math.floor(ctx.rng() * 5); // 4, 5, 6, 7, or 8 nibbles
   const rawShadowDelayMs = 7000 + Math.floor(ctx.rng() * 5001); // 7000 to 12000 ms (7-12s)
   const speedFactor = 1 - (rod.biteSpeedBonus ?? 0);
-  const shadowDelayMs = Math.round(rawShadowDelayMs * speedFactor);
+  const shadowDelayMs = Math.round(rawShadowDelayMs * speedFactor * conditions.waitMultiplier);
   const { nibbleOffsetsMs, nibbleOrbitTurns, biteInMs } = rollFishingSequence(
     ctx.rng,
     shadowDelayMs,
@@ -295,6 +301,7 @@ export async function startFishing(ctx: AppContext, userId: string) {
     reactionWindowMs,
     isOcean,
     oceanZone,
+    conditions,
   });
 
   return {
@@ -307,6 +314,7 @@ export async function startFishing(ctx: AppContext, userId: string) {
     nibbleOffsetsMs,
     nibbleOrbitTurns,
     equippedRod: rod,
+    conditions,
   };
 }
 
