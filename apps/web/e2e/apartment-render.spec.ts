@@ -134,7 +134,7 @@ test('real editor places, rotates, picks furniture above rugs, undoes and saves 
   // Move the placement cursor to the sofa on top of the rug and pick up only the sofa.
   await page.evaluate(() => window.apartmentPreview.events.emit('apartment:hover', { x: 1, y: 4 }));
   await page.keyboard.press('e');
-  await expect(page.getByRole('status')).toContainText('Sofa');
+  await expect(page.locator('.editor-selection[role="status"]')).toContainText('Sofa');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('e');
