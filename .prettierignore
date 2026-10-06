@@ -6,4 +6,4 @@ apps/desktop/src-tauri/target
 apps/desktop/src-tauri/gen
 .agents
 output
-
+apps/web/test-results-*/
