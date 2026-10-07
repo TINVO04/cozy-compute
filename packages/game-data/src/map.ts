@@ -628,7 +628,7 @@ export const FARM_POIS = {
   poultry_coop: t(3, 15, 11, 5),
   pig_pen: t(3, 24, 10, 5),
   cattle_pasture: t(17, 24, 8, 5),
-  goat_pen: t(17, 17, 7, 4),
+  goat_pen: t(17, 17, 8, 4),
   crops_field: t(33, 17, 12, 12),
 };
 

@@ -37,7 +37,7 @@ export function paintSiloWarehouse(): HTMLCanvasElement {
  */
 export function paintPoultryCoop(): HTMLCanvasElement {
   const p = FARM_POIS.poultry_coop;
-  return paintFarmPen(p, '#ad7659');
+  return paintFarmPen(p, '#ad7659', 'poultry');
 }
 
 /**
@@ -46,16 +46,16 @@ export function paintPoultryCoop(): HTMLCanvasElement {
  */
 export function paintPigPen(): HTMLCanvasElement {
   const p = FARM_POIS.pig_pen;
-  return paintFarmPen(p, '#b48069');
+  return paintFarmPen(p, '#b48069', 'pig');
 }
 
 /**
- * 5. Chuồng Cừu (Sheep Pen).
+ * 5. Chuồng Cừu (Sheep & Goat Pen).
  * Modular artwork aligned with the authoritative footprint.
  */
 export function paintGoatPen(): HTMLCanvasElement {
   const p = FARM_POIS.goat_pen;
-  return paintFarmPen(p, '#82916b', true);
+  return paintFarmPen(p, '#82916b', 'goat');
 }
 
 /**
@@ -64,7 +64,7 @@ export function paintGoatPen(): HTMLCanvasElement {
  */
 export function paintCattlePasture(): HTMLCanvasElement {
   const p = FARM_POIS.cattle_pasture;
-  return paintFarmPen(p, '#a47658', true);
+  return paintFarmPen(p, '#a47658', 'cattle');
 }
 
 /**

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { TownLifeSimulation, lifeGroundClear, MAX_PASSING_VENDORS } from './town-life.js';
+import {
+  TownLifeSimulation,
+  lifeGroundClear,
+  MAX_PASSING_VENDORS,
+  isRainyOrStormy,
+  isNightTime,
+  shouldHideTownLife,
+} from './town-life.js';
 import { MAP_WIDTH } from './map.js';
 import { onRoad } from './vehicles.js';
 
@@ -107,5 +114,101 @@ describe('living town simulation', () => {
     expect(Math.hypot(cat.x - before.x, cat.y - before.y)).toBeGreaterThan(10);
     advance(sim, 8);
     expect(cat.mode).not.toBe('scampering');
+  });
+  it('allows cats to occasionally lie down and sleep', () => {
+    const sim = simulation();
+    let sawSleeping = false;
+    for (let i = 0; i < 400; i++) {
+      sim.update(50, i * 50, []);
+      const cats = sim.actors.filter((a) => a.kind === 'cat');
+      if (cats.some((c) => c.mode === 'sleeping')) {
+        sawSleeping = true;
+        const sleeper = cats.find((c) => c.mode === 'sleeping')!;
+        expect(sleeper.moving).toBe(false);
+        break;
+      }
+    }
+    expect(sawSleeping).toBe(true);
+  });
+  it('startles sleeping cat when a player gets close', () => {
+    const sim = simulation();
+    let sleeper = sim.actors.find((a) => a.kind === 'cat' && a.mode === 'sleeping');
+    let t = 0;
+    while (!sleeper && t < 400) {
+      sim.update(50, t * 50, []);
+      sleeper = sim.actors.find((a) => a.kind === 'cat' && a.mode === 'sleeping');
+      t++;
+    }
+    expect(sleeper).toBeDefined();
+    if (sleeper) {
+      sim.update(50, t * 50, [{ x: sleeper.x - 10, y: sleeper.y }]);
+      expect(sleeper.mode).toBe('scampering');
+      expect(sleeper.speech).toBe('Meo!');
+    }
+  });
+  it('hides birds, cats, and vendors during rain or storms', () => {
+    const sim = simulation();
+    expect(sim.actors.length).toBeGreaterThanOrEqual(15);
+    sim.update(50, 1000, [], { condition: 'rain' });
+    expect(sim.actors.length).toBe(0);
+    expect(sim.talk('vendor-0', { x: 300, y: 350 })).toBeNull();
+
+    // thunderstorm
+    sim.update(50, 2000, [], { condition: 'thunderstorm' });
+    expect(sim.actors.length).toBe(0);
+
+    // heavy rain
+    sim.update(50, 3000, [], { condition: 'heavy_rain' });
+    expect(sim.actors.length).toBe(0);
+
+    // precipitation > 0
+    sim.update(50, 4000, [], { precipitationMm: 5 });
+    expect(sim.actors.length).toBe(0);
+
+    // Returning to clear daytime restores residents
+    sim.update(50, 5000, [], { condition: 'clear', timePhase: 'morning' });
+    expect(sim.actors.length).toBe(14); // 5 cats + 9 pigeons
+    expect(sim.actors.filter((a) => a.kind === 'cat').length).toBe(5);
+    expect(sim.actors.filter((a) => a.kind === 'pigeon').length).toBe(9);
+  });
+  it('hides birds, cats, and vendors at night', () => {
+    const sim = simulation();
+    expect(sim.actors.length).toBeGreaterThanOrEqual(15);
+    sim.update(50, 1000, [], { timePhase: 'night' });
+    expect(sim.actors.length).toBe(0);
+
+    // Night by solarHour
+    sim.update(50, 2000, [], { solarHour: 22.0 });
+    expect(sim.actors.length).toBe(0);
+
+    // Night by solarHour early morning (3 AM)
+    sim.update(50, 3000, [], { solarHour: 3.5 });
+    expect(sim.actors.length).toBe(0);
+
+    // Returning to morning restores residents
+    sim.update(50, 4000, [], { timePhase: 'morning' });
+    expect(sim.actors.length).toBe(14);
+    expect(sim.actors.filter((a) => a.kind === 'cat').length).toBe(5);
+    expect(sim.actors.filter((a) => a.kind === 'pigeon').length).toBe(9);
+  });
+  it('correctly determines rain/storm and night helpers', () => {
+    expect(isRainyOrStormy('rain')).toBe(true);
+    expect(isRainyOrStormy('thunderstorm')).toBe(true);
+    expect(isRainyOrStormy('heavy_rain')).toBe(true);
+    expect(isRainyOrStormy('drizzle')).toBe(true);
+    expect(isRainyOrStormy('clear', 1.5)).toBe(true);
+    expect(isRainyOrStormy('clear', 0)).toBe(false);
+    expect(isRainyOrStormy('cloudy')).toBe(false);
+
+    expect(isNightTime('night')).toBe(true);
+    expect(isNightTime('morning')).toBe(false);
+    expect(isNightTime(null, 21.0)).toBe(true);
+    expect(isNightTime(null, 12.0)).toBe(false);
+
+    expect(shouldHideTownLife({ condition: 'rain' })).toBe(true);
+    expect(shouldHideTownLife({ timePhase: 'night' })).toBe(true);
+    expect(shouldHideTownLife({ isRaining: true })).toBe(true);
+    expect(shouldHideTownLife({ isNight: true })).toBe(true);
+    expect(shouldHideTownLife({ condition: 'clear', timePhase: 'noon' })).toBe(false);
   });
 });

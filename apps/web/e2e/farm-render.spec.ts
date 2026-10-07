@@ -45,6 +45,9 @@ for (const [width, height] of [
     expect(result).toEqual({ terrainLayers: 1, oldBackground: false, plots: true, structures: true });
     await page.waitForTimeout(600);
     await page.screenshot({ path: `../../output/farm-restored-${width}.png` });
+    if (width === 1536) {
+      await page.screenshot({ path: `../../output/farm-for-tester.png` });
+    }
     for (const [id, panel] of [
       ['shop_bac_sau', 'farm-shop'],
       ['silo_warehouse', 'farm-silo'],

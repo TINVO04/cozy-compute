@@ -4,8 +4,10 @@ import {
   VENDOR_RADIUS,
   PIGEON_FEEDING_SPOTS,
   lifeGroundClear,
+  shouldHideTownLife,
   type TownActor,
   type LifePoint,
+  type TownEnvironment,
 } from '@cozy/game-data';
 import { useUi } from '../lib/store';
 
@@ -87,7 +89,20 @@ export class TownLifeLayer {
     this.dismissed = '';
     this.send(id);
   }
-  update(actors: TownActor[], time: number, delta: number) {
+  update(actors: TownActor[], time: number, delta: number, env?: TownEnvironment) {
+    const weather = env ?? useUi.getState().weather;
+    const hidden = shouldHideTownLife(weather);
+    this.grain.setVisible(!hidden);
+    if (hidden) {
+      this.actors = [];
+      this.nearest = undefined;
+      this.button.hidden = true;
+      for (const [id, v] of this.views) {
+        v.root.destroy(true);
+        this.views.delete(id);
+      }
+      return;
+    }
     this.actors = actors;
     const pos = this.self();
     this.nearest = pos
@@ -134,6 +149,7 @@ export class TownLifeLayer {
       v.root.y += (a.y - v.root.y) * alpha;
       v.root.setDepth(v.root.y + (a.altitude > 0 ? 90 : 1));
       v.art.setY(-a.altitude);
+      v.shadow.setSize(a.kind === 'vendor' ? 46 : a.mode === 'sleeping' ? 22 : 14, 6);
       v.shadow.setAlpha(a.altitude > 0 ? 0.1 : 0.22);
       v.bubble.setText(a.speech).setVisible(!!a.speech && this.dismissed !== a.id);
       this.paint(v.art, a, time);
@@ -194,24 +210,61 @@ export class TownLifeLayer {
       box(ink, -5, -13, 4, 7 - (a.moving ? (phase % 2) * 2 : 0));
     } else if (a.kind === 'cat') {
       const fur = [0xd9995a, 0xe3d3b4, 0x747d88, 0xca9778, 0xeee4ce][a.variant]!;
-      const bob = a.moving ? phase % 2 : 0;
-      box(ink, -10, -12 - bob, 19, 9);
-      box(fur, -9, -11 - bob, 17, 7);
-      box(fur, 4, -17 - bob, 9, 10);
-      box(fur, 4, -20 - bob, 3, 4);
-      box(fur, 10, -20 - bob, 3, 4);
-      box(0xce9a91, 5, -19 - bob, 1, 3);
-      box(ink, 10, -14 - bob, 2, 2);
-      box(cream, 10, -10 - bob, 4, 2);
-      box(fur, -14, -16 + (phase % 2), 3, 9);
-      box(fur, -12, -9, 4, 3);
-      if (a.mode === 'grooming') box(cream, 8, -8 - (phase % 2) * 3, 3, 5);
-      else {
-        box(fur, -7, -5, 3, 4 - bob);
-        box(fur, 4, -5, 3, 3 + bob);
+      if (a.mode === 'sleeping') {
+        const catIdx = Number(a.id.split('-')[1] || 0);
+        const breathe = Math.sin(time / 420 + catIdx * 1.5) > 0.2 ? 1 : 0;
+        // Body loaf resting flat on ground
+        box(ink, -12, -9 - breathe, 22, 8);
+        box(fur, -11, -8 - breathe, 20, 6);
+        // Low sleeping head resting forward
+        box(fur, 4, -9 - breathe, 8, 7);
+        // Folded cozy ears
+        box(fur, 4, -12 - breathe, 3, 3);
+        box(fur, 9, -12 - breathe, 3, 3);
+        box(0xce9a91, 5, -11 - breathe, 1, 2);
+        // Closed sleeping eyes slit
+        box(ink, 8, -6 - breathe, 3, 1);
+        // Cute muzzle & pink nose
+        box(cream, 10, -5 - breathe, 3, 2);
+        box(0xce9a91, 12, -5 - breathe, 1, 1);
+        // Paws tucked under
+        box(cream, 4, -2, 4, 2);
+        box(cream, -4, -2, 4, 2);
+        // Curled sleeping tail
+        box(fur, -14, -6, 3, 4);
+        box(fur, -13, -3, 4, 2);
+        // Coat stripes
+        box(0xa47758, -7, -8 - breathe, 2, 4);
+        box(0xa47758, -2, -8 - breathe, 2, 4);
+        // Floating gentle "z" sleeping symbol drifting upwards
+        const zPhase = (time / 700 + catIdx * 0.8) % 3;
+        const zY = Math.round(-13 - zPhase * 4);
+        const zX = Math.round(7 + zPhase * 3);
+        const zAlpha = Math.max(0.15, 1 - zPhase / 3);
+        g.fillStyle(0xfff3d8, zAlpha);
+        g.fillRect(zX, zY, 3, 1);
+        g.fillRect(zX + 1, zY + 1, 1, 1);
+        g.fillRect(zX, zY + 2, 3, 1);
+      } else {
+        const bob = a.moving ? phase % 2 : 0;
+        box(ink, -10, -12 - bob, 19, 9);
+        box(fur, -9, -11 - bob, 17, 7);
+        box(fur, 4, -17 - bob, 9, 10);
+        box(fur, 4, -20 - bob, 3, 4);
+        box(fur, 10, -20 - bob, 3, 4);
+        box(0xce9a91, 5, -19 - bob, 1, 3);
+        box(ink, 10, -14 - bob, 2, 2);
+        box(cream, 10, -10 - bob, 4, 2);
+        box(fur, -14, -16 + (phase % 2), 3, 9);
+        box(fur, -12, -9, 4, 3);
+        if (a.mode === 'grooming') box(cream, 8, -8 - (phase % 2) * 3, 3, 5);
+        else {
+          box(fur, -7, -5, 3, 4 - bob);
+          box(fur, 4, -5, 3, 3 + bob);
+        }
+        box(0xa47758, -5, -11 - bob, 2, 4);
+        box(0xa47758, 0, -11 - bob, 2, 4);
       }
-      box(0xa47758, -5, -11 - bob, 2, 4);
-      box(0xa47758, 0, -11 - bob, 2, 4);
     } else {
       const peck = a.mode === 'feeding' && !a.moving && phase < 2;
       box(0x5c6e82, -6, -8, 11, 6);

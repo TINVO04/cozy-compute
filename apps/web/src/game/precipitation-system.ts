@@ -1,5 +1,14 @@
 import Phaser from 'phaser';
-import { MAP_HEIGHT, MAP_WIDTH, OCEAN_HEIGHT, OCEAN_WIDTH, RIVER_BRIDGE } from '@cozy/game-data';
+import {
+  FARM_HEIGHT,
+  FARM_POIS,
+  FARM_WIDTH,
+  MAP_HEIGHT,
+  MAP_WIDTH,
+  OCEAN_HEIGHT,
+  OCEAN_WIDTH,
+  RIVER_BRIDGE,
+} from '@cozy/game-data';
 import { play } from '../lib/sound';
 import { useUi } from '../lib/store';
 
@@ -17,6 +26,11 @@ function isPointInWater(x: number, y: number): boolean {
     return true;
   }
   return false;
+}
+
+function isPointInFarmPond(x: number, y: number): boolean {
+  const p = FARM_POIS.aquaculture_pond;
+  return x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + p.h;
 }
 
 export class PrecipitationSystem {
@@ -38,8 +52,9 @@ export class PrecipitationSystem {
     this.ensureTextures();
 
     const isOcean = this.scene.scene.key === 'ocean';
-    const mapW = isOcean ? OCEAN_WIDTH : MAP_WIDTH;
-    const mapH = isOcean ? OCEAN_HEIGHT : MAP_HEIGHT;
+    const isFarm = this.scene.scene.key === 'farm';
+    const mapW = isOcean ? OCEAN_WIDTH : isFarm ? FARM_WIDTH : MAP_WIDTH;
+    const mapH = isOcean ? OCEAN_HEIGHT : isFarm ? FARM_HEIGHT : MAP_HEIGHT;
 
     // 1. Wet ground reflection sheen overlay (darkens and gives glistening sheen when wet)
     this.wetGroundOverlay = this.scene.add
@@ -173,10 +188,13 @@ export class PrecipitationSystem {
         for (let i = 0; i < landCount; i++) {
           const sx = cam.worldView.x + Math.random() * cam.worldView.width;
           const sy = cam.worldView.y + Math.random() * cam.worldView.height;
+          const isFarmScene = this.scene.scene.key === 'farm';
           const land =
             this.scene.scene.key === 'ocean'
               ? sy >= RIVER_BRIDGE.top && sy <= RIVER_BRIDGE.bottom
-              : !isPointInWater(sx, sy);
+              : isFarmScene
+                ? !isPointInFarmPond(sx, sy)
+                : !isPointInWater(sx, sy);
           if (land) {
             this.spawnLandSplash(sx, sy);
           }
@@ -187,12 +205,12 @@ export class PrecipitationSystem {
 
   /**
    * Spawns realistic rain ripples, upward water droplet beads, and floating rain bubbles
-   * specifically on the surface of Song Dong Nai and the central plaza fountain.
+   * specifically on the surface of Song Dong Nai, the farm aquaculture pond, and the central plaza fountain.
    */
   private spawnWaterRainImpact(isHeavy: boolean, isRain: boolean) {
     const cam = this.scene.cameras.main;
 
-    // Pick random point in water: either in Song Dong Nai or Plaza Fountain
+    // Pick random point in water: either in Song Dong Nai, Farm pond, or Plaza Fountain
     let wx: number;
     let wy: number;
 
@@ -200,6 +218,10 @@ export class PrecipitationSystem {
       wx = cam.worldView.x + Math.random() * cam.worldView.width;
       wy = cam.worldView.y + Math.random() * cam.worldView.height;
       if (wy >= RIVER_BRIDGE.top && wy <= RIVER_BRIDGE.bottom) return;
+    } else if (this.scene.scene.key === 'farm') {
+      const pond = FARM_POIS.aquaculture_pond;
+      wx = pond.x + 24 + Math.random() * (pond.w - 48);
+      wy = pond.y + 24 + Math.random() * (pond.h - 48);
     } else {
       const inFountain = Math.random() < 0.2;
       if (inFountain) {

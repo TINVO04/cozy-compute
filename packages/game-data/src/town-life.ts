@@ -1,5 +1,6 @@
 import { BLOCKERS, MAP_HEIGHT, MAP_WIDTH } from './map.js';
 import { redLightCrossing } from './vehicles.js';
+import { getBienHoaTime, type TimeOfDayPhase, type WeatherCondition } from './weather.js';
 
 export interface LifePoint {
   x: number;
@@ -16,6 +17,49 @@ export interface TownActor extends LifePoint {
   speech: string;
 }
 export const VENDOR_RADIUS = 72;
+
+export interface TownEnvironment {
+  condition?: WeatherCondition | string | null;
+  precipitationMm?: number | null;
+  timePhase?: TimeOfDayPhase | string | null;
+  solarHour?: number | null;
+  now?: Date | number | null;
+  isRaining?: boolean;
+  isNight?: boolean;
+}
+
+export function isRainyOrStormy(condition?: string | null, precipitationMm?: number | null): boolean {
+  if (precipitationMm !== undefined && precipitationMm !== null && precipitationMm > 0) return true;
+  if (!condition) return false;
+  return (
+    condition === 'drizzle' ||
+    condition === 'rain' ||
+    condition === 'heavy_rain' ||
+    condition === 'thunderstorm'
+  );
+}
+
+export function isNightTime(
+  phase?: string | null,
+  solarHour?: number | null,
+  now?: Date | number | null,
+): boolean {
+  if (phase) return phase === 'night';
+  if (solarHour !== undefined && solarHour !== null) return solarHour >= 18.5 || solarHour < 5.0;
+  if (now !== undefined && now !== null) {
+    const d = typeof now === 'number' ? new Date(now) : now;
+    return getBienHoaTime(null, d).phase === 'night';
+  }
+  return false;
+}
+
+export function shouldHideTownLife(env?: TownEnvironment | null): boolean {
+  if (!env) return false;
+  if (env.isRaining || env.isNight) return true;
+  if (isRainyOrStormy(env.condition, env.precipitationMm)) return true;
+  if (isNightTime(env.timePhase, env.solarHour, env.now)) return true;
+  return false;
+}
 export const STREET_VENDORS = [
   {
     name: 'Cô Lan · Bánh mì',
@@ -105,10 +149,12 @@ interface Brain {
 /** Runs only in the authoritative room (and isolated rendering fixtures). */
 export class TownLifeSimulation {
   readonly actors: TownActor[] = [];
+  private residents: TownActor[] = [];
   private brains = new Map<string, Brain>();
   private nextVendorIn = 0;
   private visitSerial = 0;
   private lastVendorVariant = -1;
+  private hidden = false;
   constructor(private random: () => number = Math.random) {
     const add = (kind: string, variant: number, p: LifePoint) => {
       if (kind !== 'vendor' && !lifeGroundClear(p.x, p.y)) {
@@ -128,7 +174,7 @@ export class TownLifeSimulation {
         }
       }
       const id = `${kind}-${this.actors.length}`;
-      this.actors.push({
+      const actor: TownActor = {
         id,
         kind,
         variant,
@@ -138,7 +184,11 @@ export class TownLifeSimulation {
         moving: false,
         altitude: 0,
         speech: '',
-      });
+      };
+      this.actors.push(actor);
+      if (kind !== 'vendor') {
+        this.residents.push(actor);
+      }
       this.brains.set(id, {
         home: { ...p },
         target: { ...p },
@@ -166,6 +216,7 @@ export class TownLifeSimulation {
   }
 
   private arriveVendor() {
+    if (this.hidden) return;
     const visitors = this.actors.filter((a) => a.kind === 'vendor');
     if (visitors.length >= MAX_PASSING_VENDORS) {
       this.nextVendorIn = 3;
@@ -215,8 +266,35 @@ export class TownLifeSimulation {
     return { name: vendor.name, text: actor.speech };
   }
 
-  update(dtMs: number, now: number, players: readonly LifePoint[]) {
+  update(dtMs: number, now: number, players: readonly LifePoint[], env?: TownEnvironment) {
     const dt = Math.min(0.1, Math.max(0, dtMs / 1000));
+    const shouldHide = shouldHideTownLife(env);
+    if (shouldHide) {
+      if (!this.hidden) {
+        this.hidden = true;
+        this.actors.length = 0;
+      }
+      return;
+    }
+    if (this.hidden) {
+      this.hidden = false;
+      this.actors.length = 0;
+      for (const res of this.residents) {
+        const brain = this.brains.get(res.id);
+        if (brain) {
+          res.x = brain.home.x;
+          res.y = brain.home.y;
+          brain.target = { ...brain.home };
+          brain.timer = 1 + this.random() * 3;
+        }
+        res.mode = res.kind === 'pigeon' ? 'feeding' : 'roaming';
+        res.moving = false;
+        res.altitude = 0;
+        res.speech = '';
+        this.actors.push(res);
+      }
+      this.nextVendorIn = 2 + this.random() * 4;
+    }
     this.nextVendorIn -= dt;
     if (this.nextVendorIn <= 0) this.arriveVendor();
     const departed = new Set<string>();
@@ -260,12 +338,23 @@ export class TownLifeSimulation {
           b.timer = 2;
           b.cooldown = 4;
         } else if (b.timer <= 0) {
-          a.mode = this.random() < 0.3 ? 'grooming' : 'roaming';
-          b.target = this.wander(b.home, 48);
-          b.timer = 3 + this.random() * 4;
-          a.speech = '';
+          const roll = this.random();
+          if (roll < 0.25) {
+            a.mode = 'sleeping';
+            b.timer = 4 + this.random() * 5;
+            a.speech = this.random() < 0.35 ? 'Khò... khò...' : '';
+          } else if (roll < 0.5) {
+            a.mode = 'grooming';
+            b.timer = 3 + this.random() * 4;
+            a.speech = '';
+          } else {
+            a.mode = 'roaming';
+            b.target = this.wander(b.home, 48);
+            b.timer = 3 + this.random() * 4;
+            a.speech = '';
+          }
         }
-        if (a.mode !== 'grooming')
+        if (a.mode !== 'grooming' && a.mode !== 'sleeping')
           this.move(a, this.step(a, b.target, (a.mode === 'scampering' ? 62 : 17) * dt), true);
       } else {
         if (startled.has(a.variant) && a.mode !== 'flying') {

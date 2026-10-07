@@ -26,6 +26,14 @@ test('martial hall renders, accepts hotkeys, traps dialog focus and scales', asy
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Võ đường [E]', exact: true })).toBeFocused();
+
+    // Verify martial hotbar collapse/expand toggle
+    await expect(page.locator('.martial-skills')).toBeVisible();
+    await page.getByRole('button', { name: 'Thu gọn danh sách chiêu' }).click();
+    await expect(page.locator('.martial-skills')).toBeHidden();
+    await page.keyboard.press('h');
+    await expect(page.locator('.martial-skills')).toBeVisible();
+
     if (viewport.width === 1440) {
       await page.evaluate(() => (window as unknown as { martialEffect(): void }).martialEffect());
       await page.screenshot({ path: '../../output/martial-hall-verified.png' });

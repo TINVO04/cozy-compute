@@ -128,3 +128,78 @@ test('passing vendors enter at a gate and disappear from rendering after leaving
   expect(remaining.vendors).not.toContain(visit.id);
   expect(remaining.vendors.length).toBeGreaterThan(0);
 });
+
+test('birds, cats, and vendors hide during rain or night and reappear when clear', async ({ page }) => {
+  await page.goto('/e2e/fixtures/town-life.html');
+  await page.waitForFunction(() => window.lifePreview?.sim.actors.length >= 15);
+
+  // Set weather to rain
+  await page.evaluate(() => {
+    (window.lifePreview as unknown as { weather?: { condition: string } }).weather = { condition: 'rain' };
+  });
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => ({
+        simActors: window.lifePreview.sim.actors.length,
+        views: window.lifePreview.children.list.filter((o) => o.name.startsWith('town-life:')).length,
+      })),
+    )
+    .toEqual({ simActors: 0, views: 0 });
+
+  // Set weather to clear daytime
+  await page.evaluate(() => {
+    (window.lifePreview as unknown as { weather?: { condition: string; timePhase: string } }).weather = {
+      condition: 'clear',
+      timePhase: 'morning',
+    };
+  });
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => ({
+        cats: window.lifePreview.sim.actors.filter((a) => a.kind === 'cat').length,
+        pigeons: window.lifePreview.sim.actors.filter((a) => a.kind === 'pigeon').length,
+      })),
+    )
+    .toEqual({ cats: 5, pigeons: 9 });
+
+  // Set weather to night
+  await page.evaluate(() => {
+    (window.lifePreview as unknown as { weather?: { timePhase: string } }).weather = { timePhase: 'night' };
+  });
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => ({
+        simActors: window.lifePreview.sim.actors.length,
+        views: window.lifePreview.children.list.filter((o) => o.name.startsWith('town-life:')).length,
+      })),
+    )
+    .toEqual({ simActors: 0, views: 0 });
+});
+
+test('cats can occasionally lie down and sleep', async ({ page }) => {
+  await page.goto('/e2e/fixtures/town-life.html');
+  await page.waitForFunction(() => window.lifePreview?.sim.actors.length >= 15);
+
+  // Advance time until a cat enters sleeping mode
+  await page.evaluate(() => {
+    const s = window.lifePreview;
+    for (let i = 0; i < 400; i++) {
+      s.sim.update(50, i * 50, []);
+      if (s.sim.actors.some((a) => a.kind === 'cat' && a.mode === 'sleeping')) break;
+    }
+    const cat = s.sim.actors.find((a) => a.kind === 'cat' && a.mode === 'sleeping');
+    if (cat) {
+      s.cameras.main.centerOn(cat.x, cat.y);
+      s.cameras.main.setZoom(3);
+    }
+  });
+
+  const hasSleepingCat = await page.evaluate(() =>
+    window.lifePreview.sim.actors.some((a) => a.kind === 'cat' && a.mode === 'sleeping'),
+  );
+  expect(hasSleepingCat).toBe(true);
+  await page.screenshot({ path: '../../output/town-life-sleeping-cat.png' });
+});

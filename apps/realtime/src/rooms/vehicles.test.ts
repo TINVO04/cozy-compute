@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { ApiClient } from '../api.js';
 import { RoomState } from '../schema.js';
 import { BaseRoom, setDeps, getDeps } from './base.js';
+import { FarmRoom } from './farm.js';
 import { ShowroomRoom } from './showroom.js';
 import { TownRoom } from './town.js';
 
@@ -55,6 +56,7 @@ beforeEach(() => {
     },
   );
   const p = room.state.players.get(client.sessionId)!;
+  room.trafficEnforcementEnabled = true;
   p.x = 320;
   p.y = 352;
 });
@@ -129,6 +131,9 @@ it('rejects direct showroom joins without a server entry pass', async () => {
 it.each([
   ['bicycle_sky', 195],
   ['motorcycle_coral', 270],
+  ['motorcycle_ducati', 310],
+  ['car_mercedes', 285],
+  ['car_lamborghini', 340],
 ] as const)('%s mounts at its server speed and obeys traffic lights', async (id, speed) => {
   const p = room.state.players.get('driver')!;
   room.updateAppearance('player', { ...DEFAULT_APPEARANCE, vehicle: id });
@@ -146,4 +151,73 @@ it.each([
   await Promise.resolve();
   expect(p.vehicle).toBe('');
   expect(fine).toHaveBeenCalledWith('player', expect.any(String), 'red_light');
+});
+
+it('allows driving without tickets and mounts anywhere when traffic enforcement is disabled', async () => {
+  room.trafficEnforcementEnabled = false;
+  const p = room.state.players.get('driver')!;
+  p.x = 700; // off road
+  p.y = 600;
+  handlers.get('vehicle:toggle')!(client, {});
+  expect(p.vehicle).toBe('car_mint');
+  p.x = 330; // red light crossing
+  tick();
+  await Promise.resolve();
+  expect(p.vehicle).toBe('car_mint');
+  expect(fine).not.toHaveBeenCalled();
+});
+
+it('supports mounting and vehicle speed in FarmRoom', async () => {
+  const farmRoom = new FarmRoom();
+  farmRoom.setState(new RoomState());
+  const farmHandlers = new Map<string, (client: Client, payload: unknown) => void>();
+  vi.spyOn(farmRoom, 'onMessage').mockImplementation((type, handler) => {
+    farmHandlers.set(String(type), handler);
+    return farmRoom;
+  });
+  await farmRoom.onCreate({ ownerId: 'player' });
+  const farmClient = { sessionId: 'farm-driver', send: vi.fn() } as unknown as Client;
+  farmRoom.onJoin(
+    farmClient,
+    { vehicle: 'car_mint' },
+    {
+      userId: 'player',
+      role: 'player',
+      displayName: 'Farmer',
+      statusText: '',
+      fame: 0,
+      appearance: { ...DEFAULT_APPEARANCE, vehicle: 'car_mint' },
+      muted: [],
+    },
+  );
+  const fp = farmRoom.state.players.get('farm-driver')!;
+  expect(fp.vehicle).toBe('car_mint');
+  expect(
+    (
+      farmRoom as unknown as {
+        playerSpeedFor(d: object, player: { vehicle: string; x: number; y: number }): number;
+      }
+    ).playerSpeedFor({}, fp),
+  ).toBe(240);
+  farmHandlers.get('vehicle:toggle')!(farmClient, {});
+  expect(fp.vehicle).toBe('');
+});
+
+it('preserves vehicle when joining TownRoom with vehicle options from another map', () => {
+  const townClient = { sessionId: 'returning-driver', send: vi.fn() } as unknown as Client;
+  room.onJoin(
+    townClient,
+    { vehicle: 'car_mint' },
+    {
+      userId: 'player2',
+      role: 'player',
+      displayName: 'Returning Driver',
+      statusText: '',
+      fame: 0,
+      appearance: { ...DEFAULT_APPEARANCE, vehicle: 'car_mint' },
+      muted: [],
+    },
+  );
+  const rp = room.state.players.get('returning-driver')!;
+  expect(rp.vehicle).toBe('car_mint');
 });

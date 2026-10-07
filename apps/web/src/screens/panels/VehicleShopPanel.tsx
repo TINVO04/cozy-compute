@@ -29,6 +29,7 @@ function VehiclePreview({ id }: { id: string }) {
 export function VehicleShopPanel({ me, onClose }: { me: Me; onClose: () => void }) {
   const room = useUi((s) => s.room.kind);
   const displayId = useUi((s) => s.showroomVehicle);
+  const [showAll, setShowAll] = useState(!displayId);
   const shop = useQuery({ queryKey: qk.shop, queryFn: () => api<ShopItem[]>('/shop') });
   const refresh = useRefreshEconomy();
   const keys = useRef(new Map<string, string>());
@@ -87,13 +88,23 @@ export function VehicleShopPanel({ me, onClose }: { me: Me; onClose: () => void 
         Đèn đỏ: dừng trước vạch trắng. Đèn vàng: chuẩn bị dừng. Đèn xanh: được đi. Vượt đèn đỏ: 80 Coin. Lái
         ngoài lòng đường hơn 1 giây: 40 Coin. Tiền phạt tối đa bằng số dư; xe tự dừng khi bị phạt.
       </div>
+      {room === 'showroom' && displayId ? (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <Button variant={!showAll ? 'primary' : 'secondary'} size="sm" onClick={() => setShowAll(false)}>
+            Xe đang xem trên bục
+          </Button>
+          <Button variant={showAll ? 'primary' : 'secondary'} size="sm" onClick={() => setShowAll(true)}>
+            Tất cả các dòng xe ({shop.data?.filter((i) => i.type === 'vehicle').length ?? 8} mẫu)
+          </Button>
+        </div>
+      ) : null}
       {shop.isPending ? (
         <LoadingState />
       ) : shop.isError ? (
         <ErrorState error={shop.error} onRetry={() => void shop.refetch()} />
       ) : (
         (shop.data ?? [])
-          .filter((i) => i.type === 'vehicle' && (room !== 'showroom' || i.id === displayId))
+          .filter((i) => i.type === 'vehicle' && (room !== 'showroom' || showAll || i.id === displayId))
           .map((item) => {
             const config = vehicleById(item.id);
             return (
@@ -104,15 +115,59 @@ export function VehicleShopPanel({ me, onClose }: { me: Me; onClose: () => void 
               >
                 <VehiclePreview id={item.id} />
                 <div style={{ flex: 1, minWidth: 180 }}>
-                  <h3>{item.name}</h3>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      marginBottom: 4,
+                    }}
+                  >
+                    <h3 style={{ margin: 0 }}>{item.name}</h3>
+                    {config?.brand ? (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          background:
+                            config.brand === 'Ducati'
+                              ? 'rgba(220, 38, 38, 0.2)'
+                              : config.brand === 'Lamborghini'
+                                ? 'rgba(234, 179, 8, 0.2)'
+                                : config.brand === 'Mercedes-Benz'
+                                  ? 'rgba(56, 189, 248, 0.2)'
+                                  : config.brand === 'Porsche'
+                                    ? 'rgba(14, 165, 233, 0.2)'
+                                    : 'rgba(255, 255, 255, 0.1)',
+                          color:
+                            config.brand === 'Ducati'
+                              ? '#ef4444'
+                              : config.brand === 'Lamborghini'
+                                ? '#facc15'
+                                : config.brand === 'Mercedes-Benz'
+                                  ? '#38bdf8'
+                                  : config.brand === 'Porsche'
+                                    ? '#38bdf8'
+                                    : '#e2e8f0',
+                          border: '1px solid currentColor',
+                        }}
+                      >
+                        {config.brand}
+                      </span>
+                    ) : null}
+                  </div>
                   <p>
                     {config?.kind === 'bicycle'
-                      ? 'Xe đạp'
+                      ? 'Xe đạp thể thao'
                       : config?.kind === 'motorcycle'
-                        ? 'Xe máy'
-                        : 'Ô tô'}
+                        ? 'Mô tô / Xe máy'
+                        : 'Siêu xe / Ô tô'}
                     {' · '}
-                    {num(item.price)} Coin · Tốc độ ×{((config?.speed ?? 150) / 150).toFixed(1)}
+                    {num(item.price)} Coin · Tốc độ: {config?.speed} px/s (×
+                    {((config?.speed ?? 150) / 150).toFixed(1)})
                   </p>
                   <p className="muted">
                     {item.owned ? 'Đã sở hữu · dùng lại bất cứ lúc nào' : item.description}

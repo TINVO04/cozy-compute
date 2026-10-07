@@ -1,7 +1,16 @@
 import type { Client } from '@colyseus/core';
-import { FARM_BLOCKERS, FARM_HEIGHT, FARM_SPAWN, FARM_WIDTH } from '@cozy/game-data';
+import {
+  drivingSpeed,
+  FARM_BLOCKERS,
+  FARM_HEIGHT,
+  FARM_SPAWN,
+  FARM_WIDTH,
+  PLAYER_SPEED,
+  vehicleById,
+} from '@cozy/game-data';
 import type { SessionInfo } from '../api.js';
-import { BaseRoom, getDeps, type WorldSpec } from './base.js';
+import { BaseRoom, type ClientData, getDeps, type WorldSpec } from './base.js';
+import type { PlayerState } from '../schema.js';
 
 /** One room instance per farm owner (farm:${ownerId}). */
 export class FarmRoom extends BaseRoom {
@@ -58,6 +67,42 @@ export class FarmRoom extends BaseRoom {
         at: Date.now(),
       });
     });
+
+    this.onMessage('vehicle:toggle', (client) => {
+      const p = this.state.players.get(client.sessionId);
+      if (!p) return;
+      if (p.vehicle) {
+        p.vehicle = '';
+        const data = this.data.get(client.sessionId);
+        if (data) p.speed = this.playerSpeedFor(data, p);
+        return;
+      }
+      const vehicle = vehicleById(this.sessionFor(client.sessionId)?.appearance.vehicle);
+      if (!vehicle) {
+        client.send('notice', { kind: 'warning', text: 'Hãy mua và chọn xe tại Gara Bạc Hà trước.' });
+        return;
+      }
+      p.vehicle = vehicle.id;
+      const data = this.data.get(client.sessionId);
+      if (data) p.speed = this.playerSpeedFor(data, p);
+    });
+  }
+
+  override onJoin(client: Client, options: unknown, session: SessionInfo) {
+    super.onJoin(client, options, session);
+    const p = this.state.players.get(client.sessionId);
+    if (p) {
+      const optVehicle = (options as { vehicle?: string } | undefined)?.vehicle;
+      if (optVehicle && optVehicle === session.appearance.vehicle && vehicleById(optVehicle)) {
+        p.vehicle = optVehicle;
+        const data = this.data.get(client.sessionId);
+        if (data) p.speed = this.playerSpeedFor(data, p);
+      }
+    }
+  }
+
+  protected override playerSpeedFor(_d: ClientData, p: PlayerState) {
+    return p.vehicle ? drivingSpeed(p.vehicle, p.x, p.y, true) : PLAYER_SPEED;
   }
 
   override async onAuth(client: Client, options: { token?: string; ownerId?: string; farmToken?: string }) {

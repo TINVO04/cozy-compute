@@ -772,7 +772,8 @@ export class Avatar {
   }
 
   update(dtMs: number, time: number) {
-    const driving = Boolean(this.vehicle) && this.scene.scene.key === 'town';
+    const driving =
+      Boolean(this.vehicle) && (this.scene.scene.key === 'town' || this.scene.scene.key === 'farm');
     if (driving && !this.vehicleLights) this.vehicleLights = new VehicleLights(this.scene);
     this.vehicleLights?.update(driving ? this.vehicle : '', this.container.x, this.container.y, this.dir);
     const kind = vehicleById(this.vehicle)?.kind;
@@ -997,8 +998,8 @@ export class PlayerLayer {
         $p.onChange(() => {
           av.vehicle = p.vehicle || '';
           if (isSelf && !this.scripted.has(sid)) {
-            if (this.scene.scene.key === 'town')
-              this.world.speed = av.vehicle ? drivingSpeed(av.vehicle, p.x, p.y) : PLAYER_SPEED;
+            if (this.scene.scene.key === 'town' || this.scene.scene.key === 'farm')
+              this.world.speed = av.vehicle ? drivingSpeed(av.vehicle, p.x, p.y, true) : PLAYER_SPEED;
             if (p.speed !== undefined) this.setWorldSpeed(p.speed);
             this.prediction?.reconcile(p, this.world);
           } else {
@@ -1043,8 +1044,8 @@ export class PlayerLayer {
       const av = this.self;
       const moving = this.input.x !== 0 || this.input.y !== 0;
       const before = this.prediction.position;
-      if (this.scene.scene.key === 'town')
-        this.world.speed = av.vehicle ? drivingSpeed(av.vehicle, before.x, before.y) : PLAYER_SPEED;
+      if (this.scene.scene.key === 'town' || this.scene.scene.key === 'farm')
+        this.world.speed = av.vehicle ? drivingSpeed(av.vehicle, before.x, before.y, true) : PLAYER_SPEED;
       const next = this.prediction.predict(this.seq, this.input, dtMs, this.world);
       const display = smoothMovement(av.container, before, next, dtMs);
       av.container.setPosition(display.x, display.y);

@@ -14,6 +14,7 @@ const send = (action: string, extra = {}) => net.send('martial:action', { action
 export function MartialHud() {
   const [state, setState] = useState<MartialSnapshot | null>(null);
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const panel = useUi((s) => s.panel);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -39,6 +40,10 @@ export function MartialHud() {
       if (e.code === 'KeyE') {
         e.preventDefault();
         setOpen((v) => !v);
+      }
+      if (e.code === 'KeyH' && !open) {
+        e.preventDefault();
+        setCollapsed((v) => !v);
       }
       if (open && e.key === 'Tab') {
         const buttons = Array.from(
@@ -109,18 +114,29 @@ export function MartialHud() {
           <button onClick={() => send('decline')}>Từ chối</button>
         </div>
       ) : null}
-      <div className="martial-hotbar">
+      <div className={`martial-hotbar ${collapsed ? 'is-collapsed' : ''}`}>
         <div className="martial-vitals">
-          {me ? (
-            <>
-              <strong>{CAVE_WEAPONS.find((w) => w.id === me.weapon)?.name}</strong>
-              <span>
-                Thể lực {me.hp}/100 · Nội lực {Math.floor(me.energy)}/100
-              </span>
-            </>
-          ) : (
-            'Đang kết nối võ đường…'
-          )}
+          <div className="martial-vitals-info">
+            {me ? (
+              <>
+                <strong>{CAVE_WEAPONS.find((w) => w.id === me.weapon)?.name}</strong>
+                <span>
+                  Thể lực {me.hp}/100 · Nội lực {Math.floor(me.energy)}/100
+                </span>
+              </>
+            ) : (
+              'Đang kết nối võ đường…'
+            )}
+          </div>
+          <button
+            type="button"
+            className="martial-collapse-btn"
+            title={collapsed ? 'Hiện danh sách chiêu (H)' : 'Thu gọn danh sách chiêu (H)'}
+            aria-label={collapsed ? 'Hiện danh sách chiêu' : 'Thu gọn danh sách chiêu'}
+            onClick={() => setCollapsed((v) => !v)}
+          >
+            {collapsed ? 'Hiện chiêu ▴' : 'Thu gọn ▾'}
+          </button>
         </div>
         <div className="martial-skills">
           {MARTIAL_SKILLS.map((s) => {
@@ -151,7 +167,7 @@ export function MartialHud() {
             );
           })}
         </div>
-        <small>WASD / ↑↓←→ di chuyển và hướng kiếm · 1–8 ra chiêu · E võ đường</small>
+        <small>WASD hướng kiếm · 1–8 chiêu · H ẩn/hiện · E võ đường</small>
       </div>
       {open ? (
         <div className="martial-backdrop backdrop" onClick={() => setOpen(false)}>

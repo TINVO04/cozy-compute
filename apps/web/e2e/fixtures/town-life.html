@@ -44,8 +44,8 @@
           const dt = Math.min(delta, 100);
           this.player.x += ((this.keys.right.isDown ? 1 : 0) - (this.keys.left.isDown ? 1 : 0)) * dt * 0.15;
           this.player.y += ((this.keys.down.isDown ? 1 : 0) - (this.keys.up.isDown ? 1 : 0)) * dt * 0.15;
-          this.sim.update(dt, time, [this.player]);
-          this.life.update(this.sim.actors, time, dt);
+          this.sim.update(dt, time, [this.player], this.weather);
+          this.life.update(this.sim.actors, time, dt, this.weather);
         }
       }
       new Phaser.Game({

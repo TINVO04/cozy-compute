@@ -56,7 +56,6 @@ import {
   paintGoatPen,
   paintCattlePasture,
   paintPlotTile,
-  paintWaterwheelAerator,
 } from '../art/farm-props';
 import { api } from '../lib/api';
 import { APT_ART_SIDE, APT_ART_TOP } from '../art/apartment';
@@ -652,7 +651,8 @@ export class TownScene extends WorldScene {
         if (myId) {
           this.exiting = true;
           play('pop');
-          void net.goFarm(myId, 'Trang Trại Cá Nhân');
+          const currentVehicle = this.layer?.self?.vehicle;
+          void net.goFarm(myId, 'Trang Trại Cá Nhân', undefined, currentVehicle);
         }
       }
     }
@@ -1975,6 +1975,9 @@ export class FarmScene extends WorldScene {
   private livestock: FarmLivestockManager | null = null;
   private livingProps: FarmLivingPropsSystem | null = null;
   private tiledMap: Phaser.Tilemaps.Tilemap | null = null;
+  private precipSystem: PrecipitationSystem | null = null;
+  private ambientOverlay: Phaser.GameObjects.Rectangle | null = null;
+  private farmLanternGlows: Phaser.GameObjects.Image[] = [];
 
   constructor() {
     super('farm');
@@ -1995,6 +1998,12 @@ export class FarmScene extends WorldScene {
       this.interactionHint?.destroy();
       this.interactionHint = null;
       this.plotSprites.clear();
+      this.precipSystem?.cleanup();
+      this.precipSystem = null;
+      this.ambientOverlay?.destroy();
+      this.ambientOverlay = null;
+      this.farmLanternGlows.forEach((l) => l.destroy());
+      this.farmLanternGlows = [];
     });
     super.create();
   }
@@ -2043,7 +2052,8 @@ export class FarmScene extends WorldScene {
     ) {
       this.exiting = true;
       play('pop');
-      void net.goTown('farm');
+      const currentVehicle = this.layer?.self?.vehicle;
+      void net.goTown('farm', currentVehicle);
     }
   }
 
@@ -2055,16 +2065,44 @@ export class FarmScene extends WorldScene {
     // Check nearest animated animal first (within 48px)
     const animal = this.livestock?.getNearestAnimal(x, y, 48);
     if (animal) {
-      const isCow = animal.texture.key === 'sprout:cow';
+      const kind =
+        (animal.getData('kind') as string) || (animal.texture.key === 'sprout:cow' ? 'cow' : 'chicken');
+      const role = animal.getData('role') as string | undefined;
+
+      const label =
+        kind === 'cow'
+          ? 'Vuốt ve bò sữa'
+          : kind === 'pig'
+            ? 'Xoa đầu heo mọi'
+            : kind === 'goat'
+              ? 'Vuốt ve dê núi'
+              : kind === 'sheep'
+                ? 'Sờ lông cừu'
+                : role === 'rooster'
+                  ? 'Vuốt ve gà trống'
+                  : role === 'chick'
+                    ? 'Vuốt ve gà con'
+                    : 'Vuốt ve gà mái';
+      const quote =
+        kind === 'cow'
+          ? 'Bò sữa thong thả nhai cỏ mật! 🐄'
+          : kind === 'pig'
+            ? 'Heo mọi ủi bùn vui vẻ! 🐷'
+            : kind === 'goat'
+              ? 'Dê bách thảo nhai rơm ngon lành! 🐐'
+              : kind === 'sheep'
+                ? 'Cừu Phan Rang bông xù đáng yêu! 🐑'
+                : role === 'rooster'
+                  ? 'Gà trống gáy vang ó o o đón bình minh! 🐓'
+                  : role === 'chick'
+                    ? 'Gà con lon ton mổ thóc cùng mẹ! 🐥'
+                    : 'Gà mái nhảy ổ cục ta cục tác đẻ trứng! 🐔';
       return {
         x: animal.x,
         y: animal.y,
-        label: isCow ? 'Vuốt ve bò sữa' : 'Vuốt ve gà ri',
+        label,
         run: () => {
-          this.livestock?.interactWithAnimal(
-            animal,
-            isCow ? 'Bò sữa thong thả nhai cỏ! 🐄' : 'Gà ri mổ thóc vui vẻ! 🐔',
-          );
+          this.livestock?.interactWithAnimal(animal, quote);
         },
       };
     }
@@ -2080,11 +2118,11 @@ export class FarmScene extends WorldScene {
   protected buildWorld() {
     this.tiledMap = loadTiledFarmMap(this).map;
 
-    // 2. Animated Livestock Manager (Sprout Lands chickens and cows with wander AI)
+    // 2. Animated Livestock Manager (Chickens, Ducks, Cows, Pigs, Goats, Sheep)
     const livestock = new FarmLivestockManager(this);
     this.livestock = livestock;
     void livestock.loadAssets().then(() => {
-      if (this.scene.isActive() && this.livestock === livestock) {
+      if (this.livestock === livestock && !this.exiting && this.sys) {
         livestock.spawnLivestock();
       }
     });
@@ -2100,7 +2138,7 @@ export class FarmScene extends WorldScene {
     }
     const shopP = FARM_POIS.shop_bac_sau;
     const shopSprite = this.add
-      .image(shopP.x + shopP.w / 2, shopP.y + shopP.h, 'farm:shop_bac_sau')
+      .image(shopP.x + shopP.w / 2, shopP.y + shopP.h - 8, 'farm:shop_bac_sau')
       .setOrigin(0.5, 1.0)
       .setDepth(shopP.y + shopP.h);
     const openShop = () => {
@@ -2108,7 +2146,7 @@ export class FarmScene extends WorldScene {
       useUi.getState().setPanel('farm-shop');
     };
     shopSprite.setInteractive({ useHandCursor: true }).on('pointerdown', openShop);
-    this.interactAt(shopP.x + shopP.w / 2, shopP.y + shopP.h + 10, 'Tiệm Bác Sáu', openShop);
+    this.interactAt(shopP.x + shopP.w / 2, shopP.y + shopP.h + 6, 'Tiệm Bác Sáu', openShop);
 
     // Silo Warehouse
     if (!this.textures.exists('farm:silo_warehouse')) {
@@ -2126,7 +2164,7 @@ export class FarmScene extends WorldScene {
     siloSprite.setInteractive({ useHandCursor: true }).on('pointerdown', openSilo);
     this.interactAt(siloP.x + siloP.w / 2, siloP.y + siloP.h + 10, 'Nhà kho Silo', openSilo);
 
-    // All pens share terrain depth, allowing animals and players to stand inside.
+    // All pens share terrain depth (-6), allowing animals and players to stand inside without being obscured.
     for (const [id, painter] of [
       ['poultry_coop', paintPoultryCoop],
       ['pig_pen', paintPigPen],
@@ -2153,31 +2191,32 @@ export class FarmScene extends WorldScene {
         body: 'Đàn bò sữa gặm cỏ thanh bình bên máng cỏ khô.',
       });
     });
-    if (!this.textures.exists('farm:pig_pen')) {
-      this.textures.addCanvas('farm:pig_pen', paintPigPen());
-    }
+
     const pigP = FARM_POIS.pig_pen;
-    this.add
-      .image(pigP.x + pigP.w / 2, pigP.y + pigP.h / 2, 'farm:pig_pen')
-      .setOrigin(0.5, 0.5)
-      .setDepth(pigP.y + pigP.h);
-    this.interactAt(pigP.x + pigP.w / 2, pigP.y - 18, 'Chuồng heo', () => {
+    this.interactAt(pigP.x + pigP.w / 2, pigP.y + pigP.h + 10, 'Chuồng heo', () => {
       play('pop');
       useUi.getState().setPanel('farm-care');
     });
 
-    if (!this.textures.exists('farm:goat_pen')) {
-      this.textures.addCanvas('farm:goat_pen', paintGoatPen());
-    }
     const goatP = FARM_POIS.goat_pen;
-    this.add
-      .image(goatP.x + goatP.w / 2, goatP.y + goatP.h / 2, 'farm:goat_pen')
-      .setOrigin(0.5, 0.5)
-      .setDepth(goatP.y + goatP.h);
-    this.interactAt(goatP.x + goatP.w / 2, goatP.y - 18, 'Chuồng dê & cừu', () => {
+    this.interactAt(goatP.x + goatP.w / 2, goatP.y + goatP.h + 10, 'Chuồng dê & cừu', () => {
       play('pop');
       useUi.getState().setPanel('farm-care');
     });
+
+    // 5. Farm Weather & Atmospheric Lighting System
+    this.ambientOverlay = this.add
+      .rectangle(0, 0, FARM_WIDTH, FARM_HEIGHT, 0x070a24)
+      .setName('farm:ambient')
+      .setOrigin(0)
+      .setDepth(2600)
+      .setAlpha(0);
+
+    this.precipSystem = new PrecipitationSystem(this);
+    this.precipSystem.init();
+
+    // 6. Warm Lantern Blooms on Farmstead Buildings & Pen Posts
+    this.setupFarmLanterns();
 
     // Center Park Bench & Ancient Stone Well
     this.interactAt(FARM_GARDEN.well.x + 16, FARM_GARDEN.well.y + 42, 'Giếng nước cổ', () => {
@@ -2193,26 +2232,6 @@ export class FarmScene extends WorldScene {
       play('pop');
       useUi.getState().toast({ kind: 'info', title: 'Ghế nghỉ chân', body: 'Nghỉ một lát dưới tán cây.' });
     });
-    // Fishing Pond Dock & Waterwheel Aerator
-    if (!this.textures.exists('farm:waterwheel_aerator')) {
-      this.textures.addCanvas('farm:waterwheel_aerator', paintWaterwheelAerator(0));
-    }
-    const aeratorX = FARM_POIS.aquaculture_pond.x + 240;
-    const aeratorY = FARM_POIS.aquaculture_pond.y + 128;
-    const aerator = this.add
-      .image(aeratorX, aeratorY, 'farm:waterwheel_aerator')
-      .setOrigin(0.5, 0.5)
-      .setDepth(aeratorY);
-
-    if (!useUi.getState().reducedMotion) {
-      this.tweens.add({
-        targets: aerator,
-        angle: 360,
-        duration: 3500,
-        repeat: -1,
-        ease: 'Linear',
-      });
-    }
 
     this.interactAt(
       FARM_POIS.aquaculture_pond.x - 16,
@@ -2229,7 +2248,8 @@ export class FarmScene extends WorldScene {
       if (this.exiting) return;
       this.exiting = true;
       play('pop');
-      void net.goTown('farm');
+      const currentVehicle = this.layer?.self?.vehicle;
+      void net.goTown('farm', currentVehicle);
     });
 
     // 3. 36 Plots Grid Setup
@@ -2356,9 +2376,82 @@ export class FarmScene extends WorldScene {
     });
   }
 
+  private setupFarmLanterns() {
+    if (!this.textures.exists('glow:farm_lantern')) {
+      const c = document.createElement('canvas');
+      c.width = 64;
+      c.height = 64;
+      const ctx = c.getContext('2d')!;
+      const grad = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
+      grad.addColorStop(0, 'rgba(254, 240, 138, 0.9)');
+      grad.addColorStop(0.35, 'rgba(234, 179, 8, 0.45)');
+      grad.addColorStop(0.7, 'rgba(202, 138, 4, 0.15)');
+      grad.addColorStop(1, 'rgba(161, 98, 7, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 64, 64);
+      this.textures.addCanvas('glow:farm_lantern', c);
+    }
+
+    const shopP = FARM_POIS.shop_bac_sau;
+    const siloP = FARM_POIS.silo_warehouse;
+    const poultryP = FARM_POIS.poultry_coop;
+    const pigP = FARM_POIS.pig_pen;
+    const cattleP = FARM_POIS.cattle_pasture;
+    const goatP = FARM_POIS.goat_pen;
+    const well = FARM_GARDEN.well;
+
+    const lanternPositions = [
+      { x: shopP.x + shopP.w / 2, y: shopP.y + shopP.h - 10, depth: shopP.y + shopP.h + 2 },
+      { x: siloP.x + siloP.w / 2, y: siloP.y + siloP.h - 10, depth: siloP.y + siloP.h + 2 },
+      { x: poultryP.x + 20, y: poultryP.y + 12, depth: poultryP.y + 16 },
+      { x: pigP.x + 20, y: pigP.y + 12, depth: pigP.y + 16 },
+      { x: cattleP.x + 20, y: cattleP.y + 12, depth: cattleP.y + 16 },
+      { x: goatP.x + 20, y: goatP.y + 12, depth: goatP.y + 16 },
+      { x: well.x + 16, y: well.y + 16, depth: well.y + 40 },
+    ];
+
+    this.farmLanternGlows = [];
+    const reducedMotion = useUi.getState().reducedMotion;
+    for (const pos of lanternPositions) {
+      const glow = this.add
+        .image(pos.x, pos.y, 'glow:farm_lantern')
+        .setOrigin(0.5, 0.5)
+        .setDepth(pos.depth)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setAlpha(0);
+      this.farmLanternGlows.push(glow);
+
+      if (!reducedMotion) {
+        this.tweens.add({
+          targets: glow,
+          scale: { from: 0.94, to: 1.06 },
+          duration: 1600 + Math.random() * 800,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+          delay: Math.random() * 500,
+        });
+      }
+    }
+  }
+
   override update(time: number, delta: number) {
     super.update(time, delta);
     this.livingProps?.update(time, delta);
+    this.precipSystem?.update(time, delta);
+
+    if (this.ambientOverlay) {
+      const weather = useUi.getState().weather;
+      const target = calculateBienHoaLighting(weather.solarHour, weather);
+      this.ambientOverlay.fillColor = target.color;
+      this.ambientOverlay.alpha = Phaser.Math.Linear(this.ambientOverlay.alpha, target.alpha, 0.05);
+
+      const lampAlpha = 0.85 * target.lampBrightness;
+      for (const lamp of this.farmLanternGlows) {
+        lamp.alpha = lampAlpha;
+      }
+    }
+
     const self = this.layer?.self?.container;
     const action =
       self && !typing() && !useUi.getState().panel ? this.nearestInteraction(self.x, self.y) : undefined;

@@ -6,42 +6,92 @@ export const VEHICLES: Record<
     id: string;
     kind: 'car' | 'motorcycle' | 'bicycle';
     name: string;
+    brand: string;
     price: number;
     speed: number;
     color: string;
+    description?: string;
   }
 > = {
   bicycle_sky: {
     id: 'bicycle_sky',
     kind: 'bicycle',
-    name: 'Xe đạp Mây Xanh',
+    name: 'Trek Marlin 7 Gen 3',
+    brand: 'Trek',
     price: 200,
     speed: 195,
-    color: '#79b8d2',
+    color: '#0284c7',
+    description: 'Xe đạp địa hình thể thao Trek chính hãng, khung nhôm Alpha Silver nhẹ bền.',
   },
   motorcycle_coral: {
     id: 'motorcycle_coral',
     kind: 'motorcycle',
-    name: 'Xe máy San Hô',
+    name: 'Vespa Primavera 150',
+    brand: 'Vespa',
     price: 700,
     speed: 270,
-    color: '#de816b',
+    color: '#f43f5e',
+    description: 'Xe tay ga thời trang Ý Vespa Primavera, thanh lịch và quyến rũ trên phố.',
+  },
+  motorcycle_ducati: {
+    id: 'motorcycle_ducati',
+    kind: 'motorcycle',
+    name: 'Ducati Panigale V4 S',
+    brand: 'Ducati',
+    price: 2400,
+    speed: 310,
+    color: '#dc2626',
+    description: 'Siêu mô tô phân khối lớn Ducati động cơ Desmosedici Stradale, sắc đỏ Rosso Corsa.',
   },
   car_mint: {
     id: 'car_mint',
     kind: 'car',
-    name: 'Ô tô Mini Bạc Hà',
-    price: 1200,
+    name: 'Mercedes-Benz G63 AMG',
+    brand: 'Mercedes-Benz',
+    price: 1800,
     speed: 240,
-    color: '#69bfa8',
+    color: '#1b4332',
+    description: 'Vua địa hình SUV Mercedes-AMG G63 hầm hố, động cơ V8 Biturbo mạnh mẽ uy lực.',
+  },
+  car_mercedes: {
+    id: 'car_mercedes',
+    kind: 'car',
+    name: 'Mercedes-AMG GT Coupe',
+    brand: 'Mercedes-Benz',
+    price: 2800,
+    speed: 285,
+    color: '#334155',
+    description: 'Siêu xe thể thao Mercedes-AMG GT Coupe thiết kế khí động học sắc sảo và sang trọng.',
   },
   car_sunset: {
     id: 'car_sunset',
     kind: 'car',
-    name: 'Ô tô Hoàng Hôn',
+    name: 'Lamborghini Huracán Tecnica',
+    brand: 'Lamborghini',
     price: 3200,
     speed: 300,
-    color: '#df8861',
+    color: '#ea580c',
+    description: 'Siêu bò Lamborghini Huracán động cơ V10 hút khí tự nhiên, màu cam Arancio rực cháy.',
+  },
+  car_lamborghini: {
+    id: 'car_lamborghini',
+    kind: 'car',
+    name: 'Lamborghini Aventador SVJ',
+    brand: 'Lamborghini',
+    price: 4500,
+    speed: 340,
+    color: '#eab308',
+    description: 'Siêu phẩm đỉnh cao Lamborghini Aventador SVJ V12 khí động học ALA, màu vàng Giallo rực rỡ.',
+  },
+  car_porsche: {
+    id: 'car_porsche',
+    kind: 'car',
+    name: 'Porsche 911 GT3 RS',
+    brand: 'Porsche',
+    price: 3600,
+    speed: 320,
+    color: '#0284c7',
+    description: 'Chiến mã đường đua Porsche 911 GT3 RS cánh gió swan-neck khổng lồ, hiệu năng thuần chất.',
   },
 };
 export const vehicleById = (id: string | null | undefined) =>
@@ -56,8 +106,14 @@ export const TOWN_ROADS: Rect[] = [
 ];
 export const DEALER_DRIVEWAY: Rect = { x: 584, y: 788, w: 80, h: 58 };
 export const SHOWROOM = { width: 640, height: 480, spawn: { x: 320, y: 416 } };
-export const VEHICLE_DISPLAYS = Object.values(VEHICLES).map((vehicle, index) => ({
-  id: vehicle.id,
+export const SHOWROOM_FEATURED_VEHICLES = [
+  'motorcycle_ducati',
+  'car_mercedes',
+  'car_lamborghini',
+  'car_mint',
+] as const;
+export const VEHICLE_DISPLAYS = SHOWROOM_FEATURED_VEHICLES.map((id, index) => ({
+  id,
   x: index % 2 === 0 ? 168 : 472,
   y: index < 2 ? 156 : 308,
 }));
@@ -77,8 +133,8 @@ export const onDriveway = (x: number, y: number) =>
   x <= DEALER_DRIVEWAY.x + DEALER_DRIVEWAY.w &&
   y >= DEALER_DRIVEWAY.y &&
   y <= DEALER_DRIVEWAY.y + DEALER_DRIVEWAY.h;
-export const drivingSpeed = (id: string, x: number, y: number) =>
-  onRoad(x, y) ? (vehicleById(id)?.speed ?? 150) : 90;
+export const drivingSpeed = (id: string, x: number, y: number, allowOffRoad = false) =>
+  allowOffRoad || onRoad(x, y) ? (vehicleById(id)?.speed ?? 150) : 90;
 
 export const INTERSECTIONS = [
   { id: 'west', x: 352, y: 352, halfW: 20, halfH: 20 },

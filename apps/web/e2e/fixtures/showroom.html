@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gara Bạc Hà — Phòng Trưng Bày Siêu Xe</title>
+    <style>
+      body {
+        margin: 0;
+        background: #12181a;
+      }
+      canvas {
+        image-rendering: pixelated;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import Phaser from 'phaser';
+      import { ShowroomScene } from '/src/game/showroom-scene.ts';
+      import { useUi } from '/src/lib/store.ts';
+      import { net } from '/src/game/net.ts';
+
+      useUi.setState({ reducedMotion: false });
+      window.exitRequests = 0;
+      net.goTown = async () => {
+        window.exitRequests++;
+      };
+      window.showroomUi = useUi;
+      window.showroomPreview = new Phaser.Game({
+        type: Phaser.CANVAS,
+        width: 1280,
+        height: 720,
+        pixelArt: true,
+        roundPixels: true,
+        audio: { noAudio: true },
+        banner: false,
+        scene: [ShowroomScene],
+      });
+    </script>
+  </body>
+</html>

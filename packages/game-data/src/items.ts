@@ -226,7 +226,9 @@ export const ITEM_SEEDS: ItemDefinitionSeed[] = [
     type: 'vehicle' as const,
     slot: 'vehicle' as const,
     name: v.name,
-    description: `Chạy nhanh gấp ${(v.speed / 150).toFixed(1)} lần đi bộ trên đường. V để lên / xuống xe.`,
+    description: v.description
+      ? `${v.description} Tốc độ ${v.speed} px/s. V để lên/xuống xe.`
+      : `Chạy nhanh gấp ${(v.speed / 150).toFixed(1)} lần đi bộ trên đường. V để lên / xuống xe.`,
     rarity: 'common' as const,
     coinPrice: v.price,
     sprite: v.id,

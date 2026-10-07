@@ -24,14 +24,14 @@ class Net {
     | { name: 'cave'; ownerId: string }
     | { name: 'martial' }
     | { name: 'showroom' }
-    | { name: 'town'; from?: string }
+    | { name: 'town'; from?: string; vehicle?: string }
     | { name: 'apartment'; ownerId: string }
     | { name: 'company' }
     | { name: 'university' }
     | { name: 'comga' }
     | { name: 'bida' }
     | { name: 'cybernet' }
-    | { name: 'farm'; ownerId: string; farmToken?: string }
+    | { name: 'farm'; ownerId: string; farmToken?: string; vehicle?: string }
     | { name: 'ocean' } = {
     name: 'town',
   };
@@ -75,7 +75,7 @@ class Net {
         target.name === 'cave'
           ? await this.client.joinOrCreate('cave', { token, ownerId: target.ownerId })
           : target.name === 'town'
-            ? await this.client.joinOrCreate('town', { token, from: target.from })
+            ? await this.client.joinOrCreate('town', { token, from: target.from, vehicle: target.vehicle })
             : target.name === 'company'
               ? await this.client.joinOrCreate('company', { token })
               : target.name === 'university'
@@ -94,6 +94,7 @@ class Net {
                             token,
                             ownerId: target.ownerId,
                             farmToken: target.farmToken,
+                            vehicle: target.vehicle,
                           })
                         : await this.client.joinOrCreate('apartment', { token, ownerId: target.ownerId });
       if (gen !== this.generation) {
@@ -205,14 +206,14 @@ class Net {
     void this.connect(this.target);
   }
 
-  goTown(from?: string) {
+  goTown(from?: string, vehicle?: string) {
     useUi.getState().setPanel(null);
     useUi.getState().setZone(null);
     useUi.getState().setShowroomVehicle(null);
     const current = useUi.getState().room.kind;
     const origin = from ?? (current !== 'town' ? current : undefined);
     useUi.getState().setRoom({ kind: 'town', label: 'Thị trấn' });
-    return this.connect({ name: 'town', from: origin });
+    return this.connect({ name: 'town', from: origin, vehicle });
   }
 
   goCave() {
@@ -258,10 +259,10 @@ class Net {
     return this.connect({ name: 'cybernet' });
   }
 
-  goFarm(ownerId: string, label = 'Trang Trại Cá Nhân', farmToken?: string) {
+  goFarm(ownerId: string, label = 'Trang Trại Cá Nhân', farmToken?: string, vehicle?: string) {
     useUi.getState().setFarmOwnerId(ownerId);
     useUi.getState().setRoom({ kind: 'farm', ownerId, label });
-    return this.connect({ name: 'farm', ownerId, farmToken });
+    return this.connect({ name: 'farm', ownerId, farmToken, vehicle });
   }
 
   goOcean(label = 'Hải Trình Biển Sâu') {

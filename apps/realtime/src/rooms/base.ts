@@ -39,7 +39,7 @@ export abstract class BaseRoom extends Room<RoomState> {
   protected abstract world(): WorldSpec;
   protected abstract presenceKey(): string;
   protected positionsPublished = new Map<string, number>();
-  private data = new Map<string, ClientData>();
+  protected data = new Map<string, ClientData>();
   /** userId -> sessionId, so reconnecting from a new tab replaces the old one. */
   private byUser = new Map<string, string>();
 

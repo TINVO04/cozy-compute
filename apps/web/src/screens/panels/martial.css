@@ -79,50 +79,130 @@
 .martial-hotbar {
   pointer-events: auto;
   position: absolute;
-  bottom: 104px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(520px, calc(100% - 24px));
-  padding: 12px;
-  background: #292637f2;
-  border: 1px solid #917451;
+  bottom: 64px;
+  right: 16px;
+  left: auto;
+  transform: none;
+  width: min(340px, calc(100vw - 32px));
+  padding: 8px 10px;
+  background: #242030eb;
+  backdrop-filter: blur(4px);
+  border: 1px solid #7d6345;
   border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+.martial-hotbar.is-collapsed {
+  width: auto;
+  max-width: min(300px, calc(100vw - 32px));
+  padding: 6px 10px;
+}
+.martial-hotbar.is-collapsed .martial-skills,
+.martial-hotbar.is-collapsed > small {
+  display: none;
 }
 .martial-vitals {
   display: flex;
   justify-content: space-between;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
-  font-size: 12px;
+  margin-bottom: 6px;
+  font-size: 11px;
 }
-.martial-vitals span {
-  color: #b4ecdc;
+.martial-hotbar.is-collapsed .martial-vitals {
+  margin-bottom: 0;
+}
+.martial-vitals-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.martial-vitals-info strong {
+  font-size: 11px;
+  color: #ffd88a;
+}
+.martial-vitals-info span {
+  color: #8ce4cb;
+  font-size: 10px;
+}
+.martial-collapse-btn {
+  background: #392c3a !important;
+  border: 1px solid #8e7354 !important;
+  color: #ebdcb9 !important;
+  padding: 3px 8px !important;
+  font-size: 10px !important;
+  border-radius: 4px !important;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.martial-collapse-btn:hover {
+  background: #523a49 !important;
 }
 .martial-skills {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: 4px;
 }
 .martial-skills button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 4px;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 2px;
+  min-height: 42px;
+  border-radius: 4px;
+  background: #362939;
+  border: 1px solid #7c6448;
+}
+.martial-skills button strong {
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 .martial-skills kbd {
+  font-size: 9px;
   color: #f9d477;
+  background: #201a24;
+  padding: 0 4px;
+  border-radius: 3px;
+  line-height: 1.2;
 }
-.martial-skills span,
-.martial-hotbar > small {
-  font-size: 10px;
+.martial-skills span {
+  font-size: 9px;
   color: #dfd1be;
 }
 .martial-hotbar > small {
   display: block;
-  margin-top: 8px;
-  text-align: center;
+  margin-top: 6px;
+  font-size: 9px;
+  color: #ab9b8a;
+  text-align: right;
+}
+@media (max-width: 480px) {
+  .martial-hotbar {
+    right: 8px;
+    left: 8px;
+    bottom: 58px;
+    width: auto;
+    padding: 6px 8px;
+  }
+  .martial-skills {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 3px;
+  }
+  .martial-skills button {
+    padding: 3px 1px;
+    min-height: 38px;
+  }
+  .martial-skills button strong {
+    font-size: 9px;
+  }
+  .martial-skills button span {
+    display: none;
+  }
 }
 .martial-backdrop {
   pointer-events: auto;

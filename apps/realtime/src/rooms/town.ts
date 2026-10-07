@@ -1,6 +1,6 @@
 import { MARTIAL_DOOR, caveNear } from '@cozy/game-data';
 import { randomUUID } from 'node:crypto';
-import { TownLifeSimulation } from '@cozy/game-data';
+import { TownLifeSimulation, type TownEnvironment } from '@cozy/game-data';
 import { TownActorState } from '../schema.js';
 import {
   drivingSpeed,
@@ -31,6 +31,11 @@ const DUCK_RADIUS = 22;
 
 export class TownRoom extends BaseRoom {
   private townLife = new TownLifeSimulation();
+  private weather: TownEnvironment | null = null;
+
+  setWeather(w: TownEnvironment) {
+    this.weather = w;
+  }
 
   private syncTownLife() {
     const active = new Set(this.townLife.actors.map((actor) => actor.id));
@@ -47,6 +52,7 @@ export class TownRoom extends BaseRoom {
     }
   }
   override maxClients = 150;
+  trafficEnforcementEnabled = false;
   private trafficStepMs = 50;
   private traffic = new Map<string, { x: number; y: number; offRoadMs: number; lastFine: number }>();
   private pendingFines = new Map<
@@ -101,6 +107,14 @@ export class TownRoom extends BaseRoom {
       const reply = this.townLife.talk((message as { id?: unknown }).id, player);
       if (!reply) return;
       this.syncTownLife();
+      void (async () => {
+        try {
+          const raw = await getDeps().redis.get('world:weather');
+          if (raw) this.weather = JSON.parse(raw);
+        } catch {
+          // Redis optional in tests or offline
+        }
+      })();
       client.send('town:dialogue', reply);
     });
     this.onMessage('vehicle:toggle', (client) => {
@@ -113,9 +127,9 @@ export class TownRoom extends BaseRoom {
       const vehicle = vehicleById(this.sessionFor(client.sessionId)?.appearance.vehicle);
       const text = !vehicle
         ? 'Hãy mua và chọn xe tại Gara Bạc Hà trước.'
-        : this.pendingFines.has(p.userId)
+        : this.trafficEnforcementEnabled && this.pendingFines.has(p.userId)
           ? 'Đang xử lý biên bản giao thông, vui lòng chờ.'
-          : !onRoad(p.x, p.y) && !onDriveway(p.x, p.y)
+          : this.trafficEnforcementEnabled && !onRoad(p.x, p.y) && !onDriveway(p.x, p.y)
             ? 'Đến lòng đường hoặc sân gara để lên xe.'
             : '';
       if (text) {
@@ -215,7 +229,21 @@ export class TownRoom extends BaseRoom {
   override onJoin(client: Client, options: unknown, session: SessionInfo) {
     super.onJoin(client, options, session);
     const p = this.state.players.get(client.sessionId);
-    if (p) p.inEvent = this.participants.has(session.userId);
+    if (p) {
+      p.inEvent = this.participants.has(session.userId);
+      const optVehicle = (options as { vehicle?: string } | undefined)?.vehicle;
+      if (optVehicle && optVehicle === session.appearance.vehicle && vehicleById(optVehicle)) {
+        p.vehicle = optVehicle;
+        this.traffic.set(client.sessionId, {
+          x: p.x,
+          y: p.y,
+          offRoadMs: 0,
+          lastFine: 0,
+        });
+        const data = this.data.get(client.sessionId);
+        if (data) p.speed = this.playerSpeedFor(data, p);
+      }
+    }
   }
 
   /** Mirrors the event the API is running (stored in Redis) into room state. */
@@ -255,7 +283,7 @@ export class TownRoom extends BaseRoom {
   }
 
   protected override playerSpeedFor(_d: ClientData, p: PlayerState) {
-    return p.vehicle ? drivingSpeed(p.vehicle, p.x, p.y) : PLAYER_SPEED;
+    return p.vehicle ? drivingSpeed(p.vehicle, p.x, p.y, !this.trafficEnforcementEnabled) : PLAYER_SPEED;
   }
 
   protected override tick(dtMs: number) {
@@ -266,10 +294,15 @@ export class TownRoom extends BaseRoom {
       dtMs,
       this.state.serverTime,
       [...this.state.players.values()].filter((p) => p.connected),
+      this.weather ?? { now: this.state.serverTime },
     );
     this.syncTownLife();
-    for (const [userId, fine] of this.pendingFines) {
-      if (!fine.busy && Date.now() >= fine.retryAt) void this.settleFine(userId, fine);
+    if (this.trafficEnforcementEnabled) {
+      for (const [userId, fine] of this.pendingFines) {
+        if (!fine.busy && Date.now() >= fine.retryAt) void this.settleFine(userId, fine);
+      }
+    } else if (this.pendingFines.size > 0) {
+      this.pendingFines.clear();
     }
     for (const sid of this.traffic.keys()) if (!this.state.players.has(sid)) this.traffic.delete(sid);
   }
@@ -278,6 +311,10 @@ export class TownRoom extends BaseRoom {
     userId: string,
     fine: { ticketId: string; violation: TrafficViolation; retryAt: number; busy: boolean },
   ) {
+    if (!this.trafficEnforcementEnabled) {
+      this.pendingFines.delete(userId);
+      return;
+    }
     fine.busy = true;
     try {
       const result = await getDeps().api.trafficFine(userId, fine.ticketId, fine.violation);
@@ -296,7 +333,7 @@ export class TownRoom extends BaseRoom {
   protected override afterMove(p: PlayerState, _sessionId: string) {
     const now = Date.now();
     const prev = this.traffic.get(_sessionId);
-    if (p.vehicle && prev) {
+    if (this.trafficEnforcementEnabled && p.vehicle && prev) {
       const moving = p.x !== prev.x || p.y !== prev.y;
       const offRoad = !onRoad(p.x, p.y) && !onDriveway(p.x, p.y);
       prev.offRoadMs = moving && offRoad ? prev.offRoadMs + this.trafficStepMs : 0;

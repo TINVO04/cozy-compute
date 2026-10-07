@@ -81,9 +81,25 @@ gameServer.define('cybernet', CyberNetRoom);
 gameServer.define('farm', FarmRoom).filterBy(['ownerId']);
 gameServer.define('ocean', OceanRoom);
 
-await sub.subscribe('player:appearance', 'player:kick', 'apartment:updated', 'events', 'farm:updated');
+await sub.subscribe(
+  'player:appearance',
+  'player:kick',
+  'apartment:updated',
+  'events',
+  'farm:updated',
+  'weather:updated',
+);
 sub.on('message', async (channel, raw) => {
   try {
+    if (channel === 'weather:updated') {
+      const weather = JSON.parse(raw);
+      const rooms = await matchMaker.query({});
+      for (const cached of rooms) {
+        const room = matchMaker.getLocalRoomById(cached.roomId) as unknown as BaseRoom | undefined;
+        if (room instanceof TownRoom) room.setWeather(weather);
+      }
+      return;
+    }
     const msg = JSON.parse(raw) as {
       userId?: string;
       ownerId?: string;

@@ -34,6 +34,13 @@ describe('vehicles and traffic', () => {
     expect(drivingSpeed('car_mint', 500, 350)).toBe(240);
     expect(drivingSpeed('car_sunset', 500, 350)).toBe(300);
     expect(drivingSpeed('car_sunset', 500, 450)).toBe(90);
+    expect(drivingSpeed('car_sunset', 500, 450, true)).toBe(300);
+    expect(vehicleById('motorcycle_ducati')?.brand).toBe('Ducati');
+    expect(vehicleById('car_mercedes')?.brand).toBe('Mercedes-Benz');
+    expect(vehicleById('car_lamborghini')?.brand).toBe('Lamborghini');
+    expect(vehicleById('car_porsche')?.brand).toBe('Porsche');
+    expect(drivingSpeed('motorcycle_ducati', 500, 350)).toBe(310);
+    expect(drivingSpeed('car_lamborghini', 500, 350)).toBe(340);
   });
   it('fast cars cannot tunnel through thin walls during delayed frames', () => {
     const next = stepMovement({ x: 100, y: 100 }, { x: 1, y: 0 }, 0.25, {
