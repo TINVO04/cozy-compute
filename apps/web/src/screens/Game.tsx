@@ -108,6 +108,40 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
 
   return (
     <div className="shell">
+      {!me.emailVerified ? (
+        <div
+          style={{
+            background: 'linear-gradient(90deg, #d97706, #b45309)',
+            color: '#fff',
+            padding: '7px 16px',
+            fontSize: 13,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            position: 'relative',
+            zIndex: 100,
+            fontWeight: 500,
+          }}
+        >
+          <span>⚠️ Tài khoản của bạn chưa được xác thực email (hoặc cần xác thực lại).</span>
+          <button
+            type="button"
+            style={{
+              background: '#fff',
+              color: '#b45309',
+              border: 'none',
+              fontWeight: 600,
+              padding: '3px 10px',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontSize: 12,
+            }}
+            onClick={() => setPanel('wardrobe')}
+          >
+            Xác thực ngay trong Hồ sơ
+          </button>
+        </div>
+      ) : null}
       <TopBar me={me} onSignedOut={onSignedOut} onOpenWeatherModal={() => setWeatherModalOpen(true)} />
       <div className="stage">
         <main className="world" aria-label={room.label}>
@@ -352,7 +386,15 @@ function TopBar({
         {menu ? (
           <div className="menu" role="menu">
             <div style={{ padding: '8px 10px 10px' }}>
-              <strong>{me.displayName}</strong>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                <strong>{me.displayName}</strong>
+                <span
+                  className={me.emailVerified ? 'pill pill-primary' : 'pill pill-warning'}
+                  style={{ fontSize: 10, padding: '1px 6px' }}
+                >
+                  {me.emailVerified ? '✓ Đã xác thực' : '⚠️ Chưa xác thực'}
+                </span>
+              </div>
               <div className="muted" style={{ fontSize: 12 }}>
                 {me.title}
               </div>

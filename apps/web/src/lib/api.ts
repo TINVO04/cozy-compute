@@ -86,6 +86,7 @@ export interface Me {
   id: string;
   email: string;
   role: 'player' | 'admin';
+  emailVerified: boolean;
   displayName: string;
   statusText: string;
   title: string;

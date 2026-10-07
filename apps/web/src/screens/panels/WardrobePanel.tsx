@@ -9,13 +9,13 @@ import {
 } from '@cozy/game-data';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Shirt } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { avatarPortrait } from '../../art/avatar';
 import { itemIcon } from '../../art/items';
 import { api, type Me, type ShopItem } from '../../lib/api';
 import { qk, useRefreshEconomy } from '../../lib/queries';
 import { useUi } from '../../lib/store';
-import { Button, EmptyState, ErrorState, LoadingState, Panel, toastError } from '../../ui/primitives';
+import { Button, EmptyState, ErrorState, LoadingState, Modal, Panel, toastError } from '../../ui/primitives';
 
 const HAIR_STYLE_NAMES: Record<HairStyle, string> = {
   short: 'Tóc ngắn',
@@ -44,6 +44,53 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
     baseTop: me.appearance.baseTop,
   });
   const [status, setStatus] = useState(me.statusText);
+  const [verifyModal, setVerifyModal] = useState(false);
+  const [verifyOtp, setVerifyOtp] = useState('');
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const toast = useUi((s) => s.toast);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => setCooldown((c) => c - 1), 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  async function handleSendInGameOtp() {
+    setSendingOtp(true);
+    try {
+      const res = await api<{ ok: boolean; message: string }>('/player/send-verification-otp', {
+        method: 'POST',
+      });
+      setCooldown(60);
+      toast({ kind: 'info', title: res.message || 'Mã OTP đã được gửi về email của bạn.' });
+    } catch (err) {
+      toastError(err, 'Không thể gửi mã OTP');
+    } finally {
+      setSendingOtp(false);
+    }
+  }
+
+  async function handleConfirmInGameOtp() {
+    if (!verifyOtp.trim()) return;
+    setVerifying(true);
+    try {
+      const res = await api<{ ok: boolean; user: Me }>('/player/verify-email', {
+        method: 'POST',
+        body: { otp: verifyOtp.trim() },
+      });
+      qc.setQueryData(qk.me, res.user);
+      toast({ kind: 'success', title: 'Xác thực email thành công!' });
+      setVerifyModal(false);
+      setVerifyOtp('');
+    } catch (err) {
+      toastError(err, 'Xác thực OTP thất bại');
+    } finally {
+      setVerifying(false);
+    }
+  }
+
   const preview: Appearance = { ...me.appearance, ...draft };
   const dirty =
     draft.skin !== me.appearance.skin ||
@@ -99,6 +146,46 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
               <span className="field-hint">
                 Hiển thị trên đầu nhân vật. Còn lại {60 - status.length} ký tự.
               </span>
+            </div>
+            <div
+              style={{
+                marginTop: 14,
+                paddingTop: 12,
+                borderTop: '1px solid var(--border-subtle, rgba(255,255,255,0.08))',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 4,
+                }}
+              >
+                <span style={{ fontSize: 12, color: 'var(--text-muted, #888)' }}>Email tài khoản:</span>
+                <span
+                  className={me.emailVerified ? 'pill pill-primary' : 'pill pill-warning'}
+                  style={{ fontSize: 11, padding: '2px 8px' }}
+                >
+                  {me.emailVerified ? '✓ Đã xác thực' : '⚠️ Chưa xác thực'}
+                </span>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 500, wordBreak: 'break-all' }}>{me.email}</div>
+              {!me.emailVerified ? (
+                <div style={{ marginTop: 8 }}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    block
+                    onClick={() => {
+                      setVerifyModal(true);
+                      void handleSendInGameOtp();
+                    }}
+                  >
+                    Xác thực lại email ngay
+                  </Button>
+                </div>
+              ) : null}
             </div>
           </div>
           <Button
@@ -255,6 +342,54 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
           </section>
         </div>
       </div>
+      {verifyModal ? (
+        <Modal
+          title="Xác thực Email tài khoản"
+          description={`Mã OTP xác thực sẽ được gửi đến hộp thư: ${me.email}`}
+          onClose={() => setVerifyModal(false)}
+          footer={
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', width: '100%' }}>
+              <Button variant="ghost" onClick={() => setVerifyModal(false)}>
+                Hủy
+              </Button>
+              <Button
+                variant="primary"
+                loading={verifying}
+                disabled={!verifyOtp.trim()}
+                onClick={() => void handleConfirmInGameOtp()}
+              >
+                Xác nhận OTP
+              </Button>
+            </div>
+          }
+        >
+          <div className="stack" style={{ gap: 12 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                className="input"
+                type="text"
+                maxLength={6}
+                autoFocus
+                placeholder="Nhập 6 số OTP"
+                value={verifyOtp}
+                onChange={(e) => setVerifyOtp(e.target.value)}
+                style={{ fontSize: 18, letterSpacing: 4, fontWeight: 700, textAlign: 'center', flex: 1 }}
+              />
+              <Button
+                variant="secondary"
+                disabled={sendingOtp || cooldown > 0}
+                loading={sendingOtp}
+                onClick={() => void handleSendInGameOtp()}
+              >
+                {cooldown > 0 ? `${cooldown}s` : 'Gửi lại OTP'}
+              </Button>
+            </div>
+            <p className="muted" style={{ fontSize: 12 }}>
+              Vui lòng kiểm tra hòm thư đến và thư mục Spam. Mã OTP có hiệu lực trong 5 phút.
+            </p>
+          </div>
+        </Modal>
+      ) : null}
     </Panel>
   );
 }

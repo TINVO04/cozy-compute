@@ -27,8 +27,8 @@ const schema = z.object({
   EMAIL_FROM: z.string().default(''),
   REQUIRE_EMAIL_VERIFICATION: z
     .string()
-    .default('false')
-    .transform((v) => v === 'true'),
+    .default('true')
+    .transform((v) => v !== 'false'),
 });
 
 export type Config = z.infer<typeof schema> & { corsOrigins: string[]; adminEmails: Set<string> };

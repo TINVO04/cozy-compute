@@ -1,5 +1,6 @@
 import { DEFAULT_APPEARANCE } from '@cozy/game-data';
 import { useQueryClient } from '@tanstack/react-query';
+import { ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { drawAvatar } from '../art/avatar';
 import { duckGrid } from '../art/items';
@@ -142,8 +143,10 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
           );
         } else if (err.code === 'email_not_verified') {
           setMode('reverify');
+          setOtpSent(true);
+          setOtpCountdown(60);
           setInfoMessage(
-            'Tài khoản chưa được xác thực email (hoặc quản trị viên yêu cầu xác thực lại). Bấm "Nhận mã OTP" bên dưới để nhận mã xác thực qua email.',
+            'Mã xác thực OTP gồm 6 số đã được gửi tự động đến email của bạn! Vui lòng kiểm tra hộp thư và nhập mã để vào game.',
           );
         } else {
           setError(err.message);
@@ -181,24 +184,140 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
         </div>
       </section>
       <section className="auth-form-wrap">
-        <form className="auth-form" onSubmit={submit} noValidate>
-          <div className="stack" style={{ gap: 6 }}>
-            <h2>
-              {mode === 'register'
-                ? 'Gia nhập thị trấn'
-                : mode === 'reverify'
-                  ? 'Xác thực lại email'
-                  : 'Chào mừng trở lại'}
-            </h2>
-            <p className="muted">
-              {mode === 'register'
-                ? 'Tạo tài khoản để nhận ngay căn hộ khởi đầu và 300 Xu.'
-                : mode === 'reverify'
-                  ? 'Nhập mã OTP gửi về email của bạn để kích hoạt lại tài khoản và vào game.'
+        {mode === 'reverify' ? (
+          <form className="auth-form" onSubmit={submit} noValidate>
+            <div className="stack" style={{ gap: 8, textAlign: 'center' }}>
+              <div
+                style={{
+                  margin: '0 auto',
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  background: 'rgba(59, 130, 246, 0.12)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  color: '#3b82f6',
+                }}
+              >
+                <ShieldCheck size={30} />
+              </div>
+              <h2>Xác thực Email tài khoản</h2>
+              <p className="muted" style={{ fontSize: 13, margin: '2px 0 0' }}>
+                Tài khoản cần hoàn tất xác thực email để vào game. Mã OTP 6 chữ số đã được gửi tới:
+              </p>
+              <div
+                style={{
+                  padding: '8px 14px',
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  borderRadius: 8,
+                  fontWeight: 600,
+                  fontSize: 14,
+                  wordBreak: 'break-all',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                }}
+              >
+                {email || 'Email của bạn'}
+              </div>
+            </div>
+
+            <div className="field" style={{ marginTop: 14 }}>
+              <label htmlFor="otp">Mã xác thực OTP (6 chữ số)</label>
+              <input
+                id="otp"
+                className="input"
+                type="text"
+                maxLength={6}
+                autoFocus
+                placeholder="Nhập 6 số từ email"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                required
+                style={{
+                  fontSize: 22,
+                  textAlign: 'center',
+                  letterSpacing: 6,
+                  fontWeight: 700,
+                  fontFamily: 'monospace',
+                }}
+              />
+              <span className="field-hint">
+                Kiểm tra hòm thư chính và thư mục Spam. Mã có hiệu lực trong vòng 5 phút.
+              </span>
+            </div>
+
+            {!password ? (
+              <div className="field">
+                <label htmlFor="password">Mật khẩu tài khoản</label>
+                <input
+                  id="password"
+                  className="input"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+            ) : null}
+
+            {infoMessage ? (
+              <div className="callout callout-info" role="status">
+                {infoMessage}
+              </div>
+            ) : null}
+            {error ? (
+              <div className="callout callout-danger" role="alert">
+                {error}
+              </div>
+            ) : null}
+
+            <Button type="submit" variant="primary" size="lg" block loading={busy}>
+              Xác thực email & Vào game
+            </Button>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginTop: 10,
+                gap: 8,
+              }}
+            >
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={handleSendOtp}
+                disabled={sendingOtp || otpCountdown > 0}
+                loading={sendingOtp}
+              >
+                {otpCountdown > 0 ? `Gửi lại mã (${otpCountdown}s)` : 'Gửi lại mã OTP'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setMode('login');
+                  setError(null);
+                  setInfoMessage(null);
+                }}
+              >
+                ← Quay lại Đăng nhập
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <form className="auth-form" onSubmit={submit} noValidate>
+            <div className="stack" style={{ gap: 6 }}>
+              <h2>{mode === 'register' ? 'Gia nhập thị trấn' : 'Chào mừng trở lại'}</h2>
+              <p className="muted">
+                {mode === 'register'
+                  ? 'Tạo tài khoản để nhận ngay căn hộ khởi đầu và 300 Xu.'
                   : 'Đăng nhập để tiếp tục cuộc phiêu lưu của bạn.'}
-            </p>
-          </div>
-          {mode !== 'reverify' ? (
+              </p>
+            </div>
             <div className="tabs" role="tablist" aria-label="Tài khoản">
               <button
                 type="button"
@@ -229,143 +348,121 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
                 Đăng nhập
               </button>
             </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => {
-                  setMode('login');
-                  setError(null);
-                  setInfoMessage(null);
-                }}
-                style={{ padding: '4px 8px', fontSize: 13 }}
-              >
-                ← Quay lại Đăng nhập
-              </button>
-              <span className="badge badge-warning" style={{ fontSize: 12, padding: '2px 8px' }}>
-                Xác thực lại email
-              </span>
-            </div>
-          )}
-          {mode === 'register' ? (
+            {mode === 'register' ? (
+              <div className="field">
+                <label htmlFor="name">Tên hiển thị</label>
+                <input
+                  id="name"
+                  className="input"
+                  autoComplete="nickname"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  minLength={3}
+                  maxLength={20}
+                  required
+                />
+                <span className="field-hint">3–20 ký tự. Mọi người trong thị trấn sẽ thấy tên này.</span>
+              </div>
+            ) : null}
             <div className="field">
-              <label htmlFor="name">Tên hiển thị</label>
-              <input
-                id="name"
-                className="input"
-                autoComplete="nickname"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                minLength={3}
-                maxLength={20}
-                required
-              />
-              <span className="field-hint">3–20 ký tự. Mọi người trong thị trấn sẽ thấy tên này.</span>
+              <label htmlFor="email">Email</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  id="email"
+                  className="input"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  style={{ flex: 1 }}
+                />
+                {mode === 'register' ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleSendOtp}
+                    disabled={sendingOtp || otpCountdown > 0 || !email}
+                    loading={sendingOtp}
+                    style={{ whiteSpace: 'nowrap', minWidth: 110 }}
+                  >
+                    {otpCountdown > 0 ? `${otpCountdown}s` : otpSent ? 'Gửi lại mã' : 'Nhận mã OTP'}
+                  </Button>
+                ) : null}
+              </div>
             </div>
-          ) : null}
-          <div className="field">
-            <label htmlFor="email">Email</label>
-            <div style={{ display: 'flex', gap: 8 }}>
+            {mode === 'register' ? (
+              <div className="field">
+                <label htmlFor="otp">Mã xác thực OTP</label>
+                <input
+                  id="otp"
+                  className="input"
+                  type="text"
+                  maxLength={6}
+                  placeholder="Nhập 6 số từ email"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  required
+                />
+                <span className="field-hint">
+                  Bấm nút "Nhận mã OTP" ở trên. Mã sẽ được gửi vào hộp thư đến hoặc hòm thư Spam của bạn.
+                </span>
+              </div>
+            ) : null}
+            <div className="field">
+              <label htmlFor="password">Mật khẩu</label>
               <input
-                id="email"
+                id="password"
                 className="input"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="password"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                minLength={8}
                 required
-                style={{ flex: 1 }}
               />
-              {mode === 'register' || mode === 'reverify' ? (
-                <Button
+              {mode === 'register' ? <span className="field-hint">Tối thiểu 8 ký tự.</span> : null}
+            </div>
+            {mode === 'login' ? (
+              <div style={{ textAlign: 'center', marginTop: -4 }}>
+                <button
                   type="button"
-                  variant="secondary"
-                  onClick={handleSendOtp}
-                  disabled={sendingOtp || otpCountdown > 0 || !email}
-                  loading={sendingOtp}
-                  style={{ whiteSpace: 'nowrap', minWidth: 110 }}
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => {
+                    setMode('reverify');
+                    setError(null);
+                    setInfoMessage(null);
+                  }}
+                  style={{ fontSize: 12, opacity: 0.85, textDecoration: 'underline' }}
                 >
-                  {otpCountdown > 0 ? `${otpCountdown}s` : otpSent ? 'Gửi lại mã' : 'Nhận mã OTP'}
-                </Button>
-              ) : null}
-            </div>
-          </div>
-          {mode === 'register' || mode === 'reverify' ? (
-            <div className="field">
-              <label htmlFor="otp">Mã xác thực OTP</label>
-              <input
-                id="otp"
-                className="input"
-                type="text"
-                maxLength={6}
-                placeholder="Nhập 6 số từ email"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                required
-              />
-              <span className="field-hint">
-                Bấm nút "Nhận mã OTP" ở trên. Mã sẽ được gửi vào hộp thư đến hoặc hòm thư Spam của bạn.
-              </span>
-            </div>
-          ) : null}
-          <div className="field">
-            <label htmlFor="password">Mật khẩu</label>
-            <input
-              id="password"
-              className="input"
-              type="password"
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              minLength={8}
-              required
-            />
-            {mode === 'register' ? <span className="field-hint">Tối thiểu 8 ký tự.</span> : null}
-          </div>
-          {mode === 'login' ? (
-            <div style={{ textAlign: 'center', marginTop: -4 }}>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => {
-                  setMode('reverify');
-                  setError(null);
-                  setInfoMessage(null);
-                }}
-                style={{ fontSize: 12, opacity: 0.85, textDecoration: 'underline' }}
-              >
-                Chưa xác thực email hoặc bị yêu cầu xác thực lại? Bấm vào đây
-              </button>
-            </div>
-          ) : null}
-          {infoMessage ? (
-            <div className="callout callout-info" role="status">
-              {infoMessage}
-            </div>
-          ) : null}
-          {error ? (
-            <div className="callout callout-danger" role="alert">
-              {error}
-            </div>
-          ) : null}
-          <Button type="submit" variant="primary" size="lg" block loading={busy}>
-            {mode === 'register'
-              ? 'Tạo tài khoản và vào thị trấn'
-              : mode === 'reverify'
-                ? 'Xác thực email & Vào game'
-                : 'Đăng nhập'}
-          </Button>
-          <p className="muted" style={{ fontSize: 12, textAlign: 'center' }}>
-            Phần thưởng AI đến từ quỹ hạn mức hàng tuần có giới hạn và không có giá trị quy đổi tiền mặt.
-          </p>
-          {import.meta.env.DEV ? (
-            <p className="muted" style={{ fontSize: 11, textAlign: 'center', opacity: 0.8 }}>
-              💡 Lưu ý dev: Tài khoản đăng ký với <code>admin@cozy.local</code> sẽ nhận toàn quyền quản trị
-              Admin.
+                  Chưa xác thực email hoặc bị yêu cầu xác thực lại? Bấm vào đây
+                </button>
+              </div>
+            ) : null}
+            {infoMessage ? (
+              <div className="callout callout-info" role="status">
+                {infoMessage}
+              </div>
+            ) : null}
+            {error ? (
+              <div className="callout callout-danger" role="alert">
+                {error}
+              </div>
+            ) : null}
+            <Button type="submit" variant="primary" size="lg" block loading={busy}>
+              {mode === 'register' ? 'Tạo tài khoản và vào thị trấn' : 'Đăng nhập'}
+            </Button>
+            <p className="muted" style={{ fontSize: 12, textAlign: 'center' }}>
+              Phần thưởng AI đến từ quỹ hạn mức hàng tuần có giới hạn và không có giá trị quy đổi tiền mặt.
             </p>
-          ) : null}
-        </form>
+            {import.meta.env.DEV ? (
+              <p className="muted" style={{ fontSize: 11, textAlign: 'center', opacity: 0.8 }}>
+                💡 Lưu ý dev: Tài khoản đăng ký với <code>admin@cozy.local</code> sẽ nhận toàn quyền quản trị
+                Admin.
+              </p>
+            ) : null}
+          </form>
+        )}
       </section>
     </main>
   );

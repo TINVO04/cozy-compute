@@ -123,6 +123,7 @@ export async function playerSummary(q: Queryable, userId: string) {
     id: string;
     email: string;
     role: string;
+    email_verified: boolean;
     display_name: string;
     status_text: string;
     fame: number;
@@ -133,7 +134,8 @@ export async function playerSummary(q: Queryable, userId: string) {
     created_at: Date;
     trust_score: number;
   }>(
-    `SELECT u.id, u.email, u.role, p.display_name, p.status_text, p.fame, b.coin, b.ai_credit_cents,
+    `SELECT u.id, u.email, u.role, coalesce(u.email_verified, true) AS email_verified,
+            p.display_name, p.status_text, p.fame, b.coin, b.ai_credit_cents,
             u.onboarding, u.onboarding_completed_at, u.created_at, u.trust_score
        FROM users u JOIN profiles p ON p.user_id = u.id JOIN balances b ON b.user_id = u.id
       WHERE u.id = $1`,
@@ -145,6 +147,7 @@ export async function playerSummary(q: Queryable, userId: string) {
     id: row.id,
     email: row.email,
     role: row.role,
+    emailVerified: row.email_verified,
     displayName: row.display_name,
     statusText: row.status_text,
     title: fameTitle(row.fame),

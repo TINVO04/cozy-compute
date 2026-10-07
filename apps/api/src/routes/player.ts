@@ -197,11 +197,25 @@ export function playerRoutes(app: FastifyInstance, ctx: AppContext) {
     );
     if (!u || !ok) throw new AppError(401, 'invalid_credentials', 'Email or password is incorrect.');
     if (u.status === 'suspended') throw new AppError(403, 'suspended', 'This account is suspended.');
-    if (ctx.config.REQUIRE_EMAIL_VERIFICATION && !u.email_verified) {
+    if (!u.email_verified) {
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpKey = `otp:register:${body.email}`;
+      const cooldownKey = `otp:cooldown:${body.email}`;
+      const inCooldown = await ctx.redis.get(cooldownKey);
+      if (!inCooldown) {
+        await ctx.redis.set(otpKey, otpCode, 'EX', 300);
+        await ctx.redis.set(cooldownKey, '1', 'EX', 60);
+        try {
+          await ctx.mailer.sendOtpEmail(body.email, otpCode);
+        } catch (err) {
+          ctx.log.warn({ err, email: body.email }, 'Auto OTP send failed on unverified login');
+        }
+      }
       throw new AppError(
         403,
         'email_not_verified',
         'Tài khoản chưa được xác thực email hoặc đã bị quản trị viên yêu cầu xác thực lại.',
+        { email: body.email, otpSent: !inCooldown },
       );
     }
     await ctx.db.query('UPDATE users SET last_login_at = now() WHERE id = $1', [u.id]);
@@ -220,6 +234,42 @@ export function playerRoutes(app: FastifyInstance, ctx: AppContext) {
   app.get('/me', async (req) => {
     const user = requireUser(req);
     return playerSummary(ctx.db, user.id);
+  });
+
+  app.post('/player/send-verification-otp', async (req) => {
+    const user = requireUser(req);
+    const cooldownKey = `otp:cooldown:${user.email}`;
+    const inCooldown = await ctx.redis.get(cooldownKey);
+    if (inCooldown) {
+      const ttl = await ctx.redis.ttl(cooldownKey);
+      throw badRequest('cooldown', `Vui lòng đợi ${ttl > 0 ? ttl : 60} giây trước khi gửi lại mã OTP.`);
+    }
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpKey = `otp:register:${user.email}`;
+    await ctx.redis.set(otpKey, otpCode, 'EX', 300);
+    await ctx.redis.set(cooldownKey, '1', 'EX', 60);
+    try {
+      await ctx.mailer.sendOtpEmail(user.email, otpCode);
+    } catch (err) {
+      ctx.log.error({ err, email: user.email }, 'Failed to deliver verification OTP email');
+      throw new AppError(500, 'email_delivery_failed', 'Không thể gửi email OTP. Vui lòng thử lại sau.');
+    }
+    return { ok: true, message: 'Mã OTP đã được gửi đến email của bạn.' };
+  });
+
+  app.post('/player/verify-email', async (req) => {
+    const user = requireUser(req);
+    const body = z.object({ otp: z.string().trim().length(6) }).parse(req.body);
+    const otpKey = `otp:register:${user.email}`;
+    const storedOtp = await ctx.redis.get(otpKey);
+    if (!storedOtp || storedOtp !== body.otp) {
+      throw badRequest('invalid_otp', 'Mã OTP không chính xác hoặc đã hết hạn.');
+    }
+    await ctx.redis.del(otpKey);
+    await ctx.db.query('UPDATE users SET email_verified = true, email_verified_at = now() WHERE id = $1', [
+      user.id,
+    ]);
+    return { ok: true, user: await playerSummary(ctx.db, user.id) };
   });
 
   app.get('/me/ledger', async (req) => {
