@@ -482,6 +482,7 @@ export function LedgerPage() {
 export function PlayersPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'online' | 'offline' | 'suspended'>('all');
   const q = useDebounced(search);
   const players = useQuery({
     queryKey: ['admin', 'players', q],
@@ -498,8 +499,12 @@ export function PlayersPage() {
           fame: number;
           ai_credit_cents: number;
           created_at: string;
+          last_login_at?: string | null;
+          online?: boolean;
+          room?: string | null;
         }[]
       >(`/admin/players?q=${encodeURIComponent(q)}`),
+    refetchInterval: 10000,
   });
   const [target, setTarget] = useState<null | { id: string; name: string; status: string }>(null);
   const act = useMutation({
@@ -513,13 +518,50 @@ export function PlayersPage() {
     },
     onError: (err) => toastError(err),
   });
+
+  const onlineCount = players.data?.filter((p) => p.status === 'active' && p.online).length ?? 0;
+  const filteredData = (players.data ?? []).filter((p) => {
+    if (filter === 'online') return p.status === 'active' && p.online;
+    if (filter === 'offline') return p.status === 'active' && !p.online;
+    if (filter === 'suspended') return p.status === 'suspended';
+    return true;
+  });
+  const filteredPlayers = {
+    ...players,
+    data: players.data ? filteredData : undefined,
+  };
+
   return (
     <Page
       title="Người chơi"
-      actions={<SearchBox value={search} onChange={setSearch} placeholder="Tên, email hoặc ID" />}
+      actions={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div className="tabs" role="tablist">
+            {(
+              [
+                ['all', 'Tất cả'],
+                ['online', `Trực tuyến (${onlineCount})`],
+                ['offline', 'Ngoại tuyến'],
+                ['suspended', 'Tạm khóa'],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                role="tab"
+                className="tab"
+                aria-selected={filter === key}
+                onClick={() => setFilter(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <SearchBox value={search} onChange={setSearch} placeholder="Tên, email hoặc ID" />
+        </div>
+      }
     >
       <Table
-        q={players}
+        q={filteredPlayers}
         empty="Không tìm thấy người chơi nào"
         cols={[
           [
@@ -538,11 +580,43 @@ export function PlayersPage() {
           ],
           [
             'Trạng thái',
-            (p) => (
-              <span className={`pill ${p.status === 'active' ? 'pill-success' : 'pill-danger'}`}>
-                {p.status === 'active' ? 'Hoạt động' : 'Tạm khóa'}
-              </span>
-            ),
+            (p) => {
+              if (p.status === 'suspended') {
+                return (
+                  <span className="pill pill-danger" title="Tài khoản bị tạm khóa">
+                    Tạm khóa
+                  </span>
+                );
+              }
+              if (p.online) {
+                return (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                      alignItems: 'flex-start',
+                    }}
+                  >
+                    <span className="pill pill-success" title="Đang trực tuyến trong game">
+                      <span className="presence on" style={{ width: 7, height: 7 }} />
+                      Trực tuyến
+                    </span>
+                    {p.room ? (
+                      <span className="muted" style={{ fontSize: 11, paddingLeft: 4 }}>
+                        {p.room}
+                      </span>
+                    ) : null}
+                  </div>
+                );
+              }
+              return (
+                <span className="pill" title="Ngoại tuyến" style={{ opacity: 0.85 }}>
+                  <span className="presence" style={{ width: 7, height: 7 }} />
+                  Ngoại tuyến
+                </span>
+              );
+            },
           ],
           ['Tin cậy', (p) => p.trust_score, 'num'],
           ['Xu', (p) => num(p.coin), 'num'],

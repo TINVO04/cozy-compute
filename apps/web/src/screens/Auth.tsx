@@ -55,19 +55,66 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const qc = useQueryClient();
 
+  useEffect(() => {
+    if (otpCountdown <= 0) return;
+    const timer = setInterval(() => {
+      setOtpCountdown((c) => c - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpCountdown]);
+
+  async function handleSendOtp() {
+    if (!email || !email.includes('@')) {
+      setError('Vui lòng nhập địa chỉ email hợp lệ trước khi gửi mã OTP.');
+      return;
+    }
+    setError(null);
+    setInfoMessage(null);
+    setSendingOtp(true);
+    try {
+      await api<{ ok: boolean; message: string }>('/auth/send-otp', {
+        body: { email },
+      });
+      setOtpSent(true);
+      setOtpCountdown(60);
+      setInfoMessage('Mã OTP xác thực đã được gửi về email của bạn. Vui lòng kiểm tra hộp thư.');
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'email_taken') {
+        setMode('login');
+        setError('Tài khoản với email này đã tồn tại. Đã chuyển sang tab Đăng nhập.');
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Không thể gửi mã OTP. Vui lòng thử lại.');
+      }
+    } finally {
+      setSendingOtp(false);
+    }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setInfoMessage(null);
+
+    if (mode === 'register' && !otp.trim()) {
+      setError('Vui lòng bấm "Nhận mã OTP" và nhập mã xác thực gửi về email của bạn.');
+      return;
+    }
+
     setBusy(true);
     try {
       const res = await api<{ token: string; user: Me }>(
         mode === 'login' ? '/auth/login' : '/auth/register',
         {
-          body: mode === 'login' ? { email, password } : { email, password, displayName },
+          body: mode === 'login' ? { email, password } : { email, password, displayName, otp: otp.trim() },
         },
       );
       session.set(res.token);
@@ -78,7 +125,7 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
         setMode('login');
         setError('Tài khoản với email này đã tồn tại. Đã chuyển sang tab Đăng nhập, vui lòng nhập mật khẩu.');
       } else {
-        setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
+        setError(err instanceof ApiError ? err.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.');
       }
     } finally {
       setBusy(false);
@@ -159,16 +206,49 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
           ) : null}
           <div className="field">
             <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              className="input"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                id="email"
+                className="input"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                style={{ flex: 1 }}
+              />
+              {mode === 'register' ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleSendOtp}
+                  disabled={sendingOtp || otpCountdown > 0 || !email}
+                  loading={sendingOtp}
+                  style={{ whiteSpace: 'nowrap', minWidth: 110 }}
+                >
+                  {otpCountdown > 0 ? `${otpCountdown}s` : otpSent ? 'Gửi lại mã' : 'Nhận mã OTP'}
+                </Button>
+              ) : null}
+            </div>
           </div>
+          {mode === 'register' ? (
+            <div className="field">
+              <label htmlFor="otp">Mã xác thực OTP</label>
+              <input
+                id="otp"
+                className="input"
+                type="text"
+                maxLength={6}
+                placeholder="Nhập 6 số từ email"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                required
+              />
+              <span className="field-hint">
+                Bấm nút "Nhận mã OTP" ở trên. Mã sẽ được gửi vào hộp thư đến hoặc hòm thư Spam của bạn.
+              </span>
+            </div>
+          ) : null}
           <div className="field">
             <label htmlFor="password">Mật khẩu</label>
             <input
@@ -183,6 +263,11 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
             />
             {mode === 'register' ? <span className="field-hint">Tối thiểu 8 ký tự.</span> : null}
           </div>
+          {infoMessage ? (
+            <div className="callout callout-info" role="status">
+              {infoMessage}
+            </div>
+          ) : null}
           {error ? (
             <div className="callout callout-danger" role="alert">
               {error}

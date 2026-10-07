@@ -2,6 +2,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import type { Config } from './config.js';
 import type { Db } from './db.js';
 import type { Gateway } from './gateway.js';
+import type { Mailer } from './services/mailer.js';
 import type { Redis } from './redis.js';
 
 export interface PlayerPosition {
@@ -19,6 +20,7 @@ export interface AppContext {
   db: Db;
   redis: Redis;
   gateway: Gateway;
+  mailer: Mailer;
   log: FastifyBaseLogger;
   positionOf: PositionLookup;
   now: () => Date;

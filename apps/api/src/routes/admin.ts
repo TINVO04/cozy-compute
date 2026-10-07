@@ -8,6 +8,7 @@ import * as ai from '../services/ai.js';
 import { audit } from '../services/audit.js';
 import { scheduleNext, finishEvent } from '../services/events.js';
 import { getSetting, settingSchema, type SettingKey } from '../settings.js';
+import { getPresence } from '../redis.js';
 import { FISH } from '@cozy/game-data';
 
 const SECRET_REF = /^UPSTREAM_KEY_[A-Z0-9_]{1,40}$/;
@@ -625,14 +626,28 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext) {
       fame: number;
       ai_credit_cents: number;
       created_at: Date;
+      last_login_at: Date | null;
     }>(
-      `SELECT u.id, u.email, p.display_name, u.role, u.status, u.trust_score, b.coin, p.fame, b.ai_credit_cents, u.created_at
+      `SELECT u.id, u.email, p.display_name, u.role, u.status, u.trust_score, b.coin, p.fame, b.ai_credit_cents, u.created_at, u.last_login_at
          FROM users u JOIN profiles p ON p.user_id = u.id JOIN balances b ON b.user_id = u.id
         WHERE $1 = '' OR u.email ILIKE '%' || $1 || '%' OR p.display_name ILIKE '%' || $1 || '%' OR u.id::text = $1
         ORDER BY u.created_at DESC LIMIT 50`,
       [q.q],
     );
-    return r.rows.map((u) => ({ ...u, created_at: u.created_at.toISOString() }));
+    const presence = await getPresence(
+      ctx.redis,
+      r.rows.map((u) => u.id),
+    );
+    return r.rows.map((u) => {
+      const pres = presence.get(u.id);
+      return {
+        ...u,
+        created_at: u.created_at.toISOString(),
+        last_login_at: u.last_login_at?.toISOString() ?? null,
+        online: presence.has(u.id),
+        room: pres?.roomLabel ?? null,
+      };
+    });
   });
 
   app.post('/admin/players/:id/status', async (req) => {
