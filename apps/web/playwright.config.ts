@@ -11,11 +11,13 @@ export default defineConfig({
     viewport: { width: 1280, height: 720 },
     screenshot: 'only-on-failure',
   },
-  webServer: {
-    command: 'pnpm dev',
-    port: 5173,
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
-  },
+  webServer: process.env.CI
+    ? undefined
+    : {
+        command: 'pnpm dev',
+        port: 5173,
+        reuseExistingServer: true,
+        timeout: 60_000,
+      },
   outputDir: './test-results',
 });
