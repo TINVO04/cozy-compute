@@ -23,31 +23,41 @@ if not defined PG_CTL (
 )
 
 netstat -ano | findstr ":55432" | findstr "LISTENING" > nul
-if %errorlevel% neq 0 (
+if !errorlevel! neq 0 (
     set "PG_INITIALIZED="
     if not exist "%~dp0infra\postgres\local_data\PG_VERSION" (
         echo [POSTGRES] Khoi tao thu muc database cuc bo...
         "!PG_BIN!initdb.exe" -D "%~dp0infra\postgres\local_data" -U cozy -A trust -E UTF8 --no-locale
-        if errorlevel 1 exit /b 1
+        if !errorlevel! neq 0 (
+            echo [LOI] Khong the init database PostgreSQL!
+            pause
+            exit /b 1
+        )
         set "PG_INITIALIZED=1"
     )
     echo [POSTGRES] Dang bat PostgreSQL tren port 55432...
     "!PG_CTL!" -D "%~dp0infra\postgres\local_data" -o "-p 55432 -h 127.0.0.1" -l "%~dp0infra\postgres\postgres.log" start
-    if errorlevel 1 exit /b 1
+    if !errorlevel! neq 0 (
+        echo [LOI] Khong the start PostgreSQL!
+        pause
+        exit /b 1
+    )
     call :check_postgres
-    if errorlevel 1 exit /b 1
+    if !errorlevel! neq 0 (
+        pause
+        exit /b 1
+    )
     if defined PG_INITIALIZED (
         "!PG_BIN!createdb.exe" -h 127.0.0.1 -p 55432 -U cozy cozy
-        if errorlevel 1 exit /b 1
         "!PG_BIN!createdb.exe" -h 127.0.0.1 -p 55432 -U cozy cozy_test
-        if errorlevel 1 exit /b 1
     )
 )
 echo [POSTGRES] PostgreSQL da san sang tren port 55432.
 
 :: 2. Tim va khoi dong Redis (port 56379)
-netstat -ano | findstr ":56379 " | findstr "LISTENING" > nul
-if %errorlevel% equ 0 goto :redis_ready
+netstat -ano | findstr ":56379" | findstr "LISTENING" > nul
+if !errorlevel! equ 0 goto :redis_ready
+
 set "REDIS_SERVER="
 if exist "%~dp0infra\redis\redis-server.exe" (
     set "REDIS_SERVER=%~dp0infra\redis\redis-server.exe"
@@ -63,23 +73,27 @@ if not defined REDIS_SERVER (
 )
 
 if not defined REDIS_SERVER (
-    echo [LOI] Khong tim thay redis-server.exe. Redis la bat buoc.
+    echo [LOI] Khong tim thay redis-server.exe tren he thong. Vui long cai dat Redis!
+    pause
     exit /b 1
-) else (
-    netstat -ano | findstr ":56379" | findstr "LISTENING" > nul
-    if !errorlevel! neq 0 (
-        echo [REDIS] Dang bat Redis tren port 56379...
-        start /b "" "!REDIS_SERVER!" --bind 127.0.0.1 --port 56379 --save "" --appendonly no
-        call :check_redis
-        if errorlevel 1 exit /b 1
-    )
-    echo [REDIS] Redis da san sang tren port 56379.
 )
+
+netstat -ano | findstr ":56379" | findstr "LISTENING" > nul
+if !errorlevel! neq 0 (
+    echo [REDIS] Dang bat Redis tren port 56379...
+    start /b "" "!REDIS_SERVER!" --bind 127.0.0.1 --port 56379 --save "" --appendonly no
+    call :check_redis
+    if !errorlevel! neq 0 (
+        pause
+        exit /b 1
+    )
+)
+echo [REDIS] Redis da san sang tren port 56379.
 
 :redis_ready
 :: 3. Kiem tra va khoi dong Mock Upstream neu can (port 4010)
 netstat -ano | findstr ":4010" | findstr "LISTENING" > nul
-if %errorlevel% neq 0 (
+if !errorlevel! neq 0 (
     echo [UPSTREAM] Dang bat Mock Upstream tren port 4010...
     start /b "" node "%~dp0infra\mock-upstream\server.mjs"
     ping -n 2 127.0.0.1 > nul
@@ -87,7 +101,6 @@ if %errorlevel% neq 0 (
 echo [UPSTREAM] Mock Upstream da san sang tren port 4010.
 
 :: 4. Chay dev server
-
 echo ========================================================
 echo   [GAME] Tat ca service da san sang!
 echo   [GAME] Dang bat Web, Realtime va API...
@@ -101,13 +114,17 @@ echo ========================================================
 
 start /b "" powershell -NoProfile -WindowStyle Hidden -File "%~dp0infra\open-dev-browser.ps1"
 pnpm dev
+if !errorlevel! neq 0 (
+    echo [LOI] pnpm dev bi loi hoac da ket thuc!
+    pause
+)
 goto :eof
 
 :check_postgres
 set /a pcount=0
 :loop_pg
 netstat -ano | findstr ":55432" | findstr "LISTENING" > nul
-if %errorlevel% neq 0 (
+if !errorlevel! neq 0 (
     ping -n 2 127.0.0.1 > nul
     set /a pcount+=1
     if !pcount! geq 20 (
@@ -122,7 +139,7 @@ exit /b 0
 set /a rcount=0
 :loop_rd
 netstat -ano | findstr ":56379" | findstr "LISTENING" > nul
-if %errorlevel% neq 0 (
+if !errorlevel! neq 0 (
     ping -n 2 127.0.0.1 > nul
     set /a rcount+=1
     if !rcount! geq 10 (
