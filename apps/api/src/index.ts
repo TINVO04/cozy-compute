@@ -6,17 +6,20 @@ import { LiteLLMGateway } from './gateway.js';
 import { startJobs } from './jobs.js';
 import { migrate } from './migrate.js';
 import { createRedis } from './redis.js';
+import { NodemailerService } from './services/mailer.js';
 
 const config = loadConfig();
 const db = createPool(config.DATABASE_URL, 20);
 const redis = createRedis(config.REDIS_URL);
 const gateway = new LiteLLMGateway(config.LITELLM_URL, config.LITELLM_MASTER_KEY);
+const mailer = new NodemailerService(config);
 
 const { app, ctx } = await buildApp({
   config,
   db,
   redis,
   gateway,
+  mailer,
   now: () => new Date(),
   rng: Math.random,
   positionOf: async (userId) => {

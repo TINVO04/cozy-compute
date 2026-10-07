@@ -481,7 +481,9 @@ export function LedgerPage() {
 // ---------------------------------------------------------------- players
 export function PlayersPage() {
   const qc = useQueryClient();
+  const toast = useUi((s) => s.toast);
   const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'online' | 'offline' | 'suspended' | 'unverified'>('all');
   const q = useDebounced(search);
   const players = useQuery({
     queryKey: ['admin', 'players', q],
@@ -498,28 +500,138 @@ export function PlayersPage() {
           fame: number;
           ai_credit_cents: number;
           created_at: string;
+          last_login_at?: string | null;
+          email_verified: boolean;
+          email_verified_at?: string | null;
+          online?: boolean;
+          room?: string | null;
         }[]
       >(`/admin/players?q=${encodeURIComponent(q)}`),
+    refetchInterval: 10000,
   });
+
   const [target, setTarget] = useState<null | { id: string; name: string; status: string }>(null);
-  const act = useMutation({
+  const [targetDelete, setTargetDelete] = useState<null | { id: string; name: string; email: string }>(null);
+  const [targetVerify, setTargetVerify] = useState<null | { id: string; name: string; verified: boolean }>(
+    null,
+  );
+  const [sendingId, setSendingId] = useState<string | null>(null);
+
+  const actStatus = useMutation({
     mutationFn: () =>
       api(`/admin/players/${target!.id}/status`, {
         body: { status: target!.status === 'suspended' ? 'active' : 'suspended' },
       }),
     onSuccess: () => {
+      const isSuspended = target?.status === 'suspended';
+      toast({
+        kind: 'success',
+        title: isSuspended ? 'Đã mở khóa tài khoản' : 'Đã tạm khóa tài khoản',
+      });
       setTarget(null);
       void qc.invalidateQueries({ queryKey: ['admin', 'players'] });
     },
     onError: (err) => toastError(err),
   });
+
+  const actDelete = useMutation({
+    mutationFn: () => api(`/admin/players/${targetDelete!.id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      toast({
+        kind: 'success',
+        title: 'Đã xóa tài khoản vĩnh viễn',
+        body: `Tài khoản ${targetDelete?.name} đã được xóa khỏi hệ thống.`,
+      });
+      setTargetDelete(null);
+      void qc.invalidateQueries({ queryKey: ['admin', 'players'] });
+    },
+    onError: (err) => toastError(err),
+  });
+
+  const actVerify = useMutation({
+    mutationFn: () =>
+      api(`/admin/players/${targetVerify!.id}/verify-email`, {
+        body: { verified: !targetVerify!.verified },
+      }),
+    onSuccess: () => {
+      const willBeVerified = !targetVerify?.verified;
+      toast({
+        kind: 'success',
+        title: willBeVerified ? 'Đã xác thực email người chơi' : 'Đã hủy xác thực email người chơi',
+      });
+      setTargetVerify(null);
+      void qc.invalidateQueries({ queryKey: ['admin', 'players'] });
+    },
+    onError: (err) => toastError(err),
+  });
+
+  const actSendReverify = useMutation({
+    mutationFn: (id: string) =>
+      api<{ ok: boolean; message: string }>(`/admin/players/${id}/send-verification-email`, {
+        method: 'POST',
+      }),
+    onSuccess: (res) => {
+      toast({
+        kind: 'success',
+        title: 'Đã gửi mã xác thực',
+        body: res.message || 'Mã OTP xác thực đã được gửi về email của người chơi.',
+      });
+    },
+    onError: (err) => toastError(err),
+    onSettled: () => setSendingId(null),
+  });
+
+  function handleSendOtp(id: string) {
+    setSendingId(id);
+    actSendReverify.mutate(id);
+  }
+
+  const onlineCount = players.data?.filter((p) => p.status === 'active' && p.online).length ?? 0;
+  const unverifiedCount = players.data?.filter((p) => !p.email_verified).length ?? 0;
+  const filteredData = (players.data ?? []).filter((p) => {
+    if (filter === 'online') return p.status === 'active' && p.online;
+    if (filter === 'offline') return p.status === 'active' && !p.online;
+    if (filter === 'suspended') return p.status === 'suspended';
+    if (filter === 'unverified') return !p.email_verified;
+    return true;
+  });
+  const filteredPlayers = {
+    ...players,
+    data: players.data ? filteredData : undefined,
+  };
+
   return (
     <Page
       title="Người chơi"
-      actions={<SearchBox value={search} onChange={setSearch} placeholder="Tên, email hoặc ID" />}
+      actions={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div className="tabs" role="tablist">
+            {(
+              [
+                ['all', 'Tất cả'],
+                ['online', `Trực tuyến (${onlineCount})`],
+                ['offline', 'Ngoại tuyến'],
+                ['suspended', 'Tạm khóa'],
+                ['unverified', `Chưa xác thực mail (${unverifiedCount})`],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                role="tab"
+                className="tab"
+                aria-selected={filter === key}
+                onClick={() => setFilter(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <SearchBox value={search} onChange={setSearch} placeholder="Tên, email hoặc ID" />
+        </div>
+      }
     >
       <Table
-        q={players}
+        q={filteredPlayers}
         empty="Không tìm thấy người chơi nào"
         cols={[
           [
@@ -538,10 +650,93 @@ export function PlayersPage() {
           ],
           [
             'Trạng thái',
+            (p) => {
+              if (p.status === 'suspended') {
+                return (
+                  <span className="pill pill-danger" title="Tài khoản bị tạm khóa">
+                    Tạm khóa
+                  </span>
+                );
+              }
+              if (p.online) {
+                return (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                      alignItems: 'flex-start',
+                    }}
+                  >
+                    <span className="pill pill-success" title="Đang trực tuyến trong game">
+                      <span className="presence on" style={{ width: 7, height: 7 }} />
+                      Trực tuyến
+                    </span>
+                    {p.room ? (
+                      <span className="muted" style={{ fontSize: 11, paddingLeft: 4 }}>
+                        {p.room}
+                      </span>
+                    ) : null}
+                  </div>
+                );
+              }
+              return (
+                <span className="pill" title="Ngoại tuyến" style={{ opacity: 0.85 }}>
+                  <span className="presence" style={{ width: 7, height: 7 }} />
+                  Ngoại tuyến
+                </span>
+              );
+            },
+          ],
+          [
+            'Xác thực Email',
             (p) => (
-              <span className={`pill ${p.status === 'active' ? 'pill-success' : 'pill-danger'}`}>
-                {p.status === 'active' ? 'Hoạt động' : 'Tạm khóa'}
-              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {p.email_verified ? (
+                    <span className="pill pill-success" title="Email đã được xác thực">
+                      Đã xác thực
+                    </span>
+                  ) : (
+                    <span className="pill pill-danger" title="Email chưa được xác thực">
+                      Chưa xác thực
+                    </span>
+                  )}
+                  {p.role !== 'admin' && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      style={{ fontSize: 11, padding: '2px 6px', height: 'auto', minHeight: 0 }}
+                      title={
+                        p.email_verified
+                          ? 'Hủy xác thực để yêu cầu người chơi xác thực lại'
+                          : 'Xác thực thủ công'
+                      }
+                      onClick={() =>
+                        setTargetVerify({
+                          id: p.id,
+                          name: p.display_name,
+                          verified: p.email_verified,
+                        })
+                      }
+                    >
+                      {p.email_verified ? 'Hủy xác thực' : 'Xác thực ngay'}
+                    </button>
+                  )}
+                </div>
+                {!p.email_verified && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: 11, padding: '2px 8px', height: 'auto', minHeight: 0 }}
+                    disabled={sendingId === p.id}
+                    onClick={() => handleSendOtp(p.id)}
+                    title="Gửi mã OTP xác thực lại tới email này"
+                  >
+                    {sendingId === p.id ? 'Đang gửi...' : 'Gửi lại OTP mail'}
+                  </button>
+                )}
+              </div>
             ),
           ],
           ['Tin cậy', (p) => p.trust_score, 'num'],
@@ -550,16 +745,26 @@ export function PlayersPage() {
           ['AI Credit', (p) => usd(p.ai_credit_cents), 'num'],
           ['Tham gia', (p) => new Date(p.created_at).toLocaleDateString('vi-VN')],
           [
-            '',
+            'Hành động',
             (p) =>
               p.role === 'admin' ? null : (
-                <Button
-                  size="sm"
-                  variant={p.status === 'active' ? 'danger' : 'secondary'}
-                  onClick={() => setTarget({ id: p.id, name: p.display_name, status: p.status })}
-                >
-                  {p.status === 'active' ? 'Tạm khóa' : 'Mở khóa'}
-                </Button>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <Button
+                    size="sm"
+                    variant={p.status === 'active' ? 'secondary' : 'primary'}
+                    onClick={() => setTarget({ id: p.id, name: p.display_name, status: p.status })}
+                  >
+                    {p.status === 'active' ? 'Tạm khóa' : 'Mở khóa'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    onClick={() => setTargetDelete({ id: p.id, name: p.display_name, email: p.email })}
+                    title="Xóa vĩnh viễn tài khoản người chơi này"
+                  >
+                    Xóa
+                  </Button>
+                </div>
               ),
           ],
         ]}
@@ -574,9 +779,39 @@ export function PlayersPage() {
               : 'Họ sẽ có thể đăng nhập lại vào game.'
           }
           confirmLabel={target.status === 'active' ? 'Tạm khóa' : 'Mở khóa'}
-          loading={act.isPending}
-          onConfirm={() => act.mutate()}
+          loading={actStatus.isPending}
+          onConfirm={() => actStatus.mutate()}
           onClose={() => setTarget(null)}
+        />
+      ) : null}
+      {targetDelete ? (
+        <ConfirmDialog
+          danger
+          title={`Xóa vĩnh viễn tài khoản ${targetDelete.name}?`}
+          body={`CẢNH BÁO: Hành động này sẽ xóa vĩnh viễn người chơi (${targetDelete.email}), toàn bộ căn hộ, cá đã câu, vật phẩm và tài sản. Dữ liệu KHÔNG THỂ phục hồi.`}
+          confirmLabel="Xóa tài khoản"
+          loading={actDelete.isPending}
+          onConfirm={() => actDelete.mutate()}
+          onClose={() => setTargetDelete(null)}
+        />
+      ) : null}
+      {targetVerify ? (
+        <ConfirmDialog
+          danger={targetVerify.verified}
+          title={
+            targetVerify.verified
+              ? `Hủy xác thực email của ${targetVerify.name}?`
+              : `Xác thực email cho ${targetVerify.name}?`
+          }
+          body={
+            targetVerify.verified
+              ? 'Tài khoản người chơi sẽ chuyển về trạng thái Chưa xác thực email. Bạn hoặc người chơi sẽ có thể tiến hành xác thực lại sau đó.'
+              : 'Tài khoản người chơi sẽ được đánh dấu là Đã xác thực email thành công.'
+          }
+          confirmLabel={targetVerify.verified ? 'Hủy xác thực' : 'Xác thực ngay'}
+          loading={actVerify.isPending}
+          onConfirm={() => actVerify.mutate()}
+          onClose={() => setTargetVerify(null)}
         />
       ) : null}
     </Page>

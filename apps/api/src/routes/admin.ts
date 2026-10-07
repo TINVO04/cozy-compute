@@ -3,11 +3,12 @@ import { z } from 'zod';
 import { requireAdmin } from '../auth.js';
 import type { AppContext } from '../context.js';
 import { withTx } from '../db.js';
-import { AppError, badRequest, notFound } from '../errors.js';
+import { AppError, badRequest, forbidden, notFound } from '../errors.js';
 import * as ai from '../services/ai.js';
 import { audit } from '../services/audit.js';
 import { scheduleNext, finishEvent } from '../services/events.js';
 import { getSetting, settingSchema, type SettingKey } from '../settings.js';
+import { getPresence } from '../redis.js';
 import { FISH } from '@cozy/game-data';
 
 const SECRET_REF = /^UPSTREAM_KEY_[A-Z0-9_]{1,40}$/;
@@ -625,14 +626,33 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext) {
       fame: number;
       ai_credit_cents: number;
       created_at: Date;
+      last_login_at: Date | null;
+      email_verified: boolean;
+      email_verified_at: Date | null;
     }>(
-      `SELECT u.id, u.email, p.display_name, u.role, u.status, u.trust_score, b.coin, p.fame, b.ai_credit_cents, u.created_at
+      `SELECT u.id, u.email, p.display_name, u.role, u.status, u.trust_score, b.coin, p.fame, b.ai_credit_cents, u.created_at, u.last_login_at,
+              coalesce(u.email_verified, true) AS email_verified, u.email_verified_at
          FROM users u JOIN profiles p ON p.user_id = u.id JOIN balances b ON b.user_id = u.id
         WHERE $1 = '' OR u.email ILIKE '%' || $1 || '%' OR p.display_name ILIKE '%' || $1 || '%' OR u.id::text = $1
         ORDER BY u.created_at DESC LIMIT 50`,
       [q.q],
     );
-    return r.rows.map((u) => ({ ...u, created_at: u.created_at.toISOString() }));
+    const presence = await getPresence(
+      ctx.redis,
+      r.rows.map((u) => u.id),
+    );
+    return r.rows.map((u) => {
+      const pres = presence.get(u.id);
+      return {
+        ...u,
+        created_at: u.created_at.toISOString(),
+        last_login_at: u.last_login_at?.toISOString() ?? null,
+        email_verified: u.email_verified,
+        email_verified_at: u.email_verified_at?.toISOString() ?? null,
+        online: presence.has(u.id),
+        room: pres?.roomLabel ?? null,
+      };
+    });
   });
 
   app.post('/admin/players/:id/status', async (req) => {
@@ -669,6 +689,103 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     });
     if (b.status === 'suspended') await ctx.redis.publish('player:kick', JSON.stringify({ userId: id }));
     return { ok: true };
+  });
+
+  app.delete('/admin/players/:id', async (req) => {
+    const admin = requireAdmin(req);
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+
+    if (id === admin.id) {
+      throw badRequest('self', 'Bạn không thể tự xóa tài khoản của chính mình.');
+    }
+
+    return withTx(ctx.db, async (tx) => {
+      const prev = await tx.query<{ id: string; email: string; role: string }>(
+        'SELECT id, email, role FROM users WHERE id = $1 FOR UPDATE',
+        [id],
+      );
+      const user = prev.rows[0];
+      if (!user) throw notFound('Không tìm thấy người chơi.');
+      if (user.role === 'admin') {
+        throw forbidden('Không thể xóa tài khoản Quản trị viên (Admin).');
+      }
+
+      await ctx.redis.publish('player:kick', JSON.stringify({ userId: id }));
+      await ctx.redis.hdel('presence:online', id);
+      await ctx.redis.hdel('positions', id);
+
+      await tx.query('UPDATE admin_audit_log SET admin_user_id = NULL WHERE admin_user_id = $1', [id]);
+      await tx.query('UPDATE abuse_flags SET resolved_by = NULL WHERE resolved_by = $1', [id]);
+      await tx.query('DELETE FROM users WHERE id = $1', [id]);
+
+      await audit(tx, admin.id, 'player.delete', 'user', id, user, null);
+
+      return { ok: true, id };
+    });
+  });
+
+  app.post('/admin/players/:id/verify-email', async (req) => {
+    const admin = requireAdmin(req);
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const body = z.object({ verified: z.boolean() }).parse(req.body);
+
+    return withTx(ctx.db, async (tx) => {
+      const prev = await tx.query<{ id: string; email: string; email_verified: boolean }>(
+        'SELECT id, email, coalesce(email_verified, true) AS email_verified FROM users WHERE id = $1 FOR UPDATE',
+        [id],
+      );
+      const user = prev.rows[0];
+      if (!user) throw notFound('Không tìm thấy người chơi.');
+
+      await tx.query(
+        'UPDATE users SET email_verified = $2, email_verified_at = (CASE WHEN $2 THEN now() ELSE NULL END) WHERE id = $1',
+        [id, body.verified],
+      );
+
+      await audit(
+        tx,
+        admin.id,
+        body.verified ? 'player.email_verified' : 'player.email_unverified',
+        'user',
+        id,
+        { email_verified: user.email_verified },
+        { email_verified: body.verified },
+      );
+
+      return { ok: true, email_verified: body.verified };
+    });
+  });
+
+  app.post('/admin/players/:id/send-verification-email', async (req) => {
+    const admin = requireAdmin(req);
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+
+    const r = await ctx.db.query<{ id: string; email: string }>('SELECT id, email FROM users WHERE id = $1', [
+      id,
+    ]);
+    const user = r.rows[0];
+    if (!user) throw notFound('Không tìm thấy người chơi.');
+
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpKey = `otp:register:${user.email.toLowerCase()}`;
+    await ctx.redis.set(otpKey, otpCode, 'EX', 600);
+
+    try {
+      await ctx.mailer.sendOtpEmail(user.email, otpCode);
+    } catch (err) {
+      ctx.log.error({ err, email: user.email }, 'Failed to deliver re-verification OTP email');
+      throw new AppError(
+        500,
+        'email_delivery_failed',
+        'Không thể gửi email OTP. Vui lòng kiểm tra lại cấu hình SMTP.',
+      );
+    }
+
+    await audit(ctx.db, admin.id, 'player.reverification_email_sent', 'user', id, null, {
+      email: user.email,
+    });
+
+    return { ok: true, message: `Đã gửi mã xác thực lại tới email ${user.email}.` };
   });
 
   app.get('/admin/keys', async (req) => {

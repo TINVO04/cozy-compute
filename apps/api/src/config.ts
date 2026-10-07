@@ -20,6 +20,15 @@ const schema = z.object({
     .default('true')
     .transform((v) => v !== 'false'),
   LOG_LEVEL: z.string().default('info'),
+  SMTP_HOST: z.string().default('smtp.gmail.com'),
+  SMTP_PORT: z.coerce.number().int().default(465),
+  SMTP_USER: z.string().default(''),
+  SMTP_PASS: z.string().default(''),
+  EMAIL_FROM: z.string().default(''),
+  REQUIRE_EMAIL_VERIFICATION: z
+    .string()
+    .default('false')
+    .transform((v) => v === 'true'),
 });
 
 export type Config = z.infer<typeof schema> & { corsOrigins: string[]; adminEmails: Set<string> };

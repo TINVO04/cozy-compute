@@ -25,6 +25,9 @@ const credentials = z.object({
   email: z.string().trim().toLowerCase().email().max(200),
   password: z.string().min(8).max(200),
 });
+const sendOtpSchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(200),
+});
 const registration = credentials.extend({
   displayName: z
     .string()
@@ -32,6 +35,7 @@ const registration = credentials.extend({
     .min(3)
     .max(20)
     .regex(/^[A-Za-z0-9_ .-]+$/, 'Use letters, numbers, spaces, dots, dashes or underscores.'),
+  otp: z.string().trim().optional(),
 });
 const run = z.object({ runId: z.string().uuid(), nonce: z.string().min(10).max(64) });
 
@@ -40,8 +44,63 @@ export function playerRoutes(app: FastifyInstance, ctx: AppContext) {
     config: { rateLimit: { max: ctx.config.AUTH_RATE_LIMIT_PER_MIN, timeWindow: '1 minute' } },
   };
 
+  app.get('/auth/config', async () => {
+    return {
+      emailVerificationRequired: ctx.config.REQUIRE_EMAIL_VERIFICATION,
+    };
+  });
+
+  app.post('/auth/send-otp', authLimit, async (req) => {
+    const body = sendOtpSchema.parse(req.body);
+    const taken = await ctx.db.query<{ email_taken: boolean }>(
+      'SELECT EXISTS (SELECT 1 FROM users WHERE lower(email) = $1) AS email_taken',
+      [body.email],
+    );
+    if (taken.rows[0]?.email_taken) {
+      throw conflict('email_taken', 'Tài khoản với email này đã tồn tại. Vui lòng đăng nhập.');
+    }
+
+    const cooldownKey = `otp:cooldown:${body.email}`;
+    const inCooldown = await ctx.redis.get(cooldownKey);
+    if (inCooldown) {
+      const ttl = await ctx.redis.ttl(cooldownKey);
+      throw badRequest('cooldown', `Vui lòng đợi ${ttl > 0 ? ttl : 60} giây trước khi gửi lại mã OTP.`);
+    }
+
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpKey = `otp:register:${body.email}`;
+    await ctx.redis.set(otpKey, otpCode, 'EX', 300);
+    await ctx.redis.set(cooldownKey, '1', 'EX', 60);
+
+    try {
+      await ctx.mailer.sendOtpEmail(body.email, otpCode);
+    } catch (err) {
+      ctx.log.error({ err, email: body.email }, 'Failed to deliver OTP email');
+      throw new AppError(
+        500,
+        'email_delivery_failed',
+        'Không thể gửi email OTP. Vui lòng kiểm tra lại địa chỉ email hoặc thử lại sau.',
+      );
+    }
+
+    return { ok: true, message: 'Mã OTP đã được gửi đến email của bạn.' };
+  });
+
   app.post('/auth/register', authLimit, async (req) => {
     const body = registration.parse(req.body);
+
+    if (ctx.config.REQUIRE_EMAIL_VERIFICATION) {
+      if (!body.otp) {
+        throw badRequest('otp_required', 'Vui lòng nhập mã OTP đã nhận qua email.');
+      }
+      const otpKey = `otp:register:${body.email}`;
+      const storedOtp = await ctx.redis.get(otpKey);
+      if (!storedOtp || storedOtp !== body.otp) {
+        throw badRequest('invalid_otp', 'Mã OTP không chính xác hoặc đã hết hạn.');
+      }
+      await ctx.redis.del(otpKey);
+    }
+
     const passwordHash = await hashPassword(body.password);
     const role = ctx.config.adminEmails.has(body.email) ? 'admin' : 'player';
     const userId = await withTx(ctx.db, async (tx) => {

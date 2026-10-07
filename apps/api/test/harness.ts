@@ -8,6 +8,7 @@ import type { Gateway, GatewayKeyInfo, GatewayKeySpec, GatewayModelSpec } from '
 import { GatewayError } from '../src/gateway.js';
 import { migrate } from '../src/migrate.js';
 import { createRedis } from '../src/redis.js';
+import { FakeMailer } from '../src/services/mailer.js';
 
 export class FakeGateway implements Gateway {
   models = new Map<string, GatewayModelSpec>();
@@ -95,6 +96,7 @@ export async function createHarness(): Promise<Harness> {
   const redis = createRedis(config.REDIS_URL);
   await redis.flushdb();
   const gateway = new FakeGateway();
+  const mailer = new FakeMailer();
   const clock = { now: Date.now() };
   const positions = new Map<string, PlayerPosition>();
   const rngQueue: number[] = [];
@@ -104,6 +106,7 @@ export async function createHarness(): Promise<Harness> {
       db,
       redis,
       gateway,
+      mailer,
       now: () => new Date(clock.now),
       rng: () => (rngQueue.length ? rngQueue.shift()! : 0.5),
       positionOf: async (id) => positions.get(id) ?? null,
