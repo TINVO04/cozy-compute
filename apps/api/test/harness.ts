@@ -89,6 +89,7 @@ export async function createHarness(): Promise<Harness> {
   env.ADMIN_EMAILS = 'admin@test.local';
   env.NODE_ENV = 'test';
   env.AUTH_RATE_LIMIT_PER_MIN = '10000';
+  env.REQUIRE_EMAIL_VERIFICATION = 'false';
   const config = loadConfig(env);
   const db = createPool(config.DATABASE_URL, 10);
   await db.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
