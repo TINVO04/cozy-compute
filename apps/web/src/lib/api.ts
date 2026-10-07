@@ -31,6 +31,9 @@ let onUnauthorized: () => void = () => undefined;
 export function setUnauthorizedHandler(fn: () => void) {
   onUnauthorized = fn;
 }
+export function triggerUnauthorized() {
+  onUnauthorized();
+}
 
 export async function api<T>(
   path: string,

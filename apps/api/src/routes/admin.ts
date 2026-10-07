@@ -742,6 +742,14 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext) {
         [id, body.verified],
       );
 
+      if (!body.verified) {
+        // Hủy xác thực: Văng người chơi ra khỏi game ngay lập tức và xóa phiên đăng nhập
+        await tx.query('DELETE FROM sessions WHERE user_id = $1', [id]);
+        await ctx.redis.publish('player:kick', JSON.stringify({ userId: id }));
+        await ctx.redis.hdel('presence:online', id);
+        await ctx.redis.hdel('positions', id);
+      }
+
       await audit(
         tx,
         admin.id,

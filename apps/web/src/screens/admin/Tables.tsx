@@ -558,6 +558,9 @@ export function PlayersPage() {
       toast({
         kind: 'success',
         title: willBeVerified ? 'Đã xác thực email người chơi' : 'Đã hủy xác thực email người chơi',
+        body: willBeVerified
+          ? 'Người chơi đã được đánh dấu xác thực thành công.'
+          : 'Người chơi đã bị ngắt kết nối và phải xác thực lại email để vào game.',
       });
       setTargetVerify(null);
       void qc.invalidateQueries({ queryKey: ['admin', 'players'] });
@@ -805,7 +808,7 @@ export function PlayersPage() {
           }
           body={
             targetVerify.verified
-              ? 'Tài khoản người chơi sẽ chuyển về trạng thái Chưa xác thực email. Bạn hoặc người chơi sẽ có thể tiến hành xác thực lại sau đó.'
+              ? 'Tài khoản người chơi sẽ bị ngắt kết nối ngay lập tức và chuyển về trạng thái Chưa xác thực. Người chơi sẽ phải tự xác thực lại email bằng mã OTP để tiếp tục vào game.'
               : 'Tài khoản người chơi sẽ được đánh dấu là Đã xác thực email thành công.'
           }
           confirmLabel={targetVerify.verified ? 'Hủy xác thực' : 'Xác thực ngay'}

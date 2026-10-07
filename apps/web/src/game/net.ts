@@ -1,5 +1,5 @@
 import { Client, type Room } from 'colyseus.js';
-import { session } from '../lib/api';
+import { session, triggerUnauthorized } from '../lib/api';
 import { useUi } from '../lib/store';
 import { resolveEndpoint } from '../lib/endpoints';
 
@@ -175,6 +175,11 @@ class Net {
       }
       if (code === 4003) {
         useUi.getState().setConnection('offline');
+        useUi.getState().toast({
+          kind: 'error',
+          title: 'Tài khoản của bạn đã bị ngắt kết nối hoặc cần xác thực lại email.',
+        });
+        triggerUnauthorized();
         return;
       }
       useUi.getState().setConnection('reconnecting');
