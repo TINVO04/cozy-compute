@@ -27,6 +27,7 @@ const credentials = z.object({
 });
 const sendOtpSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(200),
+  mode: z.enum(['register', 'reverify']).default('register'),
 });
 const registration = credentials.extend({
   displayName: z
@@ -52,12 +53,26 @@ export function playerRoutes(app: FastifyInstance, ctx: AppContext) {
 
   app.post('/auth/send-otp', authLimit, async (req) => {
     const body = sendOtpSchema.parse(req.body);
-    const taken = await ctx.db.query<{ email_taken: boolean }>(
-      'SELECT EXISTS (SELECT 1 FROM users WHERE lower(email) = $1) AS email_taken',
+    const taken = await ctx.db.query<{ id: string; email_verified: boolean }>(
+      'SELECT id, coalesce(email_verified, true) AS email_verified FROM users WHERE lower(email) = $1',
       [body.email],
     );
-    if (taken.rows[0]?.email_taken) {
-      throw conflict('email_taken', 'Tài khoản với email này đã tồn tại. Vui lòng đăng nhập.');
+    const existing = taken.rows[0];
+
+    if (body.mode === 'register') {
+      if (existing && existing.email_verified) {
+        throw conflict('email_taken', 'Tài khoản với email này đã tồn tại. Vui lòng đăng nhập.');
+      }
+    } else if (body.mode === 'reverify') {
+      if (!existing) {
+        throw notFound('Không tìm thấy tài khoản với email này.');
+      }
+      if (existing.email_verified) {
+        throw badRequest(
+          'already_verified',
+          'Tài khoản này đã được xác thực email. Bạn có thể đăng nhập bình thường.',
+        );
+      }
     }
 
     const cooldownKey = `otp:cooldown:${body.email}`;
@@ -84,6 +99,42 @@ export function playerRoutes(app: FastifyInstance, ctx: AppContext) {
     }
 
     return { ok: true, message: 'Mã OTP đã được gửi đến email của bạn.' };
+  });
+
+  app.post('/auth/reverify', authLimit, async (req) => {
+    const reverifySchema = credentials.extend({
+      otp: z.string().trim().length(6),
+    });
+    const body = reverifySchema.parse(req.body);
+    const r = await ctx.db.query<{ id: string; password_hash: string; status: string }>(
+      'SELECT id, password_hash, status FROM users WHERE lower(email) = $1',
+      [body.email],
+    );
+    const u = r.rows[0];
+    const ok = await verifyPassword(
+      u?.password_hash ?? '$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHQ$ZmFrZWhhc2hmYWtlaGFzaA',
+      body.password,
+    );
+    if (!u || !ok) throw new AppError(401, 'invalid_credentials', 'Email hoặc mật khẩu không chính xác.');
+    if (u.status === 'suspended') throw new AppError(403, 'suspended', 'Tài khoản này đã bị tạm khóa.');
+
+    const otpKey = `otp:register:${body.email}`;
+    const storedOtp = await ctx.redis.get(otpKey);
+    if (!storedOtp || storedOtp !== body.otp) {
+      throw badRequest('invalid_otp', 'Mã OTP không chính xác hoặc đã hết hạn.');
+    }
+    await ctx.redis.del(otpKey);
+
+    await ctx.db.query(
+      'UPDATE users SET email_verified = true, email_verified_at = now(), last_login_at = now() WHERE id = $1',
+      [u.id],
+    );
+
+    const token = await createSession(ctx.db, u.id, ctx.config.SESSION_TTL_DAYS, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+    return { token, user: await playerSummary(ctx.db, u.id) };
   });
 
   app.post('/auth/register', authLimit, async (req) => {
@@ -129,8 +180,13 @@ export function playerRoutes(app: FastifyInstance, ctx: AppContext) {
 
   app.post('/auth/login', authLimit, async (req) => {
     const body = credentials.parse(req.body);
-    const r = await ctx.db.query<{ id: string; password_hash: string; status: string }>(
-      'SELECT id, password_hash, status FROM users WHERE lower(email) = $1',
+    const r = await ctx.db.query<{
+      id: string;
+      password_hash: string;
+      status: string;
+      email_verified: boolean;
+    }>(
+      'SELECT id, password_hash, status, coalesce(email_verified, true) AS email_verified FROM users WHERE lower(email) = $1',
       [body.email],
     );
     const u = r.rows[0];
@@ -141,6 +197,13 @@ export function playerRoutes(app: FastifyInstance, ctx: AppContext) {
     );
     if (!u || !ok) throw new AppError(401, 'invalid_credentials', 'Email or password is incorrect.');
     if (u.status === 'suspended') throw new AppError(403, 'suspended', 'This account is suspended.');
+    if (ctx.config.REQUIRE_EMAIL_VERIFICATION && !u.email_verified) {
+      throw new AppError(
+        403,
+        'email_not_verified',
+        'Tài khoản chưa được xác thực email hoặc đã bị quản trị viên yêu cầu xác thực lại.',
+      );
+    }
     await ctx.db.query('UPDATE users SET last_login_at = now() WHERE id = $1', [u.id]);
     const token = await createSession(ctx.db, u.id, ctx.config.SESSION_TTL_DAYS, {
       ip: req.ip,

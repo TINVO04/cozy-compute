@@ -51,7 +51,7 @@ function HeroArt() {
 }
 
 export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
-  const [mode, setMode] = useState<'login' | 'register'>('register');
+  const [mode, setMode] = useState<'login' | 'register' | 'reverify'>('register');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -81,16 +81,21 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
     setInfoMessage(null);
     setSendingOtp(true);
     try {
-      await api<{ ok: boolean; message: string }>('/auth/send-otp', {
-        body: { email },
+      const res = await api<{ ok: boolean; message: string }>('/auth/send-otp', {
+        body: { email, mode: mode === 'reverify' ? 'reverify' : 'register' },
       });
       setOtpSent(true);
       setOtpCountdown(60);
-      setInfoMessage('Mã OTP xác thực đã được gửi về email của bạn. Vui lòng kiểm tra hộp thư.');
+      setInfoMessage(
+        res.message || 'Mã OTP xác thực đã được gửi về email của bạn. Vui lòng kiểm tra hộp thư.',
+      );
     } catch (err) {
       if (err instanceof ApiError && err.code === 'email_taken') {
         setMode('login');
         setError('Tài khoản với email này đã tồn tại. Đã chuyển sang tab Đăng nhập.');
+      } else if (err instanceof ApiError && err.code === 'already_verified') {
+        setMode('login');
+        setInfoMessage('Tài khoản này đã được xác thực email. Bạn có thể đăng nhập bình thường.');
       } else {
         setError(err instanceof ApiError ? err.message : 'Không thể gửi mã OTP. Vui lòng thử lại.');
       }
@@ -104,28 +109,47 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
     setError(null);
     setInfoMessage(null);
 
-    if (mode === 'register' && !otp.trim()) {
+    if ((mode === 'register' || mode === 'reverify') && !otp.trim()) {
       setError('Vui lòng bấm "Nhận mã OTP" và nhập mã xác thực gửi về email của bạn.');
       return;
     }
 
     setBusy(true);
     try {
-      const res = await api<{ token: string; user: Me }>(
-        mode === 'login' ? '/auth/login' : '/auth/register',
-        {
-          body: mode === 'login' ? { email, password } : { email, password, displayName, otp: otp.trim() },
-        },
-      );
+      let res: { token: string; user: Me };
+      if (mode === 'login') {
+        res = await api<{ token: string; user: Me }>('/auth/login', {
+          body: { email, password },
+        });
+      } else if (mode === 'register') {
+        res = await api<{ token: string; user: Me }>('/auth/register', {
+          body: { email, password, displayName, otp: otp.trim() },
+        });
+      } else {
+        res = await api<{ token: string; user: Me }>('/auth/reverify', {
+          body: { email, password, otp: otp.trim() },
+        });
+      }
       session.set(res.token);
       qc.setQueryData(['me'], res.user);
       onSignedIn();
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'email_taken' && mode === 'register') {
-        setMode('login');
-        setError('Tài khoản với email này đã tồn tại. Đã chuyển sang tab Đăng nhập, vui lòng nhập mật khẩu.');
+      if (err instanceof ApiError) {
+        if (err.code === 'email_taken' && mode === 'register') {
+          setMode('login');
+          setError(
+            'Tài khoản với email này đã tồn tại. Đã chuyển sang tab Đăng nhập, vui lòng nhập mật khẩu.',
+          );
+        } else if (err.code === 'email_not_verified') {
+          setMode('reverify');
+          setInfoMessage(
+            'Tài khoản chưa được xác thực email (hoặc quản trị viên yêu cầu xác thực lại). Bấm "Nhận mã OTP" bên dưới để nhận mã xác thực qua email.',
+          );
+        } else {
+          setError(err.message);
+        }
       } else {
-        setError(err instanceof ApiError ? err.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.');
+        setError('Đã có lỗi xảy ra. Vui lòng thử lại.');
       }
     } finally {
       setBusy(false);
@@ -159,35 +183,71 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
       <section className="auth-form-wrap">
         <form className="auth-form" onSubmit={submit} noValidate>
           <div className="stack" style={{ gap: 6 }}>
-            <h2>{mode === 'register' ? 'Gia nhập thị trấn' : 'Chào mừng trở lại'}</h2>
+            <h2>
+              {mode === 'register'
+                ? 'Gia nhập thị trấn'
+                : mode === 'reverify'
+                  ? 'Xác thực lại email'
+                  : 'Chào mừng trở lại'}
+            </h2>
             <p className="muted">
               {mode === 'register'
                 ? 'Tạo tài khoản để nhận ngay căn hộ khởi đầu và 300 Xu.'
-                : 'Đăng nhập để tiếp tục cuộc phiêu lưu của bạn.'}
+                : mode === 'reverify'
+                  ? 'Nhập mã OTP gửi về email của bạn để kích hoạt lại tài khoản và vào game.'
+                  : 'Đăng nhập để tiếp tục cuộc phiêu lưu của bạn.'}
             </p>
           </div>
-          <div className="tabs" role="tablist" aria-label="Tài khoản">
-            <button
-              type="button"
-              role="tab"
-              className="tab"
-              style={{ flex: 1 }}
-              aria-selected={mode === 'register'}
-              onClick={() => setMode('register')}
-            >
-              Tạo tài khoản
-            </button>
-            <button
-              type="button"
-              role="tab"
-              className="tab"
-              style={{ flex: 1 }}
-              aria-selected={mode === 'login'}
-              onClick={() => setMode('login')}
-            >
-              Đăng nhập
-            </button>
-          </div>
+          {mode !== 'reverify' ? (
+            <div className="tabs" role="tablist" aria-label="Tài khoản">
+              <button
+                type="button"
+                role="tab"
+                className="tab"
+                style={{ flex: 1 }}
+                aria-selected={mode === 'register'}
+                onClick={() => {
+                  setMode('register');
+                  setError(null);
+                  setInfoMessage(null);
+                }}
+              >
+                Tạo tài khoản
+              </button>
+              <button
+                type="button"
+                role="tab"
+                className="tab"
+                style={{ flex: 1 }}
+                aria-selected={mode === 'login'}
+                onClick={() => {
+                  setMode('login');
+                  setError(null);
+                  setInfoMessage(null);
+                }}
+              >
+                Đăng nhập
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  setMode('login');
+                  setError(null);
+                  setInfoMessage(null);
+                }}
+                style={{ padding: '4px 8px', fontSize: 13 }}
+              >
+                ← Quay lại Đăng nhập
+              </button>
+              <span className="badge badge-warning" style={{ fontSize: 12, padding: '2px 8px' }}>
+                Xác thực lại email
+              </span>
+            </div>
+          )}
           {mode === 'register' ? (
             <div className="field">
               <label htmlFor="name">Tên hiển thị</label>
@@ -217,7 +277,7 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
                 required
                 style={{ flex: 1 }}
               />
-              {mode === 'register' ? (
+              {mode === 'register' || mode === 'reverify' ? (
                 <Button
                   type="button"
                   variant="secondary"
@@ -231,7 +291,7 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
               ) : null}
             </div>
           </div>
-          {mode === 'register' ? (
+          {mode === 'register' || mode === 'reverify' ? (
             <div className="field">
               <label htmlFor="otp">Mã xác thực OTP</label>
               <input
@@ -263,6 +323,22 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
             />
             {mode === 'register' ? <span className="field-hint">Tối thiểu 8 ký tự.</span> : null}
           </div>
+          {mode === 'login' ? (
+            <div style={{ textAlign: 'center', marginTop: -4 }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  setMode('reverify');
+                  setError(null);
+                  setInfoMessage(null);
+                }}
+                style={{ fontSize: 12, opacity: 0.85, textDecoration: 'underline' }}
+              >
+                Chưa xác thực email hoặc bị yêu cầu xác thực lại? Bấm vào đây
+              </button>
+            </div>
+          ) : null}
           {infoMessage ? (
             <div className="callout callout-info" role="status">
               {infoMessage}
@@ -274,7 +350,11 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
             </div>
           ) : null}
           <Button type="submit" variant="primary" size="lg" block loading={busy}>
-            {mode === 'register' ? 'Tạo tài khoản và vào thị trấn' : 'Đăng nhập'}
+            {mode === 'register'
+              ? 'Tạo tài khoản và vào thị trấn'
+              : mode === 'reverify'
+                ? 'Xác thực email & Vào game'
+                : 'Đăng nhập'}
           </Button>
           <p className="muted" style={{ fontSize: 12, textAlign: 'center' }}>
             Phần thưởng AI đến từ quỹ hạn mức hàng tuần có giới hạn và không có giá trị quy đổi tiền mặt.

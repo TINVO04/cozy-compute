@@ -49,7 +49,7 @@ export class NodemailerService implements Mailer {
       from: this.from,
       to: toEmail,
       subject: `[Cozy Compute] Mã OTP xác thực tài khoản: ${otpCode}`,
-      text: `Xin chào!\nMã xác thực (OTP) đăng ký tài khoản của bạn là: ${otpCode}\nMã có hiệu lực trong vòng 5 phút. Vui lòng không chia sẻ mã này cho ai khác.`,
+      text: `Xin chào!\nMã xác thực (OTP) tài khoản của bạn là: ${otpCode}\nMã có hiệu lực trong vòng 5 phút. Vui lòng không chia sẻ mã này cho ai khác.`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -71,17 +71,17 @@ export class NodemailerService implements Mailer {
           <div class="card">
             <div class="header">
               <h1 class="title">Cozy Social MMO</h1>
-              <p class="subtitle">Xác thực đăng ký tài khoản</p>
+              <p class="subtitle">Xác thực tài khoản</p>
             </div>
             <p class="info">Xin chào,</p>
-            <p class="info">Bạn vừa gửi yêu cầu tạo tài khoản mới. Dưới đây là mã xác thực OTP của bạn:</p>
+            <p class="info">Bạn vừa gửi yêu cầu xác thực tài khoản. Dưới đây là mã xác thực OTP của bạn:</p>
             <div class="otp-box">
               <div class="otp-code">${otpCode}</div>
             </div>
             <p class="info">⏱️ Mã xác thực này có hiệu lực trong vòng <strong>5 phút</strong>.</p>
             <p class="info">🔒 Để đảm bảo an toàn, vui lòng <strong>không chia sẻ</strong> mã OTP này với bất kỳ ai.</p>
             <div class="footer">
-              Nếu bạn không yêu cầu tạo tài khoản tại Cozy Compute, vui lòng bỏ qua email này.
+              Nếu bạn không gửi yêu cầu xác thực tại Cozy Compute, vui lòng bỏ qua email này.
             </div>
           </div>
         </body>
