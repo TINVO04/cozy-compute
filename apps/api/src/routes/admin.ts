@@ -745,9 +745,22 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext) {
       if (!body.verified) {
         // Hủy xác thực: Văng người chơi ra khỏi game ngay lập tức và xóa phiên đăng nhập
         await tx.query('DELETE FROM sessions WHERE user_id = $1', [id]);
-        await ctx.redis.publish('player:kick', JSON.stringify({ userId: id }));
+        await ctx.redis.publish(
+          'player:kick',
+          JSON.stringify({ userId: id, reason: 'email_unverified', email: user.email }),
+        );
         await ctx.redis.hdel('presence:online', id);
         await ctx.redis.hdel('positions', id);
+
+        // Tự động tạo và gửi mã OTP mới về email của người chơi để họ xác thực lại ngay lập tức
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpKey = `otp:register:${user.email.toLowerCase()}`;
+        await ctx.redis.set(otpKey, otpCode, 'EX', 600);
+        try {
+          await ctx.mailer.sendOtpEmail(user.email, otpCode);
+        } catch (err) {
+          ctx.log.warn({ err, email: user.email }, 'Auto OTP send failed on admin unverify');
+        }
       }
 
       await audit(

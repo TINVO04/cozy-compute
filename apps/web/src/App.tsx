@@ -19,14 +19,35 @@ function FullLoader() {
 }
 
 export function App() {
+  const [authState, setAuthState] = useState<{
+    mode?: 'login' | 'register' | 'reverify';
+    email?: string;
+    message?: string;
+  } | null>(() => {
+    const raw = sessionStorage.getItem('cozy.auth_state');
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch {
+        /* ignore */
+      }
+    }
+    const lastEmail = localStorage.getItem('cozy.last_email');
+    return lastEmail ? { mode: 'login', email: lastEmail } : null;
+  });
   const [hasSession, setHasSession] = useState(() => Boolean(session.get()));
   const qc = useQueryClient();
   const navigate = useNavigate();
+
   useEffect(() => {
-    setUnauthorizedHandler(() => {
+    setUnauthorizedHandler((hint) => {
       session.clear();
       qc.clear();
       setHasSession(false);
+      const lastEmail = localStorage.getItem('cozy.last_email') || '';
+      const state = hint ?? { mode: 'login' as const, email: lastEmail };
+      setAuthState(state);
+      sessionStorage.setItem('cozy.auth_state', JSON.stringify(state));
       navigate('/');
     });
   }, [qc, navigate]);
@@ -34,17 +55,59 @@ export function App() {
   return (
     <>
       {hasSession ? (
-        <Authed onSignedOut={() => setHasSession(false)} />
+        <Authed
+          onSignedOut={(hint) => {
+            session.clear();
+            qc.clear();
+            setHasSession(false);
+            if (hint) {
+              setAuthState(hint);
+              sessionStorage.setItem('cozy.auth_state', JSON.stringify(hint));
+            } else {
+              const lastEmail = localStorage.getItem('cozy.last_email') || '';
+              setAuthState({ mode: 'login', email: lastEmail });
+              sessionStorage.removeItem('cozy.auth_state');
+            }
+          }}
+        />
       ) : (
-        <AuthScreen onSignedIn={() => setHasSession(true)} />
+        <AuthScreen
+          initialMode={authState?.mode}
+          initialEmail={authState?.email}
+          initialMessage={authState?.message}
+          onSignedIn={() => {
+            setHasSession(true);
+            setAuthState(null);
+            sessionStorage.removeItem('cozy.auth_state');
+          }}
+        />
       )}
       <Toasts />
     </>
   );
 }
 
-function Authed({ onSignedOut }: { onSignedOut: () => void }) {
+function Authed({
+  onSignedOut,
+}: {
+  onSignedOut: (hint?: { mode: 'login' | 'register' | 'reverify'; email: string; message?: string }) => void;
+}) {
   const me = useMe();
+
+  useEffect(() => {
+    if (me.data?.email) {
+      localStorage.setItem('cozy.last_email', me.data.email);
+    }
+    if (me.data && !me.data.emailVerified) {
+      onSignedOut({
+        mode: 'reverify',
+        email: me.data.email,
+        message:
+          'Tài khoản của bạn đã bị quản trị viên yêu cầu xác thực lại email. Mã OTP 6 chữ số đã được gửi tới email của bạn.',
+      });
+    }
+  }, [me.data, onSignedOut]);
+
   if (me.isPending) return <FullLoader />;
   if (me.isError || !me.data) {
     return (

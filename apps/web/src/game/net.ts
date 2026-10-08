@@ -174,13 +174,25 @@ class Net {
         useUi.getState().toast({ kind: 'info', title: 'Bạn đã mở game ở một thẻ trình duyệt khác.' });
         return;
       }
+      if (code === 4004) {
+        useUi.getState().setConnection('offline');
+        const email = localStorage.getItem('cozy.last_email') || '';
+        triggerUnauthorized({
+          mode: 'reverify',
+          email,
+          message:
+            'Quản trị viên đã yêu cầu bạn xác thực lại email. Mã OTP 6 chữ số đã được gửi tới email của bạn.',
+        });
+        return;
+      }
       if (code === 4003) {
         useUi.getState().setConnection('offline');
-        useUi.getState().toast({
-          kind: 'error',
-          title: 'Tài khoản của bạn đã bị ngắt kết nối hoặc cần xác thực lại email.',
+        const email = localStorage.getItem('cozy.last_email') || '';
+        triggerUnauthorized({
+          mode: 'reverify',
+          email,
+          message: 'Tài khoản của bạn đã bị ngắt kết nối hoặc cần xác thực lại email.',
         });
-        triggerUnauthorized();
         return;
       }
       useUi.getState().setConnection('reconnecting');

@@ -27,12 +27,18 @@ export const session = {
   clear: () => localStorage.removeItem(TOKEN_KEY),
 };
 
-let onUnauthorized: () => void = () => undefined;
-export function setUnauthorizedHandler(fn: () => void) {
+export interface UnauthorizedHint {
+  mode?: 'login' | 'register' | 'reverify';
+  email?: string;
+  message?: string;
+}
+
+let onUnauthorized: (hint?: UnauthorizedHint) => void = () => undefined;
+export function setUnauthorizedHandler(fn: (hint?: UnauthorizedHint) => void) {
   onUnauthorized = fn;
 }
-export function triggerUnauthorized() {
-  onUnauthorized();
+export function triggerUnauthorized(hint?: UnauthorizedHint) {
+  onUnauthorized(hint);
 }
 
 export async function api<T>(
@@ -62,7 +68,10 @@ export async function api<T>(
   const data = text ? JSON.parse(text) : undefined;
   if (!res.ok) {
     const err = (data?.error ?? {}) as { code?: string; message?: string; details?: unknown };
-    if (res.status === 401 && token) onUnauthorized();
+    if (res.status === 401 && token) {
+      const lastEmail = localStorage.getItem('cozy.last_email') || '';
+      onUnauthorized({ mode: 'login', email: lastEmail });
+    }
     throw new ApiError(
       res.status,
       err.code ?? 'error',

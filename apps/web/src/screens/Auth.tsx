@@ -51,16 +51,29 @@ function HeroArt() {
   return <canvas ref={ref} aria-hidden />;
 }
 
-export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
-  const [mode, setMode] = useState<'login' | 'register' | 'reverify'>('register');
-  const [email, setEmail] = useState('');
+export function AuthScreen({
+  onSignedIn,
+  initialMode,
+  initialEmail,
+  initialMessage,
+}: {
+  onSignedIn: () => void;
+  initialMode?: 'login' | 'register' | 'reverify';
+  initialEmail?: string;
+  initialMessage?: string;
+}) {
+  const [mode, setMode] = useState<'login' | 'register' | 'reverify'>(() => {
+    if (initialMode) return initialMode;
+    return 'login';
+  });
+  const [email, setEmail] = useState(() => initialEmail || localStorage.getItem('cozy.last_email') || '');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [otp, setOtp] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
+  const [otpSent, setOtpSent] = useState(() => initialMode === 'reverify');
   const [sendingOtp, setSendingOtp] = useState(false);
-  const [otpCountdown, setOtpCountdown] = useState(0);
-  const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [otpCountdown, setOtpCountdown] = useState(() => (initialMode === 'reverify' ? 60 : 0));
+  const [infoMessage, setInfoMessage] = useState<string | null>(() => initialMessage || null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const qc = useQueryClient();
@@ -161,6 +174,8 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
         });
       }
       session.set(res.token);
+      localStorage.setItem('cozy.last_email', res.user.email);
+      sessionStorage.removeItem('cozy.auth_state');
       qc.setQueryData(['me'], res.user);
       onSignedIn();
     } catch (err) {
@@ -234,19 +249,45 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
               <p className="muted" style={{ fontSize: 13, margin: '2px 0 0' }}>
                 Tài khoản cần hoàn tất xác thực email để vào game. Mã OTP 6 chữ số đã được gửi tới:
               </p>
-              <div
-                style={{
-                  padding: '8px 14px',
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  borderRadius: 8,
-                  fontWeight: 600,
-                  fontSize: 14,
-                  wordBreak: 'break-all',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                }}
-              >
-                {email || 'Email của bạn'}
-              </div>
+              {email ? (
+                <div
+                  style={{
+                    padding: '8px 14px',
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    borderRadius: 8,
+                    fontWeight: 600,
+                    fontSize: 14,
+                    wordBreak: 'break-all',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <span>{email}</span>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ fontSize: 11, padding: '2px 6px', textDecoration: 'underline' }}
+                    onClick={() => setEmail('')}
+                  >
+                    Đổi email
+                  </button>
+                </div>
+              ) : (
+                <div className="field" style={{ textAlign: 'left', marginTop: 10 }}>
+                  <label htmlFor="reverify-email">Email tài khoản</label>
+                  <input
+                    id="reverify-email"
+                    className="input"
+                    type="email"
+                    placeholder="Nhập email tài khoản"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
             </div>
 
             <div className="field" style={{ marginTop: 14 }}>
@@ -274,20 +315,19 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
               </span>
             </div>
 
-            {!password ? (
-              <div className="field">
-                <label htmlFor="password">Mật khẩu tài khoản</label>
-                <input
-                  id="password"
-                  className="input"
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-            ) : null}
+            <div className="field">
+              <label htmlFor="password">Mật khẩu tài khoản</label>
+              <input
+                id="password"
+                className="input"
+                type="password"
+                autoComplete="current-password"
+                placeholder="Nhập mật khẩu tài khoản"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
 
             {infoMessage ? (
               <div className="callout callout-info" role="status">

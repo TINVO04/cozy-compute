@@ -256,7 +256,11 @@ export abstract class BaseRoom extends Room<RoomState> {
     if (typeof statusText === 'string') p.status = statusText;
   }
 
-  kick(userId: string) {
-    this.clientForUser(userId)?.leave(4003, 'Account suspended');
+  kick(userId: string, reason?: string) {
+    if (reason === 'email_unverified') {
+      this.clientForUser(userId)?.leave(4004, 'Email unverified');
+    } else {
+      this.clientForUser(userId)?.leave(4003, 'Account suspended');
+    }
   }
 }

@@ -105,6 +105,7 @@ sub.on('message', async (channel, raw) => {
       ownerId?: string;
       appearance?: unknown;
       statusText?: string;
+      reason?: string;
     };
     const rooms = await matchMaker.query({});
     for (const cached of rooms) {
@@ -112,7 +113,7 @@ sub.on('message', async (channel, raw) => {
       if (!room) continue;
       if (channel === 'player:appearance' && msg.userId)
         room.updateAppearance(msg.userId, msg.appearance, msg.statusText);
-      if (channel === 'player:kick' && msg.userId) room.kick(msg.userId);
+      if (channel === 'player:kick' && msg.userId) room.kick(msg.userId, msg.reason);
       if (channel === 'apartment:updated' && room instanceof ApartmentRoom && room.owner === msg.ownerId)
         await room.reloadLayout();
       if (channel === 'farm:updated' && room instanceof FarmRoom && room.owner === msg.ownerId)
