@@ -110,8 +110,37 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
     setError(null);
     setInfoMessage(null);
 
-    if ((mode === 'register' || mode === 'reverify') && !otp.trim()) {
-      setError('Vui lòng bấm "Nhận mã OTP" và nhập mã xác thực gửi về email của bạn.');
+    if (mode === 'register' && !otp.trim()) {
+      if (!displayName.trim() || displayName.length < 3) {
+        setError('Tên hiển thị phải có từ 3 đến 20 ký tự.');
+        return;
+      }
+      if (!email.trim() || !email.includes('@')) {
+        setError('Vui lòng nhập địa chỉ email hợp lệ.');
+        return;
+      }
+      if (!password || password.length < 8) {
+        setError('Mật khẩu tối thiểu 8 ký tự.');
+        return;
+      }
+
+      if (!otpSent) {
+        await handleSendOtp();
+        setInfoMessage(
+          'Mã OTP xác thực đã được gửi về email của bạn! Vui lòng kiểm tra hộp thư (cả mục Spam/Thư rác) và nhập 6 chữ số vào ô bên dưới.',
+        );
+        document.getElementById('otp')?.focus();
+        return;
+      } else {
+        setError('Vui lòng nhập mã OTP 6 chữ số đã được gửi về email của bạn.');
+        document.getElementById('otp')?.focus();
+        return;
+      }
+    }
+
+    if (mode === 'reverify' && !otp.trim()) {
+      setError('Vui lòng nhập mã OTP 6 chữ số đã được gửi về email của bạn.');
+      document.getElementById('otp')?.focus();
       return;
     }
 
@@ -405,7 +434,9 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
                   required
                 />
                 <span className="field-hint">
-                  Bấm nút "Nhận mã OTP" ở trên. Mã sẽ được gửi vào hộp thư đến hoặc hòm thư Spam của bạn.
+                  {otpSent
+                    ? 'Mã 6 chữ số đã được gửi tới email của bạn (kiểm tra cả mục Spam/Thư rác).'
+                    : 'Bấm "Nhận mã OTP" hoặc điền xong thông tin rồi bấm "Tạo tài khoản" để nhận mã.'}
                 </span>
               </div>
             ) : null}

@@ -27,6 +27,7 @@ const { app, ctx } = await buildApp({
     return raw ? (JSON.parse(raw) as PlayerPosition) : null;
   },
 });
+mailer.setLogger?.(app.log);
 
 await migrate(db, (m) => app.log.info(m));
 const stopJobs = config.JOBS_ENABLED ? startJobs(ctx) : () => undefined;

@@ -779,7 +779,8 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     await ctx.redis.set(otpKey, otpCode, 'EX', 600);
 
     try {
-      await ctx.mailer.sendOtpEmail(user.email, otpCode);
+      const sent = await ctx.mailer.sendOtpEmail(user.email, otpCode);
+      if (!sent) throw new Error('Mailer returned false (SMTP unconfigured or failed)');
     } catch (err) {
       ctx.log.error({ err, email: user.email }, 'Failed to deliver re-verification OTP email');
       throw new AppError(

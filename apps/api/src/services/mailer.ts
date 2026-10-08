@@ -5,6 +5,7 @@ import type { Config } from '../config.js';
 export interface Mailer {
   sendOtpEmail(toEmail: string, otpCode: string): Promise<boolean>;
   verify(): Promise<boolean>;
+  setLogger?(log: FastifyBaseLogger): void;
 }
 
 export class NodemailerService implements Mailer {
@@ -26,6 +27,10 @@ export class NodemailerService implements Mailer {
         },
       });
     }
+  }
+
+  setLogger(log: FastifyBaseLogger) {
+    this.log = log;
   }
 
   async verify(): Promise<boolean> {

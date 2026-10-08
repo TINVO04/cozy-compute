@@ -88,7 +88,8 @@ export function playerRoutes(app: FastifyInstance, ctx: AppContext) {
     await ctx.redis.set(cooldownKey, '1', 'EX', 60);
 
     try {
-      await ctx.mailer.sendOtpEmail(body.email, otpCode);
+      const sent = await ctx.mailer.sendOtpEmail(body.email, otpCode);
+      if (!sent) throw new Error('Mailer returned false (SMTP unconfigured or failed)');
     } catch (err) {
       ctx.log.error({ err, email: body.email }, 'Failed to deliver OTP email');
       throw new AppError(
@@ -249,7 +250,8 @@ export function playerRoutes(app: FastifyInstance, ctx: AppContext) {
     await ctx.redis.set(otpKey, otpCode, 'EX', 300);
     await ctx.redis.set(cooldownKey, '1', 'EX', 60);
     try {
-      await ctx.mailer.sendOtpEmail(user.email, otpCode);
+      const sent = await ctx.mailer.sendOtpEmail(user.email, otpCode);
+      if (!sent) throw new Error('Mailer returned false (SMTP unconfigured or failed)');
     } catch (err) {
       ctx.log.error({ err, email: user.email }, 'Failed to deliver verification OTP email');
       throw new AppError(500, 'email_delivery_failed', 'Không thể gửi email OTP. Vui lòng thử lại sau.');
