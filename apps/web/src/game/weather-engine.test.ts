@@ -115,4 +115,32 @@ describe('weather-engine', () => {
     expect(stormLighting.alpha).toBeGreaterThan(0.2);
     expect(stormLighting.lampBrightness).toBeGreaterThan(0.5);
   });
+
+  it('synchronizes whole-server authoritative weather telemetry to ui store', async () => {
+    const { acceptWorldWeather } = await import('./weather-sync');
+    const { useUi } = await import('../lib/store');
+
+    const serverTelemetry = resolveEffectiveTelemetry(
+      {
+        enabled: true,
+        solarHour: 21.5,
+        condition: 'thunderstorm',
+        windSpeedKmh: 42,
+        rainIntensity: 0.8,
+        lightningAt: 1728345678900,
+      },
+      null,
+    );
+
+    acceptWorldWeather(serverTelemetry);
+
+    const currentUi = useUi.getState();
+    expect(currentUi.weather.condition).toBe('thunderstorm');
+    expect(currentUi.weather.isOverridden).toBe(true);
+    expect(currentUi.weather.solarHour).toBe(21.5);
+    expect(currentUi.weather.windSpeedKmh).toBe(42);
+    expect(currentUi.weather.lightningTriggeredAt).toBe(1728345678900);
+    expect(currentUi.weatherOverride?.enabled).toBe(true);
+    expect(currentUi.weatherOverride?.condition).toBe('thunderstorm');
+  });
 });

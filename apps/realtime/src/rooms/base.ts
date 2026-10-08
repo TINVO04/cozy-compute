@@ -18,6 +18,14 @@ export function getDeps(): Deps {
   return deps;
 }
 
+let latestWeather: unknown = null;
+export function setLatestWeather(w: unknown) {
+  latestWeather = w;
+}
+export function getLatestWeather(): unknown {
+  return latestWeather;
+}
+
 export interface ClientData {
   session: SessionInfo;
   movement: AuthoritativeMovement;
@@ -131,6 +139,8 @@ export abstract class BaseRoom extends Room<RoomState> {
     });
     p.speed = this.playerSpeedFor(this.data.get(client.sessionId)!, p);
     void this.publishPresence(session.userId);
+    const currentW = getLatestWeather();
+    if (currentW) client.send('weather:updated', currentW);
   }
 
   protected spawnFor(_session: SessionInfo, _options?: unknown): { x: number; y: number } {

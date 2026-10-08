@@ -11,9 +11,13 @@ import {
   Wind,
   Zap,
 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { api } from '../../lib/api';
 import { play } from '../../lib/sound';
 import { useUi } from '../../lib/store';
 import { Button } from '../../ui/primitives';
+import { acceptWorldWeather } from '../../game/weather-sync';
+import type { AdminWeatherOverride, WeatherTelemetry } from '@cozy/game-data';
 import type { WeatherCondition } from '../../game/weather-engine';
 import { ApplyWorldWeather } from './ApplyWorldWeather';
 
@@ -25,28 +29,103 @@ export function WeatherAdminPage() {
   const triggerLightning = useUi((s) => s.triggerLightning);
   const triggerWindGust = useUi((s) => s.triggerWindGust);
 
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const syncToServer = useCallback(async (patch: Partial<AdminWeatherOverride>) => {
+    setSyncStatus('syncing');
+    setSyncError(null);
+    try {
+      const current = useUi.getState().weatherOverride;
+      const body = {
+        enabled: true,
+        solarHour: patch.solarHour !== undefined ? patch.solarHour : (current?.solarHour ?? null),
+        condition: patch.condition !== undefined ? patch.condition : (current?.condition ?? null),
+        windSpeedKmh: patch.windSpeedKmh !== undefined ? patch.windSpeedKmh : (current?.windSpeedKmh ?? null),
+        rainIntensity:
+          patch.rainIntensity !== undefined ? patch.rainIntensity : (current?.rainIntensity ?? null),
+        lightningAt: patch.lightningAt !== undefined ? patch.lightningAt : undefined,
+        windGustAt: patch.windGustAt !== undefined ? patch.windGustAt : undefined,
+      };
+      const res = await api<WeatherTelemetry>('/admin/weather', {
+        method: 'PUT',
+        body,
+      });
+      acceptWorldWeather(res);
+      setSyncStatus('synced');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi đồng bộ máy chủ';
+      setSyncError(msg);
+      setSyncStatus('error');
+    }
+  }, []);
+
+  const debouncedSync = useCallback(
+    (patch: Partial<AdminWeatherOverride>) => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = setTimeout(() => {
+        void syncToServer(patch);
+      }, 250);
+    },
+    [syncToServer],
+  );
+
+  const resetAllServer = useCallback(async () => {
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    setSyncStatus('syncing');
+    setSyncError(null);
+    try {
+      const res = await api<WeatherTelemetry>('/admin/weather', {
+        method: 'PUT',
+        body: { enabled: false },
+      });
+      acceptWorldWeather(res);
+      setSyncStatus('synced');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khôi phục thời tiết';
+      setSyncError(msg);
+      setSyncStatus('error');
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    };
+  }, []);
+
   const handleSetTime = (hour: number | null) => {
     play('click');
     setWeatherOverride({ solarHour: hour });
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    void syncToServer({ solarHour: hour });
   };
 
   const handleSetCondition = (condition: WeatherCondition | null) => {
     play('click');
     setWeatherOverride({ condition });
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    void syncToServer({ condition });
   };
 
   const handleTriggerLightning = () => {
     triggerLightning();
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    void syncToServer({ lightningAt: Date.now() });
   };
 
   const handleTriggerWindGust = () => {
     play('wind_gust');
     triggerWindGust();
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    void syncToServer({ windGustAt: Date.now() });
   };
 
   const handleResetAll = () => {
     play('pop');
     resetWeatherOverride();
+    void resetAllServer();
   };
 
   return (
@@ -55,15 +134,29 @@ export function WeatherAdminPage() {
         <div>
           <h1>Khí hậu & Thời tiết Biên Hòa</h1>
           <p className="muted">
-            Giám sát và kiểm thử thời gian thực chu kỳ ánh sáng 24h, thời tiết và gió động trên bản đồ Thị
-            trấn Biên Hòa.
+            Mọi thay đổi chu kỳ ánh sáng 24h, thời tiết, gió thổi và sấm sét sẽ đồng bộ thời gian thực tới
+            toàn bộ người chơi trong server.
           </p>
+          {syncError && <p style={{ color: '#ef4444', fontSize: 13, margin: '4px 0 0' }}>⚠️ {syncError}</p>}
         </div>
         <div className="row">
-          <span className={`pill ${weather.isOverridden ? 'pill-warning' : 'pill-success'}`}>
-            {weather.isOverridden ? '🟡 Đang ghi đè thử nghiệm' : '🟢 Realtime Biên Hòa'}
+          <span
+            className={`pill ${
+              syncStatus === 'syncing' ? 'pill-info' : weather.isOverridden ? 'pill-warning' : 'pill-success'
+            }`}
+          >
+            {syncStatus === 'syncing'
+              ? '🔄 Đang đồng bộ toàn server...'
+              : weather.isOverridden
+                ? '🟡 Đang ghi đè toàn server'
+                : '🟢 Realtime Biên Hòa (Toàn server)'}
           </span>
-          <Button size="sm" variant="ghost" onClick={handleResetAll} disabled={!override?.enabled}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleResetAll}
+            disabled={!weather.isOverridden && !override?.enabled}
+          >
             <RefreshCw size={14} /> Khôi phục Realtime
           </Button>
         </div>
@@ -168,7 +261,16 @@ export function WeatherAdminPage() {
               max="23.9"
               step="0.1"
               value={weather.solarHour}
-              onChange={(e) => handleSetTime(parseFloat(e.target.value))}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                setWeatherOverride({ solarHour: val });
+                debouncedSync({ solarHour: val });
+              }}
+              onPointerUp={(e) => {
+                const val = parseFloat((e.target as HTMLInputElement).value);
+                if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+                void syncToServer({ solarHour: val });
+              }}
               style={{ width: '100%', cursor: 'pointer', accentColor: '#38bdf8' }}
             />
           </div>
@@ -223,7 +325,14 @@ export function WeatherAdminPage() {
                 value={weather.windSpeedKmh}
                 onChange={(e) => {
                   play('click');
-                  setWeatherOverride({ windSpeedKmh: parseFloat(e.target.value) });
+                  const val = parseFloat(e.target.value);
+                  setWeatherOverride({ windSpeedKmh: val });
+                  debouncedSync({ windSpeedKmh: val });
+                }}
+                onPointerUp={(e) => {
+                  const val = parseFloat((e.target as HTMLInputElement).value);
+                  if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+                  void syncToServer({ windSpeedKmh: val });
                 }}
                 style={{ width: '100%', cursor: 'pointer', accentColor: '#34d399' }}
               />
@@ -243,7 +352,14 @@ export function WeatherAdminPage() {
                 value={Math.min(1, weather.precipitationMm / 25)}
                 onChange={(e) => {
                   play('click');
-                  setWeatherOverride({ rainIntensity: parseFloat(e.target.value) });
+                  const val = parseFloat(e.target.value);
+                  setWeatherOverride({ rainIntensity: val });
+                  debouncedSync({ rainIntensity: val });
+                }}
+                onPointerUp={(e) => {
+                  const val = parseFloat((e.target as HTMLInputElement).value);
+                  if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+                  void syncToServer({ rainIntensity: val });
                 }}
                 style={{ width: '100%', cursor: 'pointer', accentColor: '#38bdf8' }}
               />
@@ -289,7 +405,12 @@ export function WeatherAdminPage() {
             <Wind size={16} color="#38bdf8" /> 🍃 Giật Gió Mạnh (Sudden Wind Gust)
           </Button>
 
-          <Button size="sm" variant="ghost" onClick={handleResetAll} disabled={!override?.enabled}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleResetAll}
+            disabled={!weather.isOverridden && !override?.enabled}
+          >
             <RefreshCw size={15} /> Khôi phục toàn bộ về Realtime Biên Hòa
           </Button>
         </div>

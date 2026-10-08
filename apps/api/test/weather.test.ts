@@ -110,4 +110,46 @@ describe('authoritative weather', () => {
     override = { ...override, enabled: false };
     expect((await worldWeather(ctx)).timePhase).toBe('night');
   });
+  it('supports lightningAt, windGustAt and merges partial overrides smoothly', async () => {
+    let value: Record<string, unknown> | null = null;
+    const query = vi.fn(async (sql: string, args: unknown[] = []) => {
+      if (sql.includes('SELECT value FROM settings')) return { rows: value ? [{ value }] : [] };
+      if (sql.includes('INSERT INTO settings')) value = JSON.parse(args[0] as string);
+      return { rows: [] };
+    });
+    const ctx = {
+      config: { NODE_ENV: 'test' },
+      now: () => new Date(),
+      db: { query, connect: async () => ({ query, release: vi.fn() }) },
+    } as unknown as AppContext;
+    const app = Fastify();
+    app.addHook('onRequest', async (req) => {
+      req.user = { id: 'admin-1', email: 'admin@cozy.vn', status: 'active', sessionId: 's1', role: 'admin' };
+    });
+    weatherRoutes(app, ctx);
+    try {
+      const res1 = await app.inject({
+        method: 'PUT',
+        url: '/admin/weather',
+        payload: { enabled: true, solarHour: 18, condition: 'thunderstorm' },
+      });
+      expect(res1.statusCode).toBe(200);
+      expect(res1.json().condition).toBe('thunderstorm');
+      expect(res1.json().timeFrozen).toBe(true);
+
+      // Now trigger lightning without wiping solarHour or condition
+      const triggerTime = Date.now();
+      const res2 = await app.inject({
+        method: 'PUT',
+        url: '/admin/weather',
+        payload: { enabled: true, lightningAt: triggerTime },
+      });
+      expect(res2.statusCode).toBe(200);
+      expect(res2.json().condition).toBe('thunderstorm');
+      expect(res2.json().lightningTriggeredAt).toBe(triggerTime);
+      expect(res2.json().timeFrozen).toBe(true);
+    } finally {
+      await app.close();
+    }
+  });
 });

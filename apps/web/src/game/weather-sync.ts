@@ -7,7 +7,7 @@ let receivedAt = 0;
 export function acceptWorldWeather(weather: WeatherTelemetry) {
   snapshot = weather;
   receivedAt = performance.now();
-  if (!useUi.getState().weatherOverride?.enabled) useUi.getState().setWeatherTelemetry(weather);
+  useUi.getState().setWeatherTelemetry(weather);
 }
 
 export function startWeatherSync() {
@@ -23,7 +23,7 @@ export function startWeatherSync() {
   void sync();
   const poll = window.setInterval(() => void sync(), 30_000);
   const clock = window.setInterval(() => {
-    if (!snapshot || useUi.getState().weatherOverride?.enabled) return;
+    if (!snapshot) return;
     const hour = snapshot.timeFrozen
       ? snapshot.solarHour
       : (snapshot.solarHour + (performance.now() - receivedAt) / 3_600_000) % 24;

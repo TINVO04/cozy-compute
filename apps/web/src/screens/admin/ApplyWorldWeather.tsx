@@ -25,11 +25,16 @@ export function ApplyWorldWeather() {
               condition: draft?.condition ?? null,
               windSpeedKmh: draft?.windSpeedKmh ?? null,
               rainIntensity: draft?.rainIntensity ?? null,
+              lightningAt: draft?.lightningAt,
+              windGustAt: draft?.windGustAt,
             },
       });
-      useUi.getState().resetWeatherOverride();
       acceptWorldWeather(weather);
-      setMessage('Đã áp dụng cho thế giới và các lượt câu mới.');
+      setMessage(
+        reset
+          ? 'Đã khôi phục thời tiết thật cho toàn server.'
+          : 'Đã áp dụng cho toàn bộ người chơi trong server.',
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Không thể lưu thời tiết. Hãy thử lại.');
     } finally {
@@ -38,9 +43,9 @@ export function ApplyWorldWeather() {
   };
   return (
     <div className="stack" style={{ marginBottom: 16 }}>
-      <p className="muted">
-        Chọn điều kiện bên dưới để xem thử, rồi áp dụng cho mọi người. Lượt câu đang diễn ra giữ điều kiện lúc
-        quăng cần.
+      <p className="muted" style={{ fontSize: 12 }}>
+        💡 Các tùy chỉnh giờ và thời tiết đều tự động phát sóng theo thời gian thực tới mọi người chơi trên
+        server. Bạn cũng có thể nhấn áp dụng ngay hoặc khôi phục thời tiết thật tại đây:
       </p>
       <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
         <Button disabled={busy || !hasDraft} onClick={() => void apply(false)}>

@@ -4,7 +4,7 @@ import { WebSocketTransport } from '@colyseus/ws-transport';
 import { Redis } from 'ioredis';
 import { ApiClient } from './api.js';
 import { ApartmentRoom } from './rooms/apartment.js';
-import { setDeps, type BaseRoom } from './rooms/base.js';
+import { setDeps, setLatestWeather, type BaseRoom } from './rooms/base.js';
 import { CompanyRoom } from './rooms/company.js';
 import { ComGaRoom } from './rooms/comga.js';
 import { CyberNetRoom } from './rooms/cybernet.js';
@@ -32,6 +32,19 @@ const log = (level: 'info' | 'warn' | 'error', msg: string, extra: Record<string
 const redis = new Redis(REDIS_URL);
 const sub = new Redis(REDIS_URL);
 setDeps({ api: new ApiClient(API, SECRET), redis });
+
+redis
+  .get('world:weather')
+  .then((raw) => {
+    if (raw) {
+      try {
+        setLatestWeather(JSON.parse(raw));
+      } catch {
+        // ignore malformed
+      }
+    }
+  })
+  .catch(() => undefined);
 
 const http = createServer((req, res) => {
   if (req.url === '/healthz') {
@@ -93,10 +106,14 @@ sub.on('message', async (channel, raw) => {
   try {
     if (channel === 'weather:updated') {
       const weather = JSON.parse(raw);
+      setLatestWeather(weather);
       const rooms = await matchMaker.query({});
       for (const cached of rooms) {
         const room = matchMaker.getLocalRoomById(cached.roomId) as unknown as BaseRoom | undefined;
-        if (room instanceof TownRoom) room.setWeather(weather);
+        if (room) {
+          if (room instanceof TownRoom) room.setWeather(weather);
+          room.broadcast('weather:updated', weather);
+        }
       }
       return;
     }

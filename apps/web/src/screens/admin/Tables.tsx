@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search } from 'lucide-react';
+import { RefreshCw, Search } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, num, usd, type AiKey } from '../../lib/api';
 import { useUi } from '../../lib/store';
@@ -630,6 +630,26 @@ export function PlayersPage() {
             ))}
           </div>
           <SearchBox value={search} onChange={setSearch} placeholder="Tên, email hoặc ID" />
+          <Button
+            variant="secondary"
+            disabled={players.isFetching}
+            onClick={async () => {
+              await players.refetch();
+              toast({
+                kind: 'info',
+                title: 'Đã làm mới',
+                body: 'Danh sách người chơi đã được cập nhật mới nhất.',
+              });
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            title="Làm mới danh sách người chơi"
+          >
+            <RefreshCw
+              size={14}
+              style={players.isFetching ? { animation: 'spin .7s linear infinite' } : undefined}
+            />
+            Làm mới
+          </Button>
         </div>
       }
     >

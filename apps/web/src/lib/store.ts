@@ -145,7 +145,7 @@ export const useUi = create<UiState>((set) => ({
   weatherOverride: null,
   reducedMotion:
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-  muted: localStorage.getItem('cozy.muted') === '1',
+  muted: typeof localStorage !== 'undefined' && localStorage.getItem('cozy.muted') === '1',
   zoom: (() => {
     if (typeof window === 'undefined') return 1;
     const v = parseFloat(localStorage.getItem('cozy.zoom') || '1');
@@ -175,7 +175,11 @@ export const useUi = create<UiState>((set) => ({
   inspect: (inspectUserId) => set({ inspectUserId }),
   setEditingApartment: (editingApartment) => set({ editingApartment }),
   setMuted: (muted) => {
-    localStorage.setItem('cozy.muted', muted ? '1' : '0');
+    try {
+      localStorage.setItem('cozy.muted', muted ? '1' : '0');
+    } catch {
+      // localStorage may be disabled or full
+    }
     set({ muted });
   },
   setZoom: (z) => {
@@ -190,7 +194,21 @@ export const useUi = create<UiState>((set) => ({
       return { zoom: clamped };
     });
   },
-  setWeatherTelemetry: (weather) => set({ weather }),
+  setWeatherTelemetry: (weather) =>
+    set({
+      weather,
+      weatherOverride: weather.isOverridden
+        ? {
+            enabled: true,
+            solarHour: weather.timeFrozen ? weather.solarHour : null,
+            condition: weather.condition,
+            windSpeedKmh: weather.windSpeedKmh,
+            rainIntensity: Math.min(1, weather.precipitationMm / 25),
+            lightningAt: weather.lightningTriggeredAt,
+            windGustAt: weather.windGustTriggeredAt,
+          }
+        : null,
+    }),
   setWeatherOverride: (override) => {
     set((s) => {
       if (!override) {

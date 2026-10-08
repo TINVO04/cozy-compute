@@ -19,14 +19,27 @@ export function weatherRoutes(app: FastifyInstance, ctx: AppContext) {
   app.get('/activities/fishing/conditions', async () => fishingConditions(await worldWeather(ctx)));
   app.put('/admin/weather', async (req) => {
     const admin = requireAdmin(req);
-    const override = weatherOverrideSchema.parse(req.body);
+    const body = weatherOverrideSchema.parse(req.body);
+    let finalOverride = body;
     await withTx(ctx.db, async (tx) => {
+      if (body.enabled) {
+        const curRes = await tx.query<{ value: unknown }>(
+          `SELECT value FROM settings WHERE key = 'world_weather'`,
+        );
+        const curParsed = weatherOverrideSchema.safeParse(curRes.rows[0]?.value);
+        const cur = curParsed.success ? curParsed.data : {};
+        finalOverride = weatherOverrideSchema.parse({
+          ...cur,
+          ...body,
+          enabled: true,
+        });
+      }
       await tx.query(
         `INSERT INTO settings (key, value, updated_at) VALUES ('world_weather', $1, now())
         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now()`,
-        [JSON.stringify(override)],
+        [JSON.stringify(finalOverride)],
       );
-      await audit(tx, admin.id, 'weather.update', 'settings', 'world_weather', null, override);
+      await audit(tx, admin.id, 'weather.update', 'settings', 'world_weather', null, finalOverride);
     });
     const weather = await worldWeather(ctx);
     try {

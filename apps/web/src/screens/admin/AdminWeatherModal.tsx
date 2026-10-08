@@ -13,10 +13,13 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { api } from '../../lib/api';
 import { play } from '../../lib/sound';
 import { useUi } from '../../lib/store';
 import { Button } from '../../ui/primitives';
+import { acceptWorldWeather } from '../../game/weather-sync';
+import type { AdminWeatherOverride, WeatherTelemetry } from '@cozy/game-data';
 import type { WeatherCondition } from '../../game/weather-engine';
 import { ApplyWorldWeather } from './ApplyWorldWeather';
 
@@ -32,36 +35,108 @@ export function AdminWeatherModal({ onClose }: Props) {
   const triggerLightning = useUi((s) => s.triggerLightning);
   const triggerWindGust = useUi((s) => s.triggerWindGust);
 
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const syncToServer = useCallback(async (patch: Partial<AdminWeatherOverride>) => {
+    setSyncStatus('syncing');
+    setSyncError(null);
+    try {
+      const current = useUi.getState().weatherOverride;
+      const body = {
+        enabled: true,
+        solarHour: patch.solarHour !== undefined ? patch.solarHour : (current?.solarHour ?? null),
+        condition: patch.condition !== undefined ? patch.condition : (current?.condition ?? null),
+        windSpeedKmh: patch.windSpeedKmh !== undefined ? patch.windSpeedKmh : (current?.windSpeedKmh ?? null),
+        rainIntensity:
+          patch.rainIntensity !== undefined ? patch.rainIntensity : (current?.rainIntensity ?? null),
+        lightningAt: patch.lightningAt !== undefined ? patch.lightningAt : undefined,
+        windGustAt: patch.windGustAt !== undefined ? patch.windGustAt : undefined,
+      };
+      const res = await api<WeatherTelemetry>('/admin/weather', {
+        method: 'PUT',
+        body,
+      });
+      acceptWorldWeather(res);
+      setSyncStatus('synced');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi đồng bộ máy chủ';
+      setSyncError(msg);
+      setSyncStatus('error');
+    }
+  }, []);
+
+  const debouncedSync = useCallback(
+    (patch: Partial<AdminWeatherOverride>) => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = setTimeout(() => {
+        void syncToServer(patch);
+      }, 250);
+    },
+    [syncToServer],
+  );
+
+  const resetAllServer = useCallback(async () => {
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    setSyncStatus('syncing');
+    setSyncError(null);
+    try {
+      const res = await api<WeatherTelemetry>('/admin/weather', {
+        method: 'PUT',
+        body: { enabled: false },
+      });
+      acceptWorldWeather(res);
+      setSyncStatus('synced');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khôi phục thời tiết';
+      setSyncError(msg);
+      setSyncStatus('error');
+    }
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    };
   }, [onClose]);
 
   const handleSetTime = (hour: number | null) => {
     play('click');
     setWeatherOverride({ solarHour: hour });
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    void syncToServer({ solarHour: hour });
   };
 
   const handleSetCondition = (condition: WeatherCondition | null) => {
     play('click');
     setWeatherOverride({ condition });
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    void syncToServer({ condition });
   };
 
   const handleTriggerLightning = () => {
     triggerLightning();
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    void syncToServer({ lightningAt: Date.now() });
   };
 
   const handleTriggerWindGust = () => {
     play('wind_gust');
     triggerWindGust();
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    void syncToServer({ windGustAt: Date.now() });
   };
 
   const handleResetAll = () => {
     play('pop');
     resetWeatherOverride();
+    void resetAllServer();
   };
 
   return (
@@ -115,17 +190,30 @@ export function AdminWeatherModal({ onClose }: Props) {
                   padding: '2px 8px',
                   borderRadius: 12,
                   fontWeight: 700,
-                  backgroundColor: weather.isOverridden ? 'rgba(234, 179, 8, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-                  color: weather.isOverridden ? '#fde047' : '#4ade80',
-                  border: `1px solid ${weather.isOverridden ? '#ca8a04' : '#16a34a'}`,
+                  backgroundColor:
+                    syncStatus === 'syncing'
+                      ? 'rgba(56, 189, 248, 0.2)'
+                      : weather.isOverridden
+                        ? 'rgba(234, 179, 8, 0.2)'
+                        : 'rgba(34, 197, 94, 0.2)',
+                  color: syncStatus === 'syncing' ? '#38bdf8' : weather.isOverridden ? '#fde047' : '#4ade80',
+                  border: `1px solid ${
+                    syncStatus === 'syncing' ? '#0284c7' : weather.isOverridden ? '#ca8a04' : '#16a34a'
+                  }`,
                 }}
               >
-                {weather.isOverridden ? '🟡 GHI ĐÈ TEST' : '🟢 REALTIME BIÊN HÒA'}
+                {syncStatus === 'syncing'
+                  ? '🔄 ĐANG ĐỒNG BỘ TOÀN SERVER...'
+                  : weather.isOverridden
+                    ? '🟡 ĐÃ ÁP DỤNG TOÀN SERVER'
+                    : '🟢 REALTIME BIÊN HÒA (TOÀN SERVER)'}
               </span>
             </div>
             <p style={{ margin: '4px 0 0', fontSize: 12, color: '#94a3b8' }}>
-              Kiểm thử ánh sáng 24h, thời tiết, gió thổi và hiệu ứng sấm sét thời gian thực của Biên Hòa.
+              Mọi thay đổi ánh sáng 24h, thời tiết, gió thổi và sấm sét sẽ đồng bộ thời gian thực tới toàn bộ
+              người chơi trong game.
             </p>
+            {syncError && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#ef4444' }}>⚠️ {syncError}</p>}
           </div>
           <button
             onClick={onClose}
@@ -270,7 +358,16 @@ export function AdminWeatherModal({ onClose }: Props) {
               max="23.9"
               step="0.1"
               value={weather.solarHour}
-              onChange={(e) => handleSetTime(parseFloat(e.target.value))}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                setWeatherOverride({ solarHour: val });
+                debouncedSync({ solarHour: val });
+              }}
+              onPointerUp={(e) => {
+                const val = parseFloat((e.target as HTMLInputElement).value);
+                if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+                void syncToServer({ solarHour: val });
+              }}
               style={{ width: '100%', cursor: 'pointer', accentColor: '#38bdf8' }}
             />
           </div>
@@ -361,7 +458,14 @@ export function AdminWeatherModal({ onClose }: Props) {
                 value={weather.windSpeedKmh}
                 onChange={(e) => {
                   play('click');
-                  setWeatherOverride({ windSpeedKmh: parseFloat(e.target.value) });
+                  const val = parseFloat(e.target.value);
+                  setWeatherOverride({ windSpeedKmh: val });
+                  debouncedSync({ windSpeedKmh: val });
+                }}
+                onPointerUp={(e) => {
+                  const val = parseFloat((e.target as HTMLInputElement).value);
+                  if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+                  void syncToServer({ windSpeedKmh: val });
                 }}
                 style={{ width: '100%', cursor: 'pointer', accentColor: '#34d399' }}
               />
@@ -387,7 +491,14 @@ export function AdminWeatherModal({ onClose }: Props) {
                 value={Math.min(1, weather.precipitationMm / 25)}
                 onChange={(e) => {
                   play('click');
-                  setWeatherOverride({ rainIntensity: parseFloat(e.target.value) });
+                  const val = parseFloat(e.target.value);
+                  setWeatherOverride({ rainIntensity: val });
+                  debouncedSync({ rainIntensity: val });
+                }}
+                onPointerUp={(e) => {
+                  const val = parseFloat((e.target as HTMLInputElement).value);
+                  if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+                  void syncToServer({ rainIntensity: val });
                 }}
                 style={{ width: '100%', cursor: 'pointer', accentColor: '#38bdf8' }}
               />
@@ -456,7 +567,7 @@ export function AdminWeatherModal({ onClose }: Props) {
             variant="ghost"
             style={{ color: '#ef4444' }}
             onClick={handleResetAll}
-            disabled={!override?.enabled}
+            disabled={!weather.isOverridden && !override?.enabled}
           >
             <RefreshCw size={13} /> Khôi phục toàn bộ về Realtime Biên Hòa
           </Button>

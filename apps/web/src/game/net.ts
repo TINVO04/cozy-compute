@@ -1,7 +1,9 @@
 import { Client, type Room } from 'colyseus.js';
+import type { WeatherTelemetry } from '@cozy/game-data';
 import { session, triggerUnauthorized } from '../lib/api';
 import { useUi } from '../lib/store';
 import { resolveEndpoint } from '../lib/endpoints';
+import { acceptWorldWeather } from './weather-sync';
 
 function resolveWsUrl(): string {
   const env = import.meta.env.VITE_REALTIME_URL as string | undefined;
@@ -158,6 +160,9 @@ class Net {
     room.onMessage('notice', (m: { kind: string; text: string }) =>
       useUi.getState().toast({ kind: m.kind === 'warning' ? 'error' : 'info', title: m.text }),
     );
+    room.onMessage('weather:updated', (weather: WeatherTelemetry) => {
+      acceptWorldWeather(weather);
+    });
     for (const [type, handlers] of this.messageHandlers) {
       for (const handler of handlers) {
         this.subscriptions.get(handler)?.();

@@ -18,6 +18,8 @@ export const weatherOverrideSchema = z
       .optional(),
     windSpeedKmh: z.number().min(0).max(60).nullable().optional(),
     rainIntensity: z.number().min(0).max(1).nullable().optional(),
+    lightningAt: z.number().nullable().optional(),
+    windGustAt: z.number().nullable().optional(),
   })
   .strict();
 

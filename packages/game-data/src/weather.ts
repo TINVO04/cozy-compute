@@ -35,8 +35,8 @@ export interface AdminWeatherOverride {
   condition?: WeatherCondition | null;
   windSpeedKmh?: number | null; // 0..60
   rainIntensity?: number | null; // 0..1
-  lightningAt?: number;
-  windGustAt?: number;
+  lightningAt?: number | null;
+  windGustAt?: number | null;
 }
 
 export const BIEN_HOA_COORDS = {
@@ -208,7 +208,7 @@ export function resolveEffectiveTelemetry(
           : baseLive.cloudCoverPct,
     isOverridden,
     timeFrozen: isOverridden && override.solarHour != null,
-    lightningTriggeredAt: override?.lightningAt,
-    windGustTriggeredAt: override?.windGustAt,
+    lightningTriggeredAt: override?.lightningAt ?? undefined,
+    windGustTriggeredAt: override?.windGustAt ?? undefined,
   };
 }
