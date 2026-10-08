@@ -1275,15 +1275,9 @@ export function BackpackPanel({
                               }
                               equipItem.mutate({
                                 itemId: isEquipped ? null : item.id,
-<<<<<<< HEAD
-                                slot: item.slot as 'hat' | 'top' | 'face' | 'rod' | 'boat',
+                                slot: item.slot as 'hat' | 'top' | 'face' | 'rod' | 'boat' | 'sword',
                               });
                             }}
-=======
-                                slot: item.slot as 'hat' | 'top' | 'face' | 'rod' | 'boat' | 'sword',
-                              })
-                            }
->>>>>>> 38bdae1 (fix(game): fix cat carry sync, npc weather sheltering, and dev redis port)
                           >
                             {isEquipped
                               ? item.type === 'sword'
