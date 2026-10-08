@@ -163,7 +163,9 @@ function CurrentEvent({
           >
             {ev.status === 'running' ? 'Đang diễn ra' : 'Đang mở đăng ký'}
           </span>
-          <h3 style={{ fontSize: 24, fontFamily: 'var(--font-pixel)' }}>{ev.title}</h3>
+          <h3 style={{ fontSize: 24, fontFamily: 'var(--font-pixel)' }}>
+            {ev.title === 'Find the Duck' ? 'Truy tìm Vịt vàng' : ev.title}
+          </h3>
           <div className="row" style={{ gap: 16 }}>
             <div>
               <div className="stat-label">{ev.status === 'running' ? 'Kết thúc sau' : 'Bắt đầu sau'}</div>

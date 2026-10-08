@@ -23,11 +23,11 @@ interface EventRow {
 
 export const DUCK_EVENT = {
   slug: 'find_the_duck',
-  title: 'Find the Duck',
+  title: 'Truy tìm Vịt vàng',
   rules: [
-    'Rubber ducks appear around town when the event starts.',
-    'Walk into a duck to grab it. Each duck is worth points.',
-    'Most ducks when the timer ends wins. Everyone who joins gets a participation prize.',
+    'Vịt cao su xuất hiện rải rác khắp thị trấn khi sự kiện bắt đầu.',
+    'Chạy lại gần chạm vào vịt để nhặt. Mỗi con vịt sẽ cộng điểm thưởng.',
+    'Người nhặt được nhiều vịt nhất khi hết giờ sẽ chiến thắng. Tất cả người tham gia đều nhận phần thưởng.',
   ],
 };
 

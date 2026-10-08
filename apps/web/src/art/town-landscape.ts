@@ -757,11 +757,11 @@ export function drawTree(ctx: CanvasRenderingContext2D, cx: number, by: number, 
 }
 
 const SIGNS: Record<string, string> = {
-  cafe: 'BEAN THERE',
+  cafe: 'CÀ PHÊ BEAN THERE',
   fashion: 'THREADBARE',
-  furniture: 'SOFA SO GOOD',
-  apartments: 'CHUNG CƯ',
-  delivery: 'BƯU TRẠM',
+  furniture: 'NỘI THẤT SOFA',
+  apartments: 'CHUNG CƯ BCONS',
+  delivery: 'BƯU CỤC 24/7',
   fishing_shop: 'NGƯ CỤ BÁC BA',
   comga: 'CƠM GÀ 68',
   bida: 'BIDA H2S',
@@ -2092,13 +2092,13 @@ function paintModernCafeBuilding(b: Building): HTMLCanvasElement {
   rect(ctx, '#1e293b', 16, 94, w - 24, 18);
   // Warm LED backlight halo
   rect(ctx, 'rgba(254, 240, 138, 0.4)', 18, 95, w - 28, 16);
-  ctx.font = '800 11px sans-serif';
+  ctx.font = '800 10.5px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#fef08a';
-  ctx.fillText('BEAN THERE · SPECIALTY COFFEE', canvas.width / 2, 104);
+  ctx.fillText('CÀ PHÊ BEAN THERE', canvas.width / 2, 104, w - 36);
   ctx.font = '600 7px sans-serif';
   ctx.fillStyle = '#cbd5e1';
-  ctx.fillText('ARTISANAL ROASTERY & ESPRESSO BAR', canvas.width / 2, 111);
+  ctx.fillText('CÀ PHÊ ĐẶC SẢN & RANG XAY MỘC', canvas.width / 2, 111, w - 36);
 
   // Modern Industrial Steel Canopy projecting over ground floor (y: 114..119)
   rect(ctx, '#020617', 6, 114, w - 4, 5);
@@ -2213,10 +2213,10 @@ function paintModernFashionBuilding(b: Building): HTMLCanvasElement {
   ctx.font = '800 11px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#fdf4ff';
-  ctx.fillText('THREADBARE', canvas.width / 2, 97);
+  ctx.fillText('THREADBARE', canvas.width / 2, 97, w - 28);
   ctx.font = '700 7px sans-serif';
   ctx.fillStyle = '#f472b6';
-  ctx.fillText('GEN-Z STREETWEAR & FASHION', canvas.width / 2, 104);
+  ctx.fillText('THỜI TRANG GEN-Z & STREETWEAR', canvas.width / 2, 104, w - 28);
 
   // Ground Floor Showcase Vitrine & Entrance (y: 110..bottom)
   rect(ctx, '#0f172a', 6, 110, w - 4, bottom - 110);
@@ -2311,10 +2311,10 @@ function paintModernFurnitureBuilding(b: Building): HTMLCanvasElement {
   ctx.font = '800 11px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#fde68a';
-  ctx.fillText('SOFA SO GOOD', canvas.width / 2, 97);
+  ctx.fillText('SOFA SO GOOD', canvas.width / 2, 97, w - 28);
   ctx.font = '700 7px sans-serif';
   ctx.fillStyle = '#cbd5e1';
-  ctx.fillText('SCANDINAVIAN INTERIOR STUDIO', canvas.width / 2, 104);
+  ctx.fillText('NỘI THẤT BẮC ÂU HIỆN ĐẠI', canvas.width / 2, 104, w - 28);
 
   // Ground Floor Showroom: Panoramic Glazing Display (y: 110..bottom)
   rect(ctx, '#0f172a', 6, 110, w - 4, bottom - 110);
@@ -2395,16 +2395,16 @@ function paintModernDeliveryBuilding(b: Building): HTMLCanvasElement {
   rect(ctx, '#0284c7', 4, 14, w, 3); // Cyan tech stripe
 
   // Dynamic LED Matrix Billboard Signboard (y: 26..54)
-  rect(ctx, '#020617', 8, 26, w - 8, 28);
-  rect(ctx, '#0f172a', 10, 28, w - 12, 24);
+  rect(ctx, '#020617', 6, 26, w - 4, 28);
+  rect(ctx, '#0f172a', 8, 28, w - 8, 24);
   // Glowing cyan / orange branding
-  ctx.font = '800 11px sans-serif';
+  ctx.font = '800 10px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#38bdf8';
-  ctx.fillText('24/7 SMART LOGISTICS', canvas.width / 2, 39);
+  ctx.fillText('BƯU CỤC THÔNG MINH', canvas.width / 2, 39, w - 16);
   ctx.font = '700 7px sans-serif';
   ctx.fillStyle = '#fb923c';
-  ctx.fillText('EXPRESS PARCEL HUB · FAST & SECURE', canvas.width / 2, 47);
+  ctx.fillText('GIAO NHẬN HỎA TỐC 24/7', canvas.width / 2, 47, w - 16);
 
   // Ground Floor: 24/7 Smart Locker Wall & Automated Hub (y: 56..bottom)
   rect(ctx, '#0f172a', 6, 56, w - 4, bottom - 56);
@@ -2442,7 +2442,7 @@ function paintModernDeliveryBuilding(b: Building): HTMLCanvasElement {
   ctx.font = '700 7px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#38bdf8';
-  ctx.fillText('QUICK DROP & PICKUP', dx + doorW / 2, bottom - 58);
+  ctx.fillText('GỬI & NHẬN', dx + doorW / 2, bottom - 58, doorW - 16);
   // High-visibility cyan edge markers & door sensors
   rect(ctx, '#0284c7', dx + doorW / 2 - 1, bottom - 54, 2, 50);
   rect(ctx, '#ea580c', dx + 8, bottom - 30, 4, 20);
@@ -2500,13 +2500,13 @@ function paintModernFishingShopBuilding(b: Building): HTMLCanvasElement {
   rect(ctx, '#020617', 8, 26, w - 8, 24);
   rect(ctx, '#082f49', 10, 28, w - 12, 20);
   // Neon cyan lettering
-  ctx.font = '800 11px sans-serif';
+  ctx.font = '800 10.5px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#38bdf8';
-  ctx.fillText('MARINA PRO ANGLER', canvas.width / 2, 38);
+  ctx.fillText('ĐỒ CÂU BIỂN BÁC BA', canvas.width / 2, 38, w - 28);
   ctx.font = '700 7px sans-serif';
   ctx.fillStyle = '#67e8f9';
-  ctx.fillText('ĐỒ CÂU BIỂN · FISHING TACKLE & BOATS', canvas.width / 2, 45);
+  ctx.fillText('NGƯ CỤ & CHO THUÊ THUYỀN', canvas.width / 2, 45, w - 28);
 
   // Ground Floor Marine Storefront (y: 52..bottom)
   rect(ctx, '#020617', 6, 52, w - 4, bottom - 52);

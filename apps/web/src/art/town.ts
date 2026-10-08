@@ -278,7 +278,7 @@ export function paintProp(kind: TownPropKind): HTMLCanvasElement {
     ctx.fillStyle = INK;
     ctx.font = '700 9px "Pixelify Sans", monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('⚡ AI REWARDS ⚡', 40, 11.5);
+    ctx.fillText('⚡ ĐỔI THƯỞNG ⚡', 40, 11.5);
   } else if (kind === 'bench') {
     c.width = 52;
     c.height = 26;

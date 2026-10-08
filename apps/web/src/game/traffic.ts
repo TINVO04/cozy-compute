@@ -21,22 +21,22 @@ export function createTraffic(scene: Phaser.Scene, serverTime: () => number) {
       paint.fillRect(j.x + side * (j.halfW + 6) - 1, j.y - j.halfH, 2, j.halfH * 2);
       paint.fillRect(j.x - j.halfW, j.y + side * (j.halfH + 6) - 1, j.halfW * 2, 2);
     }
-    for (const axis of ['horizontal', 'vertical'] as const) {
-      for (const side of [-1, 1]) {
-        const x = j.x + side * (j.halfW + 12);
-        const y = j.y + (axis === 'horizontal' ? side : -side) * (j.halfH + 12);
-        const g = scene.add.graphics().setDepth(y);
-        g.fillStyle(0x0f172a)
-          .fillRect(x - 1, y - 22, 3, 23)
-          .fillRect(x - 5, y - 34, 11, 24);
-        g.fillStyle(0x1e293b).fillRect(x - 4, y - 33, 9, 22);
-        for (let i = 0; i < 3; i++)
-          lights.push({
-            lamp: scene.add.circle(x, y - 30 + i * 7, 2.5, 0x1e293b).setDepth(y + 1),
-            axis,
-            index: i,
-          });
-      }
+    const posts: { axis: 'horizontal' | 'vertical'; x: number; y: number }[] = [
+      { axis: 'horizontal', x: j.x + (j.halfW + 12), y: j.y - (j.halfH + 12) },
+      { axis: 'vertical', x: j.x - (j.halfW + 12), y: j.y + (j.halfH + 12) },
+    ];
+    for (const { axis, x, y } of posts) {
+      const g = scene.add.graphics().setDepth(y);
+      g.fillStyle(0x0f172a)
+        .fillRect(x - 1, y - 22, 3, 23)
+        .fillRect(x - 5, y - 34, 11, 24);
+      g.fillStyle(0x1e293b).fillRect(x - 4, y - 33, 9, 22);
+      for (let i = 0; i < 3; i++)
+        lights.push({
+          lamp: scene.add.circle(x, y - 30 + i * 7, 2.5, 0x1e293b).setDepth(y + 1),
+          axis,
+          index: i,
+        });
     }
   }
   return () => {

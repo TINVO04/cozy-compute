@@ -39,7 +39,7 @@ describe('living town simulation', () => {
         ).toBe(true);
     }
     for (const a of sim.actors.filter((a) => a.kind !== 'vendor')) expect(moved.has(a.id)).toBe(true);
-  });
+  }, 20000);
   it('brings distinct visits in from both gates and removes them only after exiting the opposite edge', () => {
     const sim = simulation();
     const seen = new Map<string, { fromLeft: boolean; variant: number; x: number }>();

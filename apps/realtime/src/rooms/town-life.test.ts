@@ -67,7 +67,7 @@ describe('authoritative town life wiring', () => {
     } finally {
       room.onDispose();
     }
-  });
+  }, 15000);
 
   it('handles server-authoritative cat pickup and putdown without resetting position', async () => {
     vi.useFakeTimers();

@@ -11,6 +11,7 @@ import {
 } from '@cozy/game-data';
 import { play } from '../lib/sound';
 import { useUi } from '../lib/store';
+import { paintDetailedVendor } from '../art/town-vendor-art';
 
 export const CAT_NAMES = [
   'Mèo Vàng Mướp',
@@ -26,7 +27,6 @@ export interface TownLifeHandlers {
   putDownCat?: (id: string, pos: LifePoint) => void;
 }
 
-const COLORS = [0xcb7750, 0x628f83, 0xdaa547, 0x95b8bd, 0xc9899d, 0xb29663];
 interface ActorView {
   root: Phaser.GameObjects.Container;
   art: Phaser.GameObjects.Graphics;
@@ -373,7 +373,7 @@ export class TownLifeLayer {
     for (const a of actors) {
       let v = this.views.get(a.id);
       if (!v) {
-        const shadow = this.scene.add.ellipse(0, 0, a.kind === 'vendor' ? 46 : 14, 6, 0x263e39, 0.2);
+        const shadow = this.scene.add.ellipse(0, 0, a.kind === 'vendor' ? 52 : 14, 7, 0x1e293b, 0.25);
         const art = this.scene.add.graphics();
         const bubble = this.scene.add
           .text(0, -54, '', {
@@ -418,7 +418,10 @@ export class TownLifeLayer {
       }
       v.root.setDepth(v.root.y + (a.altitude > 0 ? 90 : 1));
       v.art.setY(-a.altitude);
-      v.shadow.setSize(a.kind === 'vendor' ? 46 : a.mode === 'sleeping' ? 22 : 14, 6);
+      v.shadow.setSize(
+        a.kind === 'vendor' ? 52 : a.mode === 'sleeping' ? 22 : 14,
+        a.kind === 'vendor' ? 7 : 6,
+      );
       v.shadow.setAlpha(a.altitude > 0 ? 0.1 : 0.22);
       v.bubble.setText(a.speech).setVisible(!!a.speech && this.dismissed !== a.id);
       this.paint(v.art, a, time);
@@ -435,49 +438,7 @@ export class TownLifeLayer {
     const ink = 0x354342,
       cream = 0xf5dfad;
     if (a.kind === 'vendor') {
-      for (const x of [-20, 17]) {
-        g.lineStyle(3, ink).strokeCircle(x, -5, 7);
-        g.lineStyle(1, cream);
-        const angle = a.moving ? (phase * Math.PI) / 4 : 0;
-        g.lineBetween(
-          x - Math.cos(angle) * 5,
-          -5 - Math.sin(angle) * 5,
-          x + Math.cos(angle) * 5,
-          -5 + Math.sin(angle) * 5,
-        );
-      }
-      g.lineStyle(2, 0x819b99)
-        .strokeTriangle(-20, -5, 1, -5, -9, -19)
-        .lineBetween(1, -5, 17, -5)
-        .lineBetween(17, -5, 12, -25)
-        .lineBetween(9, -25, 18, -25);
-      box(ink, -31, -31, 28, 24);
-      box(COLORS[a.variant]!, -29, -29, 24, 18);
-      box(cream, -28, -26, 22, 3);
-      box(0x946246, -30, -12, 26, 4);
-      for (let i = 0; i < 3; i++) {
-        const x = -27 + i * 7;
-        if (a.variant === 4) {
-          box(0x71955b, x + 2, -38, 2, 10);
-          box(i % 2 ? 0xe9b45d : 0xd68c9b, x, -40 - (i % 2) * 3, 6, 6);
-        } else
-          box(
-            [0xe8b75e, 0xa8c8c4, 0x99b951, 0xf3dbc3, 0xd28b9f, 0xe7c463][a.variant]!,
-            x,
-            -35,
-            a.variant === 1 ? 6 : 5,
-            7,
-          );
-      }
-      box(ink, -3, -29, 11, 15);
-      box(COLORS[(a.variant + 2) % 6]!, -2, -29, 9, 13);
-      box(0xe8b689, -1, -40, 9, 10);
-      box(ink, 6, -37, 2, 2);
-      box(0xd3ac71, -5, -42, 17, 3);
-      box(cream, -1, -46, 10, 4);
-      box(0xe8b689, 6, -28, 7, 3);
-      box(ink, 1, -15, 4, 7 + (a.moving ? (phase % 2) * 3 : 0));
-      box(ink, -5, -13, 4, 7 - (a.moving ? (phase % 2) * 2 : 0));
+      paintDetailedVendor(g, a.variant, a.moving, a.dir, time, phase);
     } else if (a.kind === 'cat') {
       const fur = [0xd9995a, 0xe3d3b4, 0x747d88, 0xca9778, 0xeee4ce][a.variant]!;
       if (a.mode === 'sleeping') {

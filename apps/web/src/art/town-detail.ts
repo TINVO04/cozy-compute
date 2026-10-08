@@ -414,16 +414,79 @@ function paintCart(s: Scenery) {
   box(ctx, '#efe0b9', 6, 18, 48, 12);
   label(ctx, s.label!, 30, 24, 44, '#6f4730', 8);
   if (s.id === 'bun-rieu') {
-    oval(ctx, '#677b77', 24, 34, 11, 4);
-    box(ctx, '#96aaa2', 14, 30, 20, 5);
-    oval(ctx, '#d8e4d7', 24, 30, 10, 3);
-    oval(ctx, '#c56b40', 24, 30, 7, 2);
-    box(ctx, '#babfa9', 22, 23, 3, 6);
-    for (let x = 39; x < 50; x += 5) {
-      box(ctx, '#e5e6ca', x, 30, 4, 6);
-      box(ctx, '#ddbd75', x + 1, 31, 2, 2);
-    }
+    // 🎨 Neo-Retro 16-Bit Deluxe: Cô Bảy Bún Riêu Cua
+    // Stainless steel food stall counter with specular reflections
+    box(ctx, '#0f172a', 6, 35, 48, 5);
+    box(ctx, '#94a3b8', 7, 36, 46, 3);
+    box(ctx, '#f8fafc', 8, 36, 44, 1); // Specular highlight streak
+
+    // Friendly Chef (Cô Bảy) in 1:3.5 proportions standing proudly at cart
+    oval(ctx, '#090d16', 43, 21, 6, 7); // Head outline
+    oval(ctx, '#fed7aa', 43, 21, 5, 6); // Skin
+    oval(ctx, '#fef08a', 44, 19, 3, 2); // Forehead highlight
+    box(ctx, '#090d16', 42, 20, 2, 2); // Eye iris
+    box(ctx, '#ffffff', 43, 20, 1, 1); // Eye twinkle
+    box(ctx, '#f43f5e', 41, 22, 2, 1); // Rosy blush
+    box(ctx, '#b91c1c', 43, 23, 2, 1); // Warm smile
+
+    // Traditional Nón lá with fine bamboo ribs & crimson ribbon
+    box(ctx, '#090d16', 34, 16, 18, 2);
+    box(ctx, '#ca8a04', 35, 15, 16, 2);
+    box(ctx, '#facc15', 37, 13, 12, 2);
+    box(ctx, '#fde047', 39, 11, 8, 2);
+    box(ctx, '#fef08a', 41, 9, 4, 2);
+    box(ctx, '#dc2626', 42, 22, 1, 4); // Red ribbon
+
+    // Áo bà ba (Forest emerald) & Cooking Apron (Crimson with underlighting)
+    box(ctx, '#090d16', 37, 26, 11, 12);
+    box(ctx, '#047857', 38, 27, 9, 10);
+    box(ctx, '#b91c1c', 39, 29, 7, 8); // Red apron
+    box(ctx, '#f97316', 39, 33, 7, 3); // Underlighting reflection from burner!
+
+    // Arm holding stainless soup ladle over broth pot
+    box(ctx, '#047857', 34, 28, 4, 4);
+    box(ctx, '#fed7aa', 31, 29, 3, 3);
+    box(ctx, '#64748b', 27, 28, 5, 2); // Ladle handle
+    box(ctx, '#cbd5e1', 25, 28, 3, 4); // Ladle spoon
+
+    // Large stainless steel crab broth cauldron (Nồi Bún Riêu sôi sùng sục)
+    oval(ctx, '#0f172a', 23, 34, 12, 5);
+    box(ctx, '#475569', 12, 29, 22, 6);
+    box(ctx, '#94a3b8', 13, 29, 20, 5);
+    box(ctx, '#f8fafc', 15, 29, 4, 5); // Metallic specular streak
+    oval(ctx, '#cbd5e1', 23, 29, 10, 3); // Rim
+
+    // Boiling broth with red annatto oil, crab roe & tofu
+    oval(ctx, '#c2410c', 23, 29, 8, 2); // Rich red broth
+    box(ctx, '#facc15', 20, 28, 3, 2); // Golden fried tofu cube
+    box(ctx, '#f97316', 24, 28, 3, 2); // Crab roe cluster (Gạch cua)
+    box(ctx, '#15803d', 22, 28, 2, 1); // Scallion greens
+
+    // Burner fire glow underneath cauldron
+    box(ctx, '#f97316', 18, 35, 10, 2);
+    box(ctx, '#fef08a', 21, 35, 4, 1);
+
+    // Layered steam plumes
+    oval(ctx, 'rgba(255,255,255,0.7)', 23, 24, 5, 3);
+    oval(ctx, 'rgba(255,255,255,0.45)', 24, 19, 4, 2);
+    oval(ctx, 'rgba(255,255,255,0.25)', 22, 14, 3, 2);
+
+    // Fresh herb basket & noodle bowls
+    box(ctx, '#15803d', 42, 30, 8, 5); // Shredded water spinach & herbs
+    box(ctx, '#4ade80', 43, 29, 6, 2);
   } else {
+    // Fruit / beverage vendor standing at cart (16-bit)
+    oval(ctx, '#090d16', 42, 21, 6, 6);
+    oval(ctx, '#fed7aa', 42, 21, 5, 5);
+    box(ctx, '#090d16', 41, 20, 2, 2);
+    box(ctx, '#f43f5e', 40, 22, 2, 1);
+    // Sun visor
+    box(ctx, '#1d4ed8', 36, 15, 12, 3);
+    box(ctx, '#60a5fa', 42, 17, 6, 2);
+    // Outfit
+    box(ctx, '#c2410c', 37, 27, 10, 11);
+    box(ctx, '#fed7aa', 32, 29, 5, 3);
+
     box(ctx, '#dae1cb', 15, 27, 16, 10);
     box(ctx, '#536b63', 18, 28, 9, 5);
     oval(ctx, '#889389', 32, 31, 4, 4);
@@ -938,15 +1001,6 @@ export function buildDetailedTown(scene: Phaser.Scene) {
     })
     .setOrigin(0.5)
     .setDepth(786);
-  scene.add
-    .text(624, 816, 'MUA XE · E', {
-      fontFamily: 'sans-serif',
-      fontSize: '10px',
-      color: '#254544',
-      resolution: 2,
-    })
-    .setOrigin(0.5)
-    .setDepth(-7);
   for (const p of TOWN_PROPS) {
     const key = texture(`prop:${p.kind}`, () => paintProp(p.kind));
     scene.add

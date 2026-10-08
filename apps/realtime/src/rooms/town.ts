@@ -318,7 +318,7 @@ export class TownRoom extends BaseRoom {
     this.state.event = ev;
     this.broadcast('notice', {
       kind: 'event',
-      text: `${active.title} has started! Grab the ducks around town.`,
+      text: `${active.title} đã bắt đầu! Hãy nhặt vịt quanh thị trấn!`,
     });
   }
 
@@ -441,6 +441,6 @@ export class TownRoom extends BaseRoom {
     await redis.expire(`event:${eventId}:collected`, 3600);
     const score = await redis.hincrby(`event:${eventId}:scores`, p.userId, 1);
     this.state.event?.scores.set(p.userId, score);
-    this.broadcast('notice', { kind: 'duck', text: `${p.name} found a duck!` });
+    this.broadcast('notice', { kind: 'duck', text: `${p.name} đã nhặt được 1 chú vịt!` });
   }
 }
