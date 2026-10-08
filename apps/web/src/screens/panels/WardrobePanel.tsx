@@ -30,6 +30,7 @@ const SLOT_NAMES: Record<string, string> = {
   top: 'Áo',
   face: 'Phụ kiện',
   rod: 'Cần câu',
+  sword: 'Kiếm',
 };
 
 export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) {
@@ -119,7 +120,9 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
     onError: (err) => toastError(err, 'Không thể thay đổi trang bị'),
   });
 
-  const owned = (shop.data ?? []).filter((i) => (i.type === 'clothing' || i.type === 'rod') && i.owned > 0);
+  const owned = (shop.data ?? []).filter(
+    (i) => (i.type === 'clothing' || i.type === 'rod' || i.type === 'sword') && i.owned > 0,
+  );
 
   return (
     <Panel icon={<Shirt size={18} />} eyebrow="Phong cách" title="Tủ đồ & Hồ sơ" onClose={onClose}>
@@ -272,10 +275,13 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
           </section>
           <section>
             <div className="section-title">
-              <h3>Trang phục & Cần câu của bạn</h3>
+              <h3>Trang phục, Cần câu & Kiếm của bạn</h3>
               <div className="row" style={{ gap: 6 }}>
                 <Button size="sm" variant="ghost" onClick={() => setPanel('shop-rods')}>
                   🎣 Tiệm ngư cụ
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setPanel('shop-swords')}>
+                  ⚔ Tiệm vũ khí
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setPanel('shop-fashion')}>
                   👗 Tiệm thời trang
@@ -289,7 +295,7 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
             ) : owned.length === 0 ? (
               <EmptyState
                 icon={<Shirt size={22} />}
-                title="Chưa có trang phục hay cần câu nào"
+                title="Chưa có trang phục, cần câu hay kiếm nào"
                 body="Kiếm Xu từ các hoạt động rồi ghé cửa hàng thời trang hoặc tiệm ngư cụ nhé."
               />
             ) : (
@@ -301,14 +307,15 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
                   <article key={item.id} className="card item-card">
                     {item.equipped ? (
                       <span className="pill pill-primary owned-tag">
-                        {item.type === 'rod' ? 'Đang cầm' : 'Đang mặc'}
+                        {item.type === 'sword'
+                          ? 'Đang vác kiếm'
+                          : item.type === 'rod'
+                            ? 'Đang cầm'
+                            : 'Đang mặc'}
                       </span>
                     ) : null}
                     <div className={`item-art r-${item.rarity}`} style={{ height: 104 }}>
-                      <img
-                        src={itemIcon(item.sprite, item.type === 'rod' ? 'rod' : 'clothing', item.size, 4)}
-                        alt=""
-                      />
+                      <img src={itemIcon(item.sprite, item.type, item.size, 4)} alt="" />
                     </div>
                     <div className="item-info">
                       <span className="item-name">{item.name}</span>
@@ -327,12 +334,16 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
                         }
                       >
                         {item.equipped
-                          ? item.type === 'rod'
-                            ? 'Cất cần'
-                            : 'Tháo ra'
-                          : item.type === 'rod'
-                            ? 'Trang bị'
-                            : 'Mặc vào'}
+                          ? item.type === 'sword'
+                            ? 'Hạ kiếm'
+                            : item.type === 'rod'
+                              ? 'Cất cần'
+                              : 'Tháo ra'
+                          : item.type === 'sword'
+                            ? 'Vác kiếm'
+                            : item.type === 'rod'
+                              ? 'Trang bị'
+                              : 'Mặc vào'}
                       </Button>
                     </div>
                   </article>

@@ -27,14 +27,18 @@
           buildDetailedTown(this);
           this.sim = new TownLifeSimulation();
           this.player = this.add.circle(768, 700, 6, 0xf9db89).setDepth(700);
-          this.life = new TownLifeLayer(
-            this,
-            () => this.player,
-            (id) => {
+          this.life = new TownLifeLayer(this, () => this.player, {
+            talk: (id) => {
               const reply = this.sim.talk(id, this.player);
               if (reply) this.life.dialogue(reply);
             },
-          );
+            pickUpCat: (id) => {
+              this.sim.pickUpCat(id, 'player', this.player);
+            },
+            putDownCat: (id, pos) => {
+              this.sim.putDownCat(id, pos);
+            },
+          });
           this.keys = this.input.keyboard.createCursorKeys();
           this.cameras.main.setZoom(1.5).centerOn(768, 550);
           this.events.once('shutdown', () => this.life.destroy());
@@ -44,6 +48,10 @@
           const dt = Math.min(delta, 100);
           this.player.x += ((this.keys.right.isDown ? 1 : 0) - (this.keys.left.isDown ? 1 : 0)) * dt * 0.15;
           this.player.y += ((this.keys.down.isDown ? 1 : 0) - (this.keys.up.isDown ? 1 : 0)) * dt * 0.15;
+          const carried = this.sim.actors.find((a) => a.kind === 'cat' && a.mode === 'carried');
+          if (carried) {
+            this.sim.updateCarrierPos(carried.id, this.player);
+          }
           this.sim.update(dt, time, [this.player], this.weather);
           this.life.update(this.sim.actors, time, dt, this.weather);
         }

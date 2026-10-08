@@ -2,8 +2,8 @@ import { VEHICLES } from './vehicles.js';
 import { GEN_Z_FURNITURE } from './furniture.js';
 export { GEN_Z_FURNITURE, GEN_Z_FURNITURE_IDS } from './furniture.js';
 
-export type ItemType = 'clothing' | 'furniture' | 'rod' | 'boat' | 'vehicle';
-export type ClothingSlot = 'hat' | 'top' | 'face' | 'rod' | 'boat' | 'vehicle';
+export type ItemType = 'clothing' | 'furniture' | 'rod' | 'boat' | 'vehicle' | 'sword';
+export type ClothingSlot = 'hat' | 'top' | 'face' | 'rod' | 'boat' | 'vehicle' | 'sword';
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary' | 'defiant' | 'sovereign';
 
 export const RARITY_LABELS: Record<Rarity, string> = {
@@ -112,6 +112,116 @@ export function normalizeRodId(rod?: string | null): string {
   const match = Object.values(FISHING_RODS).find((r) => r.sprite === rod);
   if (match) return match.id;
   return 'rod_twig';
+}
+
+export interface SwordConfig {
+  id: string;
+  name: string;
+  description: string;
+  coinPrice: number;
+  rarity: Rarity;
+  sprite: string;
+  damage: number;
+  sheathColor?: string;
+  bladeColor?: string;
+  glowColor?: string;
+  auraEffect?: 'gleam' | 'flame' | 'frost' | 'dragon' | 'crystal';
+}
+
+export const SWORDS: Record<string, SwordConfig> = {
+  sword_training: {
+    id: 'sword_training',
+    name: 'Kiếm Tập Sự',
+    description: 'Thanh kiếm gỗ trúc mộc mạc của đệ tử võ đường, vác chéo sau lưng gọn gàng phong trần.',
+    coinPrice: 50,
+    rarity: 'common',
+    sprite: 'sword:training:#d9bea2',
+    damage: 12,
+    sheathColor: '#854d0e',
+    bladeColor: '#d9bea2',
+  },
+  sword_iron: {
+    id: 'sword_iron',
+    name: 'Kiếm Sắt Rèn',
+    description:
+      'Lưỡi thép tôi luyện sáng loáng, bao da đen viền đồng, chuôi kiếm gắn dải lụa đỏ thắm vác chéo lưng hiệp khách.',
+    coinPrice: 180,
+    rarity: 'rare',
+    sprite: 'sword:iron:#c3dfed',
+    damage: 22,
+    sheathColor: '#1e293b',
+    bladeColor: '#e2e8f0',
+    glowColor: '#94a3b8',
+    auraEffect: 'gleam',
+  },
+  sword_crystal: {
+    id: 'sword_crystal',
+    name: 'Huyền Tinh Kiếm',
+    description: 'Đúc từ pha lê Hang Ngọc lấp lánh lam ngọc, tỏa hào quang thanh khiết khi mang sau lưng.',
+    coinPrice: 650,
+    rarity: 'epic',
+    sprite: 'sword:crystal:#8af5de',
+    damage: 36,
+    sheathColor: '#0f766e',
+    bladeColor: '#5eead4',
+    glowColor: '#2dd4bf',
+    auraEffect: 'crystal',
+  },
+  sword_ancient: {
+    id: 'sword_ancient',
+    name: 'Cổ Kiếm Trảm Long',
+    description:
+      'Thanh kiếm cổ đại khắc hoa văn rồng vàng, chuôi kiếm nạm ngọc tỏa khí phách anh hùng kiếm hiệp.',
+    coinPrice: 2800,
+    rarity: 'legendary',
+    sprite: 'sword:ancient:#f59e0b',
+    damage: 55,
+    sheathColor: '#78350f',
+    bladeColor: '#fbbf24',
+    glowColor: '#fde047',
+    auraEffect: 'dragon',
+  },
+  sword_flame: {
+    id: 'sword_flame',
+    name: 'Xích Hỏa Thần Kiếm',
+    description: 'Thần kiếm nung trong hỏa diệm ngàn năm, tỏa ánh lửa hồng rực rỡ và tàn tro bay bổng.',
+    coinPrice: 8500,
+    rarity: 'defiant',
+    sprite: 'sword:flame:#ef4444',
+    damage: 75,
+    sheathColor: '#991b1b',
+    bladeColor: '#f87171',
+    glowColor: '#f97316',
+    auraEffect: 'flame',
+  },
+  sword_frost: {
+    id: 'sword_frost',
+    name: 'Hàn Băng Thần Kiếm',
+    description: 'Kiếm băng vạn năm từ đỉnh tuyết sơn, sương lạnh tỏa quanh chuôi kiếm tựa tiên hiệp.',
+    coinPrice: 12000,
+    rarity: 'sovereign',
+    sprite: 'sword:frost:#38bdf8',
+    damage: 90,
+    sheathColor: '#0369a1',
+    bladeColor: '#bae6fd',
+    glowColor: '#38bdf8',
+    auraEffect: 'frost',
+  },
+};
+
+/** Normalizes any sword identifier or sprite string into a valid canonical SwordConfig id */
+export function normalizeSwordId(sword?: string | null): string {
+  if (!sword) return 'sword_training';
+  if (SWORDS[sword]) return sword;
+  if (sword === 'training' || sword.includes('training')) return 'sword_training';
+  if (sword === 'iron' || sword.includes('iron')) return 'sword_iron';
+  if (sword === 'crystal' || sword.includes('crystal')) return 'sword_crystal';
+  if (sword.includes('ancient')) return 'sword_ancient';
+  if (sword.includes('flame')) return 'sword_flame';
+  if (sword.includes('frost')) return 'sword_frost';
+  const match = Object.values(SWORDS).find((s) => s.sprite === sword);
+  if (match) return match.id;
+  return 'sword_training';
 }
 
 export type SeaZoneAccess = 'shallows' | 'coastal' | 'open_sea' | 'abyss';
@@ -242,6 +352,17 @@ export const ITEM_SEEDS: ItemDefinitionSeed[] = [
     rarity: b.rarity,
     coinPrice: b.coinPrice,
     sprite: b.sprite,
+  })),
+  // martial swords (vác chéo người hiệp khách)
+  ...Object.values(SWORDS).map((s) => ({
+    id: s.id,
+    type: 'sword' as const,
+    slot: 'sword' as const,
+    name: s.name,
+    description: s.description,
+    rarity: s.rarity,
+    coinPrice: s.coinPrice,
+    sprite: s.sprite,
   })),
   // clothing: hats
   {

@@ -144,6 +144,7 @@ interface Brain {
   age: number;
   line: number;
   cooldown: number;
+  carrierId?: string;
 }
 
 /** Runs only in the authoritative room (and isolated rendering fixtures). */
@@ -189,21 +190,23 @@ export class TownLifeSimulation {
       if (kind !== 'vendor') {
         this.residents.push(actor);
       }
+      const isCat = kind === 'cat';
+      const initialTarget = isCat ? this.wander(p, 48) : { ...p };
       this.brains.set(id, {
         home: { ...p },
-        target: { ...p },
-        timer: 1 + random() * 3,
+        target: initialTarget,
+        timer: isCat ? 0.3 + random() * 1.2 : 1 + random() * 3,
         age: random() * 15,
         line: 0,
         cooldown: 0,
       });
     };
     [
-      { x: 572, y: 568 },
-      { x: 826, y: 606 },
-      { x: 898, y: 426 },
-      { x: 580, y: 402 },
-      { x: 1000, y: 580 },
+      { x: 120, y: 140 }, // North-West near Pagoda / Western gate
+      { x: 260, y: 720 }, // South-West near Com Ga 68 & Bida club
+      { x: 760, y: 550 }, // Central Park & Fountain
+      { x: 1210, y: 350 }, // North-East near Apartments & Furniture
+      { x: 1080, y: 840 }, // South-East near Pier & Uncle Ba's Fishing Shop
     ].forEach((p, i) => add('cat', i, p));
     PIGEON_FEEDING_SPOTS.forEach((p, flock) => {
       for (let i = 0; i < 3; i++)
@@ -266,15 +269,100 @@ export class TownLifeSimulation {
     return { name: vendor.name, text: actor.speech };
   }
 
+  pickUpCat(id: unknown, carrierId?: string, playerPos?: LifePoint): boolean {
+    const cat = this.actors.find((a) => a.id === id && a.kind === 'cat');
+    if (!cat || cat.mode === 'carried') return false;
+    const brain = this.brains.get(cat.id);
+    if (!brain) return false;
+    cat.mode = 'carried';
+    cat.speech = 'Meo meo~ ❤️';
+    cat.moving = false;
+    cat.altitude = 0;
+    if (playerPos) {
+      cat.x = playerPos.x;
+      cat.y = playerPos.y;
+    }
+    brain.carrierId = carrierId ?? 'carrier';
+    brain.timer = 999999;
+    brain.cooldown = 5;
+    return true;
+  }
+
+  putDownCat(id: unknown, pos: LifePoint): boolean {
+    const cat =
+      this.actors.find((a) => a.id === id && a.kind === 'cat') ??
+      this.residents.find((r) => r.id === id && r.kind === 'cat');
+    if (!cat) return false;
+    let dropPos = { x: Math.round(pos.x), y: Math.round(pos.y) };
+    if (!lifeGroundClear(dropPos.x, dropPos.y)) {
+      search: for (let radius = 6; radius < 80; radius += 6) {
+        for (let dir = 0; dir < 8; dir++) {
+          const ang = (dir * Math.PI) / 4;
+          const cand = {
+            x: Math.round(pos.x + Math.cos(ang) * radius),
+            y: Math.round(pos.y + Math.sin(ang) * radius),
+          };
+          if (lifeGroundClear(cand.x, cand.y)) {
+            dropPos = cand;
+            break search;
+          }
+        }
+      }
+    }
+    cat.x = dropPos.x;
+    cat.y = dropPos.y;
+    cat.mode = 'roaming';
+    cat.speech = 'Meo~';
+    cat.moving = false;
+    cat.altitude = 0;
+    const brain = this.brains.get(cat.id);
+    if (brain) {
+      brain.home = { ...dropPos };
+      brain.target = { ...dropPos };
+      brain.carrierId = undefined;
+      brain.timer = 2 + this.random() * 2;
+      brain.cooldown = 4;
+    }
+    const resident = this.residents.find((r) => r.id === cat.id);
+    if (resident) {
+      resident.x = dropPos.x;
+      resident.y = dropPos.y;
+    }
+    if (!this.actors.some((a) => a.id === cat.id)) {
+      this.actors.push(cat);
+    }
+    return true;
+  }
+
+  updateCarrierPos(id: string, pos: LifePoint) {
+    const cat = this.actors.find((a) => a.id === id && a.kind === 'cat');
+    if (cat && cat.mode === 'carried') {
+      cat.x = pos.x;
+      cat.y = pos.y;
+    }
+  }
+
   update(dtMs: number, now: number, players: readonly LifePoint[], env?: TownEnvironment) {
     const dt = Math.min(0.1, Math.max(0, dtMs / 1000));
     const shouldHide = shouldHideTownLife(env);
     if (shouldHide) {
       if (!this.hidden) {
-        this.hidden = true;
-        this.actors.length = 0;
+        const talkingOrCarried = this.actors.filter((a) => a.mode === 'talking' || a.mode === 'carried');
+        if (talkingOrCarried.length === 0) {
+          this.hidden = true;
+          this.actors.length = 0;
+          return;
+        } else {
+          for (let i = this.actors.length - 1; i >= 0; i--) {
+            const a = this.actors[i]!;
+            if (a.mode !== 'talking' && a.mode !== 'carried') {
+              this.actors.splice(i, 1);
+            }
+          }
+        }
+      } else {
+        return;
       }
-      return;
     }
     if (this.hidden) {
       this.hidden = false;
@@ -296,7 +384,7 @@ export class TownLifeSimulation {
       this.nextVendorIn = 2 + this.random() * 4;
     }
     this.nextVendorIn -= dt;
-    if (this.nextVendorIn <= 0) this.arriveVendor();
+    if (this.nextVendorIn <= 0 && !shouldHide) this.arriveVendor();
     const departed = new Set<string>();
     const startled = new Set<number>();
     for (const a of this.actors)
@@ -329,6 +417,9 @@ export class TownLifeSimulation {
         this.move(a, next);
         if (Math.hypot(a.x - target.x, a.y - target.y) < 1) departed.add(a.id);
       } else if (a.kind === 'cat') {
+        if (a.mode === 'carried') {
+          continue;
+        }
         const near = players.find((p) => Math.hypot(a.x - p.x, a.y - p.y) < 40);
         if (near && b.cooldown <= 0) {
           const angle = Math.atan2(a.y - near.y, a.x - near.x);

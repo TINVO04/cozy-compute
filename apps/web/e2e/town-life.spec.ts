@@ -203,3 +203,56 @@ test('cats can occasionally lie down and sleep', async ({ page }) => {
   expect(hasSleepingCat).toBe(true);
   await page.screenshot({ path: '../../output/town-life-sleeping-cat.png' });
 });
+
+test('cats are distributed across town and player can pick up and carry a cat', async ({ page }) => {
+  await page.goto('/e2e/fixtures/town-life.html');
+  await page.waitForFunction(() => window.lifePreview?.sim.actors.length >= 15);
+
+  // 1. Verify 5 cats are distributed across town (not just central park)
+  const catCoords = await page.evaluate(() =>
+    window.lifePreview.sim.actors.filter((a) => a.kind === 'cat').map((c) => ({ x: c.x, y: c.y })),
+  );
+  expect(catCoords.length).toBe(5);
+
+  const minX = Math.min(...catCoords.map((c) => c.x));
+  const maxX = Math.max(...catCoords.map((c) => c.x));
+  expect(minX).toBeLessThan(250); // North-West cat
+  expect(maxX).toBeGreaterThan(1000); // North-East or South-East cat
+
+  // 2. Approach Cat 2 (central) and pick it up ("bế mèo")
+  const initialCatPos = await page.evaluate(() => {
+    const s = window.lifePreview;
+    const cat = s.sim.actors.find((a) => a.kind === 'cat')!;
+    s.player.x = cat.x + 10;
+    s.player.y = cat.y + 10;
+    s.cameras.main.centerOn(cat.x, cat.y);
+    return { id: cat.id, x: cat.x, y: cat.y };
+  });
+
+  await expect(page.getByRole('button', { name: /Bế Mèo/ })).toBeVisible();
+  await page.keyboard.press('e');
+
+  // Button should now show "Đặt ... xuống đất"
+  await expect(page.getByRole('button', { name: /Đặt Mèo.*xuống đất/ })).toBeVisible();
+  await page.screenshot({ path: '../../output/town-life-carrying-cat.png' });
+
+  // Walk elsewhere with the carried cat
+  await page.evaluate(() => {
+    const s = window.lifePreview;
+    s.player.x += 120;
+    s.player.y += 80;
+  });
+
+  // 3. Put down the cat
+  await page.keyboard.press('e');
+  await expect(page.getByRole('button', { name: /Đặt Mèo.*xuống đất/ })).not.toBeVisible();
+
+  // 4. Verify the cat stays at the new position and does NOT snap back to initialCatPos
+  const newCatPos = await page.evaluate((id) => {
+    const s = window.lifePreview;
+    const cat = s.sim.actors.find((a) => a.id === id)!;
+    return { x: cat.x, y: cat.y };
+  }, initialCatPos.id);
+
+  expect(Math.hypot(newCatPos.x - initialCatPos.x, newCatPos.y - initialCatPos.y)).toBeGreaterThan(80);
+});

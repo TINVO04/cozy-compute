@@ -54,8 +54,8 @@ if !errorlevel! neq 0 (
 )
 echo [POSTGRES] PostgreSQL da san sang tren port 55432.
 
-:: 2. Tim va khoi dong Redis (port 56379)
-netstat -ano | findstr ":56379" | findstr "LISTENING" > nul
+:: 2. Tim va khoi dong Redis (port 6379)
+netstat -ano | findstr ":6379" | findstr "LISTENING" > nul
 if !errorlevel! equ 0 goto :redis_ready
 
 set "REDIS_SERVER="
@@ -78,17 +78,17 @@ if not defined REDIS_SERVER (
     exit /b 1
 )
 
-netstat -ano | findstr ":56379" | findstr "LISTENING" > nul
+netstat -ano | findstr ":6379" | findstr "LISTENING" > nul
 if !errorlevel! neq 0 (
-    echo [REDIS] Dang bat Redis tren port 56379...
-    start /b "" "!REDIS_SERVER!" --bind 127.0.0.1 --port 56379 --save "" --appendonly no
+    echo [REDIS] Dang bat Redis tren port 6379...
+    start /b "" "!REDIS_SERVER!" --bind 127.0.0.1 --port 6379 --save "" --appendonly no
     call :check_redis
     if !errorlevel! neq 0 (
         pause
         exit /b 1
     )
 )
-echo [REDIS] Redis da san sang tren port 56379.
+echo [REDIS] Redis da san sang tren port 6379.
 
 :redis_ready
 :: 3. Kiem tra va khoi dong Mock Upstream neu can (port 4010)
@@ -138,12 +138,12 @@ exit /b 0
 :check_redis
 set /a rcount=0
 :loop_rd
-netstat -ano | findstr ":56379" | findstr "LISTENING" > nul
+netstat -ano | findstr ":6379" | findstr "LISTENING" > nul
 if !errorlevel! neq 0 (
     ping -n 2 127.0.0.1 > nul
     set /a rcount+=1
     if !rcount! geq 10 (
-        echo [LOI] Redis khong the mo port 56379 sau 10s!
+        echo [LOI] Redis khong the mo port 6379 sau 10s!
         exit /b 1
     )
     goto :loop_rd

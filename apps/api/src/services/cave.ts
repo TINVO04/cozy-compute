@@ -47,6 +47,13 @@ export async function caveTransaction(ctx: AppContext, b: CaveTransaction): Prom
         if (!weapon) throw badRequest('weapon_invalid', 'Vũ khí không hợp lệ.');
         amount = -weapon.price;
         account.weapon = weapon.id;
+        const swordItemId = `sword_${weapon.id}`;
+        await tx.query(
+          `INSERT INTO inventory_items (user_id, item_id, quantity, equipped_slot)
+           VALUES ($1, $2, 1, 'sword')
+           ON CONFLICT (user_id, item_id) DO UPDATE SET equipped_slot = 'sword'`,
+          [b.userId, swordItemId],
+        );
       } else if (b.action === 'sell') {
         amount = caveSaleValue(account.resources);
         if (!amount) throw badRequest('empty_bag', 'Bạn chưa có tài nguyên để bán.');

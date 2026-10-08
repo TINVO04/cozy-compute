@@ -13,8 +13,8 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":2567 " ^| findstr "LISTENIN
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":5173 " ^| findstr "LISTENING"') do taskkill /f /pid %%a > nul 2>&1
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":4010 " ^| findstr "LISTENING"') do taskkill /f /pid %%a > nul 2>&1
 
-echo [2/3] Dang tat Redis (port 56379)...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":56379 " ^| findstr "LISTENING"') do taskkill /f /pid %%a > nul 2>&1
+echo [2/3] Dang tat Redis (port 6379)...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":6379 " ^| findstr "LISTENING"') do taskkill /f /pid %%a > nul 2>&1
 
 echo [3/3] Dang tat PostgreSQL cuc bo (port 55432)...
 if not defined COZY_DEPLOY_DIR set "COZY_DEPLOY_DIR=D:/CozyGameProduction"

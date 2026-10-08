@@ -1,4 +1,4 @@
-import { MARTIAL_DOOR, caveNear } from '@cozy/game-data';
+import { MARTIAL_DOOR, caveNear, getBienHoaTime } from '@cozy/game-data';
 import { randomUUID } from 'node:crypto';
 import { TownLifeSimulation, type TownEnvironment } from '@cozy/game-data';
 import { TownActorState } from '../schema.js';
@@ -59,6 +59,8 @@ export class TownRoom extends BaseRoom {
     string,
     { ticketId: string; violation: TrafficViolation; retryAt: number; busy: boolean }
   >();
+  private carriedCats = new Map<string, string>();
+  private lastWeatherPoll = 0;
   private participants = new Set<string>();
   private eventTimer: NodeJS.Timeout | undefined;
 
@@ -101,21 +103,50 @@ export class TownRoom extends BaseRoom {
       }
     });
     this.syncTownLife();
+    void (async () => {
+      try {
+        const raw = await getDeps().redis.get('world:weather');
+        if (raw) this.weather = JSON.parse(raw);
+      } catch {
+        // Redis optional in tests or offline
+      }
+    })();
     this.onMessage('town:talk', (client, message: unknown) => {
       const player = this.state.players.get(client.sessionId);
       if (!player?.connected || !message || typeof message !== 'object') return;
       const reply = this.townLife.talk((message as { id?: unknown }).id, player);
       if (!reply) return;
       this.syncTownLife();
-      void (async () => {
-        try {
-          const raw = await getDeps().redis.get('world:weather');
-          if (raw) this.weather = JSON.parse(raw);
-        } catch {
-          // Redis optional in tests or offline
-        }
-      })();
       client.send('town:dialogue', reply);
+    });
+    this.onMessage('town:cat:pickup', (client, message: unknown) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player?.connected || !message || typeof message !== 'object') return;
+      const catId = (message as { id?: unknown }).id;
+      if (typeof catId !== 'string') return;
+      const cat = this.state.townActors.get(catId);
+      if (!cat || cat.kind !== 'cat') return;
+      if (Math.hypot(player.x - cat.x, player.y - cat.y) > 48) return;
+      if (cat.mode === 'carried' || [...this.carriedCats.values()].includes(catId)) return;
+
+      const success = this.townLife.pickUpCat(catId, client.sessionId, player);
+      if (success) {
+        this.carriedCats.set(client.sessionId, catId);
+        this.syncTownLife();
+      }
+    });
+    this.onMessage('town:cat:putdown', (client, _message: unknown) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player?.connected) return;
+      const catId = this.carriedCats.get(client.sessionId);
+      if (!catId) return;
+
+      const dropPos = { x: player.x, y: player.y + 4 };
+      const success = this.townLife.putDownCat(catId, dropPos);
+      if (success) {
+        this.carriedCats.delete(client.sessionId);
+        this.syncTownLife();
+      }
     });
     this.onMessage('vehicle:toggle', (client) => {
       const p = this.state.players.get(client.sessionId);
@@ -206,11 +237,20 @@ export class TownRoom extends BaseRoom {
   }
 
   override async onLeave(client: Client, consented: boolean) {
+    const catId = this.carriedCats.get(client.sessionId);
+    if (catId) {
+      const p = this.state.players.get(client.sessionId);
+      const dropPos = p ? { x: p.x, y: p.y + 4 } : { x: 768, y: 550 };
+      this.townLife.putDownCat(catId, dropPos);
+      this.carriedCats.delete(client.sessionId);
+      this.syncTownLife();
+    }
     this.broadcast('fishing:remote_stop', { sessionId: client.sessionId });
     await super.onLeave(client, consented);
   }
 
   override onDispose() {
+    this.carriedCats.clear();
     if (this.eventTimer) clearInterval(this.eventTimer);
   }
 
@@ -290,11 +330,42 @@ export class TownRoom extends BaseRoom {
     this.trafficStepMs = Math.max(0, Math.min(250, dtMs));
     this.state.serverTime = Date.now();
     super.tick(dtMs);
+    if (this.state.serverTime - this.lastWeatherPoll >= 5000) {
+      this.lastWeatherPoll = this.state.serverTime;
+      void (async () => {
+        try {
+          const raw = await getDeps().redis.get('world:weather');
+          if (raw) this.weather = JSON.parse(raw);
+        } catch {
+          // Redis optional in tests or offline
+        }
+      })();
+    }
+    for (const [sid, catId] of this.carriedCats) {
+      const player = this.state.players.get(sid);
+      if (player?.connected) {
+        this.townLife.updateCarrierPos(catId, { x: player.x, y: player.y });
+      }
+    }
+    const bienHoa = getBienHoaTime(null, new Date(this.state.serverTime));
+    const isOverridden = !!(this.weather as { isOverridden?: boolean } | null)?.isOverridden;
+    const effectiveEnv: TownEnvironment = this.weather
+      ? {
+          ...this.weather,
+          timePhase: isOverridden ? this.weather.timePhase : bienHoa.phase,
+          solarHour: isOverridden ? this.weather.solarHour : bienHoa.solarHour,
+          now: this.state.serverTime,
+        }
+      : {
+          timePhase: bienHoa.phase,
+          solarHour: bienHoa.solarHour,
+          now: this.state.serverTime,
+        };
     this.townLife.update(
       dtMs,
       this.state.serverTime,
       [...this.state.players.values()].filter((p) => p.connected),
-      this.weather ?? { now: this.state.serverTime },
+      effectiveEnv,
     );
     this.syncTownLife();
     if (this.trafficEnforcementEnabled) {

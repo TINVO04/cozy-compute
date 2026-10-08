@@ -160,16 +160,17 @@ export async function equip(
   ctx: AppContext,
   userId: string,
   itemId: string | null,
-  slot: 'hat' | 'top' | 'face' | 'rod' | 'boat' | 'vehicle',
+  slot: 'hat' | 'top' | 'face' | 'rod' | 'boat' | 'vehicle' | 'sword',
 ) {
+  let resolvedItemId = itemId;
   await withTx(ctx.db, async (tx) => {
     await tx.query('SELECT user_id FROM balances WHERE user_id = $1 FOR UPDATE', [userId]);
     await tx.query(
       'UPDATE inventory_items SET equipped_slot = NULL WHERE user_id = $1 AND equipped_slot = $2',
       [userId, slot],
     );
-    if (itemId) {
-      if (itemId === 'rod_twig') {
+    if (resolvedItemId) {
+      if (resolvedItemId === 'rod_twig') {
         await tx.query(
           `INSERT INTO inventory_items (user_id, item_id, quantity)
            VALUES ($1, 'rod_twig', 1)
@@ -177,11 +178,20 @@ export async function equip(
           [userId],
         );
       }
+      if (resolvedItemId === 'sword_training' || resolvedItemId === 'training') {
+        resolvedItemId = 'sword_training';
+        await tx.query(
+          `INSERT INTO inventory_items (user_id, item_id, quantity)
+           VALUES ($1, 'sword_training', 1)
+           ON CONFLICT (user_id, item_id) DO NOTHING`,
+          [userId],
+        );
+      }
       const r = await tx.query(
         `UPDATE inventory_items i SET equipped_slot = $3
            FROM item_definitions d
-          WHERE i.user_id = $1 AND i.item_id = $2 AND d.id = i.item_id AND (d.type = 'clothing' OR d.type = 'rod' OR d.type = 'boat' OR d.type = 'vehicle') AND d.slot = $3 AND i.quantity > 0`,
-        [userId, itemId, slot],
+          WHERE i.user_id = $1 AND i.item_id = $2 AND d.id = i.item_id AND (d.type = 'clothing' OR d.type = 'rod' OR d.type = 'boat' OR d.type = 'vehicle' OR d.type = 'sword') AND d.slot = $3 AND i.quantity > 0`,
+        [userId, resolvedItemId, slot],
       );
       if (!r.rowCount) throw notFound('You do not own that item.');
     }

@@ -46,6 +46,7 @@ import { LedgerPanel } from './panels/LedgerPanel';
 import { PlayerCardModal } from './panels/PlayerCard';
 import { ShopPanel } from './panels/ShopPanel';
 import { FishingShopPanel } from './panels/FishingShopPanel';
+import { SwordShopPanel } from './panels/SwordShopPanel';
 import { BackpackPanel } from './panels/BackpackPanel';
 import { FishCompendium } from './panels/FishCompendium';
 import { BidaArenaPanel } from './panels/BidaArenaPanel';
@@ -250,6 +251,7 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
           {panel === 'shop-fashion' ? <ShopPanel kind="clothing" onClose={() => setPanel(null)} /> : null}
           {panel === 'shop-furniture' ? <ShopPanel kind="furniture" onClose={() => setPanel(null)} /> : null}
           {panel === 'shop-rods' ? <FishingShopPanel me={me} onClose={() => setPanel(null)} /> : null}
+          {panel === 'shop-swords' ? <SwordShopPanel me={me} onClose={() => setPanel(null)} /> : null}
           {panel === 'backpack' ? (
             <BackpackPanel me={me} initialTab="backpack" onClose={() => setPanel(null)} />
           ) : null}
