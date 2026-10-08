@@ -26,6 +26,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { setLocalAppearance, setLocalHeldFish } from '../../game/scenes';
 import { avatarPortrait } from '../../art/avatar';
 import { chibiAvatarFull, chibiAvatarPortrait, chibiItemIcon } from '../../art/chibi';
 import { fishIcon, FISH_EFFECT_CLASS, ROD_EFFECT_CLASS } from '../../art/fish';
@@ -133,6 +134,7 @@ export function BackpackPanel({
       api<{ ok: boolean; appearance: Appearance }>(`/backpack/fish/${fishId}/hold`, { method: 'POST' }),
     onSuccess: (data) => {
       play('click');
+      setLocalAppearance(data.appearance);
       qc.invalidateQueries({ queryKey: ['backpack-fish'] });
       qc.setQueryData(qk.me, (old: Me | undefined) => (old ? { ...old, appearance: data.appearance } : old));
       useUi.getState().toast({
@@ -150,11 +152,13 @@ export function BackpackPanel({
       api<{ ok: boolean; appearance: Appearance }>('/backpack/fish/unhold', { method: 'POST' }),
     onSuccess: (data) => {
       play('click');
+      setLocalHeldFish(null);
+      setLocalAppearance(data.appearance);
       qc.invalidateQueries({ queryKey: ['backpack-fish'] });
       qc.setQueryData(qk.me, (old: Me | undefined) => (old ? { ...old, appearance: data.appearance } : old));
       useUi.getState().toast({
         kind: 'info',
-        title: 'Đã cất cá vào balo',
+        title: 'Đã cất cá vào balo (Phím F)',
         body: 'Bạn đã cất cá vào túi đồ.',
       });
     },
@@ -229,8 +233,15 @@ export function BackpackPanel({
   // Equip clothing mutation
   const equipItem = useMutation({
     mutationFn: (v: { itemId: string | null; slot: 'hat' | 'top' | 'face' | 'rod' | 'boat' }) =>
-      api('/inventory/equip', { body: v }),
-    onSuccess: () => refresh(),
+      api<{ appearance: Appearance }>('/inventory/equip', { body: v }),
+    onSuccess: (data, variables) => {
+      refresh();
+      if (data?.appearance) {
+        setLocalAppearance(data.appearance);
+      } else if (variables.slot === 'rod' && variables.itemId === null) {
+        setLocalAppearance({ ...me.appearance, rod: null });
+      }
+    },
     onError: (err) => toastError(err, 'Không thể thay đổi trang bị'),
   });
 
@@ -459,8 +470,9 @@ export function BackpackPanel({
                     size="sm"
                     loading={unholdFishMutation.isPending}
                     onClick={() => unholdFishMutation.mutate()}
+                    title="Cất cá vào túi đồ (Phím tắt F)"
                   >
-                    <Package size={13} /> Cất vào balo
+                    <Package size={13} /> Cất vào balo (F)
                   </Button>
                 </div>
               </div>
@@ -583,8 +595,9 @@ export function BackpackPanel({
                             style={{ flex: 1 }}
                             loading={unholdFishMutation.isPending}
                             onClick={() => unholdFishMutation.mutate()}
+                            title="Cất cá vào túi đồ (Phím tắt F)"
                           >
-                            Cất vào balo
+                            Cất vào balo (F)
                           </Button>
                         ) : (
                           <Button
@@ -721,8 +734,9 @@ export function BackpackPanel({
                   size="sm"
                   loading={equipItem.isPending && equipItem.variables?.slot === 'rod'}
                   onClick={() => equipItem.mutate({ itemId: null, slot: 'rod' })}
+                  title="Cất cần câu vào tủ/túi đồ (Phím tắt F)"
                 >
-                  Cất cần vào tủ
+                  Cất cần vào tủ (F)
                 </Button>
               </div>
             ) : null}

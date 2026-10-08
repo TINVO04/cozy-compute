@@ -38,6 +38,7 @@ import {
   PIER,
   ZONES,
   zoneAt,
+  type Appearance,
   type FishShadowTier,
   type Rect,
   type ZoneId,
@@ -116,6 +117,20 @@ function typing(): boolean {
   );
 }
 
+export let activeWorldScene: WorldScene | null = null;
+
+function registerActiveWorldScene(scene: WorldScene | null) {
+  activeWorldScene = scene;
+}
+
+export function setLocalHeldFish(heldFish: { speciesId: string; sizeCm: number } | null) {
+  activeWorldScene?.setSelfHeldFish(heldFish);
+}
+
+export function setLocalAppearance(a: Appearance) {
+  activeWorldScene?.setSelfAppearance(a);
+}
+
 export abstract class WorldScene extends Phaser.Scene {
   protected layer: PlayerLayer | null = null;
   protected keys!: Record<
@@ -125,6 +140,7 @@ export abstract class WorldScene extends Phaser.Scene {
   private offRoom: (() => void) | null = null;
 
   create() {
+    registerActiveWorldScene(this);
     this.cameras.main.setRoundPixels(true);
     this.cameras.main.setBackgroundColor('#2a2438');
     const kb = this.input.keyboard!;
@@ -147,6 +163,9 @@ export abstract class WorldScene extends Phaser.Scene {
       }
     });
     const teardown = () => {
+      if (activeWorldScene === this) {
+        registerActiveWorldScene(null);
+      }
       this.scale.off('resize', onResize);
       unsubZoom();
       if (this.offRoom) {
@@ -160,6 +179,16 @@ export abstract class WorldScene extends Phaser.Scene {
     this.events.once('destroy', teardown);
     this.scale.on('resize', onResize);
     this.fitCamera();
+  }
+
+  setSelfHeldFish(heldFish: { speciesId: string; sizeCm: number } | null) {
+    this.layer?.setSelfHeldFish(heldFish);
+  }
+
+  setSelfAppearance(a: Appearance) {
+    if (this.layer?.self) {
+      this.layer.self.setAppearance(a);
+    }
   }
 
   protected abstract buildWorld(): void;
@@ -274,7 +303,7 @@ export class TownScene extends WorldScene {
     this.layer?.setSelfFishing(isFishing, facingDir);
   }
 
-  setSelfHeldFish(heldFish: { speciesId: string; sizeCm: number } | null) {
+  override setSelfHeldFish(heldFish: { speciesId: string; sizeCm: number } | null) {
     this.layer?.setSelfHeldFish(heldFish);
   }
 
@@ -2548,7 +2577,7 @@ export class OceanScene extends WorldScene {
     this.layer?.setSelfFishing(isFishing, facingDir);
   }
 
-  setSelfHeldFish(heldFish: { speciesId: string; sizeCm: number } | null) {
+  override setSelfHeldFish(heldFish: { speciesId: string; sizeCm: number } | null) {
     this.layer?.setSelfHeldFish(heldFish);
   }
 

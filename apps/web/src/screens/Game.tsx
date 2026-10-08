@@ -2,7 +2,7 @@ import { VehicleShopPanel } from './panels/VehicleShopPanel';
 import { VehicleControls } from './panels/VehicleControls';
 import { ShowroomHud } from './panels/ShowroomHud';
 import { ResidentPanel } from './panels/ResidentPanel';
-import { OCEAN_ZONES, ZONES, type ZoneId } from '@cozy/game-data';
+import { FISH, FISHING_RODS, OCEAN_ZONES, ZONES, type ZoneId } from '@cozy/game-data';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BookOpen,
@@ -24,14 +24,15 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { avatarPortrait } from '../art/avatar';
 import { MartialHud } from './panels/MartialHud';
 import { GameCanvas } from '../game/GameCanvas';
 import { net } from '../game/net';
-import { townFishingController } from '../game/scenes';
-import { api, num, session, usd, type EventHub, type Me } from '../lib/api';
+import { setLocalAppearance, setLocalHeldFish, townFishingController } from '../game/scenes';
+import { computeStashHeldItem } from '../game/stash-held-item';
+import { api, num, session, usd, type Appearance, type EventHub, type Me } from '../lib/api';
 import { qk } from '../lib/queries';
 import { play } from '../lib/sound';
 import { useUi, type Panel } from '../lib/store';
@@ -57,7 +58,7 @@ import { AdminWeatherModal } from './admin/AdminWeatherModal';
 import { Sidebar } from './Sidebar';
 import { Brand } from './Brand';
 import { CaveHud } from './panels/CaveHud';
-import { Button, CoinIcon, Spinner } from '../ui/primitives';
+import { Button, CoinIcon, Spinner, toastError } from '../ui/primitives';
 
 const EMOTES = [
   ['wave', '👋', 'Vẫy tay'],
@@ -71,6 +72,7 @@ const EMOTES = [
 ] as const;
 
 export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => void }) {
+  const qc = useQueryClient();
   const panel = useUi((s) => s.panel);
   const setPanel = useUi((s) => s.setPanel);
   const activity = useUi((s) => s.activity);
@@ -83,6 +85,83 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
     return () => void net.disconnect();
   }, [me.id]);
 
+  const stashHeldItem = useCallback(async () => {
+    const currentMe = qc.getQueryData<Me>(qk.me) ?? me;
+    const plan = computeStashHeldItem(currentMe.appearance);
+
+    if (plan.action === 'unhold_fish') {
+      play('click');
+      setLocalHeldFish(null);
+      const prevAppearance = currentMe.appearance;
+      const nextAppearance = plan.nextAppearance;
+      setLocalAppearance(nextAppearance);
+      qc.setQueryData(qk.me, (old: Me | undefined) => (old ? { ...old, appearance: nextAppearance } : old));
+
+      try {
+        const res = await api<{ ok: boolean; appearance: Appearance }>('/backpack/fish/unhold', {
+          method: 'POST',
+        });
+        qc.invalidateQueries({ queryKey: ['backpack-fish'] });
+        if (res.appearance) {
+          qc.setQueryData(qk.me, (old: Me | undefined) =>
+            old ? { ...old, appearance: res.appearance } : old,
+          );
+          setLocalAppearance(res.appearance);
+        }
+        const fishName = FISH.find((f) => f.id === plan.speciesId)?.name ?? 'Cá';
+        useUi.getState().toast({
+          kind: 'info',
+          title: 'Đã cất vào balo (Phím F)',
+          body: `Đã cất ${fishName} trên tay vào balo.`,
+        });
+      } catch (err) {
+        setLocalAppearance(prevAppearance);
+        qc.setQueryData(qk.me, (old: Me | undefined) => (old ? { ...old, appearance: prevAppearance } : old));
+        toastError(err, 'Không thể cất cá vào balo');
+      }
+      return;
+    }
+
+    if (plan.action === 'unequip_rod') {
+      play('click');
+      const prevAppearance = currentMe.appearance;
+      const nextAppearance = plan.nextAppearance;
+      setLocalAppearance(nextAppearance);
+      qc.setQueryData(qk.me, (old: Me | undefined) => (old ? { ...old, appearance: nextAppearance } : old));
+
+      try {
+        const res = await api<{ appearance: Appearance }>('/inventory/equip', {
+          body: { itemId: null, slot: 'rod' },
+        });
+        qc.invalidateQueries({ queryKey: qk.shop });
+        if (res.appearance) {
+          qc.setQueryData(qk.me, (old: Me | undefined) =>
+            old ? { ...old, appearance: res.appearance } : old,
+          );
+          setLocalAppearance(res.appearance);
+        }
+        const rodName = (FISHING_RODS as Record<string, { name: string }>)[plan.rodId!]?.name ?? 'Cần câu';
+        useUi.getState().toast({
+          kind: 'info',
+          title: 'Đã cất vào balo (Phím F)',
+          body: `Đã cất ${rodName} vào túi đồ.`,
+        });
+      } catch (err) {
+        setLocalAppearance(prevAppearance);
+        qc.setQueryData(qk.me, (old: Me | undefined) => (old ? { ...old, appearance: prevAppearance } : old));
+        toastError(err, 'Không thể cất cần câu vào balo');
+      }
+      return;
+    }
+
+    play('pop');
+    useUi.getState().toast({
+      kind: 'info',
+      title: 'Balo (Phím F)',
+      body: 'Hiện không có cá hoặc cần câu nào đang cầm trên tay để cất.',
+    });
+  }, [me, qc]);
+
   // Keyboard shortcuts for non-game UI.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -92,6 +171,12 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
       if (e.key === 'Enter' && !panel && !activity) {
         e.preventDefault();
         document.getElementById('chat-input')?.focus();
+      }
+      if (e.code === 'KeyF' || e.key === 'f' || e.key === 'F') {
+        if (room.kind === 'cave' || room.kind === 'martial') return;
+        e.preventDefault();
+        void stashHeldItem();
+        return;
       }
       if (e.code === 'KeyB' || e.key === 'b' || e.key === 'B') {
         e.preventDefault();
@@ -104,7 +189,7 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [panel, activity, setPanel]);
+  }, [panel, activity, setPanel, room.kind, stashHeldItem]);
 
   return (
     <div className="shell">
@@ -148,7 +233,11 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
           <GameCanvas />
           {room.kind === 'martial' ? <MartialHud /> : null}
           {room.kind === 'cave' ? <CaveHud /> : null}
-          <WorldHud me={me} onOpenWeatherModal={() => setWeatherModalOpen(true)} />
+          <WorldHud
+            me={me}
+            onOpenWeatherModal={() => setWeatherModalOpen(true)}
+            onStashHeldItem={() => void stashHeldItem()}
+          />
           {room.kind === 'showroom' ? <ShowroomHud /> : null}
           {activity === 'fishing' ? <FishingActivity /> : null}
           {activity === 'cafe' ? <CafeActivity /> : null}
@@ -492,7 +581,33 @@ const ZONE_ACTIONS: Partial<Record<ZoneId, { cta: string; hint: string }>> = {
   angler_dock: { cta: 'Câu cá chân cầu', hint: 'Cá sông hiếm dưới chân Cầu Hóa An' },
 };
 
-function WorldHud({ me, onOpenWeatherModal }: { me: Me; onOpenWeatherModal: () => void }) {
+function WorldHud({
+  me,
+  onOpenWeatherModal,
+  onStashHeldItem,
+}: {
+  me: Me;
+  onOpenWeatherModal: () => void;
+  onStashHeldItem: () => void;
+}) {
+  const currentHeldInfo = useMemo(() => {
+    if (me.appearance?.heldFish) {
+      const fish = FISH.find((f) => f.id === me.appearance.heldFish?.speciesId);
+      return {
+        name: fish?.name ?? 'Cá',
+        icon: '🐟',
+      };
+    }
+    if (me.appearance?.rod) {
+      const rod = (FISHING_RODS as Record<string, { name: string }>)[me.appearance.rod];
+      return {
+        name: rod?.name ?? 'Cần câu',
+        icon: '🎣',
+      };
+    }
+    return null;
+  }, [me.appearance?.heldFish, me.appearance?.rod]);
+
   const zone = useUi((s) => s.zone);
   const room = useUi((s) => s.room);
   const panel = useUi((s) => s.panel);
@@ -740,6 +855,20 @@ function WorldHud({ me, onOpenWeatherModal }: { me: Me; onOpenWeatherModal: () =
             </div>
           ) : null}
         </div>
+        {currentHeldInfo ? (
+          <button
+            className="hud-tool"
+            style={{
+              borderColor: '#38bdf8',
+              background: 'rgba(56, 189, 248, 0.22)',
+            }}
+            aria-label={`Cất ${currentHeldInfo.name} vào balo (F)`}
+            title={`Cất ${currentHeldInfo.name} vào balo (Nhấn F)`}
+            onClick={onStashHeldItem}
+          >
+            <span style={{ fontSize: 16 }}>{currentHeldInfo.icon}</span>
+          </button>
+        ) : null}
         <button
           className="hud-tool"
           aria-label="Balo cá nhân (B)"
@@ -789,6 +918,11 @@ function WorldHud({ me, onOpenWeatherModal }: { me: Me; onOpenWeatherModal: () =
         <div className="help-group">
           <span className="kbd">E</span>
           <span>tương tác</span>
+        </div>
+        <div className="help-sep" />
+        <div className="help-group">
+          <span className="kbd">F</span>
+          <span>cất đồ</span>
         </div>
         <div className="help-sep" />
         <div className="help-group">

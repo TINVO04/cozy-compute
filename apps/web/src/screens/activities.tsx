@@ -515,6 +515,19 @@ export function FishingActivity() {
       }
       if (el?.closest('button, a, [role="button"]') && (e.code === 'Space' || e.key === 'Enter')) return;
 
+      if (e.code === 'KeyF' || e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        if (p.kind === 'result') {
+          returnToRodReady();
+          useUi.getState().toast({
+            kind: 'info',
+            title: 'Đã cất vào balo (Phím F)',
+            body: 'Bạn đã cất cá vào túi đồ.',
+          });
+        }
+        return;
+      }
+
       if (e.code === 'KeyB' || e.key === 'b' || e.key === 'B') {
         e.preventDefault();
         townFishingController?.cleanup();
@@ -938,6 +951,20 @@ export function FishingActivity() {
               </Button>
               <Button variant="primary" size="sm" onClick={() => void returnToRodReady()}>
                 <RotateCcw size={14} aria-hidden="true" /> Cầm cần câu tiếp <span className="kbd">Enter</span>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  returnToRodReady();
+                  useUi.getState().toast({
+                    kind: 'info',
+                    title: 'Đã cất vào balo (Phím F)',
+                    body: 'Bạn đã cất cá vào túi đồ.',
+                  });
+                }}
+              >
+                <Package size={14} /> Cất vào balo <span className="kbd">F</span>
               </Button>
               <Button
                 variant="ghost"
