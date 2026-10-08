@@ -93,6 +93,7 @@ export function BackpackPanel({
   const qc = useQueryClient();
   const refresh = useRefreshEconomy();
   const setPanel = useUi((s) => s.setPanel);
+  const room = useUi((s) => s.room);
 
   // Backpack fish query
   const fishQuery = useQuery({
@@ -1231,12 +1232,21 @@ export function BackpackPanel({
                             block
                             style={{ marginTop: 'auto' }}
                             loading={equipItem.isPending && equipItem.variables?.slot === item.slot}
-                            onClick={() =>
+                            onClick={() => {
+                              if (item.slot === 'boat' && isEquipped && room?.kind === 'ocean') {
+                                play('pop');
+                                useUi.getState().toast({
+                                  kind: 'info',
+                                  title: 'Không thể cất thuyền',
+                                  body: 'Bạn đang lái thuyền trên sông, hãy cập bến cảng trước khi cất thuyền vào ba lô nhé!',
+                                });
+                                return;
+                              }
                               equipItem.mutate({
                                 itemId: isEquipped ? null : item.id,
                                 slot: item.slot as 'hat' | 'top' | 'face' | 'rod' | 'boat',
-                              })
-                            }
+                              });
+                            }}
                           >
                             {isEquipped
                               ? item.type === 'rod'

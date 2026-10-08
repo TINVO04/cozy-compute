@@ -313,26 +313,29 @@ export class TownScene extends WorldScene {
 
   private syncDockedBoat() {
     if (!this.dockedBoatContainer) return;
+    if (!this.layer?.self) return;
     const myAppearance = this.layer?.self?.appearance;
     const boatId = myAppearance?.boat ? normalizeBoatId(myAppearance.boat) : null;
     if (boatId === this.lastBoatModel) return;
     this.lastBoatModel = boatId;
 
     this.dockedBoatContainer.removeAll(true);
-    const displayBoatId = boatId ?? 'boat_coracle';
-    const tex = ensureBoatTexture(this, displayBoatId, 1, 0);
-    const bImg = this.add.image(0, 0, tex).setOrigin(0.5, 0.7);
     if (!boatId) {
-      bImg.setAlpha(0.6);
+      this.dockedBoatContainer.setVisible(false);
+      return;
     }
+
+    this.dockedBoatContainer.setVisible(true);
+    const tex = ensureBoatTexture(this, boatId, 1, 0);
+    const bImg = this.add.image(0, 0, tex).setOrigin(0.5, 0.7);
     this.dockedBoatContainer.add(bImg);
 
     const txt = this.add
-      .text(0, -28, boatId ? '⛵ Lên Thuyền (E)' : '⛵ Bến Thuyền Ra Khơi', {
+      .text(0, -28, '⛵ Lên Thuyền (E)', {
         fontFamily: 'Inter, sans-serif',
         fontSize: '10px',
         fontStyle: 'bold',
-        color: boatId ? '#38bdf8' : '#fbbf24',
+        color: '#38bdf8',
         backgroundColor: 'rgba(15, 23, 42, 0.9)',
         padding: { x: 6, y: 2 },
         resolution: 2,
@@ -353,14 +356,19 @@ export class TownScene extends WorldScene {
     this.windSystem?.update(time, delta);
     this.precipSystem?.update(time, delta);
     updateAtmosphere(this, time, delta);
-    const dockBoat = this.dockedBoatContainer?.list[0] as Phaser.GameObjects.Image | undefined;
-    if (dockBoat && this.dockedBoatContainer) {
+    const dockBoat =
+      this.lastBoatModel &&
+      this.dockedBoatContainer?.visible &&
+      this.dockedBoatContainer?.list[0] instanceof Phaser.GameObjects.Image
+        ? (this.dockedBoatContainer.list[0] as Phaser.GameObjects.Image)
+        : undefined;
+    if (dockBoat && this.dockedBoatContainer && this.lastBoatModel) {
       const ui = useUi.getState();
       const pose = boatPose(
         time,
         this.dockedBoatContainer.x,
         this.dockedBoatContainer.y,
-        this.lastBoatModel ?? 'boat_coracle',
+        this.lastBoatModel,
         1,
         false,
         ui.weather.windSpeedKmh * 0.35,
