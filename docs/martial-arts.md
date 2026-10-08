@@ -38,7 +38,7 @@ tài khoản trong Redis. Cần giữ volume Redis để giữ dữ liệu qua l
   mời, hồi chiêu, nội lực, né đòn, phòng thủ, học chiêu, thoát trận và vé vào.
 - `pnpm --filter @cozy/realtime exec tsx scripts/martial-smoke.ts`: hai
   client WebSocket thật, Redis thật, sát thương và animation broadcast,
-  Elo và hạn chế đấu lặp. Mặc định Redis tại 127.0.0.1:56379; có thể đặt
+  Elo và hạn chế đấu lặp. Mặc định Redis tại 127.0.0.1:6379; có thể đặt
   MARTIAL_TEST_REDIS_URL. Dùng namespace riêng và xóa dữ liệu thử sau khi chạy.
   API xác thực/vũ khí dùng dữ liệu cố định trong bài smoke này.
 - `pnpm --filter @cozy/web exec playwright test e2e/martial.spec.ts`:

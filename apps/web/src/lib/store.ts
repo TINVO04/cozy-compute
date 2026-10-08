@@ -17,6 +17,7 @@ export type Panel =
   | 'shop-fashion'
   | 'shop-furniture'
   | 'shop-rods'
+  | 'shop-swords'
   | 'wardrobe'
   | 'backpack'
   | 'tackle'

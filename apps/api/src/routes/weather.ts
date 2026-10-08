@@ -11,6 +11,7 @@ export function weatherRoutes(app: FastifyInstance, ctx: AppContext) {
     const weather = await worldWeather(ctx);
     try {
       await ctx.redis.set('world:weather', JSON.stringify(weather), 'EX', 120);
+      await ctx.redis.publish('weather:updated', JSON.stringify(weather));
     } catch {
       // Redis optional in isolated environments
     }

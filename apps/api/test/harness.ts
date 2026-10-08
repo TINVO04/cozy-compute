@@ -83,7 +83,7 @@ export async function createHarness(): Promise<Harness> {
   const env = { ...process.env };
   env.DATABASE_URL =
     process.env.TEST_DATABASE_URL ?? 'postgres://cozy:cozy_dev_password@127.0.0.1:55432/cozy_test';
-  env.REDIS_URL = (process.env.REDIS_URL ?? 'redis://127.0.0.1:56379') + '/5';
+  env.REDIS_URL = (process.env.REDIS_URL ?? 'redis://127.0.0.1:6379') + '/5';
   env.INTERNAL_SECRET = 'test-internal-secret-123';
   env.LITELLM_MASTER_KEY = 'unused';
   env.ADMIN_EMAILS = 'admin@test.local';

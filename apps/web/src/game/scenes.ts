@@ -103,6 +103,7 @@ import { PlayerLayer } from './players';
 import { InWorldFishingController } from './fishing';
 import { RiverSurface } from './river-surface';
 import { BridgeTraffic } from './bridge-traffic';
+import { RiverVesselTraffic } from './river-vessel-traffic';
 import { RIVER_BRIDGE } from '@cozy/game-data';
 import { boatPose } from './river-motion';
 import { FarmLivestockManager } from './farm-livestock';
@@ -348,7 +349,7 @@ export class TownScene extends WorldScene {
     super.update(time, delta);
     const actors = (net.room?.state as { townActors?: { values(): IterableIterator<TownActor> } } | undefined)
       ?.townActors;
-    this.townLife?.update(actors ? [...actors.values()] : [], time, delta);
+    this.townLife?.update(actors ? [...actors.values()] : [], time, delta, useUi.getState().weather);
     this.updateTraffic?.();
     this.syncDockedBoat();
     this.fishingController?.update(time, delta);
@@ -392,11 +393,11 @@ export class TownScene extends WorldScene {
 
   protected buildWorld() {
     buildDetailedTown(this);
-    this.townLife = new TownLifeLayer(
-      this,
-      () => this.getSelfPos(),
-      (id) => net.room?.send('town:talk', { id }),
-    );
+    this.townLife = new TownLifeLayer(this, () => this.getSelfPos(), {
+      talk: (id) => net.room?.send('town:talk', { id }),
+      pickUpCat: (id) => net.room?.send('town:cat:pickup', { id }),
+      putDownCat: (id, pos) => net.room?.send('town:cat:putdown', { id, ...pos }),
+    });
     this.add
       .text(1440, 308, 'HANG NGỌC →', {
         fontSize: '12px',
@@ -2520,6 +2521,7 @@ export class OceanScene extends WorldScene {
   private exiting = false;
   private precipSystem: PrecipitationSystem | null = null;
   private ambientOverlay: Phaser.GameObjects.Rectangle | null = null;
+  private riverVessels: RiverVesselTraffic | null = null;
 
   constructor() {
     super('ocean');
@@ -2568,6 +2570,8 @@ export class OceanScene extends WorldScene {
       }
       this.precipSystem?.cleanup();
       this.precipSystem = null;
+      this.riverVessels?.destroy();
+      this.riverVessels = null;
       this.ambientOverlay?.destroy();
       this.ambientOverlay = null;
       this.interactionHint?.destroy();
@@ -2678,6 +2682,7 @@ export class OceanScene extends WorldScene {
       .setDepth(1100);
     this.bridgeClock = { server: 0, received: 0 };
     this.bridgeTraffic = new BridgeTraffic(this);
+    this.riverVessels = new RiverVesselTraffic(this, 'ocean');
 
     // 3. Return Buoy interaction (x: 140, y: 720)
     const returnTown = () => {
@@ -2773,6 +2778,7 @@ export class OceanScene extends WorldScene {
     this.bridgeTraffic?.update(
       server ? server + Math.min(1000, time - this.bridgeClock.received) : Date.now(),
     );
+    this.riverVessels?.update(time);
     this.fishingController?.update(time, delta);
     this.remoteFishingControllers.forEach((ctrl) => ctrl.update(time, delta));
     this.precipSystem?.update(time, delta);

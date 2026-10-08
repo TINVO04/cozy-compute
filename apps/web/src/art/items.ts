@@ -10,7 +10,7 @@ export { boatIcon } from './boat';
 /** Icon for any catalogue item, using HD Chibi mannequins for clothing, physical materials for furniture, and boat models. */
 export function itemIcon(
   sprite: string,
-  type: 'clothing' | 'furniture' | 'rod' | 'boat' | 'vehicle',
+  type: 'clothing' | 'furniture' | 'rod' | 'boat' | 'vehicle' | 'sword',
   size = { w: 1, h: 1 },
   scale = 3,
 ): string {
@@ -31,6 +31,12 @@ export function itemIcon(
 
   if (type === 'rod') {
     const url = rodIcon(sprite, 64);
+    iconCache.set(key, url);
+    return url;
+  }
+
+  if (type === 'sword') {
+    const url = swordIcon(sprite, 64);
     iconCache.set(key, url);
     return url;
   }
@@ -414,5 +420,163 @@ export function rodIcon(spriteOrId: string, scale = 4): string {
               : 'rod:twig:#8b5a2b';
   const url = drawFishingRod(sprite).toCanvas(scale).toDataURL();
   rodCache.set(key, url);
+  return url;
+}
+
+/**
+ * Masterpiece 28x28 diagonal 45-degree pixel art swords:
+ * Features detailed pommel, grip with wrapping, ornate crossguard with quillons,
+ * double-edged polished fuller blade with specular edge shine, tip glint, and silk tassel.
+ */
+export function drawSword(sprite: string): PixelGrid {
+  const g = new PixelGrid(28, 28);
+  const [, subtype = 'training'] = sprite.split(':');
+
+  let bladeCol = '#d9bea2';
+  let bladeHigh = '#f5ede3';
+  let bladeDark = '#a8896a';
+  let guardCol = '#78350f';
+  let hiltCol = '#b45309';
+  let pommelCol = '#92400e';
+  let tasselCol = '#ca8a04';
+  let auraCol: string | null = null;
+
+  if (subtype === 'iron') {
+    bladeCol = '#cbd5e1';
+    bladeHigh = '#ffffff';
+    bladeDark = '#64748b';
+    guardCol = '#eab308'; // golden brass crossguard
+    hiltCol = '#334155';
+    pommelCol = '#e2e8f0';
+    tasselCol = '#dc2626'; // red silk tassel
+    auraCol = 'rgba(203, 213, 225, 0.6)';
+  } else if (subtype === 'crystal') {
+    bladeCol = '#2dd4bf';
+    bladeHigh = '#ccfbf1';
+    bladeDark = '#0f766e';
+    guardCol = '#14b8a6';
+    hiltCol = '#0e7490';
+    pommelCol = '#67e8f9';
+    tasselCol = '#06b6d4';
+    auraCol = '#38bdf8';
+  } else if (subtype === 'ancient') {
+    bladeCol = '#facc15';
+    bladeHigh = '#fef9c3';
+    bladeDark = '#a16207';
+    guardCol = '#b45309';
+    hiltCol = '#92400e';
+    pommelCol = '#fbbf24';
+    tasselCol = '#b91c1c';
+    auraCol = '#f59e0b';
+  } else if (subtype === 'flame') {
+    bladeCol = '#f87171';
+    bladeHigh = '#fee2e2';
+    bladeDark = '#991b1b';
+    guardCol = '#dc2626';
+    hiltCol = '#7f1d1d';
+    pommelCol = '#ef4444';
+    tasselCol = '#f97316';
+    auraCol = '#ef4444';
+  } else if (subtype === 'frost') {
+    bladeCol = '#7dd3fc';
+    bladeHigh = '#f0f9ff';
+    bladeDark = '#0369a1';
+    guardCol = '#38bdf8';
+    hiltCol = '#075985';
+    pommelCol = '#bae6fd';
+    tasselCol = '#38bdf8';
+    auraCol = '#bae6fd';
+  }
+
+  // 1. Pommel at (4, 23)
+  g.rect(4, 23, 2, 2, pommelCol);
+
+  // 2. Tassel dangling from pommel
+  g.set(3, 24, tasselCol);
+  g.set(3, 25, tasselCol);
+  g.set(2, 26, tasselCol);
+  g.set(3, 26, tasselCol);
+
+  // 3. Grip / Hilt with wrapped cords: from (5, 22) to (8, 19)
+  const grip = [
+    [5, 22],
+    [6, 21],
+    [7, 20],
+    [8, 19],
+  ];
+  grip.forEach(([x, y]) => {
+    g.set(x!, y!, hiltCol);
+    g.set(x! + 1, y!, '#f8fafc'); // wrapping cords
+  });
+
+  // 4. Crossguard with quillon wings: perpendicular diagonal around (9, 18)
+  g.set(8, 17, guardCol);
+  g.set(7, 16, guardCol);
+  g.set(9, 18, guardCol);
+  g.set(10, 19, guardCol);
+  g.set(11, 20, guardCol);
+  // Guard centerpiece
+  g.set(9, 17, '#ffffff');
+
+  // 5. Blade extending from (10, 17) to (24, 3)
+  const bladePoints = [
+    [10, 16],
+    [11, 15],
+    [12, 14],
+    [13, 13],
+    [14, 12],
+    [15, 11],
+    [16, 10],
+    [17, 9],
+    [18, 8],
+    [19, 7],
+    [20, 6],
+    [21, 5],
+    [22, 4],
+  ];
+  bladePoints.forEach(([x, y]) => {
+    g.set(x!, y!, bladeDark); // lower edge shadow
+    g.set(x! + 1, y!, bladeCol); // fuller center ridge
+    g.set(x!, y! - 1, bladeHigh); // top edge specular gleam
+    g.set(x! + 1, y! - 1, bladeHigh);
+  });
+
+  // 6. Blade Tip
+  g.set(23, 3, bladeCol);
+  g.set(23, 2, bladeHigh);
+  g.set(24, 2, '#ffffff'); // brilliant diamond glint at the point!
+
+  // 7. Elemental Aura Sparks
+  if (auraCol) {
+    g.set(25, 1, '#ffffff');
+    g.set(22, 1, auraCol);
+    g.set(19, 4, auraCol);
+    g.set(14, 9, auraCol);
+  }
+
+  g.outline(INK);
+  return g;
+}
+
+const swordCache = new Map<string, string>();
+export function swordIcon(spriteOrId: string, scale = 4): string {
+  const key = spriteOrId + '@' + scale;
+  const hit = swordCache.get(key);
+  if (hit) return hit;
+  const sprite = spriteOrId.startsWith('sword:')
+    ? spriteOrId
+    : spriteOrId === 'sword_iron' || spriteOrId === 'iron'
+      ? 'sword:iron:#c3dfed'
+      : spriteOrId === 'sword_crystal' || spriteOrId === 'crystal'
+        ? 'sword:crystal:#8af5de'
+        : spriteOrId === 'sword_ancient'
+          ? 'sword:ancient:#f59e0b'
+          : spriteOrId === 'sword_flame'
+            ? 'sword:flame:#ef4444'
+            : spriteOrId === 'sword_frost'
+              ? 'sword:frost:#38bdf8'
+              : 'sword:training:#d9bea2';
+  const url = drawSword(sprite).toCanvas(scale).toDataURL();
+  swordCache.set(key, url);
   return url;
 }

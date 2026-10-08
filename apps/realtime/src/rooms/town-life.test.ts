@@ -67,4 +67,75 @@ describe('authoritative town life wiring', () => {
       room.onDispose();
     }
   });
+
+  it('handles server-authoritative cat pickup and putdown without resetting position', async () => {
+    vi.spyOn(BaseRoom.prototype as unknown as { setup(): void }, 'setup').mockImplementation(() => undefined);
+    vi.spyOn(BaseRoom.prototype as unknown as { tick(dt: number): void }, 'tick').mockImplementation(
+      () => undefined,
+    );
+    vi.spyOn(TownRoom.prototype, 'syncEvent').mockResolvedValue(undefined);
+    const handlers = new Map<string, (client: Client, message: unknown) => void>();
+    const room = new TownRoom();
+    room.setState(new RoomState());
+    vi.spyOn(room, 'onMessage').mockImplementation((type, callback) => {
+      handlers.set(String(type), callback);
+      return room;
+    });
+    room.onCreate();
+    try {
+      const client = { sessionId: 'cat-lover', send: vi.fn() } as unknown as Client;
+      const player = new PlayerState();
+      room.state.players.set(client.sessionId, player);
+
+      const cat = [...room.state.townActors.values()].find((a) => a.kind === 'cat')!;
+      const originalX = cat.x;
+      const originalY = cat.y;
+
+      // Position player next to the cat
+      player.x = cat.x + 10;
+      player.y = cat.y + 10;
+
+      const pickup = handlers.get('town:cat:pickup')!;
+      const putdown = handlers.get('town:cat:putdown')!;
+
+      // 1. Pick up cat
+      pickup(client, { id: cat.id });
+      expect(cat.mode).toBe('carried');
+
+      // 2. Player moves across town
+      player.x = 800;
+      player.y = 600;
+
+      // Tick should update cat position to follow player
+      (room as unknown as { tick(dt: number): void }).tick(50);
+      expect(cat.x).toBe(800);
+      expect(cat.y).toBe(600);
+
+      // 3. Put down cat
+      putdown(client, {});
+      expect(cat.mode).toBe('roaming');
+      expect(cat.x).toBe(800);
+      expect(cat.y).toBe(604);
+
+      // 4. Tick several times - cat must NOT jump back to original coordinates!
+      for (let i = 0; i < 20; i++) {
+        (room as unknown as { tick(dt: number): void }).tick(50);
+      }
+      expect(Math.hypot(cat.x - 800, cat.y - 604)).toBeLessThan(60);
+      expect(Math.hypot(cat.x - originalX, cat.y - originalY)).toBeGreaterThan(100);
+
+      // 5. Test player leave with carried cat
+      player.x = cat.x + 5;
+      player.y = cat.y + 5;
+      pickup(client, { id: cat.id });
+      expect(cat.mode).toBe('carried');
+
+      await room.onLeave(client, true);
+      // Cat should be dropped safely and back to roaming
+      expect(cat.mode).toBe('roaming');
+      expect(cat.x).toBe(player.x);
+    } finally {
+      room.onDispose();
+    }
+  });
 });

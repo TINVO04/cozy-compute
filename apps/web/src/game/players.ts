@@ -81,6 +81,8 @@ export class Avatar {
   facingDependentEffects: { obj: { x: number }; baseRelX: number }[] = [];
   rodGlowContainer: Phaser.GameObjects.Container | null = null;
   rodTweens: Phaser.Tweens.Tween[] = [];
+  swordGlowContainer: Phaser.GameObjects.Container | null = null;
+  swordTweens: Phaser.Tweens.Tween[] = [];
   boatSprite: Phaser.GameObjects.Image | null = null;
   interpolation = new MovementInterpolation();
   private animationState = '';
@@ -123,6 +125,7 @@ export class Avatar {
     this.target = { x, y };
     this.updateHeldFish();
     this.updateEquippedRodEffect();
+    this.updateEquippedSwordEffect();
   }
 
   clearHeldFishEffects() {
@@ -143,6 +146,18 @@ export class Avatar {
     if (this.rodGlowContainer) {
       this.rodGlowContainer.destroy();
       this.rodGlowContainer = null;
+    }
+  }
+
+  clearSwordEffects() {
+    for (const t of this.swordTweens) {
+      t.stop();
+      t.remove();
+    }
+    this.swordTweens = [];
+    if (this.swordGlowContainer) {
+      this.swordGlowContainer.destroy();
+      this.swordGlowContainer = null;
     }
   }
 
@@ -627,10 +642,15 @@ export class Avatar {
     }
   }
 
+  updateEquippedSwordEffect() {
+    this.clearSwordEffects();
+  }
+
   setAppearance(a: Appearance) {
     this.appearance = a;
     this.updateHeldFish();
     this.updateEquippedRodEffect();
+    this.updateEquippedSwordEffect();
     const key = ensureAvatarTexture(this.scene, a);
     this.updateHeldFishFacing();
     if (key === this.texKey) return;
@@ -786,6 +806,7 @@ export class Avatar {
     this.sprite.setVisible(!driving || riding);
     this.heldFishContainer?.setVisible(!driving);
     this.rodGlowContainer?.setVisible(!driving);
+    this.swordGlowContainer?.setVisible(!driving);
     if (driving) {
       const frame = riding && this.moving && !useUi.getState().reducedMotion ? Math.floor(time / 160) % 2 : 0;
       const key = ensureVehicleTexture(this.scene, this.vehicle, this.dir, frame);
@@ -836,8 +857,10 @@ export class Avatar {
     this.bubbleTimer?.remove();
     this.clearHeldFishEffects();
     this.clearRodEffects();
+    this.clearSwordEffects();
     this.heldFishContainer?.destroy();
     this.rodGlowContainer?.destroy();
+    this.swordGlowContainer?.destroy();
     this.boatSprite?.destroy();
     this.boatSprite = null;
     this.container.destroy();

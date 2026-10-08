@@ -2,6 +2,7 @@ import { fameTitle } from '@cozy/economy';
 import {
   normalizeBoatId,
   normalizeRodId,
+  normalizeSwordId,
   sanitizeAppearance,
   STARTER_ITEMS,
   type Appearance,
@@ -100,6 +101,7 @@ export async function resolvedAppearance(q: Queryable, userId: string): Promise<
     top: null,
     face: null,
     rod: null,
+    sword: null,
     boat: null,
     vehicle: null,
     heldFish,
@@ -109,6 +111,8 @@ export async function resolvedAppearance(q: Queryable, userId: string): Promise<
       out[row.slot] = row.sprite;
     } else if (row.slot === 'rod') {
       out.rod = row.item_id ?? (row.sprite ? normalizeRodId(row.sprite) : null);
+    } else if (row.slot === 'sword') {
+      out.sword = row.item_id ?? (row.sprite ? normalizeSwordId(row.sprite) : null);
     } else if (row.slot === 'vehicle') {
       out.vehicle = row.item_id;
     } else if (row.slot === 'boat') {

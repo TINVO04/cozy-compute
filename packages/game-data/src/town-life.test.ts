@@ -211,4 +211,83 @@ describe('living town simulation', () => {
     expect(shouldHideTownLife({ isNight: true })).toBe(true);
     expect(shouldHideTownLife({ condition: 'clear', timePhase: 'noon' })).toBe(false);
   });
+
+  it('distributes 5 cats across distinct town neighborhoods on clear walkable ground', () => {
+    const sim = simulation();
+    const cats = sim.actors.filter((a) => a.kind === 'cat');
+    expect(cats.length).toBe(5);
+
+    const expectedPoints = [
+      { name: 'NW Pagoda', x: 120, y: 140 },
+      { name: 'SW Food Street', x: 260, y: 720 },
+      { name: 'Central Park', x: 760, y: 550 },
+      { name: 'NE Apartments', x: 1210, y: 350 },
+      { name: 'SE River Promenade', x: 1080, y: 840 },
+    ];
+    for (const p of expectedPoints) {
+      expect(lifeGroundClear(p.x, p.y), `${p.name} (${p.x}, ${p.y}) should be clear walkable ground`).toBe(
+        true,
+      );
+    }
+
+    // Verify all 5 cats spawn in different neighborhoods
+    const xs = cats.map((c) => c.x);
+    expect(Math.min(...xs)).toBeLessThan(200); // North-West cat
+    expect(Math.max(...xs)).toBeGreaterThan(1100); // North-East or South-East cat
+  });
+
+  it('supports picking up a cat and putting it down at a new location without snapping back', () => {
+    const sim = simulation();
+    const cat = sim.actors.find((a) => a.kind === 'cat')!;
+    const originalPos = { x: cat.x, y: cat.y };
+
+    // 1. Pick up the cat
+    expect(sim.pickUpCat(cat.id, 'player-1', { x: cat.x + 5, y: cat.y + 5 })).toBe(true);
+    expect(cat.mode).toBe('carried');
+    expect(cat.speech).toContain('Meo meo~');
+
+    // Trying to pick up already carried cat should fail
+    expect(sim.pickUpCat(cat.id, 'player-2')).toBe(false);
+
+    // Update carrier position while walking far across town
+    const targetPos = { x: 800, y: 600 };
+    sim.updateCarrierPos(cat.id, targetPos);
+    expect(cat.x).toBe(targetPos.x);
+    expect(cat.y).toBe(targetPos.y);
+
+    // Advancing sim while carried should not wander or scamper away
+    advance(sim, 2);
+    expect(cat.mode).toBe('carried');
+
+    // 2. Put down the cat at the new destination
+    expect(sim.putDownCat(cat.id, targetPos)).toBe(true);
+    expect(cat.mode).toBe('roaming');
+    expect(cat.speech).toBe('Meo~');
+    expect(cat.x).toBe(targetPos.x);
+    expect(cat.y).toBe(targetPos.y);
+
+    // 3. Advance time and verify it roams around the NEW location, NOT snapping back to originalPos
+    advance(sim, 10);
+    // Cat should stay within its new neighborhood (e.g. within 120px of targetPos), far from originalPos
+    expect(Math.hypot(cat.x - targetPos.x, cat.y - targetPos.y)).toBeLessThan(120);
+    expect(Math.hypot(cat.x - originalPos.x, cat.y - originalPos.y)).toBeGreaterThan(150);
+  });
+
+  it('does not abruptly despawn talking vendors or carried cats during weather changes', () => {
+    const sim = simulation();
+    const vendor = sim.actors.find((a) => a.kind === 'vendor')!;
+    const cat = sim.actors.find((a) => a.kind === 'cat')!;
+
+    // Start dialogue and pick up cat
+    sim.talk(vendor.id, { x: vendor.x, y: vendor.y });
+    expect(vendor.mode).toBe('talking');
+    sim.pickUpCat(cat.id, 'player-1');
+    expect(cat.mode).toBe('carried');
+
+    // Trigger sudden rain
+    sim.update(50, 1000, [], { condition: 'rain' });
+    // Talking vendor and carried cat should still exist and not vanish
+    expect(sim.actors.some((a) => a.id === vendor.id)).toBe(true);
+    expect(sim.actors.some((a) => a.id === cat.id)).toBe(true);
+  });
 });

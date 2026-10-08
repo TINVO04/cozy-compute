@@ -69,6 +69,19 @@ export async function caveTransaction(ctx: AppContext, b: CaveTransaction): Prom
           reason: `cave_${b.action}`,
           idempotencyKey: `cave:${b.userId}:${b.requestId}`,
         });
+      if (b.action === 'buy') {
+        const swordItemId = `sword_${account.weapon}`;
+        await tx.query(
+          'UPDATE inventory_items SET equipped_slot = NULL WHERE user_id = $1 AND equipped_slot = $2',
+          [b.userId, 'sword'],
+        );
+        await tx.query(
+          `INSERT INTO inventory_items (user_id, item_id, quantity, equipped_slot)
+           VALUES ($1, $2, 1, 'sword')
+           ON CONFLICT (user_id, item_id) DO UPDATE SET equipped_slot = 'sword'`,
+          [b.userId, swordItemId],
+        );
+      }
       await tx.query('UPDATE cave_accounts SET weapon=$2, stone=$3, iron=$4, crystal=$5 WHERE user_id=$1', [
         b.userId,
         account.weapon,

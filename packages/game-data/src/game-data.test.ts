@@ -108,7 +108,7 @@ describe('game-data items catalog', () => {
       allIds.add(item.id);
       expect(item.coinPrice).toBeGreaterThan(0);
       expect(item.name.length).toBeGreaterThan(0);
-      expect(['clothing', 'furniture', 'rod', 'boat', 'vehicle']).toContain(item.type);
+      expect(['clothing', 'furniture', 'rod', 'boat', 'vehicle', 'sword']).toContain(item.type);
     }
   });
 

@@ -24,6 +24,7 @@ export interface Appearance {
   top?: string | null;
   face?: string | null;
   rod?: string | null;
+  sword?: string | null;
   boat?: string | null;
   vehicle?: string | null;
   heldFish?: {
@@ -37,7 +38,10 @@ export const DEFAULT_APPEARANCE: Appearance = { skin: 1, hairStyle: 'short', hai
 
 export function sanitizeAppearance(
   input: unknown,
-): Omit<Appearance, 'hat' | 'top' | 'face' | 'rod' | 'boat' | 'vehicle' | 'heldFish' | 'isFishing'> {
+): Omit<
+  Appearance,
+  'hat' | 'top' | 'face' | 'rod' | 'sword' | 'boat' | 'vehicle' | 'heldFish' | 'isFishing'
+> {
   const a = (input ?? {}) as Record<string, unknown>;
   const idx = (v: unknown, max: number, fallback: number) =>
     typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < max ? v : fallback;

@@ -11,7 +11,7 @@ import { setDeps, type Deps } from '../src/rooms/base.js';
 
 // Real sockets and Redis; isolated key namespace and deterministic test identities.
 const prefix = 'smoke:' + randomUUID() + ':';
-const url = process.env.MARTIAL_TEST_REDIS_URL ?? 'redis://127.0.0.1:56379';
+const url = process.env.MARTIAL_TEST_REDIS_URL ?? 'redis://127.0.0.1:6379';
 const redis = new Redis(url);
 const scoped = new Redis(url, { keyPrefix: prefix });
 const persistence = new Proxy(scoped, {

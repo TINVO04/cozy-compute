@@ -107,7 +107,7 @@ test('independently drawn landmarks use canvas textures and sort around live ava
         'scenery:bun-rieu',
         'scenery:north-bike-0',
         'scenery:garden-palm',
-        'boat:0',
+        'tree:0',
         'temple:gate',
         'temple:wall:0',
       ].every((key) => !!scene.children.getByName(key)),

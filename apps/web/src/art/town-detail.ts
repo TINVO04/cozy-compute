@@ -653,26 +653,6 @@ function paintPalm() {
   for (const x of [43, 49, 54]) oval(ctx, '#746a39', x, 47, 3, 4);
   return c;
 }
-function paintBoat(color: string) {
-  const c = canvas(48, 98),
-    ctx = c.getContext('2d')!;
-  oval(ctx, '#6ed1da', 25, 55, 22, 39);
-  for (let y = 4; y < 91; y++) {
-    const rw = Math.floor(17 * Math.sin(((y - 4) / 87) * Math.PI) ** 0.5);
-    box(ctx, '#5d5038', 24 - rw, y, rw * 2 + 1, 1);
-    if (rw > 3) box(ctx, color, 26 - rw, y, rw * 2 - 3, 1);
-  }
-  oval(ctx, '#4d625a', 24, 50, 10, 28);
-  oval(ctx, '#c6ac78', 24, 50, 8, 26);
-  for (const y of [32, 54, 71]) {
-    box(ctx, '#68533b', 14, y, 20, 5);
-    box(ctx, '#e2c899', 14, y, 20, 2);
-  }
-  box(ctx, '#94733f', 34, 20, 2, 64);
-  box(ctx, '#c9a85b', 35, 20, 1, 64);
-  box(ctx, '#77613d', 32, 73, 6, 14);
-  return c;
-}
 
 /** 3D Embossed DNTU Campus Monument with dimensional flame emblem and bold crimson letters. */
 function paintDntuMonument() {
@@ -1394,13 +1374,4 @@ export function buildDetailedTown(scene: Phaser.Scene) {
     { x: 22, y: 690 },
   ].entries())
     tree(p.x, p.y, `border:palm:${i}`, palmKey);
-  for (const [i, p] of [
-    { x: 1189, y: 730, color: '#d8c57d', angle: -6 },
-    { x: 1310, y: 789, color: '#bb704a', angle: 5 },
-    { x: 1189, y: 900, color: '#839c78', angle: 2 },
-    { x: 1380, y: 925, color: '#ac9370', angle: 78 },
-  ].entries()) {
-    const key = texture(`boat:${i}`, () => paintBoat(p.color));
-    scene.add.image(p.x, p.y, key).setName(key).setOrigin(0.5, 1).setDepth(p.y).setAngle(p.angle);
-  }
 }

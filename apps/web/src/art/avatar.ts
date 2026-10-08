@@ -1,4 +1,11 @@
-import { HAIR_COLORS, SKIN_TONES, TOP_COLORS, normalizeRodId, type Appearance } from '@cozy/game-data';
+import {
+  HAIR_COLORS,
+  SKIN_TONES,
+  TOP_COLORS,
+  normalizeRodId,
+  normalizeSwordId,
+  type Appearance,
+} from '@cozy/game-data';
 import { INK, PixelGrid, shade } from './pixel';
 import { drawFish, getSpeciesData } from './fish';
 
@@ -11,6 +18,98 @@ const parse = (sprite?: string | null) => {
   if (!sprite) return null;
   const [kind, color] = sprite.split(':');
   return { kind: kind!, color: color ?? '#888888' };
+};
+
+interface SwordPalette {
+  scabbard: string;
+  scabbardTrim: string;
+  hilt: string;
+  guard: string;
+  pommel: string;
+  blade: string;
+  tassel: string;
+  glow?: string;
+  sparkle?: string;
+  strap: string;
+  strapBuckle: string;
+}
+
+const SWORD_PALETTES: Record<string, SwordPalette> = {
+  sword_training: {
+    scabbard: '#854d0e',
+    scabbardTrim: '#a16207',
+    hilt: '#b45309',
+    guard: '#78350f',
+    pommel: '#92400e',
+    blade: '#d9bea2',
+    tassel: '#ca8a04',
+    strap: '#543217',
+    strapBuckle: '#d4b886',
+  },
+  sword_iron: {
+    scabbard: '#1e293b',
+    scabbardTrim: '#475569',
+    hilt: '#334155',
+    guard: '#eab308',
+    pommel: '#cbd5e1',
+    blade: '#e2e8f0',
+    tassel: '#dc2626',
+    glow: '#94a3b8',
+    strap: '#382517',
+    strapBuckle: '#e2e8f0',
+  },
+  sword_crystal: {
+    scabbard: '#0f766e',
+    scabbardTrim: '#14b8a6',
+    hilt: '#0e7490',
+    guard: '#2dd4bf',
+    pommel: '#67e8f9',
+    blade: '#5eead4',
+    tassel: '#06b6d4',
+    glow: '#38bdf8',
+    sparkle: '#ffffff',
+    strap: '#134e4a',
+    strapBuckle: '#5eead4',
+  },
+  sword_ancient: {
+    scabbard: '#78350f',
+    scabbardTrim: '#b45309',
+    hilt: '#92400e',
+    guard: '#f59e0b',
+    pommel: '#fbbf24',
+    blade: '#fde047',
+    tassel: '#b91c1c',
+    glow: '#fde047',
+    sparkle: '#fef08a',
+    strap: '#451a03',
+    strapBuckle: '#f59e0b',
+  },
+  sword_flame: {
+    scabbard: '#450a0a',
+    scabbardTrim: '#991b1b',
+    hilt: '#7f1d1d',
+    guard: '#dc2626',
+    pommel: '#ef4444',
+    blade: '#f87171',
+    tassel: '#f97316',
+    glow: '#ef4444',
+    sparkle: '#fbbf24',
+    strap: '#450a0a',
+    strapBuckle: '#f97316',
+  },
+  sword_frost: {
+    scabbard: '#0369a1',
+    scabbardTrim: '#0284c7',
+    hilt: '#075985',
+    guard: '#38bdf8',
+    pommel: '#bae6fd',
+    blade: '#e0f2fe',
+    tassel: '#7dd3fc',
+    glow: '#38bdf8',
+    sparkle: '#ffffff',
+    strap: '#0c4a6e',
+    strapBuckle: '#bae6fd',
+  },
 };
 
 /**
@@ -662,6 +761,136 @@ export function drawAvatar(a: Appearance, dir: Dir, frame: 0 | 1 | 2): PixelGrid
     }
   }
 
+  // --- 9. MARTIAL SWORD (Vác chéo lưng hiệp khách như trong phim) ---
+  if (a.sword && !a.heldFish && !a.isFishing) {
+    const swordId = normalizeSwordId(a.sword);
+    const pal = SWORD_PALETTES[swordId] ?? SWORD_PALETTES.sword_training!;
+
+    if (back) {
+      // Nhìn từ sau lưng: Bao kiếm vắt chéo từ vai phải xuống hông trái, dây đai da chéo lưng
+      g.set(5, 13 + bodyBob, pal.strap);
+      g.set(6, 14 + bodyBob, pal.strap);
+      g.set(7, 15 + bodyBob, pal.strapBuckle);
+      g.set(8, 16 + bodyBob, pal.strap);
+      g.set(9, 17 + bodyBob, pal.strap);
+
+      // Thân bao kiếm chéo lưng góc 45 độ
+      g.set(10, 8 + bodyBob, pal.scabbardTrim);
+      g.set(9, 9 + bodyBob, pal.scabbard);
+      g.set(9, 10 + bodyBob, pal.scabbard);
+      g.set(8, 11 + bodyBob, pal.scabbard);
+      g.set(8, 12 + bodyBob, pal.scabbard);
+      g.set(7, 13 + bodyBob, pal.scabbardTrim);
+      g.set(7, 14 + bodyBob, pal.scabbard);
+      g.set(6, 15 + bodyBob, pal.scabbard);
+      g.set(6, 16 + bodyBob, pal.scabbard);
+      g.set(5, 17 + bodyBob, pal.scabbard);
+      g.set(5, 18 + bodyBob, pal.scabbardTrim);
+      g.set(4, 19 + bodyBob, pal.scabbard);
+      g.set(4, 20 + bodyBob, pal.scabbard);
+      // Chóp bao kiếm kim loại
+      g.set(3, 21 + bodyBob, pal.scabbardTrim);
+      g.set(3, 22 + bodyBob, pal.guard);
+
+      // Đốc kiếm (crossguard)
+      g.set(10, 7 + bodyBob, pal.guard);
+      g.set(11, 7 + bodyBob, pal.guard);
+      g.set(11, 6 + bodyBob, pal.guard);
+      g.set(12, 6 + bodyBob, pal.guard);
+
+      // Chuôi kiếm (grip) vươn cao chéo qua vai phải
+      g.set(11, 5 + bodyBob, pal.hilt);
+      g.set(12, 4 + bodyBob, pal.hilt);
+      g.set(12, 3 + bodyBob, pal.hilt);
+
+      // Núm chuôi kiếm (pommel)
+      g.set(13, 2 + bodyBob, pal.pommel);
+      g.set(13, 1 + bodyBob, pal.pommel);
+
+      // Dây tua rua kiếm lụa đỏ / ngọc bội rủ xuống
+      g.set(14, 2 + bodyBob, pal.tassel);
+      g.set(14, 3 + bodyBob, pal.tassel);
+      g.set(14, 4 + bodyBob, pal.tassel);
+
+      // Hiệu ứng ánh sáng huyền ảo cho kiếm xịn
+      if (pal.glow) {
+        g.set(12, 2 + bodyBob, pal.glow);
+        g.set(14, 1 + bodyBob, pal.glow);
+      }
+      if (pal.sparkle) {
+        g.set(13, 0 + bodyBob, pal.sparkle);
+        g.set(2, 22 + bodyBob, pal.sparkle);
+      }
+    } else if (side) {
+      // Nhìn nghiêng: Thân kiếm chéo sau lưng, dây đeo ôm mạn sườn
+      g.set(7, 14 + bodyBob, pal.strap);
+      g.set(6, 16 + bodyBob, pal.strapBuckle);
+      g.set(6, 18 + bodyBob, pal.strap);
+
+      // Bao kiếm chạy dọc nghiêng phía sau lưng
+      g.set(11, 10 + bodyBob, pal.scabbardTrim);
+      g.set(10, 12 + bodyBob, pal.scabbard);
+      g.set(10, 14 + bodyBob, pal.scabbardTrim);
+      g.set(9, 16 + bodyBob, pal.scabbard);
+      g.set(9, 18 + bodyBob, pal.scabbard);
+      g.set(8, 20 + bodyBob, pal.scabbard);
+      g.set(8, 22 + bodyBob, pal.scabbardTrim);
+
+      // Đốc kiếm & chuôi kiếm
+      g.set(11, 8 + bodyBob, pal.guard);
+      g.set(12, 7 + bodyBob, pal.guard);
+      g.set(12, 5 + bodyBob, pal.hilt);
+      g.set(13, 4 + bodyBob, pal.hilt);
+      g.set(13, 2 + bodyBob, pal.pommel);
+
+      // Tua kiếm bay theo bước chân
+      g.set(14, 3 + bodyBob, pal.tassel);
+      g.set(14, 4 + bodyBob, pal.tassel);
+
+      if (pal.glow) {
+        g.set(13, 1 + bodyBob, pal.glow);
+      }
+      if (pal.sparkle) {
+        g.set(14, 2 + bodyBob, pal.sparkle);
+      }
+    } else {
+      // Nhìn chính diện phía trước: Dây đai da vắt chéo ngực (như trong phim kiếm hiệp)
+      g.set(4, 19 + bodyBob, pal.strap);
+      g.set(5, 18 + bodyBob, pal.strap);
+      g.set(6, 16 + bodyBob, pal.strap);
+      g.set(7, 15 + bodyBob, pal.strapBuckle); // Khóa kim loại sáng bóng trước ngực
+      g.set(8, 14 + bodyBob, pal.strap);
+      g.set(9, 13 + bodyBob, pal.strap);
+      g.set(10, 12 + bodyBob, pal.strap);
+
+      // Chuôi kiếm và đốc kiếm vươn cao kiêu hãnh qua vai phải
+      g.set(11, 7 + bodyBob, pal.guard);
+      g.set(11, 6 + bodyBob, pal.guard);
+      g.set(12, 5 + bodyBob, pal.hilt);
+      g.set(12, 4 + bodyBob, pal.hilt);
+      g.set(13, 3 + bodyBob, pal.hilt);
+      g.set(13, 2 + bodyBob, pal.pommel);
+      g.set(14, 1 + bodyBob, pal.pommel);
+
+      // Dây tua rua kiếm đung đưa cạnh vai
+      g.set(14, 2 + bodyBob, pal.tassel);
+      g.set(14, 3 + bodyBob, pal.tassel);
+      g.set(14, 4 + bodyBob, pal.tassel);
+
+      // Chóp bao kiếm ló ra nhẹ bên hông trái
+      g.set(3, 21 + bodyBob, pal.scabbard);
+      g.set(3, 22 + bodyBob, pal.scabbardTrim);
+
+      if (pal.glow) {
+        g.set(13, 1 + bodyBob, pal.glow);
+        g.set(12, 2 + bodyBob, pal.glow);
+      }
+      if (pal.sparkle) {
+        g.set(14, 0 + bodyBob, pal.sparkle);
+      }
+    }
+  }
+
   g.outline(INK);
   return g;
 }
@@ -678,6 +907,7 @@ export function appearanceKey(a: Appearance): string {
     a.top ?? '',
     a.face ?? '',
     a.rod ?? '',
+    a.sword ?? '',
     a.heldFish ? `${a.heldFish.speciesId}:${a.heldFish.sizeCm}` : '',
     a.isFishing ? 'fishing' : '',
   ].join('|');

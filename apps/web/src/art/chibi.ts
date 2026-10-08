@@ -1,4 +1,11 @@
-import { HAIR_COLORS, SKIN_TONES, TOP_COLORS, normalizeRodId, type Appearance } from '@cozy/game-data';
+import {
+  HAIR_COLORS,
+  SKIN_TONES,
+  TOP_COLORS,
+  normalizeRodId,
+  normalizeSwordId,
+  type Appearance,
+} from '@cozy/game-data';
 import { fishRenderDimensions, getHDFishCanvas, getSpeciesData } from './fish';
 import { fishArtRevision } from './fish-assets';
 import { fitChibiWithFish } from './fish-layout';
@@ -212,6 +219,290 @@ function drawChibiFishingRod(
   ctx.strokeStyle = '#1e293b';
   ctx.lineWidth = 0.8;
   ctx.stroke();
+
+  ctx.restore();
+}
+
+interface ChibiSwordVisual {
+  scabbardColor: string;
+  scabbardTrim: string;
+  hiltColor: string;
+  guardColor: string;
+  pommelColor: string;
+  tasselColor: string;
+  strapColor: string;
+  glowColor?: string;
+  sparkleColor?: string;
+}
+
+const CHIBI_SWORD_VISUALS: Record<string, ChibiSwordVisual> = {
+  sword_training: {
+    scabbardColor: '#854d0e',
+    scabbardTrim: '#a16207',
+    hiltColor: '#b45309',
+    guardColor: '#78350f',
+    pommelColor: '#92400e',
+    tasselColor: '#ca8a04',
+    strapColor: '#543217',
+  },
+  sword_iron: {
+    scabbardColor: '#1e293b',
+    scabbardTrim: '#475569',
+    hiltColor: '#334155',
+    guardColor: '#eab308',
+    pommelColor: '#cbd5e1',
+    tasselColor: '#dc2626',
+    strapColor: '#382517',
+    glowColor: 'rgba(203, 213, 225, 0.4)',
+  },
+  sword_crystal: {
+    scabbardColor: '#0f766e',
+    scabbardTrim: '#14b8a6',
+    hiltColor: '#0e7490',
+    guardColor: '#2dd4bf',
+    pommelColor: '#67e8f9',
+    tasselColor: '#06b6d4',
+    strapColor: '#134e4a',
+    glowColor: 'rgba(45, 212, 191, 0.6)',
+    sparkleColor: '#ffffff',
+  },
+  sword_ancient: {
+    scabbardColor: '#78350f',
+    scabbardTrim: '#b45309',
+    hiltColor: '#92400e',
+    guardColor: '#f59e0b',
+    pommelColor: '#fbbf24',
+    tasselColor: '#b91c1c',
+    strapColor: '#451a03',
+    glowColor: 'rgba(245, 158, 11, 0.5)',
+    sparkleColor: '#fef08a',
+  },
+  sword_flame: {
+    scabbardColor: '#450a0a',
+    scabbardTrim: '#991b1b',
+    hiltColor: '#7f1d1d',
+    guardColor: '#dc2626',
+    pommelColor: '#ef4444',
+    tasselColor: '#f97316',
+    strapColor: '#450a0a',
+    glowColor: 'rgba(239, 68, 68, 0.6)',
+    sparkleColor: '#fbbf24',
+  },
+  sword_frost: {
+    scabbardColor: '#0369a1',
+    scabbardTrim: '#0284c7',
+    hiltColor: '#075985',
+    guardColor: '#38bdf8',
+    pommelColor: '#bae6fd',
+    tasselColor: '#7dd3fc',
+    strapColor: '#0c4a6e',
+    glowColor: 'rgba(56, 189, 248, 0.6)',
+    sparkleColor: '#ffffff',
+  },
+};
+
+export function drawChibiSlungSword(
+  ctx: CanvasRenderingContext2D,
+  rawSwordId: string,
+  isBack: boolean,
+  isSide: boolean,
+  _headY: number,
+  torsoY: number,
+) {
+  const swordId = normalizeSwordId(rawSwordId);
+  const visual = CHIBI_SWORD_VISUALS[swordId] ?? CHIBI_SWORD_VISUALS.sword_training!;
+  ctx.save();
+
+  if (visual.glowColor) {
+    ctx.shadowColor = visual.glowColor;
+    ctx.shadowBlur = 10;
+  }
+
+  if (isBack) {
+    // 1. Dây đai đeo chéo lưng
+    ctx.beginPath();
+    ctx.moveTo(-16, torsoY + 24);
+    ctx.lineTo(16, torsoY + 4);
+    ctx.strokeStyle = visual.strapColor;
+    ctx.lineWidth = 4.5;
+    ctx.stroke();
+
+    // Khóa kim loại giữ bao kiếm
+    ctx.fillStyle = '#fde047';
+    ctx.fillRect(-2, torsoY + 12, 5, 4);
+
+    // 2. Thân bao kiếm vác chéo lưng góc 45 độ
+    const scabbardStartX = 14;
+    const scabbardStartY = torsoY + 2;
+    const scabbardEndX = -18;
+    const scabbardEndY = torsoY + 30;
+
+    ctx.beginPath();
+    ctx.moveTo(scabbardStartX, scabbardStartY);
+    ctx.lineTo(scabbardEndX, scabbardEndY);
+    ctx.strokeStyle = visual.scabbardColor;
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Viền kim loại & hoa văn bao kiếm
+    ctx.beginPath();
+    ctx.moveTo(scabbardStartX, scabbardStartY);
+    ctx.lineTo(scabbardEndX, scabbardEndY);
+    ctx.strokeStyle = visual.scabbardTrim;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Chóp bọc đáy bao kiếm
+    ctx.fillStyle = visual.guardColor;
+    ctx.beginPath();
+    ctx.arc(scabbardEndX, scabbardEndY, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. Đốc kiếm (Crossguard)
+    ctx.save();
+    ctx.translate(scabbardStartX, scabbardStartY);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = visual.guardColor;
+    ctx.fillRect(-6, -2, 12, 4);
+    ctx.restore();
+
+    // 4. Chuôi kiếm vươn chéo qua vai
+    const hiltEndX = scabbardStartX + 12;
+    const hiltEndY = scabbardStartY - 16;
+    ctx.beginPath();
+    ctx.moveTo(scabbardStartX, scabbardStartY);
+    ctx.lineTo(hiltEndX, hiltEndY);
+    ctx.strokeStyle = visual.hiltColor;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Núm chuôi kiếm (Pommel)
+    ctx.fillStyle = visual.pommelColor;
+    ctx.beginPath();
+    ctx.arc(hiltEndX, hiltEndY, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Dây tua rua kiếm lụa buông lơi
+    ctx.beginPath();
+    ctx.moveTo(hiltEndX, hiltEndY);
+    ctx.quadraticCurveTo(hiltEndX + 4, hiltEndY + 8, hiltEndX + 2, hiltEndY + 16);
+    ctx.strokeStyle = visual.tasselColor;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  } else if (isSide) {
+    // Nhìn nghiêng: Dây đai mạn sườn
+    ctx.beginPath();
+    ctx.moveTo(-4, torsoY + 8);
+    ctx.lineTo(-8, torsoY + 22);
+    ctx.strokeStyle = visual.strapColor;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Bao kiếm nghiêng sau lưng
+    const startX = 6;
+    const startY = torsoY + 4;
+    const endX = -14;
+    const endY = torsoY + 28;
+
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.strokeStyle = visual.scabbardColor;
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.strokeStyle = visual.scabbardTrim;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Chuôi kiếm
+    const hiltEndX = startX + 10;
+    const hiltEndY = startY - 14;
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(hiltEndX, hiltEndY);
+    ctx.strokeStyle = visual.hiltColor;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    ctx.fillStyle = visual.pommelColor;
+    ctx.beginPath();
+    ctx.arc(hiltEndX, hiltEndY, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tua kiếm
+    ctx.beginPath();
+    ctx.moveTo(hiltEndX, hiltEndY);
+    ctx.quadraticCurveTo(hiltEndX + 3, hiltEndY + 6, hiltEndX + 1, hiltEndY + 14);
+    ctx.strokeStyle = visual.tasselColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else {
+    // Nhìn thẳng phía trước:
+    // 1. Dây đai da vắt chéo ngực (từ vai phải xuống hông trái như trong phim)
+    ctx.beginPath();
+    ctx.moveTo(14, torsoY + 2);
+    ctx.lineTo(-14, torsoY + 24);
+    ctx.strokeStyle = visual.strapColor;
+    ctx.lineWidth = 4.5;
+    ctx.stroke();
+
+    // Khóa kim loại sáng loáng giữa ngực
+    ctx.fillStyle = '#fde047';
+    ctx.fillRect(-2, torsoY + 11, 6, 5);
+    ctx.strokeStyle = '#78350f';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-2, torsoY + 11, 6, 5);
+
+    // 2. Chóp bao kiếm lộ nhẹ bên hông trái
+    ctx.fillStyle = visual.guardColor;
+    ctx.beginPath();
+    ctx.arc(-16, torsoY + 26, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. Đốc kiếm & Chuôi kiếm vươn cao chéo qua vai phải
+    const guardX = 14;
+    const guardY = torsoY + 2;
+    const hiltEndX = guardX + 12;
+    const hiltEndY = guardY - 16;
+
+    // Đốc kiếm
+    ctx.save();
+    ctx.translate(guardX, guardY);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = visual.guardColor;
+    ctx.fillRect(-6, -2, 12, 4);
+    ctx.restore();
+
+    // Thân chuôi kiếm
+    ctx.beginPath();
+    ctx.moveTo(guardX, guardY);
+    ctx.lineTo(hiltEndX, hiltEndY);
+    ctx.strokeStyle = visual.hiltColor;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Núm chuôi
+    ctx.fillStyle = visual.pommelColor;
+    ctx.beginPath();
+    ctx.arc(hiltEndX, hiltEndY, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tua kiếm lụa buông rủ
+    ctx.beginPath();
+    ctx.moveTo(hiltEndX, hiltEndY);
+    ctx.quadraticCurveTo(hiltEndX + 4, hiltEndY + 8, hiltEndX + 2, hiltEndY + 18);
+    ctx.strokeStyle = visual.tasselColor;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }
 
   ctx.restore();
 }
@@ -703,6 +994,12 @@ export function drawChibiAvatar(
       ctx.lineWidth = 1.5;
       ctx.strokeRect(-14, torsoY, 28, 14);
     }
+  }
+
+  // --- 3.5. SLUNG SWORD (Vác chéo lưng kiếm hiệp) ---
+  if (a.sword && !a.heldFish && !a.isFishing) {
+    const swordHeadY = -44 + bodyBob;
+    drawChibiSlungSword(ctx, a.sword, isBack, isSide, swordHeadY, torsoY);
   }
 
   // --- 4. BACK HAIR (for long / bun styles) ---
@@ -1635,7 +1932,7 @@ export function chibiAvatarPortrait(a: Appearance, size = 160): string {
   const heldKey = a.heldFish
     ? `${a.heldFish.speciesId}:${a.heldFish.sizeCm}:${fishArtRevision(a.heldFish.speciesId)}`
     : 'none';
-  const key = `chibi:${a.skin}:${a.hairStyle}:${a.hairColor}:${a.baseTop}:${a.hat}:${a.top}:${a.face}:${a.rod ?? ''}:${heldKey}:${size}`;
+  const key = `chibi:${a.skin}:${a.hairStyle}:${a.hairColor}:${a.baseTop}:${a.hat}:${a.top}:${a.face}:${a.rod ?? ''}:${a.sword ?? ''}:${heldKey}:${size}`;
   const hit = chibiCache.get(key);
   if (hit) return hit;
 

@@ -401,7 +401,7 @@ export function playerRoutes(app: FastifyInstance, ctx: AppContext) {
     const b = z
       .object({
         itemId: z.string().max(60).nullable(),
-        slot: z.enum(['hat', 'top', 'face', 'rod', 'boat', 'vehicle']),
+        slot: z.enum(['hat', 'top', 'face', 'rod', 'boat', 'vehicle', 'sword']),
       })
       .parse(req.body);
     return { appearance: await shop.equip(ctx, user.id, b.itemId, b.slot) };
