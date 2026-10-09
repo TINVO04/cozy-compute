@@ -13,6 +13,8 @@ import type Phaser from 'phaser';
 import { AVATAR_FEET_OFFSET, ensureAvatarTexture } from './avatars';
 import { spawnFootstepDust, spawnWaterWake } from './atmosphere';
 import { ensureVehicleTexture } from '../art/vehicle';
+import { ensureRiddenVehicleTexture } from '../art/rider';
+import type { Dir } from '../art/avatar';
 import { ensureBoatTexture } from '../art/boat';
 import { useUi } from '../lib/store';
 import { fishRenderDimensions, getSpeciesData } from '../art/fish';
@@ -796,25 +798,29 @@ export class Avatar {
       Boolean(this.vehicle) && (this.scene.scene.key === 'town' || this.scene.scene.key === 'farm');
     if (driving && !this.vehicleLights) this.vehicleLights = new VehicleLights(this.scene);
     this.vehicleLights?.update(driving ? this.vehicle : '', this.container.x, this.container.y, this.dir);
-    const kind = vehicleById(this.vehicle)?.kind;
+    const def = vehicleById(this.vehicle);
+    const kind = def?.kind;
     const riding = driving && (kind === 'bicycle' || kind === 'motorcycle');
     if (riding !== this.ridingTwoWheeler) {
       this.ridingTwoWheeler = riding;
-      if (riding) this.sprite.setCrop(0, 0, 32, 40);
-      else this.sprite.setCrop();
+      this.sprite.setCrop();
     }
-    this.sprite.setVisible(!driving || riding);
+    this.sprite.setVisible(!driving);
     this.heldFishContainer?.setVisible(!driving);
     this.rodGlowContainer?.setVisible(!driving);
     this.swordGlowContainer?.setVisible(!driving);
     if (driving) {
-      const frame = riding && this.moving && !useUi.getState().reducedMotion ? Math.floor(time / 160) % 2 : 0;
-      const key = ensureVehicleTexture(this.scene, this.vehicle, this.dir, frame);
+      const frame = this.moving && !useUi.getState().reducedMotion ? 1 + (Math.floor(time / 140) % 3) : 0;
+      const key = riding
+        ? ensureRiddenVehicleTexture(this.scene, this.appearance, this.vehicle, this.dir as Dir, frame)
+        : ensureVehicleTexture(this.scene, this.vehicle, this.dir, frame);
       if (!this.vehicleSprite) {
         this.vehicleSprite = this.scene.add.image(0, -14, key);
         this.container.addAt(this.vehicleSprite, 1);
       }
       this.vehicleSprite.setTexture(key).setVisible(true);
+      // contactY=37 (61 in the composite) is aligned with the player ground point.
+      this.vehicleSprite.y = riding ? -29 : -17;
     } else this.vehicleSprite?.setVisible(false);
     if (this.scene.scene.key === 'ocean') {
       this.updateBoat(time);
@@ -831,7 +837,7 @@ export class Avatar {
         this.dustTimer += dtMs;
         if (this.dustTimer >= 220) {
           this.dustTimer = 0;
-          spawnFootstepDust(this.scene, this.container.x, this.container.y);
+          if (!driving) spawnFootstepDust(this.scene, this.container.x, this.container.y);
         }
       }
     } else {
@@ -843,8 +849,6 @@ export class Avatar {
 
     if (riding) {
       this.sprite.stop();
-      this.sprite.setFrame(this.dir * 3);
-      this.sprite.y = this.baseSpriteY - 4;
     }
     if (this.heldFishContainer && !useUi.getState().reducedMotion) {
       const bob = Math.sin(time * 0.0035 + this.breathSeed) * 1.5;

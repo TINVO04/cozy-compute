@@ -1,5 +1,6 @@
 import { FARM_POIS, getFarmPlotRect } from '@cozy/game-data';
 import { farmBuilding, paintFarmPen } from './farm-scenery';
+import { mulberry } from './pixel';
 
 function rect(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number) {
   ctx.fillStyle = color;
@@ -28,7 +29,7 @@ export function paintShopBacSau(): HTMLCanvasElement {
  */
 export function paintSiloWarehouse(): HTMLCanvasElement {
   const p = FARM_POIS.silo_warehouse;
-  return farmBuilding(p, 'KHO NÔNG SẢN', 0x778767);
+  return farmBuilding(p, 'KHO NÔNG SẢN', 0x778767, true);
 }
 
 /**
@@ -116,7 +117,7 @@ export function paintWaterwheelAerator(angle = 0): HTMLCanvasElement {
   // Center brass axis hub
   oval(ctx, '#0f172a', 0, 0, 6, 6);
   oval(ctx, '#ca8a04', 0, 0, 4, 4);
-  oval(ctx, '#fde047', 0, 0, 2, 2);
+  oval(ctx, '#eed58c', 0, 0, 2, 2);
   ctx.restore();
 
   // 3. Spray droplets flung into air
@@ -139,6 +140,7 @@ export function paintPlotTile(
   cropId?: string,
   stage?: 'seed' | 'sprout' | 'blooming' | 'mature',
   _price?: number,
+  variant = 0,
 ): HTMLCanvasElement {
   const { w, h } = getFarmPlotRect(0);
   const c = document.createElement('canvas');
@@ -148,14 +150,34 @@ export function paintPlotTile(
   ctx.imageSmoothingEnabled = false;
 
   if (!isUnlocked) {
-    // Locked plot: untilled earthy bed with wooden padlock stake
-    rect(ctx, '#3f2613', 0, 0, w, h);
-    rect(ctx, '#5c381c', 1, 1, w - 2, h - 2);
-    // Wild grass sprouts on untilled ground
-    rect(ctx, '#478c2e', 6, 8, 3, 3);
-    rect(ctx, '#6dbd47', 7, 7, 2, 2);
-    rect(ctx, '#478c2e', w - 10, h - 12, 3, 3);
-    rect(ctx, '#6dbd47', w - 9, h - 13, 2, 2);
+    // Untilled meadow: grasses, daisies and stones, never fake harvestable crops.
+    const rng = mulberry(variant * 91 + 412);
+    rect(ctx, '#929466', 1, 2, w - 2, h - 3);
+    rect(ctx, '#9faa70', 2, 3, w - 4, h - 5);
+    for (let i = 0; i < 48; i++) {
+      const x = 4 + rng() * (w - 9),
+        y = 8 + rng() * (h - 13);
+      const height = 3 + rng() * 5;
+      rect(ctx, '#79935c', x, y - height, 1, height);
+      rect(ctx, '#bcc887', x + 2, y - height - 1, 1, height);
+      rect(ctx, '#d0d396', x - 1, y, 3, 1);
+      if (i % 7 === 0) {
+        rect(ctx, variant % 3 ? '#eee5c1' : '#c4b4d1', x - 1, y - height - 2, 3, 3);
+        rect(ctx, '#e9c477', x, y - height - 1, 1, 1);
+      }
+    }
+    for (let i = 0; i < 3; i++) {
+      const x = 10 + rng() * 32,
+        y = 12 + rng() * 22;
+      oval(ctx, '#668455', x, y + 2, 7, 4);
+      oval(ctx, '#91ae64', x - 1, y, 6, 4);
+      oval(ctx, '#b6c97e', x - 3, y - 2, 3, 2);
+    }
+    if (variant % 3 === 0) {
+      oval(ctx, '#92947a', 12, h - 9, 6, 3);
+      oval(ctx, '#d5c9a7', 11, h - 11, 5, 3);
+      rect(ctx, '#eee0ba', 8, h - 13, 5, 1);
+    }
 
     // A quiet corner marker keeps unopened plots legible without 32 large signs.
     rect(ctx, '#b39a70', w - 12, h - 12, 7, 7);
@@ -164,13 +186,19 @@ export function paintPlotTile(
   }
 
   // Raised wooden bed frame
-  rect(ctx, '#451a03', 0, 0, w, h);
-  rect(ctx, '#8b5028', 1, 1, w - 2, h - 2);
-  rect(ctx, '#ab6938', 2, 2, w - 4, 2); // top highlight
+  rect(ctx, '#73573f', 0, 0, w, h);
+  rect(ctx, '#b19369', 1, 1, w - 2, h - 2);
+  rect(ctx, '#e2c497', 2, 2, w - 4, 2); // top highlight
+
+  for (const x of [2, w - 5])
+    for (const y of [2, h - 5]) {
+      rect(ctx, '#e5ce9d', x, y, 3, 3);
+      rect(ctx, '#806348', x + 1, y + 1, 1, 1);
+    }
 
   // Soil
-  const soilColor = isWatered ? '#3a200e' : '#543217';
-  const ridgeColor = isWatered ? '#542d0c' : '#73461e';
+  const soilColor = isWatered ? '#634d3d' : '#927354';
+  const ridgeColor = isWatered ? '#7c6350' : '#ac8a60';
   rect(ctx, soilColor, 3, 3, w - 6, h - 6);
 
   // Furrows
@@ -178,7 +206,7 @@ export function paintPlotTile(
     rect(ctx, ridgeColor, 6, y, w - 12, 3);
     if (isWatered) {
       // Water gleam
-      rect(ctx, '#60a5fa', 14 + ((y * 5) % (w - 28)), y + 1, 6, 1);
+      rect(ctx, '#93b9b0', 14 + ((y * 5) % (w - 28)), y + 1, 6, 1);
     }
   }
 
@@ -189,21 +217,21 @@ export function paintPlotTile(
 
     if (stage === 'seed') {
       // Baby cotyledon sprout
-      oval(ctx, '#22c55e', cx - 3, cy - 4, 3, 2);
-      oval(ctx, '#22c55e', cx + 3, cy - 4, 3, 2);
+      oval(ctx, '#80ae62', cx - 3, cy - 4, 3, 2);
+      oval(ctx, '#80ae62', cx + 3, cy - 4, 3, 2);
       rect(ctx, '#84cc16', cx - 1, cy - 2, 2, 3);
     } else if (stage === 'sprout') {
       // Branching green stalk
-      rect(ctx, '#16a34a', cx - 1, cy - 10, 3, 10);
-      oval(ctx, '#4ade80', cx - 6, cy - 8, 5, 3);
-      oval(ctx, '#4ade80', cx + 6, cy - 8, 5, 3);
-      oval(ctx, '#22c55e', cx, cy - 12, 4, 3);
+      rect(ctx, '#5f8f50', cx - 1, cy - 10, 3, 10);
+      oval(ctx, '#9cc679', cx - 6, cy - 8, 5, 3);
+      oval(ctx, '#9cc679', cx + 6, cy - 8, 5, 3);
+      oval(ctx, '#80ae62', cx, cy - 12, 4, 3);
     } else if (stage === 'blooming') {
       // Bush with flowers
-      oval(ctx, '#15803d', cx, cy - 8, 14, 10);
-      oval(ctx, '#22c55e', cx - 4, cy - 10, 10, 8);
+      oval(ctx, '#527b49', cx, cy - 8, 14, 10);
+      oval(ctx, '#80ae62', cx - 4, cy - 10, 10, 8);
       oval(ctx, '#fef08a', cx - 5, cy - 10, 3, 3);
-      oval(ctx, '#f472b6', cx + 5, cy - 8, 3, 3);
+      oval(ctx, '#dda4b1', cx + 5, cy - 8, 3, 3);
     } else if (stage === 'mature') {
       // Specific fruit / vegetable visualization
       if (cropId.includes('rice') || cropId.includes('lua')) {
@@ -214,41 +242,41 @@ export function paintPlotTile(
           ctx.moveTo(sx, cy + 4);
           ctx.quadraticCurveTo(sx + 6, cy - 12, sx + 10, cy - 8);
           ctx.lineWidth = 3;
-          ctx.strokeStyle = '#eab308';
+          ctx.strokeStyle = '#cda759';
           ctx.stroke();
           for (let g = 0; g < 4; g++) {
-            oval(ctx, '#fde047', sx + 4 + g * 2, cy - 10 + g * 2, 2, 3);
+            oval(ctx, '#eed58c', sx + 4 + g * 2, cy - 10 + g * 2, 2, 3);
           }
         }
       } else if (cropId.includes('watermelon') || cropId.includes('dua')) {
         // Striped Long An Watermelon (Dưa hấu ruột đỏ)
-        oval(ctx, '#14532d', cx, cy - 4, 15, 11);
-        oval(ctx, '#22c55e', cx, cy - 4, 13, 9);
-        rect(ctx, '#14532d', cx - 8, cy - 8, 2, 9);
-        rect(ctx, '#14532d', cx, cy - 9, 2, 10);
-        rect(ctx, '#14532d', cx + 8, cy - 8, 2, 9);
+        oval(ctx, '#3d6742', cx, cy - 4, 15, 11);
+        oval(ctx, '#80ae62', cx, cy - 4, 13, 9);
+        rect(ctx, '#3d6742', cx - 8, cy - 8, 2, 9);
+        rect(ctx, '#3d6742', cx, cy - 9, 2, 10);
+        rect(ctx, '#3d6742', cx + 8, cy - 8, 2, 9);
       } else if (cropId.includes('tomato') || cropId.includes('ca_chua')) {
         // Red cherry tomatoes (Cà chua bi)
-        oval(ctx, '#15803d', cx, cy - 6, 12, 8);
-        oval(ctx, '#dc2626', cx - 6, cy - 4, 7, 7);
-        oval(ctx, '#dc2626', cx + 6, cy - 4, 7, 7);
-        oval(ctx, '#ef4444', cx - 7, cy - 5, 3, 3);
+        oval(ctx, '#527b49', cx, cy - 6, 12, 8);
+        oval(ctx, '#bd5d4c', cx - 6, cy - 4, 7, 7);
+        oval(ctx, '#bd5d4c', cx + 6, cy - 4, 7, 7);
+        oval(ctx, '#dd8665', cx - 7, cy - 5, 3, 3);
       } else if (cropId.includes('corn') || cropId.includes('bap')) {
         // Golden corn cob with husk (Bắp Nếp)
-        oval(ctx, '#15803d', cx, cy - 6, 8, 12);
-        oval(ctx, '#eab308', cx, cy - 7, 6, 10);
+        oval(ctx, '#527b49', cx, cy - 6, 8, 12);
+        oval(ctx, '#cda759', cx, cy - 7, 6, 10);
         rect(ctx, '#fef08a', cx - 2, cy - 10, 4, 8);
       } else if (cropId.includes('chili') || cropId.includes('ot')) {
         // Bright red chili peppers (Ớt Hiểm)
-        oval(ctx, '#15803d', cx, cy - 6, 12, 8);
+        oval(ctx, '#527b49', cx, cy - 6, 12, 8);
         for (let ch = -1; ch <= 1; ch++) {
-          rect(ctx, '#ef4444', cx + ch * 6, cy - 4, 3, 7);
-          rect(ctx, '#22c55e', cx + ch * 6, cy - 6, 3, 2);
+          rect(ctx, '#dd8665', cx + ch * 6, cy - 4, 3, 7);
+          rect(ctx, '#80ae62', cx + ch * 6, cy - 6, 3, 2);
         }
       } else {
-        oval(ctx, '#15803d', cx, cy - 8, 14, 10);
+        oval(ctx, '#527b49', cx, cy - 8, 14, 10);
         oval(ctx, '#f59e0b', cx, cy - 6, 10, 8);
-        oval(ctx, '#fde047', cx, cy - 8, 6, 5);
+        oval(ctx, '#eed58c', cx, cy - 8, 6, 5);
       }
 
       // Harvest sparkles

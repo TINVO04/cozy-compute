@@ -71,6 +71,7 @@ test.describe('Farm Livestock, Weather & Details E2E', () => {
     expect(animalStats.kinds).toContain('pig');
     expect(animalStats.kinds).toContain('goat');
     expect(animalStats.kinds).toContain('sheep');
+    expect(animalStats.kinds.filter((kind) => kind === 'duck')).toHaveLength(3);
 
     // 2. Verify hand-drawn decorative farm props exist
     const decorStats = await page.evaluate(() => {

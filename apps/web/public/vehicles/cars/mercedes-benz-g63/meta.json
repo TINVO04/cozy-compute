@@ -1,0 +1,50 @@
+{
+  "id": "cars/mercedes-benz-g63",
+  "name": "Mercedes-Benz G63 AMG",
+  "brand": "Mercedes-Benz",
+  "category": "car",
+  "price": 1800,
+  "speed": 240,
+  "description": "Vua địa hình SUV Mercedes-AMG G63 hầm hố, động cơ V8 Biturbo mạnh mẽ uy lực.",
+  "dimensions": {
+    "frameWidth": 48,
+    "frameHeight": 40,
+    "spritesheetWidth": 192,
+    "spritesheetHeight": 160,
+    "previewWidth": 144,
+    "previewHeight": 120,
+    "iconWidth": 48,
+    "iconHeight": 40
+  },
+  "anchorPoints": {
+    "contactY": 37,
+    "seat": {
+      "x": 24,
+      "y": 18
+    },
+    "center": {
+      "x": 24,
+      "y": 20
+    }
+  },
+  "lights": {
+    "headlight": {
+      "frontOffsetX": 20,
+      "frontOffsetY": 18,
+      "color": "#ffffff"
+    },
+    "taillight": {
+      "rearOffsetX": 18,
+      "rearOffsetY": 18,
+      "color": "#ef4444"
+    }
+  },
+  "colors": {
+    "primary": "#1b4332",
+    "secondary": "#0f172a",
+    "accent": "#2d6a4f",
+    "trim": "#cbd5e1",
+    "glass": "#93c5fd",
+    "saddle": null
+  }
+}

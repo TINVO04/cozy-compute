@@ -1,0 +1,50 @@
+{
+  "id": "cars/tesla-model-s",
+  "name": "Tesla Model S Plaid",
+  "brand": "Tesla",
+  "category": "car",
+  "price": 3100,
+  "speed": 325,
+  "description": "Quái vật tăng tốc thuần điện Tesla Model S Plaid 3 mô-tơ điện bứt phá ngoạn mục.",
+  "dimensions": {
+    "frameWidth": 48,
+    "frameHeight": 40,
+    "spritesheetWidth": 192,
+    "spritesheetHeight": 160,
+    "previewWidth": 144,
+    "previewHeight": 120,
+    "iconWidth": 48,
+    "iconHeight": 40
+  },
+  "anchorPoints": {
+    "contactY": 37,
+    "seat": {
+      "x": 24,
+      "y": 18
+    },
+    "center": {
+      "x": 24,
+      "y": 20
+    }
+  },
+  "lights": {
+    "headlight": {
+      "frontOffsetX": 20,
+      "frontOffsetY": 18,
+      "color": "#ffffff"
+    },
+    "taillight": {
+      "rearOffsetX": 18,
+      "rearOffsetY": 18,
+      "color": "#ef4444"
+    }
+  },
+  "colors": {
+    "primary": "#b91c1c",
+    "secondary": "#0f172a",
+    "accent": "#ef4444",
+    "trim": "#cbd5e1",
+    "glass": "#38bdf8",
+    "saddle": null
+  }
+}

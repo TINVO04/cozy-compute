@@ -16,7 +16,7 @@ import {
 import { hex, mulberry, shade } from './pixel';
 
 export const BUILDING_ROOF = 30;
-const C = {
+export const TOWN_PALETTE = {
   grass: '#85b876',
   grassLight: '#a2c58a',
   grassDark: '#7da266',
@@ -27,6 +27,7 @@ const C = {
   water: '#4bc0d2',
   waterDark: '#369fb5',
 };
+const C = TOWN_PALETTE;
 
 function rect(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number) {
   ctx.fillStyle = color;
@@ -458,7 +459,20 @@ export function paintTown(): HTMLCanvasElement {
   return canvas;
 }
 
-export function drawTree(ctx: CanvasRenderingContext2D, cx: number, by: number, s = 1) {
+export function drawTree(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  by: number,
+  s = 1,
+  canopy: readonly [string, string, string, string, string, string] = [
+    '#2d5a2b',
+    '#4a9347',
+    '#6eaa55',
+    '#96bd6c',
+    '#a7c180',
+    '#557e4b',
+  ],
+) {
   const rng = mulberry(Math.floor(cx + by * 7));
   oval(ctx, 'rgba(48,64,43,0.2)', cx + 2, by - 1, 18 * s, 5 * s);
   rect(ctx, '#694c38', cx - 4 * s, by - 18 * s, 8 * s, 18 * s);
@@ -474,14 +488,14 @@ export function drawTree(ctx: CanvasRenderingContext2D, cx: number, by: number, 
   for (const [dx, dy, rx, ry] of clusters) {
     const x = cx + dx! * s,
       y = by + dy! * s;
-    oval(ctx, '#2d5a2b', x, y, rx! * s + 1, ry! * s + 1);
-    oval(ctx, '#4a9347', x, y - 1, rx! * s, ry! * s - 1);
-    oval(ctx, '#6eaa55', x - 2 * s, y - 3 * s, rx! * s * 0.78, ry! * s * 0.65);
-    oval(ctx, '#96bd6c', x - 3 * s, y - 5 * s, rx! * s * 0.5, ry! * s * 0.35);
+    oval(ctx, canopy[0], x, y, rx! * s + 1, ry! * s + 1);
+    oval(ctx, canopy[1], x, y - 1, rx! * s, ry! * s - 1);
+    oval(ctx, canopy[2], x - 2 * s, y - 3 * s, rx! * s * 0.78, ry! * s * 0.65);
+    oval(ctx, canopy[3], x - 3 * s, y - 5 * s, rx! * s * 0.5, ry! * s * 0.35);
     for (let i = 0; i < 7; i++) {
       rect(
         ctx,
-        i % 2 ? '#a7c180' : '#557e4b',
+        i % 2 ? canopy[4] : canopy[5],
         x - 7 * s + rng() * 14 * s,
         y - 6 * s + rng() * 10 * s,
         2 * s,

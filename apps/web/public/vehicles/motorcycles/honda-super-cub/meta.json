@@ -1,0 +1,50 @@
+{
+  "id": "motorcycles/honda-super-cub",
+  "name": "Honda Super Cub C125",
+  "brand": "Honda",
+  "category": "motorcycle",
+  "price": 500,
+  "speed": 220,
+  "description": "Huyền thoại đô thị Honda Super Cub C125 cổ điển, tiết kiệm nhiên liệu và bền bỉ.",
+  "dimensions": {
+    "frameWidth": 48,
+    "frameHeight": 40,
+    "spritesheetWidth": 192,
+    "spritesheetHeight": 160,
+    "previewWidth": 144,
+    "previewHeight": 120,
+    "iconWidth": 48,
+    "iconHeight": 40
+  },
+  "anchorPoints": {
+    "contactY": 37,
+    "seat": {
+      "x": 24,
+      "y": 18
+    },
+    "center": {
+      "x": 24,
+      "y": 20
+    }
+  },
+  "lights": {
+    "headlight": {
+      "frontOffsetX": 20,
+      "frontOffsetY": 18,
+      "color": "#ffffff"
+    },
+    "taillight": {
+      "rearOffsetX": 18,
+      "rearOffsetY": 18,
+      "color": "#ef4444"
+    }
+  },
+  "colors": {
+    "primary": "#0ea5e9",
+    "secondary": "#f8fafc",
+    "accent": "#7f1d1d",
+    "trim": "#cbd5e1",
+    "glass": "#e0f2fe",
+    "saddle": "#7f1d1d"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "id": "motorcycles/harley-davidson-fat-boy",
+  "name": "Harley-Davidson Fat Boy 114",
+  "brand": "Harley-Davidson",
+  "category": "motorcycle",
+  "price": 1600,
+  "speed": 250,
+  "description": "Biểu tượng cơ bắp cruiser Harley-Davidson Fat Boy 114, động cơ Milwaukee-Eight uy lực.",
+  "dimensions": {
+    "frameWidth": 48,
+    "frameHeight": 40,
+    "spritesheetWidth": 192,
+    "spritesheetHeight": 160,
+    "previewWidth": 144,
+    "previewHeight": 120,
+    "iconWidth": 48,
+    "iconHeight": 40
+  },
+  "anchorPoints": {
+    "contactY": 37,
+    "seat": {
+      "x": 24,
+      "y": 19
+    },
+    "center": {
+      "x": 24,
+      "y": 20
+    }
+  },
+  "lights": {
+    "headlight": {
+      "frontOffsetX": 20,
+      "frontOffsetY": 18,
+      "color": "#ffffff"
+    },
+    "taillight": {
+      "rearOffsetX": 18,
+      "rearOffsetY": 18,
+      "color": "#ef4444"
+    }
+  },
+  "colors": {
+    "primary": "#18181b",
+    "secondary": "#f1f5f9",
+    "accent": "#94a3b8",
+    "trim": "#e2e8f0",
+    "glass": "#f8fafc",
+    "saddle": "#09090b"
+  }
+}

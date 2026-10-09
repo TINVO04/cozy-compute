@@ -9,7 +9,7 @@
       body {
         margin: 0;
         overflow: hidden;
-        background: #5ba83c;
+        background: #85b876;
       }
       canvas {
         display: block;
@@ -24,6 +24,14 @@
       import { useUi } from '/src/lib/store.ts';
       window.farmUi = useUi;
       useUi.setState({ reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
+      useUi.getState().setWeatherOverride({
+        condition: 'clear',
+        precipitationMm: 0,
+        solarHour: 10,
+        windSpeedKmh: 8,
+        windDirectionDeg: 190,
+        temperatureC: 27,
+      });
       window.farmPreview = new Phaser.Game({
         type: Phaser.CANVAS,
         pixelArt: true,

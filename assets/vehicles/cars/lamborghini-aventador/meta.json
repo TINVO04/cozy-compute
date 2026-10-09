@@ -1,0 +1,50 @@
+{
+  "id": "cars/lamborghini-aventador",
+  "name": "Lamborghini Aventador SVJ",
+  "brand": "Lamborghini",
+  "category": "car",
+  "price": 4500,
+  "speed": 340,
+  "description": "Siêu phẩm đỉnh cao Lamborghini Aventador SVJ V12 khí động học ALA, màu vàng Giallo rực rỡ.",
+  "dimensions": {
+    "frameWidth": 48,
+    "frameHeight": 40,
+    "spritesheetWidth": 192,
+    "spritesheetHeight": 160,
+    "previewWidth": 144,
+    "previewHeight": 120,
+    "iconWidth": 48,
+    "iconHeight": 40
+  },
+  "anchorPoints": {
+    "contactY": 37,
+    "seat": {
+      "x": 24,
+      "y": 18
+    },
+    "center": {
+      "x": 24,
+      "y": 20
+    }
+  },
+  "lights": {
+    "headlight": {
+      "frontOffsetX": 20,
+      "frontOffsetY": 18,
+      "color": "#ffffff"
+    },
+    "taillight": {
+      "rearOffsetX": 18,
+      "rearOffsetY": 18,
+      "color": "#ef4444"
+    }
+  },
+  "colors": {
+    "primary": "#eab308",
+    "secondary": "#0f172a",
+    "accent": "#facc15",
+    "trim": "#18181b",
+    "glass": "#67e8f9",
+    "saddle": null
+  }
+}

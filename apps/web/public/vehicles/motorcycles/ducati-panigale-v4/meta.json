@@ -1,0 +1,50 @@
+{
+  "id": "motorcycles/ducati-panigale-v4",
+  "name": "Ducati Panigale V4 S",
+  "brand": "Ducati",
+  "category": "motorcycle",
+  "price": 2400,
+  "speed": 310,
+  "description": "Siêu mô tô phân khối lớn Ducati động cơ Desmosedici Stradale, sắc đỏ Rosso Corsa.",
+  "dimensions": {
+    "frameWidth": 48,
+    "frameHeight": 40,
+    "spritesheetWidth": 192,
+    "spritesheetHeight": 160,
+    "previewWidth": 144,
+    "previewHeight": 120,
+    "iconWidth": 48,
+    "iconHeight": 40
+  },
+  "anchorPoints": {
+    "contactY": 37,
+    "seat": {
+      "x": 24,
+      "y": 17
+    },
+    "center": {
+      "x": 24,
+      "y": 20
+    }
+  },
+  "lights": {
+    "headlight": {
+      "frontOffsetX": 20,
+      "frontOffsetY": 18,
+      "color": "#ffffff"
+    },
+    "taillight": {
+      "rearOffsetX": 18,
+      "rearOffsetY": 18,
+      "color": "#ef4444"
+    }
+  },
+  "colors": {
+    "primary": "#dc2626",
+    "secondary": "#0f172a",
+    "accent": "#f59e0b",
+    "trim": "#334155",
+    "glass": "#67e8f9",
+    "saddle": "#0f172a"
+  }
+}

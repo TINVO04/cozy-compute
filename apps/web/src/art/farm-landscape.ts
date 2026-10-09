@@ -1,295 +1,282 @@
-// ============================================================================
-// File: apps/web/src/art/farm-landscape.ts
-// Master Procedural Farm Landscape Canvas & Native Tiled Mapping
-// Features rectangular grid dirt paths (FARM_PATHS), center circle plaza,
-// lush trees, bushes, flowers, and natural curved pond.
-// ============================================================================
-
 import {
   FARM_BLOCKERS,
   FARM_COLS,
+  FARM_GARDEN,
   FARM_HEIGHT,
   FARM_PATHS,
   FARM_POIS,
   FARM_ROWS,
   FARM_WIDTH,
   TILE,
+  pointInRect,
   type Rect,
 } from '@cozy/game-data';
 import { mulberry } from './pixel';
+import { FARM_PALETTE as C, box, ellipse, flowerBed, paving, fence } from './farm-detail';
+import { foliage } from './farm-estate';
 
-function rect(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number) {
-  ctx.fillStyle = color;
-  ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
-}
-
-function oval(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, rx: number, ry: number) {
-  for (let dy = -Math.floor(ry); dy <= ry; dy++) {
-    const dx = Math.floor(rx * Math.sqrt(Math.max(0, 1 - (dy / ry) ** 2)));
-    rect(ctx, color, x - dx, y + dy, dx * 2 + 1, 1);
-  }
-}
-
-/**
- * Draws a leafy bush with optional berries or flowers.
- */
-function drawBush(ctx: CanvasRenderingContext2D, bx: number, by: number, w = 20, h = 14) {
-  oval(ctx, 'rgba(20, 50, 15, 0.3)', bx, by + 4, w / 2 + 2, h / 2);
-  oval(ctx, '#14532d', bx, by, w / 2, h / 2);
-  oval(ctx, '#15803d', bx, by - 1, w / 2 - 2, h / 2 - 2);
-  oval(ctx, '#22c55e', bx - 1, by - 2, w / 2 - 4, h / 2 - 4);
-  // Red berries
-  rect(ctx, '#ef4444', bx - 3, by - 2, 2, 2);
-  rect(ctx, '#ef4444', bx + 3, by - 1, 2, 2);
-}
-
-/**
- * Renders the full 1536x1024 artistic master farm landscape.
- */
+/** A town-palette farmstead, baked once into native 32px terrain tiles. */
 export function drawMasterFarmLandscape(ctx: CanvasRenderingContext2D): void {
-  const rng = mulberry(20261006);
-
-  // =========================================================================
-  // 1. BASE MEADOW GRASS & LUSH NATURAL TOPOGRAPHY
-  // =========================================================================
-  // Warm, vibrant rural pasture green
-  rect(ctx, '#5ca83c', 0, 0, FARM_WIDTH, FARM_HEIGHT);
-
-  // Soft rolling hill hues and sunlit knolls
-  for (let i = 0; i < 220; i++) {
-    const gx = rng() * FARM_WIDTH;
-    const gy = rng() * FARM_HEIGHT;
-    const rx = 40 + rng() * 90;
-    const ry = 30 + rng() * 60;
-    oval(ctx, i % 3 === 0 ? '#6ebd45' : i % 3 === 1 ? '#529b35' : '#76c450', gx, gy, rx, ry);
+  const rng = mulberry(20261008);
+  box(ctx, '#83ae68', 0, 0, FARM_WIDTH, FARM_HEIGHT);
+  // Low-contrast meadow patches keep buildings and crops as the focal points.
+  for (let i = 0; i < 180; i++) {
+    ellipse(
+      ctx,
+      i % 2 ? '#7da660' : '#8fb973',
+      rng() * FARM_WIDTH,
+      rng() * FARM_HEIGHT,
+      20 + rng() * 48,
+      10 + rng() * 24,
+    );
+  }
+  for (let i = 0; i < 6500; i++) {
+    const x = Math.floor(rng() * FARM_WIDTH),
+      y = Math.floor(rng() * FARM_HEIGHT);
+    box(ctx, i % 3 ? C.grassLight : C.grassDark, x, y, 1, 2);
+    if (i % 4 === 0) box(ctx, C.grassLight, x + 2, y + 1, 1, 2);
   }
 
-  // Top Cliff Ridge / Terrace framing northern enclosures
-  rect(ctx, '#382517', 0, 0, FARM_WIDTH, 1.2 * TILE);
-  rect(ctx, '#523720', 0, 0.2 * TILE, FARM_WIDTH, 0.8 * TILE);
-  rect(ctx, '#6e4b2c', 0, 0.4 * TILE, FARM_WIDTH, 0.4 * TILE);
-  rect(ctx, '#478c2e', 0, 1.1 * TILE, FARM_WIDTH, 4);
-  rect(ctx, '#6dbd47', 0, 1.2 * TILE, FARM_WIDTH, 2);
-
-  // South-West stepped grassy hill ledges
-  const drawHillLedge = (x: number, y: number, w: number, h: number) => {
-    oval(ctx, '#382517', x, y + h, w / 2, 10);
-    oval(ctx, '#523720', x, y + h - 4, w / 2 - 2, 8);
-    oval(ctx, '#529b35', x, y + h / 2, w / 2, h / 2);
-    oval(ctx, '#6dbd47', x, y + h / 2 - 4, w / 2 - 6, h / 2 - 6);
-  };
-  drawHillLedge(3 * TILE, 22 * TILE, 7 * TILE, 4 * TILE);
-  drawHillLedge(2 * TILE, 28 * TILE, 8 * TILE, 5 * TILE);
-
-  // Pixel grass blades & clover tufts
-  for (let i = 0; i < 2200; i++) {
-    const x = Math.floor(rng() * FARM_WIDTH);
-    const y = Math.floor(rng() * FARM_HEIGHT);
-    rect(ctx, '#478c2e', x, y, 3, 2);
-    rect(ctx, '#76c450', x, y - 1, 2, 1);
-  }
-
-  // Wildflower Blooms (Chamomile daisies, pink bells, yellow marigolds)
-  for (let i = 0; i < 450; i++) {
-    const fx = Math.floor(rng() * (FARM_WIDTH - 60)) + 30;
-    const fy = Math.floor(rng() * (FARM_HEIGHT - 60)) + 30;
-    const flowerType = i % 3;
-    if (flowerType === 0) {
-      rect(ctx, '#ffffff', fx - 2, fy - 1, 5, 3);
-      rect(ctx, '#ffffff', fx - 1, fy - 2, 3, 5);
-      rect(ctx, '#fde047', fx, fy, 1, 1);
-    } else if (flowerType === 1) {
-      oval(ctx, '#f472b6', fx, fy, 3, 3);
-      rect(ctx, '#fbcfe8', fx - 1, fy - 1, 2, 2);
-    } else {
-      oval(ctx, '#facc15', fx, fy, 3, 3);
-      rect(ctx, '#fef08a', fx, fy, 1, 1);
+  // Continuous sandy lanes with individually laid limestone edging.
+  const lanes = FARM_PATHS.map((p) => {
+    // Reduce oversized sandy areas to garden lanes while retaining the route network.
+    const inset = p.w > p.h ? Math.min(14, p.h / 5) : Math.min(10, p.w / 6);
+    return p.w > p.h
+      ? { x: p.x, y: p.y + inset, w: p.w, h: p.h - inset * 2 }
+      : { x: p.x + inset, y: p.y, w: p.w - inset * 2, h: p.h };
+  });
+  const road = (x: number, y: number) => lanes.some((p) => pointInRect(x, y, p));
+  for (let y = 0; y < FARM_HEIGHT; y += 2) {
+    for (let x = 0; x < FARM_WIDTH; x += 2) {
+      if (!road(x, y)) continue;
+      const edge = !road(x - 4, y) || !road(x + 4, y) || !road(x, y - 4) || !road(x, y + 4);
+      const joint = x % 12 < 2 || y % 12 < 2;
+      box(ctx, edge ? (joint ? '#acaa89' : '#dcd4b4') : '#d4bc8e', x, y, 2, 2);
     }
   }
-
-  // =========================================================================
-  // 2. UNIFIED SEAMLESS RECTANGULAR DIRT PATHS (Đường Đất Liền Mạch, Không Vết Chèn)
-  // =========================================================================
-  // Build road mask grid so intersecting rectangles merge into one seamless road network
-  const roadSet = new Uint8Array(FARM_ROWS * FARM_COLS);
-  const isRoad = (c: number, r: number): boolean =>
-    c >= 0 && c < FARM_COLS && r >= 0 && r < FARM_ROWS && roadSet[r * FARM_COLS + c] === 1;
-
-  for (const p of FARM_PATHS) {
-    const c0 = Math.floor(p.x / TILE);
-    const r0 = Math.floor(p.y / TILE);
-    const c1 = Math.floor((p.x + p.w) / TILE);
-    const r1 = Math.floor((p.y + p.h) / TILE);
-    for (let r = r0; r < r1; r++) {
-      for (let c = c0; c < c1; c++) {
-        if (r >= 0 && r < FARM_ROWS && c >= 0 && c < FARM_COLS) {
-          roadSet[r * FARM_COLS + c] = 1;
-        }
-      }
+  for (let i = 0; i < 4800; i++) {
+    const x = Math.floor(rng() * FARM_WIDTH),
+      y = Math.floor(rng() * FARM_HEIGHT);
+    if (road(x, y) && road(x - 6, y - 6) && road(x + 6, y + 6)) {
+      box(ctx, i % 2 ? '#e5d2aa' : '#c5ab7e', x, y, i % 3 ? 1 : 3, 1);
     }
   }
-
-  // Pass 1: Solid unified road surface across all road tiles (zero internal seams!)
-  for (let r = 0; r < FARM_ROWS; r++) {
-    for (let c = 0; c < FARM_COLS; c++) {
-      if (!isRoad(c, r)) continue;
-      const x = c * TILE;
-      const y = r * TILE;
-      // Completely uniform warm sandy-clay dirt road base (no per-tile dividing borders)
-      rect(ctx, '#cca05b', x, y, TILE, TILE);
-
-      // Subtle natural soil grain scattered across surface
-      if ((c + r) % 3 === 0) {
-        rect(ctx, '#baa06b', x + 6, y + 8, 2, 1);
-        rect(ctx, '#e5c486', x + 18, y + 14, 2, 1);
-      } else if ((c + r) % 3 === 1) {
-        rect(ctx, '#e5c486', x + 10, y + 6, 2, 1);
-        rect(ctx, '#baa06b', x + 14, y + 20, 2, 1);
-      }
-    }
+  // Entry, shop terrace and a small social courtyard around the existing well.
+  paving(ctx, { x: 32, y: 78, w: 176, h: 65 });
+  paving(ctx, { x: 196, y: 310, w: 216, h: 40 });
+  paving(ctx, { x: 548, y: 285, w: 216, h: 62 });
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(676, 405, 128, 43, 0, 0, Math.PI * 2);
+  ctx.clip();
+  paving(ctx, { x: 548, y: 362, w: 256, h: 86 });
+  ctx.restore();
+  // Terracotta inlays tie the farm square to the town plaza.
+  for (const x of [566, 780]) {
+    box(ctx, '#b98c6a', x, 395, 9, 9);
+    box(ctx, '#f4e3c1', x + 2, 397, 5, 5);
   }
+  paving(ctx, { x: 600, y: 448, w: 192, h: 70 });
+  flowerBed(ctx, { x: 611, y: 466, w: 101, h: 29 }, 13);
+  flowerBed(ctx, { x: 232, y: 330, w: 52, h: 12 }, 4);
+  flowerBed(ctx, { x: 348, y: 330, w: 48, h: 12 }, 5);
+  flowerBed(ctx, { x: 558, y: 324, w: 59, h: 14 }, 6);
+  flowerBed(ctx, { x: 697, y: 324, w: 55, h: 14 }, 7);
 
-  // Pass 2: Outer borders ONLY where neighbor is grass (strictly no lines inside intersections!)
-  for (let r = 0; r < FARM_ROWS; r++) {
-    for (let c = 0; c < FARM_COLS; c++) {
-      if (!isRoad(c, r)) continue;
-      const x = c * TILE;
-      const y = r * TILE;
-
-      // Top outer edge
-      if (!isRoad(c, r - 1)) {
-        rect(ctx, '#8c6f43', x, y, TILE, 3);
-        rect(ctx, '#543f22', x, y, TILE, 1);
-      }
-      // Bottom outer edge
-      if (!isRoad(c, r + 1)) {
-        rect(ctx, '#8c6f43', x, y + TILE - 3, TILE, 3);
-        rect(ctx, '#543f22', x, y + TILE - 1, TILE, 1);
-      }
-      // Left outer edge
-      if (!isRoad(c - 1, r)) {
-        rect(ctx, '#8c6f43', x, y, 3, TILE);
-        rect(ctx, '#543f22', x, y, 1, TILE);
-      }
-      // Right outer edge
-      if (!isRoad(c + 1, r)) {
-        rect(ctx, '#8c6f43', x + TILE - 3, y, 3, TILE);
-        rect(ctx, '#543f22', x + TILE - 1, y, 1, TILE);
-      }
-    }
-  }
-
-  // =========================================================================
-  // 3. AQUACULTURE POND (Natural Curved Basin with Shoreline Boulders, Dời Lên Trên)
-  // =========================================================================
-  const pond = FARM_POIS.aquaculture_pond;
-  const pcx = pond.x + pond.w / 2;
-  // Shift visual pond basin center up by 36px towards the top edge
-  const pcy = pond.y + pond.h / 2 - 36;
-
-  // Pond drop shadow
-  oval(ctx, 'rgba(40, 70, 20, 0.4)', pcx + 4, pcy + 8, pond.w / 2 + 16, pond.h / 2 + 12);
-
-  // Natural organic curved water basin
-  oval(ctx, '#1e293b', pcx, pcy, pond.w / 2 + 4, pond.h / 2 + 4);
-  oval(ctx, '#1e40af', pcx - 12, pcy, pond.w / 2 - 18, pond.h / 2 - 10);
-  oval(ctx, '#2596be', pcx - 12, pcy, pond.w / 2 - 16, pond.h / 2 - 8);
-  oval(ctx, '#3898cb', pcx - 16, pcy - 4, pond.w / 2 - 24, pond.h / 2 - 14);
-  oval(ctx, '#48b3e8', pcx - 18, pcy - 8, pond.w / 2 - 34, pond.h / 2 - 20);
-
-  // Shoreline river boulders
-  for (let a = 0; a < Math.PI * 2; a += 0.14) {
-    const radiusNoise = Math.sin(a * 4) * 8 + Math.cos(a * 7) * 6;
-    const stoneDistX = (pond.w / 2 - 5 + radiusNoise) * Math.cos(a);
-    const stoneDistY = (pond.h / 2 - 4 + radiusNoise * 0.6) * Math.sin(a);
-    const bx = pcx + stoneDistX;
-    const by = pcy + stoneDistY;
-    const sR = 6 + (Math.sin(a * 8) > 0 ? 3 : 0) + (Math.cos(a * 5) > 0.5 ? 2 : 0);
-
-    oval(ctx, '#0f172a', bx + 1, by + 1, sR + 1, sR);
-    oval(ctx, '#334155', bx, by, sR, sR - 1);
-    oval(ctx, '#64748b', bx - 1, by - 1, sR - 2, sR - 2);
-    oval(ctx, '#94a3b8', bx - 2, by - 2, sR - 4, sR - 4);
-    if (Math.sin(a * 11) > 0.4) {
-      rect(ctx, '#478c2e', bx - 1, by - sR, 3, 2);
-      rect(ctx, '#6dbd47', bx, by - sR - 1, 2, 1);
-    }
-  }
-
-  // Sparkling wave reflections
-  const pondRipples: [number, number, number][] = [
-    [pcx - 55, pcy - 16, 22],
-    [pcx + 20, pcy - 28, 28],
-    [pcx - 30, pcy + 18, 32],
-    [pcx + 40, pcy + 10, 20],
-    [pcx - 5, pcy - 6, 36],
-  ];
-  for (const [rx, ry, rw] of pondRipples) {
-    rect(ctx, '#bae6fd', rx - rw / 2, ry, rw, 1);
-    rect(ctx, '#ffffff', rx - rw / 4, ry, rw / 2, 1);
-  }
-
-  // Floating green lily pads with pink & white lotus blossoms
-  const lilyPads: [number, number, boolean][] = [
-    [pcx - 65, pcy + 8, true],
-    [pcx - 48, pcy - 22, false],
-    [pcx - 22, pcy - 32, true],
-    [pcx + 18, pcy - 30, false],
-    [pcx + 50, pcy - 14, true],
-    [pcx - 70, pcy - 8, false],
-    [pcx - 15, pcy + 22, true],
-    [pcx + 30, pcy + 18, false],
-  ];
-  for (const [lx, ly, hasFlower] of lilyPads) {
-    oval(ctx, '#15803d', lx, ly, 10, 7);
-    oval(ctx, '#22c55e', lx - 1, ly - 1, 8, 5);
-    rect(ctx, '#3898cb', lx + 4, ly, 4, 2);
-    if (hasFlower) {
-      oval(ctx, '#f472b6', lx - 1, ly - 3, 5, 5);
-      oval(ctx, '#ffffff', lx - 1, ly - 4, 3, 3);
-      rect(ctx, '#fbbf24', lx - 1, ly - 4, 2, 2);
-    }
-  }
-
-  // =========================================================================
-  // 5. CROPS FIELD BASE
-  // =========================================================================
+  // Crop beds sit in a gravel kitchen garden, with narrow accessible aisles.
   const crops = FARM_POIS.crops_field;
-  rect(ctx, 'rgba(40, 70, 20, 0.35)', crops.x - 4, crops.y - 4, crops.w + 8, crops.h + 8);
-  rect(ctx, '#451a03', crops.x - 2, crops.y - 2, crops.w + 4, crops.h + 4);
-  rect(ctx, '#8b5028', crops.x - 1, crops.y - 1, crops.w + 2, crops.h + 2);
-  rect(ctx, '#543217', crops.x, crops.y, crops.w, crops.h);
-  for (let fy = crops.y + 6; fy < crops.y + crops.h - 6; fy += 8) {
-    rect(ctx, '#3f210d', crops.x + 4, fy, crops.w - 8, 3);
-    rect(ctx, '#73461e', crops.x + 4, fy + 3, crops.w - 8, 1);
+  box(ctx, '#6b8059', crops.x - 8, crops.y - 8, crops.w + 16, crops.h + 16);
+  box(ctx, '#d6c6a1', crops.x - 5, crops.y - 5, crops.w + 10, crops.h + 10);
+  box(ctx, '#c6b48f', crops.x, crops.y, crops.w, crops.h);
+  for (let i = 0; i < 1000; i++) {
+    const x = crops.x + Math.floor(rng() * crops.w),
+      y = crops.y + Math.floor(rng() * crops.h);
+    box(ctx, i % 2 ? '#e0d1ad' : '#b3a580', x, y, 2, 1);
+  }
+  flowerBed(ctx, { x: crops.x, y: crops.y - 23, w: 144, h: 11 }, 20);
+  flowerBed(ctx, { x: crops.x + 216, y: crops.y - 23, w: 164, h: 11 }, 21);
+  flowerBed(ctx, { x: crops.x, y: crops.y + crops.h + 16, w: crops.w - 4, h: 17 }, 22);
+
+  drawPond(ctx);
+
+  for (const p of [FARM_POIS.shop_bac_sau, FARM_POIS.silo_warehouse, FARM_GARDEN.greenhouse]) {
+    ctx.fillStyle = 'rgba(66, 74, 42, 0.16)';
+    ctx.beginPath();
+    ctx.moveTo(p.x + 5, p.y + p.h - 5);
+    ctx.lineTo(p.x + p.w, p.y + p.h - 5);
+    ctx.lineTo(p.x + p.w + 19, p.y + p.h + 12);
+    ctx.lineTo(p.x + 24, p.y + p.h + 12);
+    ctx.closePath();
+    ctx.fill();
   }
 
-  // =========================================================================
-  // 6. LUSH GROUND VEGETATION & BUSHES (Cây lớn được render dạng Phaser Sprites động để có depth-sort & đung đưa gió)
-  // =========================================================================
-  // Dense green shrubbery and berry bushes bordering paths and fences
-  const bushLocations = [
-    [6 * TILE, 1.8 * TILE],
-    [16 * TILE, 1.8 * TILE],
-    [24 * TILE, 1.8 * TILE],
-    [3 * TILE, 9.5 * TILE],
-    [8 * TILE, 13.5 * TILE],
-    [13 * TILE, 13.5 * TILE],
-    [25 * TILE, 13.5 * TILE],
-    [28 * TILE, 13.5 * TILE],
-    [42 * TILE, 13.5 * TILE],
-    [3 * TILE, 16.5 * TILE],
-    [3 * TILE, 25.5 * TILE],
-    [13.5 * TILE, 23.5 * TILE],
-    [16.5 * TILE, 23.5 * TILE],
-    [25.5 * TILE, 23.5 * TILE],
-    [27 * TILE, 29.5 * TILE],
-    [44 * TILE, 16 * TILE],
-    [44 * TILE, 23.5 * TILE],
-  ] as const;
+  // Informal planted islands soften the road grid and connect the landmark clusters.
+  const keepClear = [
+    ...Object.values(FARM_POIS),
+    FARM_GARDEN.tractor,
+    FARM_GARDEN.greenhouse,
+    FARM_GARDEN.windmill,
+    { x: 184, y: 300, w: 265, h: 106 },
+    { x: 535, y: 274, w: 266, h: 244 },
+    { x: 0, y: 62, w: 225, h: 102 },
+  ];
+  for (let i = 0; i < 420; i++) {
+    const x = 28 + Math.floor(rng() * (FARM_WIDTH - 56));
+    const y = 44 + Math.floor(rng() * (FARM_HEIGHT - 76));
+    if (
+      road(x, y) ||
+      keepClear.some((p) => pointInRect(x, y, { x: p.x - 16, y: p.y - 10, w: p.w + 32, h: p.h + 26 }))
+    )
+      continue;
+    foliage(ctx, x, y, 10 + rng() * 13, i, i % 3 === 0);
+  }
+  // Sunflower and lavender ribbons frame the animal yards and crop garden.
+  for (const [x, y, count, lavender] of [
+    [209, 457, 18, 0],
+    [110, 738, 24, 1],
+    [556, 732, 20, 0],
+    [1059, 523, 12, 0],
+    [1275, 523, 13, 0],
+    [1066, 966, 31, 1],
+    [1449, 557, 27, 2],
+  ]) {
+    for (let i = 0; i < count!; i++) {
+      const px = x! + (lavender === 2 ? 0 : i * 11),
+        py = y! + (lavender === 2 ? i * 13 : Math.sin(i * 2) * 3);
+      box(ctx, '#497847', px, py - 10, 2, 13);
+      ellipse(ctx, '#729d50', px - 3, py - 3, 4, 2);
+      ellipse(ctx, '#a2be6e', px + 3, py - 5, 4, 2);
+      if (lavender === 1) {
+        box(ctx, '#8b78ab', px - 1, py - 18, 3, 10);
+        box(ctx, '#c7b0d5', px - 2, py - 16, 2, 5);
+      } else {
+        ellipse(ctx, '#e7b657', px, py - 13, 6, 5);
+        ellipse(ctx, '#f6d786', px - 1, py - 15, 4, 3);
+        ellipse(ctx, '#8e633f', px, py - 13, 2, 2);
+      }
+    }
+  }
 
-  for (const [bx, by] of bushLocations) {
-    drawBush(ctx, bx, by);
+  // A shallow irrigation rill leads from the mill to the pond.
+  box(ctx, '#788b65', 880, 266, 57, 19);
+  box(ctx, '#b9b996', 881, 267, 55, 15);
+  box(ctx, '#41969c', 883, 269, 53, 11);
+  box(ctx, '#86c9be', 885, 270, 48, 2);
+  for (let x = 884; x < 936; x += 10) box(ctx, '#d2e6ca', x, 276, 5, 1);
+
+  // Planted borders sit away from travel lanes and all interaction footprints.
+  for (const r of [
+    { x: 238, y: 450, w: 190, h: 14 },
+    { x: 113, y: 652, w: 294, h: 13 },
+    { x: 104, y: 744, w: 292, h: 12 },
+    { x: 555, y: 744, w: 230, h: 12 },
+    { x: 554, y: 688, w: 230, h: 12 },
+    { x: 106, y: 942, w: 284, h: 13 },
+    { x: 568, y: 940, w: 202, h: 13 },
+    { x: 1436, y: 556, w: 16, h: 346 },
+  ])
+    flowerBed(ctx, r, r.x);
+
+  // A shallow boundary hedge and split-rail fence frame the playable map.
+  for (let x = 12; x < FARM_WIDTH; x += 22) {
+    for (const y of [24, FARM_HEIGHT - 5]) {
+      ellipse(ctx, '#53794e', x, y, 17, 12);
+      ellipse(ctx, '#6e985c', x - 2, y - 3, 15, 9);
+      ellipse(ctx, '#a0bb77', x - 5, y - 6, 7, 3);
+    }
+  }
+  fence(ctx, 8, 31, FARM_WIDTH - 16);
+  for (const x of [14, FARM_WIDTH - 14]) {
+    for (let y = 50; y < FARM_HEIGHT - 25; y += 24) {
+      if (x < 32 && y < 170) continue;
+      ellipse(ctx, '#567d4e', x, y, 11, 17);
+      ellipse(ctx, '#81a76b', x - 2, y - 4, 8, 11);
+    }
+  }
+  // Meadow flowers in small clusters instead of uniformly scattered confetti.
+  for (let i = 0; i < 160; i++) {
+    const x = 40 + Math.floor(rng() * (FARM_WIDTH - 80));
+    const y = 45 + Math.floor(rng() * (FARM_HEIGHT - 90));
+    if (
+      road(x, y) ||
+      Object.values(FARM_POIS).some((p) =>
+        pointInRect(x, y, { x: p.x - 20, y: p.y - 45, w: p.w + 40, h: p.h + 75 }),
+      )
+    )
+      continue;
+    box(ctx, '#628d54', x, y, 1, 5);
+    box(ctx, i % 3 ? '#f0dcaf' : '#dba2a0', x - 1, y - 1, 3, 3);
+    box(ctx, '#fff0cf', x, y, 1, 1);
+  }
+}
+
+function drawPond(ctx: CanvasRenderingContext2D) {
+  const p = FARM_POIS.aquaculture_pond;
+  const cx = p.x + p.w / 2,
+    cy = p.y + p.h / 2;
+  // Organic scanline shoreline, contained inside the authoritative pond footprint.
+  const basin = (color: string, inset: number) => {
+    const ry = p.h / 2 - inset;
+    for (let dy = -Math.floor(ry); dy <= ry; dy++) {
+      const wave = 0.92 + Math.sin(dy * 0.037) * 0.045 + Math.cos(dy * 0.077) * 0.025;
+      const radius = (p.w / 2 - inset) * Math.sqrt(Math.max(0, 1 - (dy / ry) ** 2)) * wave;
+      box(ctx, color, cx - radius + Math.sin(dy * 0.031) * 5, cy + dy, radius * 2, 1);
+    }
+  };
+  basin('#657e54', 2);
+  basin('#a9a27d', 6);
+  basin('#d5c69e', 11);
+  basin('#608a73', 17);
+  basin('#369397', 21);
+  basin(C.waterDark, 26);
+  basin('#59b8b5', 32);
+  basin('#69c4ba', 45);
+  for (let a = 0; a < Math.PI * 2; a += 0.21) {
+    const dy = Math.sin(a) * (p.h / 2 - 10);
+    const wave = 0.92 + Math.sin(dy * 0.037) * 0.045 + Math.cos(dy * 0.077) * 0.025;
+    const x = cx + Math.cos(a) * (p.w / 2 - 10) * wave,
+      y = cy + dy;
+    ellipse(ctx, '#7e8e78', x + 1, y + 2, 8, 5);
+    ellipse(ctx, '#c0bea1', x, y, 8, 5);
+    ellipse(ctx, '#e4ddbd', x - 2, y - 2, 5, 2);
+    if (Math.sin(a * 7) > 0.3) box(ctx, '#7f9e66', x - 4, y + 1, 5, 2);
+    if (Math.sin(a * 11) > 0.1 && Math.cos(a) > -0.85) {
+      foliage(ctx, x, y - 1, 11 + Math.sin(a * 8) * 4, Math.floor(a * 40), true);
+    }
+  }
+  for (let i = 0; i < 19; i++) {
+    const a = i * 2.4,
+      x = cx + Math.cos(a) * (128 + (i % 3) * 13),
+      y = cy + Math.sin(a) * 65;
+    ellipse(ctx, '#317f69', x, y + 2, 10, 5);
+    ellipse(ctx, '#7ba965', x, y, 9, 4);
+    box(ctx, '#c2d796', x - 5, y - 2, 7, 1);
+    box(ctx, '#59b8b5', x + 3, y, 7, 1);
+    if (i % 3 === 0) {
+      ellipse(ctx, '#c77f99', x, y - 4, 5, 4);
+      ellipse(ctx, '#f1c3d0', x - 2, y - 6, 3, 4);
+      ellipse(ctx, '#fff0e1', x + 1, y - 7, 2, 3);
+      box(ctx, '#eaca7d', x, y - 5, 2, 2);
+    }
+  }
+  for (let i = 0; i < 30; i++) {
+    const x = cx + Math.sin(i * 2.7) * 144,
+      y = cy + Math.cos(i * 1.7) * 67;
+    box(ctx, i % 3 ? '#8dd9d4' : '#d0eee1', x, y, 7 + (i % 4) * 4, 1);
+  }
+  // Small timber landing: entirely inside the already blocked pond area.
+  box(ctx, '#3b7977', p.x + 5, cy - 13, 72, 38);
+  for (let y = cy - 18; y < cy + 16; y += 6) {
+    box(ctx, '#795b41', p.x + 2, y, 68, 6);
+    box(ctx, '#c7a477', p.x + 2, y, 68, 4);
+    box(ctx, '#e6c394', p.x + 3, y, 66, 1);
+    for (const x of [p.x + 8, p.x + 59]) box(ctx, '#73553c', x, y + 2, 1, 1);
+  }
+  for (const x of [p.x + 5, p.x + 61]) {
+    for (const y of [cy - 19, cy + 15]) {
+      box(ctx, '#765a40', x, y - 10, 5, 16);
+      box(ctx, '#e2c69a', x, y - 11, 5, 3);
+    }
   }
 }
 

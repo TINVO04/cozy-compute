@@ -5,7 +5,17 @@ export { drawFurniture } from './furniture';
 import { chibiItemIcon } from './chibi';
 import { boatIcon } from './boat';
 import { vehicleCanvas } from './vehicle';
+import { vehicleById } from '@cozy/game-data';
 export { boatIcon } from './boat';
+
+/** Resolves canonical or alias vehicle ID to pre-rendered icon URL with procedural canvas fallback. */
+export function vehicleIcon(id: string): string {
+  const v = vehicleById(id);
+  if (v?.assetPath) {
+    return `/vehicles/${v.assetPath}/icon.png`;
+  }
+  return vehicleCanvas(id).toDataURL();
+}
 
 /** Icon for any catalogue item, using HD Chibi mannequins for clothing, physical materials for furniture, and boat models. */
 export function itemIcon(
@@ -18,7 +28,7 @@ export function itemIcon(
   const hit = iconCache.get(key);
   if (hit) return hit;
   if (type === 'vehicle') {
-    const url = vehicleCanvas(sprite).toDataURL();
+    const url = vehicleIcon(sprite);
     iconCache.set(key, url);
     return url;
   }

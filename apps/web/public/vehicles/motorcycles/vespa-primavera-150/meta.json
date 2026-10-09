@@ -1,0 +1,50 @@
+{
+  "id": "motorcycles/vespa-primavera-150",
+  "name": "Vespa Primavera 150",
+  "brand": "Vespa",
+  "category": "motorcycle",
+  "price": 700,
+  "speed": 270,
+  "description": "Xe tay ga thời trang Ý Vespa Primavera, thanh lịch và quyến rũ trên phố.",
+  "dimensions": {
+    "frameWidth": 48,
+    "frameHeight": 40,
+    "spritesheetWidth": 192,
+    "spritesheetHeight": 160,
+    "previewWidth": 144,
+    "previewHeight": 120,
+    "iconWidth": 48,
+    "iconHeight": 40
+  },
+  "anchorPoints": {
+    "contactY": 37,
+    "seat": {
+      "x": 24,
+      "y": 18
+    },
+    "center": {
+      "x": 24,
+      "y": 20
+    }
+  },
+  "lights": {
+    "headlight": {
+      "frontOffsetX": 20,
+      "frontOffsetY": 18,
+      "color": "#ffffff"
+    },
+    "taillight": {
+      "rearOffsetX": 18,
+      "rearOffsetY": 18,
+      "color": "#ef4444"
+    }
+  },
+  "colors": {
+    "primary": "#f43f5e",
+    "secondary": "#fef3c7",
+    "accent": "#fb7185",
+    "trim": "#e2e8f0",
+    "glass": "#bae6fd",
+    "saddle": "#fef3c7"
+  }
+}

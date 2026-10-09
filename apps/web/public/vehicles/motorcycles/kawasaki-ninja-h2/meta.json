@@ -1,0 +1,50 @@
+{
+  "id": "motorcycles/kawasaki-ninja-h2",
+  "name": "Kawasaki Ninja H2 Carbon",
+  "brand": "Kawasaki",
+  "category": "motorcycle",
+  "price": 3000,
+  "speed": 330,
+  "description": "Siêu phẩm siêu nạp Kawasaki Ninja H2 Carbon, tốc độ xé gió đỉnh cao công nghệ.",
+  "dimensions": {
+    "frameWidth": 48,
+    "frameHeight": 40,
+    "spritesheetWidth": 192,
+    "spritesheetHeight": 160,
+    "previewWidth": 144,
+    "previewHeight": 120,
+    "iconWidth": 48,
+    "iconHeight": 40
+  },
+  "anchorPoints": {
+    "contactY": 37,
+    "seat": {
+      "x": 24,
+      "y": 17
+    },
+    "center": {
+      "x": 24,
+      "y": 20
+    }
+  },
+  "lights": {
+    "headlight": {
+      "frontOffsetX": 20,
+      "frontOffsetY": 18,
+      "color": "#ffffff"
+    },
+    "taillight": {
+      "rearOffsetX": 18,
+      "rearOffsetY": 18,
+      "color": "#ef4444"
+    }
+  },
+  "colors": {
+    "primary": "#0f172a",
+    "secondary": "#22c55e",
+    "accent": "#4ade80",
+    "trim": "#1e293b",
+    "glass": "#86efac",
+    "saddle": "#020617"
+  }
+}
