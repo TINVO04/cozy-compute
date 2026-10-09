@@ -1507,16 +1507,6 @@ function drawChibiSparkleAura(
 ) {
   ctx.save();
   if (!isForeground) {
-    const radial = ctx.createRadialGradient(0, torsoY + 8, 6, 0, torsoY + 8, 46);
-    radial.addColorStop(0, 'rgba(254, 240, 138, 0.22)');
-    radial.addColorStop(0.45, 'rgba(192, 132, 252, 0.16)');
-    radial.addColorStop(0.8, 'rgba(56, 189, 248, 0.12)');
-    radial.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = radial;
-    ctx.beginPath();
-    ctx.arc(0, torsoY + 8, 46, 0, Math.PI * 2);
-    ctx.fill();
-
     ctx.strokeStyle = 'rgba(254, 240, 138, 0.4)';
     ctx.lineWidth = 0.8;
     ctx.beginPath();
@@ -1674,7 +1664,7 @@ function drawChibiBackUnderlay(
   if (isWing) {
     ctx.save();
     ctx.translate(0, torsoY + 4);
-    ctx.scale(1.24, 1.24);
+    ctx.scale(1.12, 1.12);
     ctx.translate(0, -(torsoY + 4));
   }
 

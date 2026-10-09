@@ -723,13 +723,13 @@ export class Avatar {
         const reducedMotion = useUi.getState().reducedMotion;
 
         if (this.dir === 0 || this.dir === 3) {
-          // Front or Back: Symmetrical dual wings spreading from shoulders (scaled up)
+          // Front or Back: Symmetrical dual wings spreading from shoulders (nicely balanced scale)
           const frontTex = ensureWingTexture(this.scene, backKind, 'front');
-          const baseScale = 1.32;
-          this.leftWingSprite = this.scene.add.image(-5, -7, frontTex);
+          const baseScale = 1.15;
+          this.leftWingSprite = this.scene.add.image(-4, -6, frontTex);
           this.leftWingSprite.setOrigin(0.88, 0.46);
           this.leftWingSprite.setScale(baseScale);
-          this.rightWingSprite = this.scene.add.image(5, -7, frontTex);
+          this.rightWingSprite = this.scene.add.image(4, -6, frontTex);
           this.rightWingSprite.setFlipX(true);
           this.rightWingSprite.setOrigin(0.12, 0.46);
           this.rightWingSprite.setScale(baseScale);
@@ -759,16 +759,16 @@ export class Avatar {
             this.wingTweens.push(twL, twR);
           }
         } else {
-          // Side Profile: Aerodynamic swept-back wings with 3D far/near offset (scaled up)
+          // Side Profile: Aerodynamic swept-back wings with 3D far/near offset (nicely balanced scale)
           const profileTex = ensureWingTexture(this.scene, backKind, 'profile');
-          const profileBaseScale = 1.25;
-          this.profileFarWingSprite = this.scene.add.image(isLeft ? 7 : -7, -9, profileTex);
+          const profileBaseScale = 1.1;
+          this.profileFarWingSprite = this.scene.add.image(isLeft ? 6 : -6, -8, profileTex);
           this.profileFarWingSprite.setOrigin(isLeft ? 0.12 : 0.88, 0.46);
           if (!isLeft) this.profileFarWingSprite.setFlipX(true);
           this.profileFarWingSprite.setScale(profileBaseScale * 0.88);
           this.profileFarWingSprite.setAlpha(0.72);
 
-          this.profileNearWingSprite = this.scene.add.image(isLeft ? 4 : -4, -6, profileTex);
+          this.profileNearWingSprite = this.scene.add.image(isLeft ? 3 : -3, -5, profileTex);
           this.profileNearWingSprite.setOrigin(isLeft ? 0.12 : 0.88, 0.46);
           if (!isLeft) this.profileNearWingSprite.setFlipX(true);
           this.profileNearWingSprite.setScale(profileBaseScale);
@@ -911,82 +911,6 @@ export class Avatar {
       return spk;
     };
 
-    // Helper: Soft ethereal winged bloom tailored to horizontal wingspan (No hard round circles!)
-    const addEtherealWingAura = (
-      parent: Phaser.GameObjects.Container,
-      outerColor: number,
-      midColor: number,
-      width: number,
-      height: number,
-      pulseDuration = 1200,
-    ) => {
-      const g = this.scene.add.graphics();
-      g.setBlendMode(Phaser.BlendModes.ADD);
-      // Soft horizontal feather-shaped elliptical glow
-      g.fillStyle(outerColor, 0.22);
-      g.fillEllipse(0, -4, width, height);
-      g.fillStyle(midColor, 0.36);
-      g.fillEllipse(0, -4, width * 0.68, height * 0.65);
-      g.fillStyle(0xffffff, 0.55);
-      g.fillEllipse(0, -4, width * 0.32, height * 0.32);
-      parent.add(g);
-
-      if (!reducedMotion) {
-        this.backTweens.push(
-          this.scene.tweens.add({
-            targets: g,
-            scaleX: 1.14,
-            scaleY: 1.1,
-            alpha: 0.65,
-            yoyo: true,
-            repeat: -1,
-            duration: pulseDuration,
-            ease: 'Sine.easeInOut',
-          }),
-        );
-      }
-      return g;
-    };
-
-    // Helper: Upward-pointing ethereal divine rays / God rays (Elegantly pointing upward, NO 360 spinning!)
-    const addDivineLightShafts = (
-      parent: Phaser.GameObjects.Container,
-      color: number,
-      length: number,
-      alpha = 0.65,
-      breatheDuration = 1600,
-    ) => {
-      const g = this.scene.add.graphics();
-      g.setBlendMode(Phaser.BlendModes.ADD);
-      // Delicate upward shafts radiating gently between -24 deg and +24 deg
-      const angles = [-24, -14, -5, 5, 14, 24];
-      for (const deg of angles) {
-        const rad = (deg - 90) * (Math.PI / 180); // Pointing upward
-        const len = length * (1 - Math.abs(deg) * 0.008);
-        g.lineStyle(1.6, color, alpha);
-        g.lineBetween(0, 0, Math.cos(rad) * len, Math.sin(rad) * len);
-        // Highlight core tip
-        g.fillStyle(0xffffff, alpha * 0.85);
-        g.fillCircle(Math.cos(rad) * len * 0.7, Math.sin(rad) * len * 0.7, 1.2);
-      }
-      parent.add(g);
-
-      if (!reducedMotion) {
-        this.backTweens.push(
-          this.scene.tweens.add({
-            targets: g,
-            scaleY: 1.2,
-            alpha: 0.45,
-            yoyo: true,
-            repeat: -1,
-            duration: breatheDuration,
-            ease: 'Sine.easeInOut',
-          }),
-        );
-      }
-      return g;
-    };
-
     // Helper: Rising ethereal energy motes / dust drifting upward into the sky
     const addAscendingMotes = (
       parent: Phaser.GameObjects.Container,
@@ -1028,65 +952,33 @@ export class Avatar {
     };
 
     if (backKind === 'wings_angel') {
-      // 🪽 Angel Wings: Ethereal golden wing aura, divine upward light shafts & celestial diamond flares
-      addEtherealWingAura(this.backGlowContainer, 0xf59e0b, 0xfde047, 88, 44, 1100);
-      addDivineLightShafts(this.backGlowContainer, 0xfef08a, 48, 0.72, 1600);
-      addAscendingMotes(this.backGlowContainer, [0xfde047, 0xffffff, 0xfef08a], 6, 26, 32);
+      // 🪽 Angel Wings: Pure sparkling celestial diamond flares & ascending gold dust motes
+      addAscendingMotes(this.backGlowContainer, [0xfde047, 0xffffff, 0xfef08a], 6, 24, 30);
 
-      addSparkleStar(this.backGlowContainer, -32, -18, 0xffffff, 5.0, 0);
-      addSparkleStar(this.backGlowContainer, 32, -18, 0xffffff, 5.0, 200);
-      addSparkleStar(this.backGlowContainer, -36, 6, 0xfde047, 4.4, 400);
-      addSparkleStar(this.backGlowContainer, 36, 6, 0xfde047, 4.4, 600);
-      addSparkleStar(this.backGlowContainer, -22, 24, 0xffffff, 3.6, 800);
-      addSparkleStar(this.backGlowContainer, 22, 24, 0xffffff, 3.6, 1000);
+      addSparkleStar(this.backGlowContainer, -26, -14, 0xffffff, 4.8, 0);
+      addSparkleStar(this.backGlowContainer, 26, -14, 0xffffff, 4.8, 200);
+      addSparkleStar(this.backGlowContainer, -28, 4, 0xfde047, 4.2, 400);
+      addSparkleStar(this.backGlowContainer, 28, 4, 0xfde047, 4.2, 600);
+      addSparkleStar(this.backGlowContainer, -18, 18, 0xffffff, 3.5, 800);
+      addSparkleStar(this.backGlowContainer, 18, 18, 0xffffff, 3.5, 1000);
     } else if (backKind === 'wings_fairy') {
-      // 🧚 Fairy Wings: Prismatic pastel wing aura, gentle lavender shafts & floating fairy dust motes
-      addEtherealWingAura(this.backGlowContainer, 0x67e8f9, 0xf472b6, 82, 42, 900);
-      addDivineLightShafts(this.backGlowContainer, 0xc084fc, 44, 0.62, 1300);
-      addAscendingMotes(this.backGlowContainer, [0x67e8f9, 0xf472b6, 0xfef08a, 0xa7f3d0], 8, 28, 30);
+      // 🧚 Fairy Wings: Pure sparkling pastel stars & floating fairy dust motes
+      addAscendingMotes(this.backGlowContainer, [0x67e8f9, 0xf472b6, 0xfef08a, 0xa7f3d0], 8, 24, 28);
 
-      addSparkleStar(this.backGlowContainer, -30, -16, 0x67e8f9, 4.5, 0);
-      addSparkleStar(this.backGlowContainer, 30, -16, 0xf472b6, 4.5, 250);
-      addSparkleStar(this.backGlowContainer, -28, 16, 0xfef08a, 4.0, 500);
-      addSparkleStar(this.backGlowContainer, 28, 16, 0xa7f3d0, 4.0, 750);
+      addSparkleStar(this.backGlowContainer, -24, -12, 0x67e8f9, 4.4, 0);
+      addSparkleStar(this.backGlowContainer, 24, -12, 0xf472b6, 4.4, 250);
+      addSparkleStar(this.backGlowContainer, -22, 14, 0xfef08a, 3.8, 500);
+      addSparkleStar(this.backGlowContainer, 22, 14, 0xa7f3d0, 3.8, 750);
     } else if (backKind === 'wings_cyber') {
-      // ⚡ Cyber Wings: Neon cyan/hazard orange plasma bloom & photon ion jet streams
-      addEtherealWingAura(this.backGlowContainer, 0x06b6d4, 0xf97316, 84, 40, 450);
-
-      // Twin diagonal photon ion thruster jet streams
-      const jets = this.scene.add.graphics();
-      jets.setBlendMode(Phaser.BlendModes.ADD);
-      jets.lineStyle(2.4, 0x22d3ee, 0.85);
-      jets.lineBetween(-10, 0, -42, -18);
-      jets.lineBetween(10, 0, 42, -18);
-      jets.lineStyle(1.4, 0xf97316, 0.9);
-      jets.lineBetween(-10, 2, -36, 16);
-      jets.lineBetween(10, 2, 36, 16);
-      this.backGlowContainer.add(jets);
-
-      if (!reducedMotion) {
-        this.backTweens.push(
-          this.scene.tweens.add({
-            targets: jets,
-            alpha: 0.35,
-            scaleX: 1.15,
-            yoyo: true,
-            repeat: -1,
-            duration: 250,
-            ease: 'Sine.easeInOut',
-          }),
-        );
-      }
-
-      // Crackling high-voltage digital arc sparks
+      // ⚡ Cyber Wings: Crackling high-voltage digital arc sparks & neon cyber glints
       const sparks = this.scene.add.graphics();
       sparks.setBlendMode(Phaser.BlendModes.ADD);
       sparks.lineStyle(1.6, 0xffffff, 0.95);
-      sparks.lineBetween(-30, -8, -42, -16);
-      sparks.lineBetween(30, -8, 42, -16);
+      sparks.lineBetween(-24, -6, -34, -12);
+      sparks.lineBetween(24, -6, 34, -12);
       sparks.lineStyle(1.6, 0x22d3ee, 0.95);
-      sparks.lineBetween(-24, 14, -36, 22);
-      sparks.lineBetween(24, 14, 36, 22);
+      sparks.lineBetween(-20, 12, -28, 18);
+      sparks.lineBetween(20, 12, 28, 18);
       this.backGlowContainer.add(sparks);
 
       if (!reducedMotion) {
@@ -1102,27 +994,23 @@ export class Avatar {
         );
       }
 
-      addAscendingMotes(this.backGlowContainer, [0x22d3ee, 0xf97316, 0xffffff], 6, 26, 28);
+      addAscendingMotes(this.backGlowContainer, [0x22d3ee, 0xf97316, 0xffffff], 6, 22, 26);
 
-      addSparkleStar(this.backGlowContainer, -34, -14, 0x22d3ee, 4.8, 0, 350);
-      addSparkleStar(this.backGlowContainer, 34, -14, 0x22d3ee, 4.8, 150, 350);
-      addSparkleStar(this.backGlowContainer, -28, 20, 0xf97316, 4.2, 300, 350);
-      addSparkleStar(this.backGlowContainer, 28, 20, 0xf97316, 4.2, 450, 350);
+      addSparkleStar(this.backGlowContainer, -26, -10, 0x22d3ee, 4.5, 0, 350);
+      addSparkleStar(this.backGlowContainer, 26, -10, 0x22d3ee, 4.5, 150, 350);
+      addSparkleStar(this.backGlowContainer, -22, 16, 0xf97316, 4.0, 300, 350);
+      addSparkleStar(this.backGlowContainer, 22, 16, 0xf97316, 4.0, 450, 350);
     } else if (backKind === 'wings_demon') {
-      // 🦇 Demon Wings: Void purple & hellfire flame bloom, darkflame shafts & rising embers
-      addEtherealWingAura(this.backGlowContainer, 0x9333ea, 0xef4444, 88, 46, 750);
-      addDivineLightShafts(this.backGlowContainer, 0xef4444, 46, 0.72, 1000);
-      addAscendingMotes(this.backGlowContainer, [0xfb923c, 0xef4444, 0xc084fc, 0xf43f5e], 8, 30, 36);
+      // 🦇 Demon Wings: Pure hellfire rising embers & dark void diamond stars
+      addAscendingMotes(this.backGlowContainer, [0xfb923c, 0xef4444, 0xc084fc, 0xf43f5e], 8, 26, 32);
 
-      addSparkleStar(this.backGlowContainer, -34, -18, 0xc084fc, 4.8, 0);
-      addSparkleStar(this.backGlowContainer, 34, -18, 0xc084fc, 4.8, 200);
-      addSparkleStar(this.backGlowContainer, -36, 10, 0xef4444, 4.4, 400);
-      addSparkleStar(this.backGlowContainer, 36, 10, 0xef4444, 4.4, 600);
+      addSparkleStar(this.backGlowContainer, -26, -14, 0xc084fc, 4.6, 0);
+      addSparkleStar(this.backGlowContainer, 26, -14, 0xc084fc, 4.6, 200);
+      addSparkleStar(this.backGlowContainer, -28, 8, 0xef4444, 4.2, 400);
+      addSparkleStar(this.backGlowContainer, 28, 8, 0xef4444, 4.2, 600);
     } else if (backKind === 'sparkle_aura') {
-      // ✨ Sparkle Aura: Soft starlight nebula bloom, divine starlight shafts & twinkling stars cluster
-      addEtherealWingAura(this.backGlowContainer, 0x38bdf8, 0xfde047, 56, 56, 1100);
-      addDivineLightShafts(this.backGlowContainer, 0xfef08a, 42, 0.7, 1400);
-      addAscendingMotes(this.backGlowContainer, [0xffffff, 0xfde047, 0x38bdf8], 6, 24, 30);
+      // ✨ Sparkle Aura: Pure twinkling stars cluster & drifting starlight dust
+      addAscendingMotes(this.backGlowContainer, [0xffffff, 0xfde047, 0x38bdf8], 6, 22, 28);
 
       const starOffsets = [
         { x: -16, y: -22, c: 0xffffff, s: 4.8, d: 0 },
@@ -1136,20 +1024,12 @@ export class Avatar {
         addSparkleStar(this.backGlowContainer, st.x, st.y, st.c, st.s, st.d, 650);
       }
     } else if (backKind === 'magic_orb') {
-      // 🔮 Magic Orb: Hovering luminescent crystal lamp & bioluminescent fireflies
+      // 🔮 Magic Orb: Hovering luminescent crystal node & bioluminescent fireflies
       const orbGroup = this.scene.add.container(-14, -14);
       this.backGlowContainer.add(orbGroup);
       this.facingDependentBackEffects.push({ obj: orbGroup, baseRelX: -14 });
 
-      addEtherealWingAura(orbGroup, 0x6366f1, 0xc084fc, 34, 34, 1100);
-
-      // Tilted crystal ring with gentle breathe
-      const ring = this.scene.add.graphics();
-      ring.setBlendMode(Phaser.BlendModes.ADD);
-      ring.lineStyle(1.5, 0x67e8f9, 0.85);
-      ring.strokeEllipse(0, 0, 26, 10);
-      ring.setAngle(25);
-      orbGroup.add(ring);
+      addSparkleStar(orbGroup, 0, 0, 0xc084fc, 4.5, 0, 700);
 
       if (!reducedMotion) {
         this.backTweens.push(
