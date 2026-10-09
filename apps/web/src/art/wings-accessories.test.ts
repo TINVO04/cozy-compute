@@ -201,4 +201,47 @@ describe('Wings and Sparkly Accessories Art & Data', () => {
 
     vi.unstubAllGlobals();
   });
+
+  it('riddenVehicleCanvas renders two-wheelers with showWings: false so wings do not bake at 0.42x scale', async () => {
+    const chibiModule = await import('./chibi');
+    const { riddenVehicleCanvas } = await import('./rider');
+    const drawSpy = vi.spyOn(chibiModule, 'drawChibiAvatar');
+
+    const mockCtx = new Proxy({} as unknown as CanvasRenderingContext2D, {
+      get: (_target, prop) => {
+        if (prop === 'createRadialGradient' || prop === 'createLinearGradient') {
+          return vi.fn(() => ({ addColorStop: vi.fn() }));
+        }
+        return vi.fn();
+      },
+      set: () => true,
+    });
+    const mockCanvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx),
+    };
+    vi.stubGlobal('document', {
+      createElement: vi.fn((tag: string) => (tag === 'canvas' ? { ...mockCanvas } : {})),
+    });
+
+    const app: Appearance = {
+      skin: 0,
+      hairStyle: 'short',
+      hairColor: 0,
+      baseTop: 0,
+      back: 'wings_angel:#facc15',
+    };
+
+    drawSpy.mockClear();
+    riddenVehicleCanvas(app, 'motorcycle_ducati', 1, 0);
+
+    expect(drawSpy).toHaveBeenCalled();
+    for (const call of drawSpy.mock.calls) {
+      expect(call[2]?.showWings).toBe(false);
+    }
+
+    drawSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
 });

@@ -206,6 +206,7 @@ export function riddenVehicleCanvas(a: Appearance, id: string, dir: Dir, frame =
     ridingStyle: style,
     ridingLayer: 'far',
     vehicleId: id,
+    showWings: false,
   });
 
   // 2. Vehicle body (48x40 drawn at y=24)
@@ -222,6 +223,7 @@ export function riddenVehicleCanvas(a: Appearance, id: string, dir: Dir, frame =
     ridingStyle: style,
     ridingLayer: 'near',
     vehicleId: id,
+    showWings: false,
   });
 
   return canvas;

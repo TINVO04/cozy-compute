@@ -691,11 +691,17 @@ export class Avatar {
 
   updateBackFacing() {
     if (!this.backGlowContainer) return;
+    const def = vehicleById(this.vehicle);
+    const kind = def?.kind;
+    const driving =
+      Boolean(this.vehicle) && (this.scene.scene.key === 'town' || this.scene.scene.key === 'farm');
+    const riding = driving && (kind === 'bicycle' || kind === 'motorcycle');
+
     const isLeft = this.dir === 1;
     const isRight = this.dir === 2;
 
-    const relX = isLeft ? 10 : isRight ? -10 : 0;
-    const relY = this.sprite ? this.sprite.y + 4 : this.baseSpriteY + 4;
+    const relX = riding ? (isLeft ? 9 : isRight ? -9 : 0) : isLeft ? 10 : isRight ? -10 : 0;
+    const relY = riding ? -34 : this.sprite ? this.sprite.y + 4 : this.baseSpriteY + 4;
     this.backGlowContainer.setPosition(relX, relY);
 
     for (const fx of this.facingDependentBackEffects) {
@@ -1253,12 +1259,13 @@ export class Avatar {
     if (riding !== this.ridingTwoWheeler) {
       this.ridingTwoWheeler = riding;
       this.sprite.setCrop();
+      this.updateBackFacing();
     }
     this.sprite.setVisible(!driving);
     this.heldFishContainer?.setVisible(!driving);
     this.rodGlowContainer?.setVisible(!driving);
     this.swordGlowContainer?.setVisible(!driving);
-    this.backGlowContainer?.setVisible(!driving);
+    this.backGlowContainer?.setVisible(!driving || riding);
     if (driving) {
       const frame = this.moving && !useUi.getState().reducedMotion ? 1 + (Math.floor(time / 140) % 3) : 0;
       const key = riding
@@ -1310,7 +1317,20 @@ export class Avatar {
       }
       if (this.backGlowContainer) {
         this.backGlowContainer.setRotation(0);
-        this.backGlowContainer.y = this.sprite.y + 4;
+        if (riding) {
+          const isLeft = this.dir === 1;
+          const isRight = this.dir === 2;
+          const bounce =
+            isLeft || isRight
+              ? [0, 1, 0, -1][
+                  (this.moving && !useUi.getState().reducedMotion ? 1 + (Math.floor(time / 140) % 3) : 0) % 4
+                ]!
+              : 0;
+          const relX = isLeft ? 9 : isRight ? -9 : 0;
+          this.backGlowContainer.setPosition(relX, -34 + bounce);
+        } else {
+          this.backGlowContainer.y = this.sprite.y + 4;
+        }
       }
     } else {
       this.dustTimer = 0;
@@ -1333,7 +1353,14 @@ export class Avatar {
       }
       if (this.backGlowContainer) {
         this.backGlowContainer.setRotation(0);
-        this.backGlowContainer.y = this.sprite.y + 4;
+        if (riding) {
+          const isLeft = this.dir === 1;
+          const isRight = this.dir === 2;
+          const relX = isLeft ? 9 : isRight ? -9 : 0;
+          this.backGlowContainer.setPosition(relX, -34);
+        } else {
+          this.backGlowContainer.y = this.sprite.y + 4;
+        }
       }
     }
 
