@@ -1658,10 +1658,25 @@ function drawChibiBackUnderlay(
   isBack: boolean,
   isSide: boolean,
   torsoY: number,
+  showWings = true,
 ) {
   if (!rawBack) return;
   const back = parseSprite(rawBack);
   if (!back) return;
+
+  const isWing =
+    back.kind === 'wings_angel' ||
+    back.kind === 'wings_fairy' ||
+    back.kind === 'wings_cyber' ||
+    back.kind === 'wings_demon';
+  if (isWing && !showWings) return;
+
+  if (isWing) {
+    ctx.save();
+    ctx.translate(0, torsoY + 4);
+    ctx.scale(1.24, 1.24);
+    ctx.translate(0, -(torsoY + 4));
+  }
 
   if (back.kind === 'wings_angel') {
     drawChibiAngelWings(ctx, isBack, isSide, torsoY);
@@ -1675,6 +1690,10 @@ function drawChibiBackUnderlay(
     drawChibiSparkleAura(ctx, isBack, isSide, torsoY, false);
   } else if (back.kind === 'magic_orb') {
     drawChibiMagicOrb(ctx, isBack, isSide, torsoY);
+  }
+
+  if (isWing) {
+    ctx.restore();
   }
 }
 
@@ -1710,6 +1729,7 @@ export function drawChibiAvatar(
     dir?: 0 | 1 | 2 | 3;
     frame?: number;
     showFish?: boolean;
+    showWings?: boolean;
     ridingStyle?: RidingStyle;
     ridingLayer?: 'far' | 'near' | 'both';
     vehicleId?: string;
@@ -1723,6 +1743,7 @@ export function drawChibiAvatar(
     dir = 0,
     frame = 0,
     showFish = true,
+    showWings = true,
     ridingStyle = 'sport',
     ridingLayer = 'both',
   } = options;
@@ -1851,7 +1872,7 @@ export function drawChibiAvatar(
 
   // --- 1.5. BACK ACCESSORIES (WINGS, AURAS, ORBS UNDERLAY) ---
   if (!isBack && a.back) {
-    drawChibiBackUnderlay(ctx, a.back, isBack, isSide, torsoY);
+    drawChibiBackUnderlay(ctx, a.back, isBack, isSide, torsoY, showWings);
   }
 
   // --- 2. LOWER BODY (LEGS & SHOES) ---
@@ -2386,7 +2407,7 @@ export function drawChibiAvatar(
 
   // --- 3.4. BACK ACCESSORIES (WINGS, AURAS, ORBS WHEN FACING BACK) ---
   if (isBack && a.back) {
-    drawChibiBackUnderlay(ctx, a.back, isBack, isSide, torsoY);
+    drawChibiBackUnderlay(ctx, a.back, isBack, isSide, torsoY, showWings);
   }
 
   // --- 3.5. SLUNG SWORD (Vác chéo lưng kiếm hiệp) ---

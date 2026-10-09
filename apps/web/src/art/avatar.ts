@@ -1033,7 +1033,12 @@ export function appearanceKey(a: Appearance): string {
 }
 
 /** Sprite sheet canvas: rows = dir (down, left, right, up), cols = frame (idle, stepA, stepB). */
-export function avatarSheet(a: Appearance, scale = AV_SCALE): HTMLCanvasElement {
+export function avatarSheet(
+  a: Appearance,
+  scale = AV_SCALE,
+  options: { showWings?: boolean } = {},
+): HTMLCanvasElement {
+  const { showWings = true } = options;
   const c = document.createElement('canvas');
   const fw = scale === AV_SCALE ? AV_FRAME_W : Math.round(AV_FRAME_W * (scale / AV_SCALE));
   const fh = scale === AV_SCALE ? AV_FRAME_H : Math.round(AV_FRAME_H * (scale / AV_SCALE));
@@ -1060,6 +1065,7 @@ export function avatarSheet(a: Appearance, scale = AV_SCALE): HTMLCanvasElement 
         dir: d,
         frame: f as 0 | 1 | 2,
         showFish: false,
+        showWings,
       });
       ctx.restore();
     }

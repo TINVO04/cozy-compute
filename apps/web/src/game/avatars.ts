@@ -6,7 +6,7 @@ import { appearanceKey, AV_FRAME_H, AV_FRAME_W, AV_H, AV_SCALE, avatarSheet } fr
 export function ensureAvatarTexture(scene: Phaser.Scene, a: Appearance): string {
   const key = 'av:' + appearanceKey(a);
   if (scene.textures.exists(key)) return key;
-  const canvas = avatarSheet(a, AV_SCALE);
+  const canvas = avatarSheet(a, AV_SCALE, { showWings: false });
   const tex = scene.textures.addCanvas(key, canvas)!;
   const fw = AV_FRAME_W;
   const fh = AV_FRAME_H;
