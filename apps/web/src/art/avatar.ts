@@ -528,6 +528,11 @@ export function drawAvatar(a: Appearance, dir: Dir, frame: 0 | 1 | 2): PixelGrid
         g.set(5, hy + 6, c);
         g.set(10, hy + 6, c);
       }
+    } else if (face.kind === 'starlight_pin') {
+      g.set(11, hy + 2, '#ffd700');
+      g.set(12, hy + 2, '#fffbeb');
+      g.set(11, hy + 1, '#ffffff');
+      g.set(11, hy + 3, '#f59e0b');
     }
   }
 
@@ -588,6 +593,16 @@ export function drawAvatar(a: Appearance, dir: Dir, frame: 0 | 1 | 2): PixelGrid
       g.set(8, hy - 2, '#ffffff'); // sapphire glint
       g.set(10, hy - 1, '#10b981'); // emerald
       g.rect(4, hy, 8, 1, '#b45309'); // base shadow
+    } else if (hat.kind === 'diamond_crown') {
+      // Sovereign Brilliant-Cut Diamond Crown
+      g.rect(4, hy - 2, 8, 3, '#cbd5e1');
+      g.rect(4, hy - 1, 8, 2, '#f8fafc');
+      [4, 6, 7, 9, 11].forEach((x) => g.set(x, hy - 3, '#f8fafc'));
+      g.set(7, hy - 4, '#ffffff'); // high diamond spire
+      g.set(7, hy - 3, '#67e8f9'); // cyan diamond
+      g.set(5, hy - 1, '#38bdf8');
+      g.set(9, hy - 1, '#38bdf8');
+      g.rect(4, hy, 8, 1, '#64748b');
     }
   }
 
@@ -891,6 +906,107 @@ export function drawAvatar(a: Appearance, dir: Dir, frame: 0 | 1 | 2): PixelGrid
     }
   }
 
+  // --- 8. BACK WINGS & ACCESSORIES ---
+  if (a.back) {
+    const [backKind] = a.back.split(':');
+    if (backKind === 'wings_angel') {
+      const wingPts: [number, number][] = [
+        [2, 10],
+        [1, 11],
+        [0, 12],
+        [0, 13],
+        [1, 14],
+        [2, 15],
+        [13, 10],
+        [14, 11],
+        [15, 12],
+        [15, 13],
+        [14, 14],
+        [13, 15],
+      ];
+      wingPts.forEach(([wx, wy]) => {
+        g.set(wx, wy + bodyBob, '#ffffff');
+      });
+      g.set(0, 11 + bodyBob, '#fde047');
+      g.set(15, 11 + bodyBob, '#fde047');
+      g.set(1, 10 + bodyBob, '#facc15');
+      g.set(14, 10 + bodyBob, '#facc15');
+    } else if (backKind === 'wings_fairy') {
+      const wingPts: [number, number][] = [
+        [2, 9],
+        [1, 10],
+        [0, 11],
+        [1, 13],
+        [2, 15],
+        [13, 9],
+        [14, 10],
+        [15, 11],
+        [14, 13],
+        [13, 15],
+      ];
+      wingPts.forEach(([wx, wy]) => {
+        g.set(wx, wy + bodyBob, '#67e8f9');
+      });
+      g.set(1, 11 + bodyBob, '#f472b6');
+      g.set(14, 11 + bodyBob, '#f472b6');
+      g.set(0, 10 + bodyBob, '#ffffff');
+      g.set(15, 10 + bodyBob, '#ffffff');
+    } else if (backKind === 'wings_cyber') {
+      const wingPts: [number, number][] = [
+        [2, 10],
+        [0, 11],
+        [1, 12],
+        [0, 14],
+        [2, 16],
+        [13, 10],
+        [15, 11],
+        [14, 12],
+        [15, 14],
+        [13, 16],
+      ];
+      wingPts.forEach(([wx, wy]) => {
+        g.set(wx, wy + bodyBob, '#06b6d4');
+      });
+      g.set(0, 11 + bodyBob, '#22d3ee');
+      g.set(15, 11 + bodyBob, '#22d3ee');
+      g.set(1, 16 + bodyBob, '#f97316');
+      g.set(14, 16 + bodyBob, '#f97316');
+    } else if (backKind === 'wings_demon') {
+      const wingPts: [number, number][] = [
+        [2, 9],
+        [1, 10],
+        [0, 12],
+        [1, 14],
+        [0, 16],
+        [13, 9],
+        [14, 10],
+        [15, 12],
+        [14, 14],
+        [15, 16],
+      ];
+      wingPts.forEach(([wx, wy]) => {
+        g.set(wx, wy + bodyBob, '#3b0764');
+      });
+      g.set(1, 9 + bodyBob, '#7c3aed');
+      g.set(14, 9 + bodyBob, '#7c3aed');
+      g.set(0, 12 + bodyBob, '#dc2626');
+      g.set(15, 12 + bodyBob, '#dc2626');
+    } else if (backKind === 'sparkle_aura') {
+      g.set(1, 9 + bodyBob, '#ffffff');
+      g.set(14, 8 + bodyBob, '#ffd700');
+      g.set(2, 19 + bodyBob, '#38bdf8');
+      g.set(13, 21 + bodyBob, '#f472b6');
+      g.set(8, 2 + bodyBob, '#ffffff');
+    } else if (backKind === 'magic_orb') {
+      g.set(2, 12 + bodyBob, '#a855f7');
+      g.set(1, 12 + bodyBob, '#7c3aed');
+      g.set(2, 11 + bodyBob, '#c084fc');
+      g.set(1, 11 + bodyBob, '#ffffff');
+      g.set(13, 10 + bodyBob, '#bef264');
+      g.set(14, 11 + bodyBob, '#fef08a');
+    }
+  }
+
   g.outline(INK);
   return g;
 }
@@ -906,6 +1022,7 @@ export function appearanceKey(a: Appearance): string {
     a.hat ?? '',
     a.top ?? '',
     a.face ?? '',
+    a.back ?? '',
     a.rod ?? '',
     a.sword ?? '',
     a.heldFish ? `${a.heldFish.speciesId}:${a.heldFish.sizeCm}` : '',

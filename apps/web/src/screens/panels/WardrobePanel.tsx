@@ -29,6 +29,7 @@ const SLOT_NAMES: Record<string, string> = {
   hat: 'Mũ',
   top: 'Áo',
   face: 'Phụ kiện',
+  back: 'Cánh & Lưng',
   rod: 'Cần câu',
   sword: 'Kiếm',
 };
@@ -311,7 +312,9 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
                           ? 'Đang vác kiếm'
                           : item.type === 'rod'
                             ? 'Đang cầm'
-                            : 'Đang mặc'}
+                            : item.slot === 'back'
+                              ? 'Đang đeo cánh'
+                              : 'Đang mặc'}
                       </span>
                     ) : null}
                     <div className={`item-art r-${item.rarity}`} style={{ height: 104 }}>
@@ -338,12 +341,16 @@ export function WardrobePanel({ me, onClose }: { me: Me; onClose: () => void }) 
                             ? 'Hạ kiếm'
                             : item.type === 'rod'
                               ? 'Cất cần'
-                              : 'Tháo ra'
+                              : item.slot === 'back'
+                                ? 'Tháo cánh'
+                                : 'Tháo ra'
                           : item.type === 'sword'
                             ? 'Vác kiếm'
                             : item.type === 'rod'
                               ? 'Trang bị'
-                              : 'Mặc vào'}
+                              : item.slot === 'back'
+                                ? 'Đeo cánh'
+                                : 'Mặc vào'}
                       </Button>
                     </div>
                   </article>

@@ -160,7 +160,7 @@ export async function equip(
   ctx: AppContext,
   userId: string,
   itemId: string | null,
-  slot: 'hat' | 'top' | 'face' | 'rod' | 'boat' | 'vehicle' | 'sword',
+  slot: 'hat' | 'top' | 'face' | 'back' | 'rod' | 'boat' | 'vehicle' | 'sword',
 ) {
   let resolvedItemId = itemId;
   await withTx(ctx.db, async (tx) => {
