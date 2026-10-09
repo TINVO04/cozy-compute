@@ -23,6 +23,7 @@ export interface Appearance {
   hat?: string | null;
   top?: string | null;
   face?: string | null;
+  back?: string | null;
   rod?: string | null;
   sword?: string | null;
   boat?: string | null;
@@ -40,7 +41,7 @@ export function sanitizeAppearance(
   input: unknown,
 ): Omit<
   Appearance,
-  'hat' | 'top' | 'face' | 'rod' | 'sword' | 'boat' | 'vehicle' | 'heldFish' | 'isFishing'
+  'hat' | 'top' | 'face' | 'back' | 'rod' | 'sword' | 'boat' | 'vehicle' | 'heldFish' | 'isFishing'
 > {
   const a = (input ?? {}) as Record<string, unknown>;
   const idx = (v: unknown, max: number, fallback: number) =>

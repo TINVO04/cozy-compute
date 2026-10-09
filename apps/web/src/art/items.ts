@@ -64,13 +64,33 @@ export function itemIcon(
       'witch_cosmic',
       'beret_artist',
       'halo_angel',
+      'diamond_crown',
     ];
-    const faceKinds = ['glasses', 'shades', 'mustache', 'blush_anime', 'bandage', 'eyepatch', 'mask_kawaii'];
-    const slot: 'hat' | 'face' | 'top' = hatKinds.includes(kind!)
+    const faceKinds = [
+      'glasses',
+      'shades',
+      'mustache',
+      'blush_anime',
+      'bandage',
+      'eyepatch',
+      'mask_kawaii',
+      'starlight_pin',
+    ];
+    const backKinds = [
+      'wings_angel',
+      'wings_fairy',
+      'wings_cyber',
+      'wings_demon',
+      'sparkle_aura',
+      'magic_orb',
+    ];
+    const slot: 'hat' | 'face' | 'top' | 'back' = hatKinds.includes(kind!)
       ? 'hat'
       : faceKinds.includes(kind!)
         ? 'face'
-        : 'top';
+        : backKinds.includes(kind!)
+          ? 'back'
+          : 'top';
     const url = chibiItemIcon(sprite, slot, 64);
     iconCache.set(key, url);
     return url;
