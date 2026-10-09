@@ -655,13 +655,90 @@ function drawChibiAngelWings(
     ctx.restore();
   };
 
+  const drawProfileWings = () => {
+    const drawWingShape = (isFarWing: boolean) => {
+      ctx.save();
+      if (isFarWing) {
+        ctx.translate(4, -3);
+        ctx.scale(0.88, 0.88);
+        ctx.globalAlpha = 0.75;
+      }
+
+      // Gradient
+      const grad = ctx.createLinearGradient(4, torsoY - 24, 26, torsoY + 16);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.35, '#fffbeb');
+      grad.addColorStop(0.7, '#fef08a');
+      grad.addColorStop(1, '#facc15');
+
+      // 1. Primary Wing Feathers swept back
+      ctx.fillStyle = grad;
+      ctx.strokeStyle = '#eab308';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(4, torsoY + 6);
+      ctx.bezierCurveTo(7, torsoY - 8, 14, torsoY - 20, 24, torsoY - 22);
+      ctx.quadraticCurveTo(20, torsoY - 14, 26, torsoY - 8);
+      ctx.quadraticCurveTo(20, torsoY - 2, 24, torsoY + 4);
+      ctx.quadraticCurveTo(18, torsoY + 8, 20, torsoY + 16);
+      ctx.quadraticCurveTo(12, torsoY + 14, 4, torsoY + 9);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // 2. Secondary Mid Feather Layer
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#fde047';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(4, torsoY + 5);
+      ctx.bezierCurveTo(7, torsoY - 4, 12, torsoY - 13, 19, torsoY - 15);
+      ctx.quadraticCurveTo(15, torsoY - 8, 19, torsoY - 2);
+      ctx.quadraticCurveTo(14, torsoY + 4, 16, torsoY + 9);
+      ctx.quadraticCurveTo(10, torsoY + 10, 4, torsoY + 7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // 3. Fluffy Covert Base Roots
+      ctx.fillStyle = '#fffdf5';
+      ctx.beginPath();
+      ctx.arc(6, torsoY + 6, 4, 0, Math.PI * 2);
+      ctx.arc(8, torsoY + 9, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 4. Golden feather rib spines (quills)
+      ctx.strokeStyle = 'rgba(234, 179, 8, 0.75)';
+      ctx.lineWidth = 0.9;
+      [
+        { sx: 5, sy: torsoY + 5, ex: 23, ey: torsoY - 20 },
+        { sx: 5, sy: torsoY + 6, ex: 24, ey: torsoY - 7 },
+        { sx: 5, sy: torsoY + 7, ex: 22, ey: torsoY + 4 },
+        { sx: 5, sy: torsoY + 8, ex: 18, ey: torsoY + 15 },
+      ].forEach((rib) => {
+        ctx.beginPath();
+        ctx.moveTo(rib.sx, rib.sy);
+        ctx.quadraticCurveTo((rib.sx + rib.ex) / 2 - 1, (rib.sy + rib.ey) / 2 - 2, rib.ex, rib.ey);
+        ctx.stroke();
+      });
+
+      if (!isFarWing) {
+        // 5. Divine sparkles at apex and feather tips
+        drawSparkleStar(ctx, 24, torsoY - 22, 4.5, '#ffffff', '#facc15');
+        drawGlintCross(ctx, 24, torsoY - 22, 6, 'rgba(254, 240, 138, 0.95)');
+        drawSparkleStar(ctx, 24, torsoY + 4, 3.2, '#fef08a', '#facc15');
+        drawSparkleStar(ctx, 20, torsoY + 16, 2.5, '#ffffff', '#fde047');
+      }
+
+      ctx.restore();
+    };
+
+    drawWingShape(true);
+    drawWingShape(false);
+  };
+
   if (isSide) {
-    ctx.save();
-    ctx.translate(5, 2);
-    ctx.scale(0.85, 0.85);
-    drawOneWing(-1);
-    ctx.restore();
-    drawOneWing(-1);
+    drawProfileWings();
   } else {
     drawOneWing(1);
     drawOneWing(-1);
@@ -786,13 +863,98 @@ function drawChibiFairyWings(
     ctx.restore();
   };
 
+  const drawProfileFairyWings = () => {
+    const drawFairyWingShape = (isFarWing: boolean) => {
+      ctx.save();
+      if (isFarWing) {
+        ctx.translate(4, -3);
+        ctx.scale(0.85, 0.85);
+        ctx.globalAlpha = 0.7;
+      }
+
+      // Upper forewing
+      const gradUpper = ctx.createLinearGradient(4, torsoY - 24, 26, torsoY + 10);
+      gradUpper.addColorStop(0, 'rgba(103, 232, 249, 0.9)');
+      gradUpper.addColorStop(0.35, 'rgba(192, 132, 252, 0.85)');
+      gradUpper.addColorStop(0.7, 'rgba(244, 114, 182, 0.9)');
+      gradUpper.addColorStop(1, 'rgba(254, 240, 138, 0.8)');
+
+      ctx.fillStyle = gradUpper;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(4, torsoY + 5);
+      ctx.bezierCurveTo(8, torsoY - 8, 14, torsoY - 20, 24, torsoY - 20);
+      ctx.bezierCurveTo(25, torsoY - 8, 20, torsoY + 1, 14, torsoY + 6);
+      ctx.quadraticCurveTo(8, torsoY + 7, 4, torsoY + 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Lower hindwing
+      const gradLower = ctx.createLinearGradient(4, torsoY + 7, 20, torsoY + 24);
+      gradLower.addColorStop(0, 'rgba(244, 114, 182, 0.88)');
+      gradLower.addColorStop(0.5, 'rgba(192, 132, 252, 0.85)');
+      gradLower.addColorStop(1, 'rgba(103, 232, 249, 0.88)');
+      ctx.fillStyle = gradLower;
+      ctx.beginPath();
+      ctx.moveTo(4, torsoY + 7);
+      ctx.quadraticCurveTo(12, torsoY + 9, 19, torsoY + 17);
+      ctx.quadraticCurveTo(15, torsoY + 23, 10, torsoY + 19);
+      ctx.quadraticCurveTo(6, torsoY + 15, 4, torsoY + 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Butterfly veins
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(6, torsoY + 5);
+      ctx.quadraticCurveTo(14, torsoY - 6, 22, torsoY - 16);
+      ctx.moveTo(10, torsoY + 2);
+      ctx.quadraticCurveTo(17, torsoY - 2, 21, torsoY - 6);
+      ctx.moveTo(6, torsoY + 8);
+      ctx.quadraticCurveTo(12, torsoY + 13, 16, torsoY + 16);
+      ctx.stroke();
+
+      // Pearlescent spots
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.beginPath();
+      ctx.arc(20, torsoY - 14, 1.8, 0, Math.PI * 2);
+      ctx.arc(18, torsoY - 4, 1.5, 0, Math.PI * 2);
+      ctx.arc(14, torsoY + 16, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (!isFarWing) {
+        drawSparkleStar(ctx, 24, torsoY - 20, 4, '#ffffff', '#67e8f9');
+        drawSparkleStar(ctx, 19, torsoY + 17, 3, '#c084fc', '#f472b6');
+        drawGlintCross(ctx, 24, torsoY - 20, 6, 'rgba(255, 255, 255, 0.9)');
+
+        // Floating dust behind
+        const dusts = [
+          { x: 26, y: torsoY - 12, c: '#67e8f9', r: 1.3 },
+          { x: 22, y: torsoY - 24, c: '#f472b6', r: 1.1 },
+          { x: 25, y: torsoY + 8, c: '#fef08a', r: 1.3 },
+          { x: 21, y: torsoY + 24, c: '#a7f3d0', r: 1.1 },
+        ];
+        dusts.forEach((d) => {
+          ctx.fillStyle = d.c;
+          ctx.beginPath();
+          ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      ctx.restore();
+    };
+
+    drawFairyWingShape(true);
+    drawFairyWingShape(false);
+  };
+
   if (isSide) {
-    ctx.save();
-    ctx.translate(5, 2);
-    ctx.scale(0.85, 0.85);
-    drawOneFairyWing(-1);
-    ctx.restore();
-    drawOneFairyWing(-1);
+    drawProfileFairyWings();
   } else {
     drawOneFairyWing(1);
     drawOneFairyWing(-1);
@@ -930,13 +1092,122 @@ function drawChibiCyberWings(
     ctx.restore();
   };
 
+  const drawProfileCyberWings = () => {
+    const drawCyberWingShape = (isFarWing: boolean) => {
+      ctx.save();
+      if (isFarWing) {
+        ctx.translate(3, -3);
+        ctx.scale(0.86, 0.86);
+        ctx.globalAlpha = 0.72;
+      }
+
+      // 1. Carbon fiber mechanical pylon / hardpoint on back
+      ctx.fillStyle = '#0f172a';
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(4, torsoY + 3);
+      ctx.lineTo(8, torsoY + 1);
+      ctx.lineTo(11, torsoY + 7);
+      ctx.lineTo(8, torsoY + 14);
+      ctx.lineTo(4, torsoY + 11);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Hazard neon orange LED warning stripe on pylon
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(6, torsoY + 5, 3, 2);
+
+      // Glowing energy projector node
+      ctx.fillStyle = '#22d3ee';
+      ctx.beginPath();
+      ctx.arc(9, torsoY + 9, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Hard-Light Laser Feathers (Upper, Mid, Lower) swept back
+      const blade1 = ctx.createLinearGradient(9, torsoY + 2, 27, torsoY - 17);
+      blade1.addColorStop(0, '#0284c7');
+      blade1.addColorStop(0.3, '#06b6d4');
+      blade1.addColorStop(0.7, '#67e8f9');
+      blade1.addColorStop(1, '#ffffff');
+
+      ctx.fillStyle = blade1;
+      ctx.strokeStyle = '#22d3ee';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(9, torsoY + 2);
+      ctx.lineTo(27, torsoY - 17);
+      ctx.lineTo(21, torsoY - 8);
+      ctx.lineTo(10, torsoY + 5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      const blade2 = ctx.createLinearGradient(10, torsoY + 6, 28, torsoY + 3);
+      blade2.addColorStop(0, '#0891b2');
+      blade2.addColorStop(0.4, '#06b6d4');
+      blade2.addColorStop(0.8, '#a5f3fc');
+      blade2.addColorStop(1, '#ffffff');
+
+      ctx.fillStyle = blade2;
+      ctx.beginPath();
+      ctx.moveTo(10, torsoY + 6);
+      ctx.lineTo(28, torsoY + 3);
+      ctx.lineTo(21, torsoY + 10);
+      ctx.lineTo(9, torsoY + 10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      const blade3 = ctx.createLinearGradient(8, torsoY + 11, 21, torsoY + 19);
+      blade3.addColorStop(0, '#0e7490');
+      blade3.addColorStop(0.5, '#22d3ee');
+      blade3.addColorStop(1, '#f97316');
+
+      ctx.fillStyle = blade3;
+      ctx.beginPath();
+      ctx.moveTo(8, torsoY + 11);
+      ctx.lineTo(21, torsoY + 18);
+      ctx.lineTo(16, torsoY + 20);
+      ctx.lineTo(6, torsoY + 13);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Circuit grid pulse lines
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(12, torsoY);
+      ctx.lineTo(23, torsoY - 12);
+      ctx.moveTo(13, torsoY + 7);
+      ctx.lineTo(24, torsoY + 4);
+      ctx.stroke();
+
+      if (!isFarWing) {
+        drawSparkleStar(ctx, 27, torsoY - 17, 4, '#ffffff', '#22d3ee');
+        drawSparkleStar(ctx, 28, torsoY + 3, 3.5, '#a5f3fc', '#06b6d4');
+        drawSparkleStar(ctx, 21, torsoY + 18, 3, '#f97316', '#fb923c');
+        drawGlintCross(ctx, 27, torsoY - 17, 5.5, '#67e8f9');
+
+        // Floating digital energy data pixels
+        ctx.fillStyle = '#22d3ee';
+        ctx.fillRect(25, torsoY - 7, 2, 2);
+        ctx.fillRect(29, torsoY - 3, 2, 2);
+        ctx.fillStyle = '#f97316';
+        ctx.fillRect(23, torsoY + 14, 2, 2);
+      }
+
+      ctx.restore();
+    };
+
+    drawCyberWingShape(true);
+    drawCyberWingShape(false);
+  };
+
   if (isSide) {
-    ctx.save();
-    ctx.translate(5, 2);
-    ctx.scale(0.85, 0.85);
-    drawOneCyberWing(-1);
-    ctx.restore();
-    drawOneCyberWing(-1);
+    drawProfileCyberWings();
   } else {
     drawOneCyberWing(1);
     drawOneCyberWing(-1);
@@ -1081,13 +1352,124 @@ function drawChibiDemonWings(
     ctx.restore();
   };
 
+  const drawProfileDemonWings = () => {
+    const drawDemonWingShape = (isFarWing: boolean) => {
+      ctx.save();
+      if (isFarWing) {
+        ctx.translate(3, -3);
+        ctx.scale(0.86, 0.86);
+        ctx.globalAlpha = 0.75;
+      }
+
+      // 1. Leathery bat membrane swept back
+      const gradMembrane = ctx.createLinearGradient(4, torsoY - 16, 28, torsoY + 18);
+      gradMembrane.addColorStop(0, '#180828');
+      gradMembrane.addColorStop(0.4, '#3b0764');
+      gradMembrane.addColorStop(0.8, '#581c87');
+      gradMembrane.addColorStop(1, '#831843');
+
+      ctx.fillStyle = gradMembrane;
+      ctx.strokeStyle = '#701a75';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(4, torsoY + 6);
+      ctx.lineTo(13, torsoY - 16);
+      ctx.lineTo(26, torsoY - 11);
+      ctx.quadraticCurveTo(20, torsoY - 2, 28, torsoY + 4);
+      ctx.quadraticCurveTo(20, torsoY + 11, 21, torsoY + 19);
+      ctx.quadraticCurveTo(12, torsoY + 17, 4, torsoY + 10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // 2. Demonic hellfire veins
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.65)';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(13, torsoY - 16);
+      ctx.quadraticCurveTo(18, torsoY - 4, 23, torsoY + 1);
+      ctx.moveTo(13, torsoY - 16);
+      ctx.quadraticCurveTo(16, torsoY + 5, 18, torsoY + 15);
+      ctx.stroke();
+
+      // 3. Obsidian dragon bone arm & articulated fingers
+      ctx.strokeStyle = '#1e1b4b';
+      ctx.lineWidth = 2.6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(4, torsoY + 6);
+      ctx.lineTo(13, torsoY - 16);
+      ctx.stroke();
+
+      ctx.lineWidth = 1.9;
+      ctx.beginPath();
+      ctx.moveTo(13, torsoY - 16);
+      ctx.lineTo(26, torsoY - 11);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(13, torsoY - 16);
+      ctx.lineTo(28, torsoY + 4);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(13, torsoY - 16);
+      ctx.lineTo(21, torsoY + 19);
+      ctx.stroke();
+
+      // Bone specular shine highlight
+      ctx.strokeStyle = '#7c3aed';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(4, torsoY + 5);
+      ctx.lineTo(12, torsoY - 15);
+      ctx.stroke();
+
+      // Sharp dragon claws at apex elbow & finger tips
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath();
+      ctx.moveTo(13, torsoY - 16);
+      ctx.lineTo(12, torsoY - 21);
+      ctx.lineTo(15, torsoY - 18);
+      ctx.closePath();
+      ctx.fill();
+
+      [
+        { x: 26, y: torsoY - 11 },
+        { x: 28, y: torsoY + 4 },
+        { x: 21, y: torsoY + 19 },
+      ].forEach((pt) => {
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      if (!isFarWing) {
+        drawSparkleStar(ctx, 12, torsoY - 21, 3.8, '#c084fc', '#9333ea');
+        drawSparkleStar(ctx, 28, torsoY + 4, 3, '#f87171', '#dc2626');
+        drawSparkleStar(ctx, 21, torsoY + 19, 2.5, '#fb923c', '#ea580c');
+
+        const embers = [
+          { x: 29, y: torsoY - 4, c: '#c084fc', r: 1.3 },
+          { x: 25, y: torsoY + 11, c: '#ef4444', r: 1.1 },
+          { x: 22, y: torsoY - 18, c: '#fb923c', r: 1.2 },
+          { x: 17, y: torsoY + 23, c: '#f43f5e', r: 1.1 },
+        ];
+        embers.forEach((emb) => {
+          ctx.fillStyle = emb.c;
+          ctx.beginPath();
+          ctx.arc(emb.x, emb.y, emb.r, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      ctx.restore();
+    };
+
+    drawDemonWingShape(true);
+    drawDemonWingShape(false);
+  };
+
   if (isSide) {
-    ctx.save();
-    ctx.translate(5, 2);
-    ctx.scale(0.85, 0.85);
-    drawOneDemonWing(-1);
-    ctx.restore();
-    drawOneDemonWing(-1);
+    drawProfileDemonWings();
   } else {
     drawOneDemonWing(1);
     drawOneDemonWing(-1);

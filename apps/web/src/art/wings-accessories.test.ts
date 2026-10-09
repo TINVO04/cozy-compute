@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ITEM_SEEDS, type Appearance } from '@cozy/game-data';
-import { appearanceKey, drawAvatar } from './avatar';
+import { appearanceKey, AV_FRAME_H, AV_FRAME_W, avatarSheet, drawAvatar } from './avatar';
 
 describe('Wings and Sparkly Accessories Art & Data', () => {
   it('seeds all 8 requested wings and luxury accessories in ITEM_SEEDS', () => {
@@ -138,5 +138,67 @@ describe('Wings and Sparkly Accessories Art & Data', () => {
       }
       expect(colored).toBeGreaterThan(40);
     }
+  });
+
+  it('avatarSheet creates properly dimensioned spritesheet with expanded 48x56 frames for all wings', () => {
+    expect(AV_FRAME_W).toBe(48);
+    expect(AV_FRAME_H).toBe(56);
+
+    const mockCtx = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      beginPath: vi.fn(),
+      rect: vi.fn(),
+      clip: vi.fn(),
+      translate: vi.fn(),
+      scale: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      arc: vi.fn(),
+      fill: vi.fn(),
+      stroke: vi.fn(),
+      fillRect: vi.fn(),
+      strokeRect: vi.fn(),
+      bezierCurveTo: vi.fn(),
+      quadraticCurveTo: vi.fn(),
+      closePath: vi.fn(),
+      createLinearGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+      createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+      ellipse: vi.fn(),
+      roundRect: vi.fn(),
+      rotate: vi.fn(),
+    };
+
+    const mockCanvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx),
+    };
+
+    vi.stubGlobal('document', {
+      createElement: vi.fn((tag: string) => (tag === 'canvas' ? { ...mockCanvas } : {})),
+    });
+
+    const wings = [
+      'wings_angel:#facc15',
+      'wings_fairy:#67e8f9',
+      'wings_cyber:#06b6d4',
+      'wings_demon:#9333ea',
+    ];
+
+    for (const back of wings) {
+      const app: Appearance = {
+        skin: 0,
+        hairStyle: 'short',
+        hairColor: 0,
+        baseTop: 0,
+        back,
+      };
+      const sheet = avatarSheet(app);
+      expect(sheet.width).toBe(48 * 3);
+      expect(sheet.height).toBe(56 * 4);
+    }
+
+    vi.unstubAllGlobals();
   });
 });

@@ -12,6 +12,8 @@ import { drawFish, getSpeciesData } from './fish';
 export const AV_W = 16;
 export const AV_H = 28;
 export const AV_SCALE = 2;
+export const AV_FRAME_W = 48;
+export const AV_FRAME_H = 56;
 export type Dir = 0 | 1 | 2 | 3; // down, left, right, up
 
 const parse = (sprite?: string | null) => {
@@ -1033,8 +1035,8 @@ export function appearanceKey(a: Appearance): string {
 /** Sprite sheet canvas: rows = dir (down, left, right, up), cols = frame (idle, stepA, stepB). */
 export function avatarSheet(a: Appearance, scale = AV_SCALE): HTMLCanvasElement {
   const c = document.createElement('canvas');
-  const fw = AV_W * scale;
-  const fh = AV_H * scale;
+  const fw = scale === AV_SCALE ? AV_FRAME_W : Math.round(AV_FRAME_W * (scale / AV_SCALE));
+  const fh = scale === AV_SCALE ? AV_FRAME_H : Math.round(AV_FRAME_H * (scale / AV_SCALE));
   c.width = fw * 3;
   c.height = fh * 4;
   const ctx = c.getContext('2d')!;
@@ -1042,6 +1044,11 @@ export function avatarSheet(a: Appearance, scale = AV_SCALE): HTMLCanvasElement 
   for (let d = 0 as Dir; d < 4; d = (d + 1) as Dir) {
     for (let f = 0; f < 3; f++) {
       ctx.save();
+      // Clip to frame boundary so NO wing/glow pixels bleed into neighboring animation frames
+      ctx.beginPath();
+      ctx.rect(f * fw, d * fh, fw, fh);
+      ctx.clip();
+
       const cx = f * fw + fw / 2;
       const cy = d * fh + 31;
       const chibiScale = (fh / 56) * 0.42;

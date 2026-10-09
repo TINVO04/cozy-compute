@@ -1,6 +1,6 @@
 import type { Appearance } from '@cozy/game-data';
 import type Phaser from 'phaser';
-import { appearanceKey, AV_H, AV_SCALE, AV_W, avatarSheet } from '../art/avatar';
+import { appearanceKey, AV_FRAME_H, AV_FRAME_W, AV_H, AV_SCALE, avatarSheet } from '../art/avatar';
 
 /** Registers (once) a spritesheet texture for an appearance and its walk animations. */
 export function ensureAvatarTexture(scene: Phaser.Scene, a: Appearance): string {
@@ -8,8 +8,8 @@ export function ensureAvatarTexture(scene: Phaser.Scene, a: Appearance): string 
   if (scene.textures.exists(key)) return key;
   const canvas = avatarSheet(a, AV_SCALE);
   const tex = scene.textures.addCanvas(key, canvas)!;
-  const fw = AV_W * AV_SCALE;
-  const fh = AV_H * AV_SCALE;
+  const fw = AV_FRAME_W;
+  const fh = AV_FRAME_H;
   for (let d = 0; d < 4; d++) for (let f = 0; f < 3; f++) tex.add(d * 3 + f, 0, f * fw, d * fh, fw, fh);
   for (let d = 0; d < 4; d++) {
     scene.anims.create({

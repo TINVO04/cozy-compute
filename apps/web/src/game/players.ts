@@ -9,7 +9,7 @@ import {
   type Rect,
 } from '@cozy/game-data';
 import { getStateCallbacks, type Room } from 'colyseus.js';
-import type Phaser from 'phaser';
+import Phaser from 'phaser';
 import { AVATAR_FEET_OFFSET, ensureAvatarTexture } from './avatars';
 import { spawnFootstepDust, spawnWaterWake } from './atmosphere';
 import { ensureVehicleTexture } from '../art/vehicle';
@@ -85,6 +85,9 @@ export class Avatar {
   rodTweens: Phaser.Tweens.Tween[] = [];
   swordGlowContainer: Phaser.GameObjects.Container | null = null;
   swordTweens: Phaser.Tweens.Tween[] = [];
+  backGlowContainer: Phaser.GameObjects.Container | null = null;
+  backTweens: Phaser.Tweens.Tween[] = [];
+  facingDependentBackEffects: { obj: { x: number }; baseRelX: number }[] = [];
   boatSprite: Phaser.GameObjects.Image | null = null;
   interpolation = new MovementInterpolation();
   private animationState = '';
@@ -128,6 +131,7 @@ export class Avatar {
     this.updateHeldFish();
     this.updateEquippedRodEffect();
     this.updateEquippedSwordEffect();
+    this.updateEquippedBackEffect();
   }
 
   clearHeldFishEffects() {
@@ -160,6 +164,19 @@ export class Avatar {
     if (this.swordGlowContainer) {
       this.swordGlowContainer.destroy();
       this.swordGlowContainer = null;
+    }
+  }
+
+  clearBackEffects() {
+    for (const t of this.backTweens) {
+      t.stop();
+      t.remove();
+    }
+    this.backTweens = [];
+    this.facingDependentBackEffects = [];
+    if (this.backGlowContainer) {
+      this.backGlowContainer.destroy();
+      this.backGlowContainer = null;
     }
   }
 
@@ -648,13 +665,456 @@ export class Avatar {
     this.clearSwordEffects();
   }
 
+  updateBackFacing() {
+    if (!this.backGlowContainer) return;
+    const isLeft = this.dir === 1;
+    const isRight = this.dir === 2;
+
+    const relX = isLeft ? 10 : isRight ? -10 : 0;
+    const relY = this.baseSpriteY + 4;
+    this.backGlowContainer.setPosition(relX, relY);
+
+    for (const fx of this.facingDependentBackEffects) {
+      fx.obj.x = isLeft ? -fx.baseRelX : fx.baseRelX;
+    }
+
+    if (this.dir === 3) {
+      this.container.bringToTop(this.backGlowContainer);
+      if (this.status) this.container.bringToTop(this.status);
+      if (this.bubble) this.container.bringToTop(this.bubble);
+      if (this.emote) this.container.bringToTop(this.emote);
+      this.container.bringToTop(this.label);
+    } else {
+      this.container.sendToBack(this.backGlowContainer);
+      this.container.sendToBack(this.shadow);
+    }
+  }
+
+  updateEquippedBackEffect() {
+    this.clearBackEffects();
+    const rawBack = this.appearance.back;
+    const rawHat = this.appearance.hat;
+    const rawFace = this.appearance.face;
+    const backKind = rawBack ? rawBack.split(':')[0] : null;
+    const hatKind = rawHat ? rawHat.split(':')[0] : null;
+    const faceKind = rawFace ? rawFace.split(':')[0] : null;
+
+    const hasBackEffect =
+      backKind === 'wings_angel' ||
+      backKind === 'wings_fairy' ||
+      backKind === 'wings_cyber' ||
+      backKind === 'wings_demon' ||
+      backKind === 'sparkle_aura' ||
+      backKind === 'magic_orb';
+    const hasHatEffect = hatKind === 'diamond_crown';
+    const hasFaceEffect = faceKind === 'starlight_pin';
+
+    if (!hasBackEffect && !hasHatEffect && !hasFaceEffect) return;
+
+    this.backGlowContainer = this.scene.add.container(0, 0);
+    this.container.add(this.backGlowContainer);
+
+    const reducedMotion = useUi.getState().reducedMotion;
+
+    // Helper: Add shimmering diamond sparkle star with cross flares and additive blending
+    const addSparkleStar = (
+      parent: Phaser.GameObjects.Container,
+      relX: number,
+      relY: number,
+      color: number,
+      size: number,
+      delayMs: number,
+      duration = 650,
+    ) => {
+      const spk = this.scene.add.graphics();
+      const initialX = this.dir === 1 ? -relX : relX;
+      spk.x = initialX;
+      spk.y = relY;
+      spk.setBlendMode(Phaser.BlendModes.ADD);
+
+      // Light ray flares
+      spk.lineStyle(1.6, color, 0.9);
+      spk.lineBetween(-size * 1.6, 0, size * 1.6, 0);
+      spk.lineBetween(0, -size * 1.6, 0, size * 1.6);
+
+      // Diamond core
+      spk.fillStyle(color, 1);
+      spk.beginPath();
+      spk.moveTo(0, -size);
+      spk.lineTo(size * 0.35, -size * 0.35);
+      spk.lineTo(size, 0);
+      spk.lineTo(size * 0.35, size * 0.35);
+      spk.lineTo(0, size);
+      spk.lineTo(-size * 0.35, size * 0.35);
+      spk.lineTo(-size, 0);
+      spk.lineTo(-size * 0.35, -size * 0.35);
+      spk.closePath();
+      spk.fillPath();
+
+      // White hot center
+      spk.fillStyle(0xffffff, 1);
+      spk.fillCircle(0, 0, Math.max(1, size * 0.32));
+
+      parent.add(spk);
+      this.facingDependentBackEffects.push({ obj: spk, baseRelX: relX });
+
+      if (!reducedMotion) {
+        spk.setScale(0.25);
+        spk.setAlpha(0.2);
+        const tw = this.scene.tweens.add({
+          targets: spk,
+          scaleX: 1.35,
+          scaleY: 1.35,
+          alpha: 1,
+          yoyo: true,
+          repeat: -1,
+          duration,
+          delay: delayMs,
+          ease: 'Sine.easeInOut',
+        });
+        this.backTweens.push(tw);
+      }
+      return spk;
+    };
+
+    // Helper: Rotating sunburst / radiating light rays (dazzling like a lamp)
+    const addSunburst = (
+      parent: Phaser.GameObjects.Container,
+      rays: number,
+      radius: number,
+      color: number,
+      alpha: number,
+      rotateDuration = 6000,
+    ) => {
+      const sun = this.scene.add.graphics();
+      sun.setBlendMode(Phaser.BlendModes.ADD);
+      sun.lineStyle(1.8, color, alpha);
+      for (let i = 0; i < rays; i++) {
+        const ang = (i / rays) * Math.PI * 2;
+        sun.lineBetween(0, 0, Math.cos(ang) * radius, Math.sin(ang) * radius);
+      }
+      parent.add(sun);
+      if (!reducedMotion) {
+        this.backTweens.push(
+          this.scene.tweens.add({
+            targets: sun,
+            angle: 360,
+            duration: rotateDuration,
+            repeat: -1,
+            ease: 'Linear',
+          }),
+        );
+      }
+      return sun;
+    };
+
+    // Helper: Pulsing lamp corona with additive bloom
+    const addCorona = (
+      parent: Phaser.GameObjects.Container,
+      outerColor: number,
+      midColor: number,
+      radius: number,
+      pulseDuration = 1000,
+    ) => {
+      const g = this.scene.add.graphics();
+      g.setBlendMode(Phaser.BlendModes.ADD);
+      g.fillStyle(outerColor, 0.32);
+      g.fillCircle(0, 0, radius);
+      g.fillStyle(midColor, 0.62);
+      g.fillCircle(0, 0, radius * 0.65);
+      g.fillStyle(0xffffff, 0.95);
+      g.fillCircle(0, 0, radius * 0.28);
+      parent.add(g);
+
+      if (!reducedMotion) {
+        this.backTweens.push(
+          this.scene.tweens.add({
+            targets: g,
+            scaleX: 1.25,
+            scaleY: 1.25,
+            alpha: 0.8,
+            yoyo: true,
+            repeat: -1,
+            duration: pulseDuration,
+            ease: 'Sine.easeInOut',
+          }),
+        );
+      }
+      return g;
+    };
+
+    if (backKind === 'wings_angel') {
+      // 🪽 Angel Wings: Golden radiant lamp with rotating sunburst & celestial stars
+      addCorona(this.backGlowContainer, 0xf59e0b, 0xfde047, 30, 1100);
+      addSunburst(this.backGlowContainer, 12, 36, 0xfef08a, 0.72, 6500);
+
+      addSparkleStar(this.backGlowContainer, -22, -14, 0xffffff, 4.8, 0);
+      addSparkleStar(this.backGlowContainer, 22, -14, 0xffffff, 4.8, 200);
+      addSparkleStar(this.backGlowContainer, -26, 4, 0xfde047, 4.2, 400);
+      addSparkleStar(this.backGlowContainer, 26, 4, 0xfde047, 4.2, 600);
+      addSparkleStar(this.backGlowContainer, -16, 20, 0xffffff, 3.5, 800);
+      addSparkleStar(this.backGlowContainer, 16, 20, 0xffffff, 3.5, 1000);
+    } else if (backKind === 'wings_fairy') {
+      // 🧚 Fairy Wings: Prismatic pastel aura & floating fairy dust motes
+      addCorona(this.backGlowContainer, 0x67e8f9, 0xf472b6, 28, 950);
+      addSunburst(this.backGlowContainer, 8, 30, 0xc084fc, 0.55, -8000);
+
+      addSparkleStar(this.backGlowContainer, -20, -12, 0x67e8f9, 4.2, 0);
+      addSparkleStar(this.backGlowContainer, 20, -12, 0xf472b6, 4.2, 250);
+      addSparkleStar(this.backGlowContainer, -18, 14, 0xfef08a, 3.8, 500);
+      addSparkleStar(this.backGlowContainer, 18, 14, 0xa7f3d0, 3.8, 750);
+
+      // Swarm of 6 glowing fairy dust motes drifting around
+      const dustColors = [0x67e8f9, 0xf472b6, 0xfef08a, 0xa7f3d0, 0xc084fc, 0xffffff];
+      for (let i = 0; i < 6; i++) {
+        const dust = this.scene.add.graphics();
+        dust.setBlendMode(Phaser.BlendModes.ADD);
+        dust.fillStyle(dustColors[i]!, 0.9);
+        dust.fillCircle(0, 0, 2);
+        const ang = (i / 6) * Math.PI * 2;
+        const dist = 18 + (i % 3) * 6;
+        const dx = Math.cos(ang) * dist;
+        const dy = Math.sin(ang) * dist;
+        dust.x = dx;
+        dust.y = dy;
+        this.backGlowContainer.add(dust);
+
+        if (!reducedMotion) {
+          this.backTweens.push(
+            this.scene.tweens.add({
+              targets: dust,
+              x: dx + (i % 2 === 0 ? 8 : -8),
+              y: dy - 8,
+              alpha: 0.3,
+              yoyo: true,
+              repeat: -1,
+              duration: 1200 + i * 200,
+              ease: 'Sine.easeInOut',
+            }),
+          );
+        }
+      }
+    } else if (backKind === 'wings_cyber') {
+      // ⚡ Cyber Wings: Blinding neon cyan & hazard orange LED reactor with high-frequency pulse
+      addCorona(this.backGlowContainer, 0xf97316, 0x06b6d4, 28, 300);
+
+      // Rotating hexagonal cyber energy lattice
+      const hexGrid = this.scene.add.graphics();
+      hexGrid.setBlendMode(Phaser.BlendModes.ADD);
+      hexGrid.lineStyle(1.4, 0x22d3ee, 0.75);
+      const hexR = 26;
+      for (let i = 0; i < 6; i++) {
+        const a1 = (i / 6) * Math.PI * 2;
+        const a2 = ((i + 1) / 6) * Math.PI * 2;
+        hexGrid.lineBetween(
+          Math.cos(a1) * hexR,
+          Math.sin(a1) * hexR,
+          Math.cos(a2) * hexR,
+          Math.sin(a2) * hexR,
+        );
+      }
+      this.backGlowContainer.add(hexGrid);
+      if (!reducedMotion) {
+        this.backTweens.push(
+          this.scene.tweens.add({
+            targets: hexGrid,
+            angle: 360,
+            duration: 4000,
+            repeat: -1,
+            ease: 'Linear',
+          }),
+        );
+      }
+
+      // Crackling high-voltage digital sparks
+      const sparks = this.scene.add.graphics();
+      sparks.setBlendMode(Phaser.BlendModes.ADD);
+      sparks.lineStyle(1.6, 0xffffff, 0.95);
+      sparks.lineBetween(-22, -6, -30, -12);
+      sparks.lineBetween(22, -6, 30, -12);
+      sparks.lineStyle(1.6, 0x22d3ee, 0.95);
+      sparks.lineBetween(-18, 12, -26, 18);
+      sparks.lineBetween(18, 12, 26, 18);
+      this.backGlowContainer.add(sparks);
+
+      if (!reducedMotion) {
+        this.backTweens.push(
+          this.scene.tweens.add({
+            targets: sparks,
+            alpha: 0.1,
+            yoyo: true,
+            repeat: -1,
+            duration: 120,
+            ease: 'Stepped',
+          }),
+        );
+      }
+
+      addSparkleStar(this.backGlowContainer, -24, -10, 0x22d3ee, 4.5, 0, 350);
+      addSparkleStar(this.backGlowContainer, 24, -10, 0x22d3ee, 4.5, 150, 350);
+      addSparkleStar(this.backGlowContainer, -20, 16, 0xf97316, 4.0, 300, 350);
+      addSparkleStar(this.backGlowContainer, 20, 16, 0xf97316, 4.0, 450, 350);
+    } else if (backKind === 'wings_demon') {
+      // 🦇 Demon Wings: Void purple & hellfire crimson flame corona & rising embers
+      addCorona(this.backGlowContainer, 0x9333ea, 0xef4444, 30, 480);
+
+      // Rising hellfire embers
+      const emberColors = [0xfb923c, 0xef4444, 0xc084fc, 0xf43f5e, 0xfbbf24];
+      for (let i = 0; i < 6; i++) {
+        const emb = this.scene.add.graphics();
+        emb.setBlendMode(Phaser.BlendModes.ADD);
+        emb.fillStyle(emberColors[i % emberColors.length]!, 0.95);
+        emb.fillCircle(0, 0, 1.8);
+        const startX = -18 + i * 7;
+        const startY = 14 + (i % 3) * 4;
+        emb.x = startX;
+        emb.y = startY;
+        this.backGlowContainer.add(emb);
+
+        if (!reducedMotion) {
+          this.backTweens.push(
+            this.scene.tweens.add({
+              targets: emb,
+              y: startY - 28,
+              alpha: 0,
+              repeat: -1,
+              duration: 900 + i * 180,
+              delay: i * 150,
+              ease: 'Sine.easeIn',
+            }),
+          );
+        }
+      }
+
+      addSparkleStar(this.backGlowContainer, -24, -14, 0xc084fc, 4.6, 0);
+      addSparkleStar(this.backGlowContainer, 24, -14, 0xc084fc, 4.6, 200);
+      addSparkleStar(this.backGlowContainer, -26, 8, 0xef4444, 4.2, 400);
+      addSparkleStar(this.backGlowContainer, 26, 8, 0xef4444, 4.2, 600);
+    } else if (backKind === 'sparkle_aura') {
+      // ✨ Sparkle Aura: Radiant celestial lighthouse beacon & orbiting constellation
+      addCorona(this.backGlowContainer, 0x38bdf8, 0xfde047, 34, 1000);
+      addSunburst(this.backGlowContainer, 16, 42, 0xfef08a, 0.78, 5000);
+
+      // Rotating constellation ring of 8 stars
+      const orbitRing = this.scene.add.container(0, 0);
+      this.backGlowContainer.add(orbitRing);
+      const starColors = [0xffffff, 0xfde047, 0x38bdf8, 0xf472b6];
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * Math.PI * 2;
+        const sx = Math.cos(ang) * 25;
+        const sy = Math.sin(ang) * 25;
+        const c = starColors[i % starColors.length]!;
+        const st = this.scene.add.graphics();
+        st.setBlendMode(Phaser.BlendModes.ADD);
+        st.x = sx;
+        st.y = sy;
+        st.lineStyle(1.4, c, 0.9);
+        st.lineBetween(-4, 0, 4, 0);
+        st.lineBetween(0, -4, 0, 4);
+        st.fillStyle(c, 1);
+        st.fillCircle(0, 0, 2);
+        st.fillStyle(0xffffff, 1);
+        st.fillCircle(0, 0, 1);
+        orbitRing.add(st);
+      }
+      if (!reducedMotion) {
+        this.backTweens.push(
+          this.scene.tweens.add({
+            targets: orbitRing,
+            angle: 360,
+            duration: 5500,
+            repeat: -1,
+            ease: 'Linear',
+          }),
+        );
+      }
+    } else if (backKind === 'magic_orb') {
+      // 🔮 Magic Orb: Hovering luminescent crystal lamp & bioluminescent fireflies
+      const orbGroup = this.scene.add.container(-14, -14);
+      this.backGlowContainer.add(orbGroup);
+      this.facingDependentBackEffects.push({ obj: orbGroup, baseRelX: -14 });
+
+      addCorona(orbGroup, 0x6366f1, 0xc084fc, 22, 1100);
+
+      // Orbiting ring around the crystal
+      const ring = this.scene.add.graphics();
+      ring.setBlendMode(Phaser.BlendModes.ADD);
+      ring.lineStyle(1.5, 0x67e8f9, 0.85);
+      ring.strokeEllipse(0, 0, 26, 10);
+      ring.setAngle(30);
+      orbGroup.add(ring);
+
+      if (!reducedMotion) {
+        this.backTweens.push(
+          this.scene.tweens.add({
+            targets: orbGroup,
+            y: -19,
+            duration: 1200,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut',
+          }),
+        );
+      }
+
+      // Bioluminescent fireflies
+      for (let i = 0; i < 4; i++) {
+        const ff = this.scene.add.graphics();
+        ff.setBlendMode(Phaser.BlendModes.ADD);
+        ff.fillStyle(0xbef264, 0.95);
+        ff.fillCircle(0, 0, 2.2);
+        ff.fillStyle(0xffffff, 1);
+        ff.fillCircle(0, 0, 1);
+        const ang = (i / 4) * Math.PI * 2;
+        const fx = Math.cos(ang) * 16;
+        const fy = Math.sin(ang) * 16;
+        ff.x = fx;
+        ff.y = fy;
+        orbGroup.add(ff);
+
+        if (!reducedMotion) {
+          this.backTweens.push(
+            this.scene.tweens.add({
+              targets: ff,
+              x: Math.cos(ang + Math.PI * 0.5) * 18,
+              y: Math.sin(ang + Math.PI * 0.5) * 18,
+              yoyo: true,
+              repeat: -1,
+              duration: 900 + i * 200,
+              ease: 'Sine.easeInOut',
+            }),
+          );
+        }
+      }
+    }
+
+    // --- HAT ACCESSORY: Diamond Crown Crown Flare ---
+    if (hasHatEffect) {
+      const crownY = -AVATAR_FEET_OFFSET + 2;
+      addSparkleStar(this.backGlowContainer, 0, crownY, 0x67e8f9, 5.2, 0, 800);
+      addSparkleStar(this.backGlowContainer, -8, crownY + 4, 0xffffff, 3.8, 300, 700);
+      addSparkleStar(this.backGlowContainer, 8, crownY + 4, 0xffffff, 3.8, 600, 700);
+    }
+
+    // --- FACE ACCESSORY: Starlight Pin Twinkle ---
+    if (hasFaceEffect) {
+      const pinX = 7;
+      const pinY = -AVATAR_FEET_OFFSET + 18;
+      addSparkleStar(this.backGlowContainer, pinX, pinY, 0xfde047, 3.6, 150, 750);
+    }
+
+    this.updateBackFacing();
+  }
+
   setAppearance(a: Appearance) {
     this.appearance = a;
     this.updateHeldFish();
     this.updateEquippedRodEffect();
     this.updateEquippedSwordEffect();
+    this.updateEquippedBackEffect();
     const key = ensureAvatarTexture(this.scene, a);
     this.updateHeldFishFacing();
+    this.updateBackFacing();
     if (key === this.texKey) return;
     this.texKey = key;
     this.sprite.setTexture(key, this.dir * 3);
@@ -668,6 +1128,7 @@ export class Avatar {
     this.sprite.stop();
     this.sprite.setFrame(d * 3);
     this.updateHeldFishFacing();
+    this.updateBackFacing();
   }
 
   setStatus(text: string) {
@@ -749,6 +1210,7 @@ export class Avatar {
       this.sprite.setFrame(this.dir * 3);
     }
     this.updateHeldFishFacing();
+    this.updateBackFacing();
   }
 
   updateBoat(time: number) {
@@ -862,9 +1324,11 @@ export class Avatar {
     this.clearHeldFishEffects();
     this.clearRodEffects();
     this.clearSwordEffects();
+    this.clearBackEffects();
     this.heldFishContainer?.destroy();
     this.rodGlowContainer?.destroy();
     this.swordGlowContainer?.destroy();
+    this.backGlowContainer?.destroy();
     this.boatSprite?.destroy();
     this.boatSprite = null;
     this.container.destroy();
