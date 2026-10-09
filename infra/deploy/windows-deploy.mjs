@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
-import { copyFile, lstat, mkdir, readFile, rmdir, writeFile } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, readFile, rm, rmdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { createGzip } from 'node:zlib';
@@ -107,7 +107,7 @@ export async function deployWindows({ source = process.cwd(), local = false } = 
     }
     try {
       await lstat(release);
-      throw new Error('Release already exists; restore it through the supervisor.');
+      await rm(release, { recursive: true, force: true });
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }
