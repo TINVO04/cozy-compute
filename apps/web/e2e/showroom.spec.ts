@@ -1,11 +1,9 @@
 import type { Game } from 'phaser';
 import { expect, test } from '@playwright/test';
-import { VEHICLE_DISPLAYS, vehicleById } from '@cozy/game-data';
+import { CANONICAL_VEHICLE_IDS, SHOWROOM_PEDESTALS, VEHICLE_DISPLAYS, vehicleById } from '@cozy/game-data';
 
 test.describe('Showroom & Luxury Vehicles E2E', () => {
-  test('renders the luxury showroom with real-world vehicle pedestals (Ducati, Mercedes, Lamborghini)', async ({
-    page,
-  }) => {
+  test('renders and cycles all 16 vehicles across the four showroom categories', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
 
@@ -42,11 +40,39 @@ test.describe('Showroom & Luxury Vehicles E2E', () => {
     for (const d of VEHICLE_DISPLAYS) {
       const v = vehicleById(d.id);
       expect(v).toBeDefined();
-      expect(['Ducati', 'Mercedes-Benz', 'Lamborghini']).toContain(v?.brand);
+      expect(['Ferrari', 'Rolls-Royce', 'Ducati', 'Vespa']).toContain(v?.brand);
     }
 
     // Capture visual screenshot of the luxury showroom and real-world vehicles
-    await page.screenshot({ path: '../../output/showroom-luxury-vehicles.png' });
+    const visited: string[] = [];
+    for (let selection = 0; selection < 4; selection++) {
+      const expected = SHOWROOM_PEDESTALS.map((pedestal) => pedestal.vehicles[selection]!);
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const g = (window as unknown as { showroomPreview: Game }).showroomPreview;
+            return g.scene
+              .getScene('showroom')
+              .children.list.filter((object) => object.type === 'Image')
+              .map((object) => (object as unknown as { texture: { key: string } }).texture.key)
+              .filter((key) => key.startsWith('vehicle:'))
+              .sort();
+          }),
+        )
+        .toEqual(expected.map((id) => `vehicle:${id}:2:0`).sort());
+      visited.push(...expected);
+      await page.waitForTimeout(250);
+      await page.screenshot({ path: `../../output/vehicles/showroom-selection-${selection}.png` });
+      await page.evaluate(() => {
+        const ui = (
+          window as unknown as {
+            showroomUi: { getState: () => { cycleShowroomPedestal: (direction: 1, index: number) => void } };
+          }
+        ).showroomUi;
+        for (let index = 0; index < 4; index++) ui.getState().cycleShowroomPedestal(1, index);
+      });
+    }
+    expect(visited.sort()).toEqual([...CANONICAL_VEHICLE_IDS].sort());
     expect(errors).toEqual([]);
   });
 });

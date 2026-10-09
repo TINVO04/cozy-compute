@@ -146,7 +146,7 @@ test('streets have continuous asphalt distinct from concrete sidewalks and the t
       road: luminance(400, 342),
       sidewalk: luminance(400, 324),
       plaza: luminance(700, 500),
-      continuous: [0, 1, 2, 3].every((i) => luminance(400 + i, 342) > 20 && luminance(400 + i, 342) < 90),
+      continuous: [0, 1, 2, 3].every((i) => luminance(400 + i, 342) > 120 && luminance(400 + i, 342) < 180),
       roadColor: sample(400, 342),
       plazaColor: sample(700, 500),
     };

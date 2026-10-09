@@ -1,0 +1,50 @@
+{
+  "id": "motorcycles/bmw-r1250-gs",
+  "name": "BMW R 1250 GS Adventure",
+  "brand": "BMW",
+  "category": "motorcycle",
+  "price": 2200,
+  "speed": 260,
+  "description": "Vua phượt địa hình BMW R 1250 GS Adventure động cơ Boxer ShiftCam, chinh phục mọi cung đường.",
+  "dimensions": {
+    "frameWidth": 48,
+    "frameHeight": 40,
+    "spritesheetWidth": 192,
+    "spritesheetHeight": 160,
+    "previewWidth": 144,
+    "previewHeight": 120,
+    "iconWidth": 48,
+    "iconHeight": 40
+  },
+  "anchorPoints": {
+    "contactY": 37,
+    "seat": {
+      "x": 24,
+      "y": 18
+    },
+    "center": {
+      "x": 24,
+      "y": 20
+    }
+  },
+  "lights": {
+    "headlight": {
+      "frontOffsetX": 20,
+      "frontOffsetY": 18,
+      "color": "#ffffff"
+    },
+    "taillight": {
+      "rearOffsetX": 18,
+      "rearOffsetY": 18,
+      "color": "#ef4444"
+    }
+  },
+  "colors": {
+    "primary": "#f8fafc",
+    "secondary": "#2563eb",
+    "accent": "#dc2626",
+    "trim": "#475569",
+    "glass": "#e2e8f0",
+    "saddle": "#1e293b"
+  }
+}

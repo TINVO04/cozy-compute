@@ -1,4 +1,4 @@
-import type { ZoneId } from '@cozy/game-data';
+import { SHOWROOM_PEDESTALS, type ZoneId } from '@cozy/game-data';
 import { create } from 'zustand';
 import {
   type AdminWeatherOverride,
@@ -90,7 +90,11 @@ interface UiState {
   inspectUserId: string | null;
   cyberStation: string | null;
   showroomVehicle: string | null;
+  showroomPedestalIndex: number | null;
+  showroomPedestalOverrides: Record<number, string>;
   setShowroomVehicle: (id: string | null) => void;
+  setShowroomPedestalIndex: (idx: number | null) => void;
+  cycleShowroomPedestal: (direction?: 1 | -1, pedestalIndex?: number) => void;
   editingApartment: boolean;
   reducedMotion: boolean;
   muted: boolean;
@@ -138,7 +142,27 @@ export const useUi = create<UiState>((set) => ({
   inspectUserId: null,
   cyberStation: null,
   showroomVehicle: null,
+  showroomPedestalIndex: null,
+  showroomPedestalOverrides: {},
   setShowroomVehicle: (showroomVehicle) => set({ showroomVehicle }),
+  setShowroomPedestalIndex: (showroomPedestalIndex) => set({ showroomPedestalIndex }),
+  cycleShowroomPedestal: (direction = 1, pedestalIndex) =>
+    set((state) => {
+      const targetIndex = pedestalIndex ?? state.showroomPedestalIndex;
+      if (targetIndex === null || targetIndex === undefined) return state;
+      const pedestal = SHOWROOM_PEDESTALS[targetIndex];
+      if (!pedestal || !pedestal.vehicles.length) return state;
+      const fallbackId = pedestal.vehicles[0] ?? '';
+      const currentVehicleId = state.showroomPedestalOverrides[targetIndex] ?? fallbackId;
+      const curIdx = pedestal.vehicles.indexOf(currentVehicleId);
+      const nextIdx = (curIdx + direction + pedestal.vehicles.length) % pedestal.vehicles.length;
+      const nextVehicleId = pedestal.vehicles[nextIdx] ?? fallbackId;
+      const newOverrides = { ...state.showroomPedestalOverrides, [targetIndex]: nextVehicleId };
+      return {
+        showroomPedestalOverrides: newOverrides,
+        ...(state.showroomPedestalIndex === targetIndex ? { showroomVehicle: nextVehicleId } : {}),
+      };
+    }),
   editingApartment: false,
   activePlotIndex: null,
   farmOwnerId: null,

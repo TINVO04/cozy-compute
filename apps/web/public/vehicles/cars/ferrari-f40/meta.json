@@ -1,0 +1,50 @@
+{
+  "id": "cars/ferrari-f40",
+  "name": "Ferrari F40 1987",
+  "brand": "Ferrari",
+  "category": "car",
+  "price": 4200,
+  "speed": 335,
+  "description": "Kiệt tác siêu xe kỷ niệm Ferrari F40 V8 Twin-Turbo thuần cơ khí cổ điển sắc đỏ Ý.",
+  "dimensions": {
+    "frameWidth": 48,
+    "frameHeight": 40,
+    "spritesheetWidth": 192,
+    "spritesheetHeight": 160,
+    "previewWidth": 144,
+    "previewHeight": 120,
+    "iconWidth": 48,
+    "iconHeight": 40
+  },
+  "anchorPoints": {
+    "contactY": 37,
+    "seat": {
+      "x": 24,
+      "y": 18
+    },
+    "center": {
+      "x": 24,
+      "y": 20
+    }
+  },
+  "lights": {
+    "headlight": {
+      "frontOffsetX": 20,
+      "frontOffsetY": 18,
+      "color": "#ffffff"
+    },
+    "taillight": {
+      "rearOffsetX": 18,
+      "rearOffsetY": 18,
+      "color": "#ef4444"
+    }
+  },
+  "colors": {
+    "primary": "#dc2626",
+    "secondary": "#0f172a",
+    "accent": "#ef4444",
+    "trim": "#94a3b8",
+    "glass": "#93c5fd",
+    "saddle": null
+  }
+}

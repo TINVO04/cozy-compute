@@ -47,8 +47,14 @@ export class VehicleLights {
     const angle = [Math.PI / 2, Math.PI, 0, -Math.PI / 2][dir] ?? 0;
     const dx = Math.cos(angle),
       dy = Math.sin(angle);
-    const frontX = x + dx * 20,
-      frontY = y - 10 + dy * 18;
+    const hdx = vehicle.lighting?.headlight?.dx ?? 20;
+    const hdy = vehicle.lighting?.headlight?.dy ?? 18;
+    const tdx = vehicle.lighting?.taillight?.dx ?? 18;
+    const tdy = vehicle.lighting?.taillight?.dy ?? 18;
+    const frontX = x + dx * hdx;
+    const frontY = y - 10 + dy * hdy;
+    const rearX = x - dx * tdx;
+    const rearY = y - 10 - dy * tdy;
     const bicycle = vehicle.kind === 'bicycle';
     this.beam
       .setPosition(frontX, frontY)
@@ -61,7 +67,7 @@ export class VehicleLights {
       this.bulbs.fillStyle(0xffe8aa, 0.18 * brightness).fillCircle(bx, by, 7);
       this.bulbs.fillStyle(0xfff6d7, brightness).fillRect(bx - 2, by - 2, 4, 4);
     }
-    this.bulbs.fillStyle(0xff5544, brightness * 0.8).fillCircle(x - dx * 18, y - 10 - dy * 18, 2);
+    this.bulbs.fillStyle(0xff5544, brightness * 0.8).fillCircle(rearX, rearY, 2);
   }
   destroy() {
     this.beam.destroy();

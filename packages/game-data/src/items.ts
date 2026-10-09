@@ -330,7 +330,7 @@ export const ITEM_SEEDS: ItemDefinitionSeed[] = [
     coinPrice: r.coinPrice,
     sprite: r.sprite,
   })),
-  // fishing boats
+  // vehicles
   ...Object.values(VEHICLES).map((v) => ({
     id: v.id,
     type: 'vehicle' as const,

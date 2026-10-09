@@ -1,0 +1,50 @@
+{
+  "id": "cars/porsche-911",
+  "name": "Porsche 911 GT3 RS",
+  "brand": "Porsche",
+  "category": "car",
+  "price": 3600,
+  "speed": 320,
+  "description": "Chiến mã đường đua Porsche 911 GT3 RS cánh gió swan-neck khổng lồ, hiệu năng thuần chất.",
+  "dimensions": {
+    "frameWidth": 48,
+    "frameHeight": 40,
+    "spritesheetWidth": 192,
+    "spritesheetHeight": 160,
+    "previewWidth": 144,
+    "previewHeight": 120,
+    "iconWidth": 48,
+    "iconHeight": 40
+  },
+  "anchorPoints": {
+    "contactY": 37,
+    "seat": {
+      "x": 24,
+      "y": 18
+    },
+    "center": {
+      "x": 24,
+      "y": 20
+    }
+  },
+  "lights": {
+    "headlight": {
+      "frontOffsetX": 20,
+      "frontOffsetY": 18,
+      "color": "#ffffff"
+    },
+    "taillight": {
+      "rearOffsetX": 18,
+      "rearOffsetY": 18,
+      "color": "#ef4444"
+    }
+  },
+  "colors": {
+    "primary": "#0284c7",
+    "secondary": "#0f172a",
+    "accent": "#38bdf8",
+    "trim": "#1e293b",
+    "glass": "#93c5fd",
+    "saddle": null
+  }
+}

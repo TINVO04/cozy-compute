@@ -418,6 +418,29 @@ export class FarmLivestockManager {
       this.animals.push(sheep);
     }
 
+    // A small ambient duck family swims inside the safe inner pond basin.
+    const pond = FARM_POIS.aquaculture_pond;
+    for (let i = 0; i < 3; i++) {
+      const duck = this.scene.add.sprite(pond.x + 143 + i * 31, pond.y + 110 + i * 14, 'farm:duck', 0);
+      duck.setScale(i === 0 ? 1.5 : 1.1).setDepth(duck.y);
+      duck.setData('kind', 'duck');
+      duck.setData('bounds', {
+        minX: pond.x + 112,
+        maxX: pond.x + 278,
+        minY: pond.y + 98,
+        maxY: pond.y + 178,
+      });
+      duck.setData('isWalking', false);
+      duck.setData('walkAnim', 'farm:duck:idle');
+      duck.setData('idleAnim', 'farm:duck:idle');
+      duck.setData('speed', 14);
+      if (!useUi.getState().reducedMotion) duck.play('farm:duck:idle');
+      duck.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+        this.interactWithAnimal(duck, 'Đàn vịt nối đuôi nhau bơi giữa những bông sen. 🦆');
+      });
+      this.animals.push(duck);
+    }
+
     // Start Wander Loop
     this.wanderTimer = this.scene.time.addEvent({
       delay: 3200,

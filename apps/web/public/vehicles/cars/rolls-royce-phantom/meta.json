@@ -1,0 +1,50 @@
+{
+  "id": "cars/rolls-royce-phantom",
+  "name": "Rolls-Royce Phantom VIII",
+  "brand": "Rolls-Royce",
+  "category": "car",
+  "price": 5000,
+  "speed": 250,
+  "description": "Đỉnh cao xa xỉ quý tộc Rolls-Royce Phantom VIII êm ái cách âm tuyệt đối như thảm bay.",
+  "dimensions": {
+    "frameWidth": 48,
+    "frameHeight": 40,
+    "spritesheetWidth": 192,
+    "spritesheetHeight": 160,
+    "previewWidth": 144,
+    "previewHeight": 120,
+    "iconWidth": 48,
+    "iconHeight": 40
+  },
+  "anchorPoints": {
+    "contactY": 37,
+    "seat": {
+      "x": 24,
+      "y": 18
+    },
+    "center": {
+      "x": 24,
+      "y": 20
+    }
+  },
+  "lights": {
+    "headlight": {
+      "frontOffsetX": 20,
+      "frontOffsetY": 18,
+      "color": "#ffffff"
+    },
+    "taillight": {
+      "rearOffsetX": 18,
+      "rearOffsetY": 18,
+      "color": "#ef4444"
+    }
+  },
+  "colors": {
+    "primary": "#0f172a",
+    "secondary": "#cbd5e1",
+    "accent": "#1e293b",
+    "trim": "#f8fafc",
+    "glass": "#60a5fa",
+    "saddle": null
+  }
+}

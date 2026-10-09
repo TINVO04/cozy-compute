@@ -1,0 +1,50 @@
+{
+  "id": "bicycles/trek-marlin-7",
+  "name": "Trek Marlin 7 Gen 3",
+  "brand": "Trek",
+  "category": "bicycle",
+  "price": 200,
+  "speed": 195,
+  "description": "Xe đạp địa hình thể thao Trek chính hãng, khung nhôm Alpha Silver nhẹ bền.",
+  "dimensions": {
+    "frameWidth": 48,
+    "frameHeight": 40,
+    "spritesheetWidth": 192,
+    "spritesheetHeight": 160,
+    "previewWidth": 144,
+    "previewHeight": 120,
+    "iconWidth": 48,
+    "iconHeight": 40
+  },
+  "anchorPoints": {
+    "contactY": 37,
+    "seat": {
+      "x": 24,
+      "y": 18
+    },
+    "center": {
+      "x": 24,
+      "y": 20
+    }
+  },
+  "lights": {
+    "headlight": {
+      "frontOffsetX": 20,
+      "frontOffsetY": 18,
+      "color": "#ffffff"
+    },
+    "taillight": {
+      "rearOffsetX": 18,
+      "rearOffsetY": 18,
+      "color": "#ef4444"
+    }
+  },
+  "colors": {
+    "primary": "#0284c7",
+    "secondary": "#0f172a",
+    "accent": "#38bdf8",
+    "trim": "#64748b",
+    "glass": "transparent",
+    "saddle": "#18181b"
+  }
+}

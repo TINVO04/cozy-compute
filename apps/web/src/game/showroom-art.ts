@@ -1,8 +1,12 @@
 import type Phaser from 'phaser';
-import { VEHICLE_DISPLAYS, vehicleById } from '@cozy/game-data';
+import { SHOWROOM_PEDESTALS, VEHICLE_DISPLAYS, vehicleById, type ShowroomPedestalDef } from '@cozy/game-data';
 import { ensureVehicleTexture } from '../art/vehicle';
+import { useUi } from '../lib/store';
 
 export const SHOWROOM_TEXTURE_KEY = 'showroom:interior:v2';
+export const SHOWROOM_PEDESTAL_WIDTH = 136;
+export const SHOWROOM_PEDESTAL_HEIGHT = 66;
+export const SHOWROOM_VEHICLE_SCALE = 2;
 
 /**
  * Procedurally generates the authentic, luxury pixel-art showroom interior texture.
@@ -433,6 +437,8 @@ export function buildShowroomTexture(scene: Phaser.Scene): string {
     bicycle_sky: { underglow: 'rgba(0, 229, 255, 0.45)', rim: '#00e5ff', deck: '#2b3b40' },
     motorcycle_coral: { underglow: 'rgba(244, 63, 94, 0.45)', rim: '#f43f5e', deck: '#2b1e22' },
     motorcycle_ducati: { underglow: 'rgba(220, 38, 38, 0.55)', rim: '#dc2626', deck: '#351919' },
+    car_ferrari_f40: { underglow: 'rgba(239, 68, 68, 0.55)', rim: '#ef4444', deck: '#351919' },
+    car_rolls_royce_phantom: { underglow: 'rgba(148, 163, 184, 0.5)', rim: '#94a3b8', deck: '#202938' },
     car_mint: { underglow: 'rgba(46, 204, 113, 0.45)', rim: '#2ecc71', deck: '#1b382b' },
     car_mercedes: { underglow: 'rgba(56, 189, 248, 0.5)', rim: '#38bdf8', deck: '#1e293b' },
     car_sunset: { underglow: 'rgba(234, 88, 12, 0.5)', rim: '#ea580c', deck: '#332014' },
@@ -447,9 +453,9 @@ export function buildShowroomTexture(scene: Phaser.Scene): string {
       deck: '#2e3d3b',
     };
 
-    // Platform Dimensions (136px x 68px) centered at display.x, display.y
-    const pw = 136;
-    const ph = 66;
+    // Platform Dimensions (136px x 66px) centered at display.x, display.y
+    const pw = SHOWROOM_PEDESTAL_WIDTH;
+    const ph = SHOWROOM_PEDESTAL_HEIGHT;
     const px = display.x - pw / 2;
     const py = display.y - ph / 2;
 
@@ -588,16 +594,22 @@ export function buildShowroomTexture(scene: Phaser.Scene): string {
   r('#192326', 20, 456, 236, 4);
   r('#192326', 384, 456, 236, 4);
 
-  // Register canvas as texture in Phaser
-  scene.textures.addCanvas(SHOWROOM_TEXTURE_KEY, canvas);
+  // Register canvas as texture in Phaser with pixel-perfect nearest filtering
+  const texture = scene.textures.addCanvas(SHOWROOM_TEXTURE_KEY, canvas);
+  texture?.setFilter?.(0);
   return SHOWROOM_TEXTURE_KEY;
+}
+
+export interface ShowroomDisplayController {
+  updatePedestal: (pedestalIndex: number, vehicleId: string) => void;
+  destroy: () => void;
 }
 
 /**
  * Creates dynamic interactive vehicle displays, signage, specular spotlights,
  * interactive kiosks, and receptionist NPC inside the showroom scene.
  */
-export function populateShowroomElements(scene: Phaser.Scene) {
+export function populateShowroomElements(scene: Phaser.Scene): ShowroomDisplayController {
   // 1. Add background texture
   scene.add.image(0, 0, SHOWROOM_TEXTURE_KEY).setOrigin(0, 0).setDepth(-10);
 
@@ -632,16 +644,34 @@ export function populateShowroomElements(scene: Phaser.Scene) {
     ease: 'Sine.easeInOut',
   });
 
+  // Track each pedestal's interactive visual components for dynamic cycling
+  const pedestalSlots: Record<
+    number,
+    {
+      pedestal: ShowroomPedestalDef;
+      vehicleImg: Phaser.GameObjects.Image;
+      title: Phaser.GameObjects.Text;
+      priceText: Phaser.GameObjects.Text;
+      categoryText: Phaser.GameObjects.Text;
+    }
+  > = {};
+
   // 3. Vehicles on Display with Enhanced Depth, Labels and Interactive Spec Badges
-  for (const display of VEHICLE_DISPLAYS) {
-    const vehicle = vehicleById(display.id);
+  for (let i = 0; i < SHOWROOM_PEDESTALS.length; i++) {
+    const pedestal = SHOWROOM_PEDESTALS[i]!;
+    const display = VEHICLE_DISPLAYS[i] ?? { id: pedestal.vehicles[0]!, x: pedestal.x, y: pedestal.y };
+    const currentVehicleId =
+      useUi.getState().showroomPedestalOverrides[pedestal.index] ?? pedestal.vehicles[0] ?? display.id;
+    const vehicle = vehicleById(currentVehicleId) ?? vehicleById(display.id);
     if (!vehicle) continue;
 
-    // Vehicle Sprite scaled crisply at native integer ratio
+    // Vehicle Sprite scaled crisply at native integer ratio with pixel-perfect nearest filtering
+    const texKey = ensureVehicleTexture(scene, vehicle.id, 2);
     const vehicleImg = scene.add
-      .image(display.x, display.y - 6, ensureVehicleTexture(scene, display.id, 2))
-      .setScale(2)
+      .image(display.x, display.y - 6, texKey)
+      .setScale(SHOWROOM_VEHICLE_SCALE)
       .setDepth(display.y);
+    vehicleImg.texture?.setFilter?.(0);
 
     // Subtle gentle idle hover/turntable sheen tween
     scene.tweens.add({
@@ -656,14 +686,31 @@ export function populateShowroomElements(scene: Phaser.Scene) {
     // Sleek Illuminated Nameplate & Price Tag (Floating below vehicle)
     const labelContainer = scene.add.container(display.x, display.y + 36).setDepth(display.y + 20);
     const labelGfx = scene.add.graphics();
-    labelGfx.fillStyle(0x131f22, 0.88).fillRoundedRect(-62, -10, 124, 26, 6);
-    labelGfx.lineStyle(1.5, 0x3d5a5e, 0.9).strokeRoundedRect(-62, -10, 124, 26, 6);
+    labelGfx.fillStyle(0x131f22, 0.9).fillRoundedRect(-112, -14, 224, 42, 6);
+    labelGfx.lineStyle(1.5, 0x3d5a5e, 0.9).strokeRoundedRect(-112, -14, 224, 42, 6);
     labelContainer.add(labelGfx);
 
+    const initialIdx = pedestal.vehicles.indexOf(vehicle.id);
+    const categoryText = scene.add
+      .text(
+        0,
+        -5,
+        `${vehicle.brand} · ${pedestal.category} · ${(initialIdx >= 0 ? initialIdx : 0) + 1}/${pedestal.vehicles.length}`,
+        {
+          fontFamily: 'Inter, system-ui, sans-serif',
+          fontSize: '8px',
+          color: '#6ee7b7',
+          fontStyle: 'bold',
+          stroke: '#0d2822',
+          strokeThickness: 2,
+        },
+      )
+      .setOrigin(0.5);
+
     const title = scene.add
-      .text(0, -2, vehicle.name, {
+      .text(0, 3, vehicle.name, {
         fontFamily: 'Inter, system-ui, sans-serif',
-        fontSize: '11px',
+        fontSize: '10px',
         color: '#ffffff',
         fontStyle: 'bold',
         stroke: '#101c1d',
@@ -674,11 +721,11 @@ export function populateShowroomElements(scene: Phaser.Scene) {
     const priceText = scene.add
       .text(
         0,
-        9,
+        13,
         `${vehicle.price.toLocaleString('vi-VN')} Coin · ×${(vehicle.speed / 150).toFixed(1)} tốc độ`,
         {
           fontFamily: 'Inter, system-ui, sans-serif',
-          fontSize: '9px',
+          fontSize: '8.5px',
           color: '#ffd54f',
           fontStyle: 'bold',
           stroke: '#1b231a',
@@ -687,8 +734,38 @@ export function populateShowroomElements(scene: Phaser.Scene) {
       )
       .setOrigin(0.5);
 
+    // Interactive [◀] and [▶] cycling buttons flanking the nameplate
+    const leftBtn = scene.add
+      .text(-103, 4, '◀', {
+        fontFamily: 'Inter, system-ui, sans-serif',
+        fontSize: '11px',
+        color: '#4eedca',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
+    if (typeof leftBtn.setInteractive === 'function') {
+      leftBtn.setInteractive({ useHandCursor: true });
+      leftBtn.on?.('pointerdown', () => useUi.getState().cycleShowroomPedestal(-1, pedestal.index));
+    }
+
+    const rightBtn = scene.add
+      .text(103, 4, '▶', {
+        fontFamily: 'Inter, system-ui, sans-serif',
+        fontSize: '11px',
+        color: '#4eedca',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
+    if (typeof rightBtn.setInteractive === 'function') {
+      rightBtn.setInteractive({ useHandCursor: true });
+      rightBtn.on?.('pointerdown', () => useUi.getState().cycleShowroomPedestal(1, pedestal.index));
+    }
+
+    labelContainer.add(categoryText);
     labelContainer.add(title);
     labelContainer.add(priceText);
+    labelContainer.add(leftBtn);
+    labelContainer.add(rightBtn);
 
     // Key prompt badge floating above the interactive kiosk
     const kx = display.x - 68;
@@ -708,10 +785,49 @@ export function populateShowroomElements(scene: Phaser.Scene) {
         })
         .setOrigin(0.5),
     );
+
+    pedestalSlots[pedestal.index] = {
+      pedestal,
+      vehicleImg,
+      title,
+      priceText,
+      categoryText,
+    };
   }
 
   // 4. Dealership Sales Advisor NPC ("Tư vấn viên Minh Quân") at reception desk
   createShowroomAdvisor(scene, 563, 75);
+
+  return {
+    updatePedestal(pedestalIndex: number, vehicleId: string) {
+      const slot = pedestalSlots[pedestalIndex];
+      if (!slot) return;
+      const v = vehicleById(vehicleId);
+      if (!v) return;
+      const texKey = ensureVehicleTexture(scene, vehicleId, 2);
+      slot.vehicleImg.setTexture?.(texKey);
+      slot.vehicleImg.texture?.setFilter?.(0);
+      slot.title.setText?.(v.name);
+      slot.priceText.setText?.(
+        `${v.price.toLocaleString('vi-VN')} Coin · ×${(v.speed / 150).toFixed(1)} tốc độ`,
+      );
+      const vIdx = slot.pedestal.vehicles.indexOf(vehicleId);
+      slot.categoryText.setText?.(
+        `${v.brand} · ${slot.pedestal.category} · ${(vIdx >= 0 ? vIdx : 0) + 1}/${slot.pedestal.vehicles.length}`,
+      );
+      if (scene.tweens?.add) {
+        scene.tweens.add({
+          targets: slot.vehicleImg,
+          scaleX: { from: SHOWROOM_VEHICLE_SCALE * 0.85, to: SHOWROOM_VEHICLE_SCALE },
+          scaleY: { from: SHOWROOM_VEHICLE_SCALE * 0.85, to: SHOWROOM_VEHICLE_SCALE },
+          alpha: { from: 0.6, to: 1.0 },
+          duration: 200,
+          ease: 'Back.easeOut',
+        });
+      }
+    },
+    destroy() {},
+  };
 }
 
 /**

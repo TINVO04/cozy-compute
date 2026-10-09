@@ -9,6 +9,7 @@ import {
   TOWN_SCENERY,
   TOWN_TEMPLE_WALLS,
   TOWN_TREES,
+  SHOWROOM_PEDESTALS,
   type Building,
 } from '@cozy/game-data';
 import { BUILDING_ROOF, drawTree, paintBuilding, paintProp, paintTown } from './town';
@@ -985,11 +986,29 @@ export function buildDetailedTown(scene: Phaser.Scene) {
   }
   for (const s of TOWN_SCENERY) {
     const key = texture(`scenery:${s.id}`, () => paintScenery(s));
-    scene.add
+    const scenery = scene.add
       .image(s.rect.x + s.rect.w / 2, s.rect.y + s.rect.h, key)
       .setName(key)
       .setOrigin(0.5, 1)
       .setDepth(s.rect.y + s.rect.h);
+    if (s.kind === 'dealer') {
+      const cars = [...SHOWROOM_PEDESTALS[0]!.vehicles, ...SHOWROOM_PEDESTALS[1]!.vehicles];
+      const bikes = [...SHOWROOM_PEDESTALS[2]!.vehicles, ...SHOWROOM_PEDESTALS[3]!.vehicles];
+      const displays = cars.map((id, i) =>
+        texture(`dealer:selection:${i}`, () => paintVehicleDealer([id, bikes[i]!])),
+      );
+      let selection = 0;
+      scenery.setTexture(displays[0]!);
+      const rotation = scene.time.addEvent({
+        delay: 8000,
+        loop: true,
+        callback: () => {
+          selection = (selection + 1) % displays.length;
+          scenery.setTexture(displays[selection]!);
+        },
+      });
+      scene.events.once('shutdown', () => rotation.remove());
+    }
   }
   scene.add
     .text(624, 695, 'GARA BẠC HÀ', {

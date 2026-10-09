@@ -1,0 +1,50 @@
+{
+  "id": "motorcycles/yamaha-yzf-r1",
+  "name": "Yamaha YZF-R1M",
+  "brand": "Yamaha",
+  "category": "motorcycle",
+  "price": 2600,
+  "speed": 315,
+  "description": "Chiến mã đua Yamaha YZF-R1M công nghệ MotoGP, động cơ Crossplane âm thanh phấn khích.",
+  "dimensions": {
+    "frameWidth": 48,
+    "frameHeight": 40,
+    "spritesheetWidth": 192,
+    "spritesheetHeight": 160,
+    "previewWidth": 144,
+    "previewHeight": 120,
+    "iconWidth": 48,
+    "iconHeight": 40
+  },
+  "anchorPoints": {
+    "contactY": 37,
+    "seat": {
+      "x": 24,
+      "y": 17
+    },
+    "center": {
+      "x": 24,
+      "y": 20
+    }
+  },
+  "lights": {
+    "headlight": {
+      "frontOffsetX": 20,
+      "frontOffsetY": 18,
+      "color": "#ffffff"
+    },
+    "taillight": {
+      "rearOffsetX": 18,
+      "rearOffsetY": 18,
+      "color": "#ef4444"
+    }
+  },
+  "colors": {
+    "primary": "#1d4ed8",
+    "secondary": "#1e293b",
+    "accent": "#60a5fa",
+    "trim": "#94a3b8",
+    "glass": "#93c5fd",
+    "saddle": "#0f172a"
+  }
+}

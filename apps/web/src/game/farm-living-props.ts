@@ -76,9 +76,11 @@ export class FarmLivingPropsSystem {
   private spawnWaterSparkle() {
     if (!this.scene.sys.isActive() || useUi.getState().reducedMotion) return;
 
-    // Pick random spot inside pond basin away from borders
-    const px = this.pond.x + 35 + Math.random() * (this.pond.w - 70);
-    const py = this.pond.y + 35 + Math.random() * (this.pond.h - 70);
+    // Polar sampling keeps glints within the organic inner shoreline.
+    const angle = Math.random() * Math.PI * 2;
+    const radius = Math.sqrt(Math.random()) * 0.65;
+    const px = this.pond.x + this.pond.w / 2 + (Math.cos(angle) * radius * this.pond.w) / 2;
+    const py = this.pond.y + this.pond.h / 2 + (Math.sin(angle) * radius * this.pond.h) / 2;
 
     const sparkle = this.scene.add
       .text(px, py, '✦', {
@@ -209,15 +211,16 @@ export class FarmLivingPropsSystem {
       glow.setDepth(spot.y + 1);
 
       // Warm breathing pulse
-      this.scene.tweens.add({
-        targets: glow,
-        scale: { from: 0.85, to: 1.2 },
-        alpha: { from: 0.15, to: 0.35 },
-        duration: 1600 + Math.random() * 400,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
+      if (!useUi.getState().reducedMotion)
+        this.scene.tweens.add({
+          targets: glow,
+          scale: { from: 0.85, to: 1.2 },
+          alpha: { from: 0.15, to: 0.35 },
+          duration: 1600 + Math.random() * 400,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
       this.lanterns.push(glow);
     }
   }
@@ -239,8 +242,10 @@ export class FarmLivingPropsSystem {
       this.waterGraphics.lineStyle(1, 0xe0f2fe, 0.25);
       this.waterGraphics.beginPath();
 
-      const startX = x + 30;
-      const endX = x + w - 30;
+      const normalizedY = (lineY - y - h / 2) / (h / 2 - 34);
+      const halfWidth = Math.sqrt(Math.max(0, 1 - normalizedY ** 2)) * (w / 2 - 47);
+      const startX = x + w / 2 - halfWidth;
+      const endX = x + w / 2 + halfWidth;
 
       for (let px = startX; px <= endX; px += 8) {
         const offset = Math.sin(t * 1.5 + px * 0.04 + row) * 2.5;

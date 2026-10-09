@@ -1,9 +1,12 @@
 import type Phaser from 'phaser';
-import { FARM_GARDEN, FARM_POIS, TILE, type Rect } from '@cozy/game-data';
+import { FARM_GARDEN, FARM_POIS, FARM_SHELTER_WIDTH, TILE, type Rect } from '@cozy/game-data';
 import { drawTree, paintBuilding, paintProp } from './town';
+import { mulberry } from './pixel';
+import { box as rect, ellipse, tiledRoof, fence, flowerBed } from './farm-detail';
+import { decorateFarmEstate } from './farm-estate';
 
-export function farmBuilding(p: Rect, label: string, roof: number) {
-  return paintBuilding({
+export function farmBuilding(p: Rect, label: string, roof: number, warehouse = false) {
+  const c = paintBuilding({
     id: 'farm-building',
     label,
     rect: p,
@@ -12,6 +15,62 @@ export function farmBuilding(p: Rect, label: string, roof: number) {
     accent: 0x6d7351,
     door: { x: (p.x + p.w / 2) / TILE - 1, w: 2 },
   });
+  const ctx = c.getContext('2d')!;
+  const bottom = c.height - 2;
+  if (warehouse) {
+    // A real grain silo gives the warehouse its own agricultural silhouette.
+    const sx = 17,
+      sw = 44;
+    rect(ctx, '#626f65', sx, 31, sw, bottom - 36);
+    rect(ctx, '#a4b3a2', sx + 2, 31, sw - 4, bottom - 38);
+    rect(ctx, '#d5dcc4', sx + 5, 31, 10, bottom - 38);
+    rect(ctx, '#becbb3', sx + 15, 31, 13, bottom - 38);
+    for (let y = 39; y < bottom - 12; y += 13) {
+      rect(ctx, '#788c7a', sx + 1, y, sw - 2, 2);
+      rect(ctx, '#e2e3cb', sx + 3, y - 1, sw - 7, 1);
+      rect(ctx, '#5f7768', sx + sw - 9, y + 4, 2, 2);
+    }
+    for (let y = 0; y < 24; y++) {
+      const half = Math.round(y * 1.05);
+      rect(ctx, '#647b6c', sx + sw / 2 - half, 9 + y, half * 2, 1);
+      rect(ctx, '#92a891', sx + sw / 2 - half, 9 + y, half, 1);
+    }
+    rect(ctx, '#dfddbc', sx - 2, 32, sw + 4, 3);
+    // Timber loading doors with diagonal braces and brass hinges.
+    const dx = p.w / 2 - 27;
+    rect(ctx, '#554938', dx, bottom - 45, 58, 40);
+    rect(ctx, '#9d7952', dx + 2, bottom - 43, 54, 36);
+    for (let x = dx + 4; x < dx + 56; x += 6) rect(ctx, '#ba9567', x, bottom - 42, 1, 34);
+    for (let i = 0; i < 25; i++) {
+      rect(ctx, '#e2c398', dx + 3 + i, bottom - 40 + i, 3, 3);
+      rect(ctx, '#e2c398', dx + 29 + i, bottom - 16 - i, 3, 3);
+    }
+    rect(ctx, '#69523b', dx + 28, bottom - 43, 2, 37);
+    for (const x of [dx + 4, dx + 45])
+      for (const y of [bottom - 36, bottom - 15]) rect(ctx, '#4e594c', x, y, 9, 2);
+  } else {
+    // Deep striped veranda, warm canvas valance and flowering climbing vines.
+    const awY = bottom - 56;
+    rect(ctx, '#78634b', 10, awY - 1, p.w - 12, 17);
+    for (let x = 11; x < p.w - 3; x += 10) {
+      rect(ctx, Math.floor((x - 11) / 10) % 2 ? '#f2e5c5' : '#7b9470', x, awY, Math.min(10, p.w - 3 - x), 12);
+      rect(ctx, '#ddcdab', x, awY + 12, Math.min(9, p.w - 3 - x), 3);
+    }
+    for (const x of [12, p.w - 9]) {
+      rect(ctx, '#826548', x, awY + 15, 4, 37);
+      rect(ctx, '#e0c49a', x, awY + 15, 1, 37);
+    }
+    flowerBed(ctx, { x: 23, y: bottom - 14, w: 37, h: 6 }, 9);
+    flowerBed(ctx, { x: p.w - 56, y: bottom - 14, w: 37, h: 6 }, 10);
+  }
+  for (const x of [5, p.w - 3]) {
+    for (let y = bottom - 78; y < bottom - 16; y += 7) {
+      ellipse(ctx, '#567c4e', x + Math.sin(y) * 3, y, 4, 3);
+      rect(ctx, '#9db777', x - 2, y - 2, 3, 2);
+      if (y % 3 === 0) rect(ctx, '#e9b9b0', x, y, 2, 2);
+    }
+  }
+  return c;
 }
 
 type PenKind = 'poultry' | 'pig' | 'goat' | 'cattle';
@@ -19,140 +78,148 @@ type PenKind = 'poultry' | 'pig' | 'goat' | 'cattle';
 export function paintFarmPen(p: Rect, roof: string, kindOrPasture: PenKind | boolean = false) {
   const kind: PenKind =
     typeof kindOrPasture === 'string' ? kindOrPasture : kindOrPasture ? 'cattle' : 'poultry';
-
   const c = document.createElement('canvas');
   c.width = p.w;
-  c.height = p.h;
+  c.height = p.h + 32;
   const ctx = c.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
-
-  const box = (color: string, x: number, y: number, w: number, h: number) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
-  };
-
-  // 1. Terrain Base Flooring per Animal Type
-  if (kind === 'cattle') {
-    // Lush green clover pasture
-    box('#8cb374', 0, 0, p.w, p.h);
-    box('#7ba164', 8, 8, p.w - 16, p.h - 16);
-    // Clover & wildflower specks
-    for (let x = 16; x < p.w - 20; x += 28) {
-      box('#5c8546', x, 40 + ((x * 3) % (p.h - 60)), 3, 3);
-      box('#ffffff', x + 1, 39 + ((x * 3) % (p.h - 60)), 2, 2);
-    }
-  } else if (kind === 'pig') {
-    // Rich earthy ground with a mud bath
-    box('#96744c', 0, 0, p.w, p.h);
-    box('#85623b', 8, 8, p.w - 16, p.h - 16);
-    // Central mud wallow pool (ao bùn tắm heo)
-    const mwX = Math.round(p.w * 0.45);
-    const mwY = Math.round(p.h * 0.52);
-    box('#543b22', mwX - 38, mwY - 20, 76, 40);
-    box('#3d2815', mwX - 32, mwY - 16, 64, 32);
-    box('#28190d', mwX - 24, mwY - 10, 48, 20);
-    // Mud glint sheen
-    box('rgba(96, 165, 250, 0.25)', mwX - 16, mwY - 6, 24, 6);
-    box('rgba(255, 255, 255, 0.2)', mwX - 10, mwY - 4, 12, 2);
-    // Mud footprints
-    box('#422d1a', mwX - 44, mwY + 4, 3, 2);
-    box('#422d1a', mwX + 42, mwY - 4, 3, 2);
-  } else if (kind === 'goat') {
-    // Rocky highland meadow
-    box('#99ab76', 0, 0, p.w, p.h);
-    box('#889a65', 8, 8, p.w - 16, p.h - 16);
-    // Stepping stones / rocks for goats to hop on
-    box('#64748b', 110, 52, 20, 14);
-    box('#94a3b8', 112, 54, 16, 10);
-    box('#475569', 110, 64, 20, 2);
-    box('#64748b', 124, 44, 16, 12);
-    box('#94a3b8', 126, 46, 12, 8);
-  } else {
-    // Poultry coop: warm sandy earth with scattered golden straw
-    box('#c8b282', 0, 0, p.w, p.h);
-    box('#b7a171', 8, 8, p.w - 16, p.h - 16);
-    // Straw specks on ground
-    for (let x = 12; x < p.w - 16; x += 18) {
-      box('#eab308', x, 40 + ((x * 7) % (p.h - 55)), 4, 1);
-      box('#ca8a04', x + 1, 41 + ((x * 7) % (p.h - 55)), 3, 1);
-      // Small chicken grain seeds
-      box('#fef08a', x + 8, 48 + ((x * 5) % (p.h - 60)), 1, 1);
+  ctx.translate(0, 32);
+  const rng = mulberry(p.w + p.h * 7);
+  const meadow = kind === 'cattle' || kind === 'goat';
+  rect(ctx, '#7c8a60', 0, 0, p.w, p.h);
+  rect(ctx, meadow ? '#93b47b' : '#c4ae83', 4, 4, p.w - 8, p.h - 8);
+  // Soft worn patches and hundreds of tiny straw/clover marks add material at native scale.
+  for (let i = 0; i < 14; i++) {
+    ellipse(
+      ctx,
+      meadow ? '#9dbb84' : '#ccb78f',
+      20 + rng() * (p.w - 40),
+      24 + rng() * (p.h - 48),
+      14 + rng() * 20,
+      6 + rng() * 10,
+    );
+  }
+  for (let i = 0; i < (p.w * p.h) / 90; i++) {
+    const x = 10 + rng() * (p.w - 20),
+      y = 14 + rng() * (p.h - 24);
+    rect(
+      ctx,
+      meadow ? (i % 2 ? '#749863' : '#bdd19a') : i % 2 ? '#e6ce99' : '#ad966e',
+      x,
+      y,
+      i % 3 ? 2 : 4,
+      1,
+    );
+    if (meadow && i % 8 === 0) rect(ctx, '#f3e6bd', x + 1, y - 1, 2, 2);
+  }
+  // The doorway path leads to the actual open southern gate.
+  for (let i = 0; i < 4; i++) {
+    const x = 68 + ((p.w / 2 - 68) * i) / 3,
+      y = 71 + ((p.h - 87) * i) / 3;
+    ellipse(ctx, '#b3a887', x, y + 2, 12, 5);
+    ellipse(ctx, '#ded0ac', x, y, 11, 4);
+    rect(ctx, '#eee0bf', x - 6, y - 2, 8, 1);
+  }
+  if (kind === 'pig') {
+    const x = p.w * 0.53,
+      y = p.h * 0.6;
+    ellipse(ctx, '#af936d', x, y, 48, 23);
+    ellipse(ctx, '#896a52', x, y, 42, 19);
+    ellipse(ctx, '#765d4d', x + 5, y + 2, 30, 13);
+    for (let i = 0; i < 7; i++) rect(ctx, '#b49a7b', x - 25 + i * 8, y + Math.sin(i * 3) * 10, 7, 1);
+  }
+  if (kind === 'goat') {
+    for (const [x, y, r] of [
+      [126, 54, 17],
+      [147, 64, 12],
+      [120, 71, 10],
+    ]) {
+      ellipse(ctx, '#7b8876', x!, y! + 3, r!, 8);
+      ellipse(ctx, '#b7b7a1', x!, y!, r!, 8);
+      ellipse(ctx, '#dbd5b9', x! - 3, y! - 3, r! - 4, 3);
     }
   }
-
-  // 2. Compact Timber Animal Shelter
-  box('#6c5540', 16, 12, 80, 48);
-  box('#cfb27b', 19, 18, 74, 40);
-  for (let x = 24; x < 90; x += 10) box('#b79866', x, 24, 2, 32);
-  // Shelter Roof
-  box('#544936', 12, 4, 88, 23);
-  box(roof, 14, 5, 84, 18);
-  for (let y = 9; y < 23; y += 5) box('#ffffff25', 14, y, 84, 1);
-  box('#584b36', 39, 34, 30, 26);
-  box('#d8c086', 41, 54, 26, 5);
-
-  // 3. Pen-Specific Internal Amenities
+  fence(ctx, 0, 13, p.w);
+  // Taller farmhouses read at the same architectural scale as the town buildings.
+  const sw = FARM_SHELTER_WIDTH[kind];
+  const door = 16 + sw / 2 - 16;
+  rect(ctx, '#614c38', 16, 12, sw, 48);
+  rect(ctx, kind === 'cattle' ? '#bd7860' : '#e0c89e', 19, 20, sw - 6, 36);
+  for (let x = 21; x < 14 + sw; x += 8) {
+    rect(ctx, kind === 'cattle' ? '#945b48' : '#bca078', x, 22, 1, 33);
+    rect(ctx, kind === 'cattle' ? '#d49475' : '#f0d9b0', x + 1, 22, 1, 32);
+  }
+  tiledRoof(ctx, { x: 12, y: -24, w: sw + 8, h: 43 }, roof);
+  // Small gabled dormer, ridge cap and cream bargeboards.
+  for (let row = 0; row < 15; row++) {
+    rect(ctx, '#66513e', 16 + sw / 2 - row, -25 + row, row * 2 + 1, 1);
+    if (row > 2) rect(ctx, '#f0dcad', 18 + sw / 2 - row, -25 + row, row * 2 - 3, 1);
+  }
+  rect(ctx, '#f0dcad', 16 + sw / 2 - 12, -10, 25, 17);
+  rect(ctx, '#6c7960', 16 + sw / 2 - 6, -9, 13, 12);
+  rect(ctx, '#d2dcc0', 16 + sw / 2 - 4, -7, 9, 8);
+  rect(ctx, '#6c7960', 16 + sw / 2, -7, 1, 8);
+  rect(ctx, '#6c7960', 16 + sw / 2 - 4, -3, 9, 1);
+  rect(ctx, '#605443', door, 31, 32, 29);
+  rect(ctx, '#473f35', door + 3, 34, 26, 23);
+  rect(ctx, '#c7a574', door - 1, 56, 34, 4);
+  rect(ctx, '#f0d49a', door + 3, 56, 26, 2);
+  for (const x of [25, sw - 10]) {
+    rect(ctx, '#6c7860', x, 31, 16, 17);
+    rect(ctx, '#b7d5c3', x + 2, 33, 12, 13);
+    rect(ctx, '#f3e4b9', x + 2, 33, 5, 6);
+    rect(ctx, '#6c7860', x + 8, 33, 1, 13);
+    rect(ctx, '#6c7860', x + 2, 39, 12, 1);
+    rect(ctx, '#8b6647', x - 2, 49, 20, 5);
+    for (let fx = x; fx < x + 17; fx += 4) {
+      rect(ctx, '#6d954d', fx, 46, 4, 4);
+      rect(ctx, '#eed397', fx + 1, 46, 2, 2);
+    }
+  }
+  rect(ctx, '#7d6549', 18, 57, sw - 4, 3);
+  // Hay rack, water trough and a little feed label belong to every working pen.
+  rect(ctx, '#82765c', p.w - 72, 26, 52, 25);
+  rect(ctx, '#cbb27b', p.w - 70, 28, 48, 20);
+  for (let x = p.w - 68; x < p.w - 24; x += 5) {
+    rect(ctx, '#efda98', x, 29, 3, 15);
+    rect(ctx, '#9a7e4f', x + 1, 27, 1, 23);
+  }
+  rect(ctx, '#6b7c71', p.w - 59, 63, 39, 17);
+  rect(ctx, '#b6beb0', p.w - 57, 64, 35, 12);
+  rect(ctx, '#489fa9', p.w - 55, 66, 31, 7);
+  rect(ctx, '#a8dcce', p.w - 52, 67, 21, 1);
   if (kind === 'poultry') {
-    // Woven straw nesting boxes with eggs
-    box('#854d0e', 18, 44, 20, 14);
-    box('#eab308', 20, 46, 16, 10);
-    // Small fresh white and beige eggs!
-    box('#f8fafc', 23, 49, 3, 4);
-    box('#fed7aa', 29, 49, 3, 4);
-    box('#f8fafc', 26, 52, 4, 3);
-  } else if (kind === 'pig') {
-    // Feed trough with pumpkin & vegetable mash
-    box('#6b4c2a', p.w - 62, 28, 44, 20);
-    box('#8c6338', p.w - 60, 30, 40, 16);
-    box('#f97316', p.w - 55, 33, 10, 8); // orange pumpkin chunk
-    box('#84cc16', p.w - 42, 34, 12, 7); // green sweet potato leaf
-    box('#eab308', p.w - 28, 33, 8, 8); // yellow corn mash
-  } else if (kind === 'goat') {
-    // Wooden water bucket & hay tub
-    box('#78350f', p.w - 58, 28, 20, 18);
-    box('#0284c7', p.w - 56, 30, 16, 14); // cool blue water
-    box('#38bdf8', p.w - 54, 32, 12, 5); // water sheen
-    // Hay stack
-    box('#ca8a04', p.w - 34, 28, 24, 18);
-    box('#fde047', p.w - 32, 30, 20, 14);
-  } else if (kind === 'cattle') {
-    // Long wooden hay feeder rack
-    box('#897044', p.w - 64, 26, 48, 24);
-    box('#d7bd76', p.w - 62, 28, 44, 20);
-    for (let x = p.w - 59; x < p.w - 18; x += 6) {
-      box('#fde047', x, 27, 3, 18);
-      box('#eab308', x + 1, 26, 2, 20);
+    for (let x = 173; x < 231; x += 20) {
+      ellipse(ctx, '#9c8053', x, 30, 10, 6);
+      ellipse(ctx, '#e0c68e', x, 28, 9, 5);
+      ellipse(ctx, '#fff0d1', x - 3, 27, 2, 3);
+      ellipse(ctx, '#f5e2ba', x + 3, 28, 2, 3);
     }
-    // Red mineral salt lick block
-    box('#b91c1c', p.w - 76, 32, 8, 10);
-    box('#ef4444', p.w - 75, 33, 6, 8);
   }
-
-  // 4. Perimeter Wooden Fence Rails & Posts
-  const rail = (x: number, y: number, w: number) => {
-    box('#8b7150', x, y, w, 8);
-    box('#ddc79b', x, y, w, 3);
-    for (let px = x; px < x + w; px += 32) {
-      box('#806647', px, y - 5, 6, 13);
-      box('#e5d0a3', px, y - 5, 6, 3);
+  // Slim rails, capped posts and visible gaps replace the previous solid border.
+  fence(ctx, 0, p.h - 6, p.w / 2 - TILE);
+  fence(ctx, p.w / 2 + TILE, p.h - 6, p.w / 2 - TILE);
+  for (const x of [1, p.w - 7]) {
+    rect(ctx, '#826348', x, 10, 5, p.h - 15);
+    rect(ctx, '#d7bd91', x, 10, 2, p.h - 15);
+    for (let y = 22; y < p.h - 8; y += 25) {
+      rect(ctx, '#896c4c', x - 1, y, 7, 10);
+      rect(ctx, '#ecd4aa', x - 1, y, 7, 2);
     }
-  };
-  rail(0, 5, p.w);
-  rail(0, p.h - 8, p.w / 2 - TILE);
-  rail(p.w / 2 + TILE, p.h - 8, p.w / 2 - TILE);
-  box('#8b7150', 0, 8, 8, p.h - 16);
-  box('#d3bd91', 0, 8, 3, p.h - 16);
-  box('#8b7150', p.w - 8, 8, 8, p.h - 16);
-  box('#d3bd91', p.w - 8, 8, 3, p.h - 16);
-
-  // Wooden gate posts at the entrance
-  const gateX1 = p.w / 2 - TILE;
-  const gateX2 = p.w / 2 + TILE - 6;
-  box('#785a3a', gateX1, p.h - 14, 6, 14);
-  box('#cfb483', gateX1, p.h - 14, 6, 3);
-  box('#785a3a', gateX2, p.h - 14, 6, 14);
-  box('#cfb483', gateX2, p.h - 14, 6, 3);
-
+  }
+  for (const x of [p.w / 2 - TILE - 3, p.w / 2 + TILE]) {
+    rect(ctx, '#75583e', x, p.h - 20, 6, 20);
+    rect(ctx, '#cfaf80', x, p.h - 20, 3, 19);
+    rect(ctx, '#f1d9b0', x - 1, p.h - 21, 8, 3);
+  }
+  // Small cream plaque, attached to the rear fence rather than floating UI.
+  const label = { poultry: 'GIA CẦM', pig: 'HEO VƯỜN', goat: 'DÊ & CỪU', cattle: 'BÒ SỮA' }[kind];
+  rect(ctx, '#786148', 16 + sw / 2 - 37, 17, 74, 13);
+  rect(ctx, '#f0dfbb', 16 + sw / 2 - 35, 18, 70, 10);
+  ctx.font = 'bold 8px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#565d46';
+  ctx.fillText(label, 16 + sw / 2, 26);
   return c;
 }
 
@@ -175,29 +242,29 @@ export function paintProduceCrates(): HTMLCanvasElement {
   box('rgba(0,0,0,0.22)', 2, 28, 50, 6);
 
   // Left Crate: Sweet Corn (Ngô ngọt)
-  box('#78350f', 2, 14, 22, 16);
-  box('#b45309', 4, 16, 18, 12);
+  box('#79533b', 2, 14, 22, 16);
+  box('#ac7950', 4, 16, 18, 12);
   for (let i = 0; i < 3; i++) {
-    box('#15803d', 6 + i * 5, 10, 4, 8); // green husks
-    box('#fde047', 7 + i * 5, 8, 3, 7); // yellow kernels
-    box('#eab308', 7 + i * 5, 9, 2, 5);
+    box('#527c4e', 6 + i * 5, 10, 4, 8); // green husks
+    box('#ebce85', 7 + i * 5, 8, 3, 7); // yellow kernels
+    box('#c8a25b', 7 + i * 5, 9, 2, 5);
   }
   // Front crate slats
-  box('#92400e', 2, 20, 22, 2);
-  box('#92400e', 2, 26, 22, 2);
+  box('#8b6647', 2, 20, 22, 2);
+  box('#8b6647', 2, 26, 22, 2);
 
   // Center/Right Crate: Red Tomatoes (Cà chua bi)
-  box('#78350f', 26, 12, 24, 18);
-  box('#b45309', 28, 14, 20, 14);
+  box('#79533b', 26, 12, 24, 18);
+  box('#ac7950', 28, 14, 20, 14);
   for (let r = 0; r < 2; r++) {
     for (let col = 0; col < 3; col++) {
-      box('#dc2626', 30 + col * 6, 11 + r * 6, 5, 5);
-      box('#ef4444', 31 + col * 6, 10 + r * 6, 3, 3);
-      box('#16a34a', 32 + col * 6, 9 + r * 6, 2, 2); // green calyx
+      box('#bb6651', 30 + col * 6, 11 + r * 6, 5, 5);
+      box('#d98568', 31 + col * 6, 10 + r * 6, 3, 3);
+      box('#679657', 32 + col * 6, 9 + r * 6, 2, 2); // green calyx
     }
   }
-  box('#92400e', 26, 19, 24, 2);
-  box('#92400e', 26, 25, 24, 2);
+  box('#8b6647', 26, 19, 24, 2);
+  box('#8b6647', 26, 25, 24, 2);
 
   return c;
 }
@@ -224,7 +291,7 @@ export function paintRiceSacks(): HTMLCanvasElement {
   box('#92754d', 2, 12, 24, 16);
   box('#d4b886', 4, 13, 20, 13);
   box('#fef08a', 8, 16, 12, 4); // rice label
-  box('#dc2626', 11, 17, 6, 2); // red vintage stamp
+  box('#bb6651', 11, 17, 6, 2); // red vintage stamp
 
   // Right sack
   box('#92754d', 18, 10, 24, 18);
@@ -259,14 +326,14 @@ export function paintLeaningFarmTools(): HTMLCanvasElement {
   box('rgba(0,0,0,0.2)', 2, 36, 24, 4);
 
   // Leaning hoe (Cây cuốc cán tre)
-  box('#92400e', 6, 2, 2, 34); // long handle
+  box('#8b6647', 6, 2, 2, 34); // long handle
   box('#475569', 3, 2, 8, 3); // iron blade
   box('#64748b', 4, 1, 6, 2);
 
   // Bamboo rake (Cào lúa cán dài)
-  box('#ca8a04', 14, 4, 2, 34);
+  box('#a9824b', 14, 4, 2, 34);
   box('#a16207', 10, 4, 10, 2);
-  for (let px = 10; px <= 20; px += 3) box('#78350f', px, 2, 1, 3);
+  for (let px = 10; px <= 20; px += 3) box('#79533b', px, 2, 1, 3);
 
   // Galvanized watering can (Bình tưới thiếc)
   box('#64748b', 16, 22, 10, 14);
@@ -297,12 +364,12 @@ export function paintHayBales(): HTMLCanvasElement {
   box('rgba(0,0,0,0.22)', 2, 28, 44, 6);
 
   const drawBale = (bx: number, by: number) => {
-    box('#854d0e', bx, by, 22, 14);
-    box('#ca8a04', bx + 1, by + 1, 20, 12);
-    box('#fde047', bx + 2, by + 2, 18, 9);
+    box('#89653e', bx, by, 22, 14);
+    box('#a9824b', bx + 1, by + 1, 20, 12);
+    box('#ebce85', bx + 2, by + 2, 18, 9);
     // Hemp twine strings
-    box('#78350f', bx + 6, by + 1, 2, 12);
-    box('#78350f', bx + 14, by + 1, 2, 12);
+    box('#79533b', bx + 6, by + 1, 2, 12);
+    box('#79533b', bx + 14, by + 1, 2, 12);
   };
 
   // Bottom two bales
@@ -331,18 +398,18 @@ export function paintWaterLilies(): HTMLCanvasElement {
 
   // Green Lily Pad 1
   box('#166534', 4, 8, 14, 10);
-  box('#22c55e', 5, 9, 12, 8);
-  box('#15803d', 11, 10, 2, 4); // notch
+  box('#82b477', 5, 9, 12, 8);
+  box('#527c4e', 11, 10, 2, 4); // notch
 
   // Green Lily Pad 2
   box('#166534', 18, 10, 16, 11);
-  box('#22c55e', 19, 11, 14, 9);
+  box('#82b477', 19, 11, 14, 9);
 
   // Blooming Pink Lotus Flower on top of Pad 1
-  box('#ec4899', 8, 4, 6, 6);
-  box('#f472b6', 9, 3, 4, 6);
+  box('#c97f93', 8, 4, 6, 6);
+  box('#dfa7b0', 9, 3, 4, 6);
   box('#ffffff', 10, 2, 2, 4);
-  box('#fde047', 10, 5, 2, 2); // yellow stamen center
+  box('#ebce85', 10, 5, 2, 2); // yellow stamen center
 
   return c;
 }
@@ -363,19 +430,19 @@ export function paintPondReeds(): HTMLCanvasElement {
   };
 
   // Green reed stems
-  box('#15803d', 4, 6, 2, 28);
-  box('#16a34a', 11, 2, 2, 32);
-  box('#15803d', 18, 8, 2, 26);
+  box('#527c4e', 4, 6, 2, 28);
+  box('#679657', 11, 2, 2, 32);
+  box('#527c4e', 18, 8, 2, 26);
 
   // Brown velvet cattail heads
-  box('#78350f', 3, 8, 4, 10);
-  box('#451a03', 4, 9, 2, 8);
+  box('#79533b', 3, 8, 4, 10);
+  box('#51483b', 4, 9, 2, 8);
 
-  box('#78350f', 10, 4, 4, 12);
-  box('#451a03', 11, 5, 2, 10);
+  box('#79533b', 10, 4, 4, 12);
+  box('#51483b', 11, 5, 2, 10);
 
-  box('#78350f', 17, 10, 4, 9);
-  box('#451a03', 18, 11, 2, 7);
+  box('#79533b', 17, 10, 4, 9);
+  box('#51483b', 18, 11, 2, 7);
 
   return c;
 }
@@ -399,51 +466,51 @@ export function paintAncientWell(): HTMLCanvasElement {
   box('rgba(0,0,0,0.28)', 6, 58, 52, 10);
 
   // Timber Canopy Gabled Roof
-  box('#451a03', 4, 4, 56, 8);
-  box('#78350f', 6, 6, 52, 10);
-  box('#b45309', 8, 8, 48, 8);
-  box('#d97706', 10, 8, 44, 4);
-  for (let r = 8; r < 56; r += 6) box('#92400e', r, 6, 2, 10);
+  box('#51483b', 4, 4, 56, 8);
+  box('#79533b', 6, 6, 52, 10);
+  box('#ac7950', 8, 8, 48, 8);
+  box('#c89a65', 10, 8, 44, 4);
+  for (let r = 8; r < 56; r += 6) box('#8b6647', r, 6, 2, 10);
 
   // Sturdy Upright Wooden Support Beams
-  box('#451a03', 8, 16, 6, 34);
-  box('#78350f', 10, 16, 3, 34);
-  box('#451a03', 50, 16, 6, 34);
-  box('#78350f', 51, 16, 3, 34);
+  box('#51483b', 8, 16, 6, 34);
+  box('#79533b', 10, 16, 3, 34);
+  box('#51483b', 50, 16, 6, 34);
+  box('#79533b', 51, 16, 3, 34);
 
   // Cross Axle & Winding Rope Spool
-  box('#78350f', 14, 22, 36, 5);
-  box('#ca8a04', 26, 20, 12, 9); // thick hemp rope coil
-  box('#eab308', 27, 21, 10, 7);
-  box('#ca8a04', 30, 29, 2, 14); // hanging rope
+  box('#79533b', 14, 22, 36, 5);
+  box('#a9824b', 26, 20, 12, 9); // thick hemp rope coil
+  box('#c8a25b', 27, 21, 10, 7);
+  box('#a9824b', 30, 29, 2, 14); // hanging rope
 
   // Hanging Oak Water Bucket
-  box('#451a03', 26, 40, 12, 10);
-  box('#854d0e', 27, 41, 10, 8);
-  box('#0284c7', 29, 43, 6, 3); // cool water glint
+  box('#51483b', 26, 40, 12, 10);
+  box('#89653e', 27, 41, 10, 8);
+  box('#399eaf', 29, 43, 6, 3); // cool water glint
 
   // Heavy Masonry Stone Basin
-  box('#1e293b', 6, 48, 52, 20);
-  box('#334155', 8, 50, 48, 17);
-  box('#475569', 10, 51, 44, 15);
+  box('#7b806c', 6, 48, 52, 20);
+  box('#969b83', 8, 50, 48, 17);
+  box('#c7c4a6', 10, 51, 44, 15);
 
   // Stone brick pattern with mortar
   for (let y = 52; y <= 64; y += 4) {
-    box('#0f172a', 10, y, 44, 1);
+    box('#696e5e', 10, y, 44, 1);
     for (let x = 12; x <= 50; x += 10) {
-      box('#0f172a', x + (y % 8 === 0 ? 0 : 5), y, 1, 4);
+      box('#696e5e', x + (y % 8 === 0 ? 0 : 5), y, 1, 4);
     }
   }
 
   // Green moss lichen on aged stone
-  box('#4d7c0f', 10, 56, 8, 5);
-  box('#65a30d', 11, 57, 5, 3);
-  box('#4d7c0f', 44, 60, 8, 4);
+  box('#708753', 10, 56, 8, 5);
+  box('#93a76c', 11, 57, 5, 3);
+  box('#708753', 44, 60, 8, 4);
 
   // Dark reflective deep well water inside
-  box('#0f172a', 14, 48, 36, 5);
-  box('#0284c7', 18, 49, 28, 3);
-  box('#38bdf8', 22, 50, 16, 1);
+  box('#696e5e', 14, 48, 36, 5);
+  box('#399eaf', 18, 49, 28, 3);
+  box('#8ed2d1', 22, 50, 16, 1);
 
   return c;
 }
@@ -469,19 +536,19 @@ export function paintTractor(): HTMLCanvasElement {
   // Large Rear Tread Tire (Bánh xe sau lớn)
   box('#0f172a', 4, 14, 16, 18);
   box('#334155', 6, 16, 12, 14);
-  box('#ca8a04', 9, 19, 6, 8); // yellow rim
-  box('#fde047', 10, 20, 4, 6);
+  box('#a9824b', 9, 19, 6, 8); // yellow rim
+  box('#ebce85', 10, 20, 4, 6);
 
   // Smaller Front Tire (Bánh xe trước nhỏ)
   box('#0f172a', 36, 22, 10, 11);
   box('#334155', 38, 23, 6, 9);
-  box('#ca8a04', 40, 25, 3, 5);
+  box('#a9824b', 40, 25, 3, 5);
 
   // Chassis & Red Engine Hood (Thân xe đỏ)
   box('#7f1d1d', 16, 18, 26, 10);
-  box('#b91c1c', 17, 16, 24, 10);
-  box('#dc2626', 18, 15, 22, 8);
-  box('#ef4444', 20, 15, 18, 3); // hood highlight
+  box('#a65746', 17, 16, 24, 10);
+  box('#bb6651', 18, 15, 22, 8);
+  box('#d98568', 20, 15, 18, 3); // hood highlight
 
   // Black Engine Front Grille
   box('#0f172a', 40, 18, 3, 8);
@@ -526,29 +593,29 @@ export function paintGranary(): HTMLCanvasElement {
   box('#64748b', 39, 36, 4, 7);
 
   // Main Slatted Wooden Barn Body (Thân kho gỗ nan)
-  box('#451a03', 6, 16, 40, 22);
-  box('#78350f', 8, 17, 36, 20);
+  box('#51483b', 6, 16, 40, 22);
+  box('#79533b', 8, 17, 36, 20);
 
   // Slat vents showing golden grain/corn inside
   for (let y = 20; y <= 33; y += 4) {
-    box('#451a03', 10, y, 32, 2);
+    box('#51483b', 10, y, 32, 2);
     // Golden corn cobs visible through slats
     for (let x = 12; x <= 38; x += 6) {
-      box('#fde047', x, y - 2, 4, 2);
-      box('#eab308', x + 1, y - 2, 2, 2);
+      box('#ebce85', x, y - 2, 4, 2);
+      box('#c8a25b', x + 1, y - 2, 2, 2);
     }
   }
 
   // Timber Framework Beams
-  box('#451a03', 6, 16, 3, 22);
-  box('#451a03', 43, 16, 3, 22);
-  box('#451a03', 24, 16, 3, 22);
+  box('#51483b', 6, 16, 3, 22);
+  box('#51483b', 43, 16, 3, 22);
+  box('#51483b', 24, 16, 3, 22);
 
   // Pitched Cedar Shingle Roof (Mái ngói gỗ dốc)
   box('#7f1d1d', 2, 6, 48, 11);
   box('#991b1b', 4, 8, 44, 8);
-  box('#b91c1c', 6, 9, 40, 6);
-  for (let r = 5; r <= 45; r += 6) box('#dc2626', r, 7, 2, 9);
+  box('#a65746', 6, 9, 40, 6);
+  for (let r = 5; r <= 45; r += 6) box('#bb6651', r, 7, 2, 9);
 
   return c;
 }
@@ -572,24 +639,25 @@ export function paintRoundHayRoll(): HTMLCanvasElement {
   box('rgba(0,0,0,0.22)', 3, 23, 30, 6);
 
   // Cylinder Hay Body
-  box('#854d0e', 4, 4, 28, 22);
-  box('#ca8a04', 5, 5, 26, 20);
-  box('#eab308', 6, 6, 24, 18);
-  box('#fde047', 8, 7, 20, 16);
+  box('#89653e', 4, 4, 28, 22);
+  box('#a9824b', 5, 5, 26, 20);
+  box('#c8a25b', 6, 6, 24, 18);
+  box('#ebce85', 8, 7, 20, 16);
 
   // Concentric Radial Straw Spiral & Twine Bindings
-  box('#854d0e', 11, 7, 2, 16); // left twine wrap
-  box('#854d0e', 23, 7, 2, 16); // right twine wrap
+  box('#89653e', 11, 7, 2, 16); // left twine wrap
+  box('#89653e', 23, 7, 2, 16); // right twine wrap
 
   // Straw fiber texture flecks
-  box('#ca8a04', 14, 10, 6, 2);
+  box('#a9824b', 14, 10, 6, 2);
   box('#fef08a', 15, 12, 5, 1);
-  box('#ca8a04', 16, 17, 5, 2);
+  box('#a9824b', 16, 17, 5, 2);
 
   return c;
 }
 
 export function decorateFarm(scene: Phaser.Scene) {
+  decorateFarmEstate(scene);
   // 1. Trees
   if (!scene.textures.exists('farm:tree')) {
     const c = document.createElement('canvas');
@@ -598,9 +666,49 @@ export function decorateFarm(scene: Phaser.Scene) {
     drawTree(c.getContext('2d')!, 48, 108, 2);
     scene.textures.addCanvas('farm:tree', c);
   }
-  const trees = FARM_GARDEN.trees.map(([x, y]) =>
+  if (!scene.textures.exists('farm:orchard')) {
+    const c = document.createElement('canvas');
+    c.width = 96;
+    c.height = 112;
+    const ctx = c.getContext('2d')!;
+    drawTree(ctx, 48, 108, 2);
+    for (const [x, y] of [
+      [30, 43],
+      [59, 32],
+      [44, 24],
+      [69, 58],
+      [25, 64],
+      [47, 72],
+    ]) {
+      ellipse(ctx, '#8f713e', x!, y! + 1, 5, 5);
+      ellipse(ctx, '#dcaa5e', x!, y!, 4, 4);
+      rect(ctx, '#f6d78c', x! - 2, y! - 2, 2, 2);
+      rect(ctx, '#4f7946', x!, y! - 5, 3, 2);
+    }
+    scene.textures.addCanvas('farm:orchard', c);
+  }
+  if (!scene.textures.exists('farm:blossom')) {
+    const c = document.createElement('canvas');
+    c.width = 96;
+    c.height = 112;
+    const ctx = c.getContext('2d')!;
+    drawTree(ctx, 48, 108, 2, ['#796957', '#ba8c87', '#dda9a0', '#efc9b4', '#f5dcc1', '#b48380']);
+    const rng = mulberry(812);
+    for (let i = 0; i < 34; i++) {
+      const x = 23 + rng() * 47,
+        y = 24 + rng() * 48;
+      rect(ctx, i % 2 ? '#f8dfc5' : '#f0c1b6', x, y, 3, 2);
+      rect(ctx, '#b98078', x + 1, y + 1, 1, 1);
+    }
+    scene.textures.addCanvas('farm:blossom', c);
+  }
+  const trees = FARM_GARDEN.trees.map(([x, y], i) =>
     scene.add
-      .sprite(x * TILE, y * TILE, 'farm:tree')
+      .sprite(
+        x * TILE,
+        y * TILE,
+        i % 9 === 4 ? 'farm:blossom' : i >= 9 && y <= 3 ? 'farm:orchard' : 'farm:tree',
+      )
       .setOrigin(0.5, 1)
       .setDepth(y * TILE),
   );
@@ -666,9 +774,14 @@ export function decorateFarm(scene: Phaser.Scene) {
   const siloP = FARM_POIS.silo_warehouse;
   // Xe máy cày đậu tại sân kho Silo
   scene.add
-    .image(siloP.x + siloP.w + 35, siloP.y + siloP.h - 4, 'farm:tractor')
+    .image(
+      FARM_GARDEN.tractor.x + FARM_GARDEN.tractor.w / 2,
+      FARM_GARDEN.tractor.y + FARM_GARDEN.tractor.h,
+      'farm:tractor',
+    )
     .setOrigin(0.5, 1)
-    .setDepth(siloP.y + siloP.h);
+    .setScale(2)
+    .setDepth(FARM_GARDEN.tractor.y + FARM_GARDEN.tractor.h);
 
   // Kho thóc phụ bên cạnh Silo
   scene.add
@@ -705,24 +818,24 @@ export function decorateFarm(scene: Phaser.Scene) {
     scene.textures.addCanvas('farm:pond_reeds', paintPondReeds());
   }
   const pond = FARM_POIS.aquaculture_pond;
-  // Floating lilies (shifted up to match new pond position)
+  // Floating lilies stay inside the shoreline at its authoritative position.
   scene.add
-    .image(pond.x + 85, pond.y + 36, 'farm:water_lilies')
+    .image(pond.x + 95, pond.y + 76, 'farm:water_lilies')
     .setOrigin(0.5)
     .setDepth(-5);
   scene.add
-    .image(pond.x + 190, pond.y + 110, 'farm:water_lilies')
+    .image(pond.x + 205, pond.y + 175, 'farm:water_lilies')
     .setOrigin(0.5)
     .setDepth(-5);
   scene.add
-    .image(pond.x + 325, pond.y + 46, 'farm:water_lilies')
+    .image(pond.x + 315, pond.y + 80, 'farm:water_lilies')
     .setOrigin(0.5)
     .setDepth(-5);
   // Shoreline reeds
   scene.add
-    .image(pond.x + 14, pond.y + 15, 'farm:pond_reeds')
+    .image(pond.x + 51, pond.y + 57, 'farm:pond_reeds')
     .setOrigin(0.5, 1)
-    .setDepth(pond.y + 16);
+    .setDepth(pond.y + 58);
   scene.add
     .image(pond.x + 22, pond.y + 175, 'farm:pond_reeds')
     .setOrigin(0.5, 1)

@@ -2108,33 +2108,37 @@ export class FarmScene extends WorldScene {
       const role = animal.getData('role') as string | undefined;
 
       const label =
-        kind === 'cow'
-          ? 'Vuốt ve bò sữa'
-          : kind === 'pig'
-            ? 'Xoa đầu heo mọi'
-            : kind === 'goat'
-              ? 'Vuốt ve dê núi'
-              : kind === 'sheep'
-                ? 'Sờ lông cừu'
-                : role === 'rooster'
-                  ? 'Vuốt ve gà trống'
-                  : role === 'chick'
-                    ? 'Vuốt ve gà con'
-                    : 'Vuốt ve gà mái';
+        kind === 'duck'
+          ? 'Ngắm đàn vịt'
+          : kind === 'cow'
+            ? 'Vuốt ve bò sữa'
+            : kind === 'pig'
+              ? 'Xoa đầu heo mọi'
+              : kind === 'goat'
+                ? 'Vuốt ve dê núi'
+                : kind === 'sheep'
+                  ? 'Sờ lông cừu'
+                  : role === 'rooster'
+                    ? 'Vuốt ve gà trống'
+                    : role === 'chick'
+                      ? 'Vuốt ve gà con'
+                      : 'Vuốt ve gà mái';
       const quote =
-        kind === 'cow'
-          ? 'Bò sữa thong thả nhai cỏ mật! 🐄'
-          : kind === 'pig'
-            ? 'Heo mọi ủi bùn vui vẻ! 🐷'
-            : kind === 'goat'
-              ? 'Dê bách thảo nhai rơm ngon lành! 🐐'
-              : kind === 'sheep'
-                ? 'Cừu Phan Rang bông xù đáng yêu! 🐑'
-                : role === 'rooster'
-                  ? 'Gà trống gáy vang ó o o đón bình minh! 🐓'
-                  : role === 'chick'
-                    ? 'Gà con lon ton mổ thóc cùng mẹ! 🐥'
-                    : 'Gà mái nhảy ổ cục ta cục tác đẻ trứng! 🐔';
+        kind === 'duck'
+          ? 'Đàn vịt nối đuôi nhau bơi giữa những bông sen. 🦆'
+          : kind === 'cow'
+            ? 'Bò sữa thong thả nhai cỏ mật! 🐄'
+            : kind === 'pig'
+              ? 'Heo mọi ủi bùn vui vẻ! 🐷'
+              : kind === 'goat'
+                ? 'Dê bách thảo nhai rơm ngon lành! 🐐'
+                : kind === 'sheep'
+                  ? 'Cừu Phan Rang bông xù đáng yêu! 🐑'
+                  : role === 'rooster'
+                    ? 'Gà trống gáy vang ó o o đón bình minh! 🐓'
+                    : role === 'chick'
+                      ? 'Gà con lon ton mổ thóc cùng mẹ! 🐥'
+                      : 'Gà mái nhảy ổ cục ta cục tác đẻ trứng! 🐔';
       return {
         x: animal.x,
         y: animal.y,
@@ -2185,6 +2189,15 @@ export class FarmScene extends WorldScene {
     };
     shopSprite.setInteractive({ useHandCursor: true }).on('pointerdown', openShop);
     this.interactAt(shopP.x + shopP.w / 2, shopP.y + shopP.h + 6, 'Tiệm Bác Sáu', openShop);
+    const greenhouse = this.children.getByName('farm:estate:greenhouse') as Phaser.GameObjects.Image;
+    greenhouse.setInteractive({ useHandCursor: true }).on('pointerdown', openShop);
+    const nursery = FARM_GARDEN.greenhouse;
+    this.interactAt(
+      nursery.x + nursery.w / 2,
+      nursery.y + nursery.h + 10,
+      'Mua hạt giống ở vườn ươm',
+      openShop,
+    );
 
     // Silo Warehouse
     if (!this.textures.exists('farm:silo_warehouse')) {
@@ -2212,7 +2225,10 @@ export class FarmScene extends WorldScene {
       const p = FARM_POIS[id],
         key = 'farm:' + id;
       if (!this.textures.exists(key)) this.textures.addCanvas(key, painter());
-      this.add.image(p.x, p.y, key).setOrigin(0).setDepth(-6);
+      this.add
+        .image(p.x, p.y - 32, key)
+        .setOrigin(0)
+        .setDepth(-6);
     }
     const poultryP = FARM_POIS.poultry_coop;
     this.interactAt(poultryP.x + poultryP.w / 2, poultryP.y + poultryP.h + 10, 'Chuồng gia cầm', () => {
@@ -2300,7 +2316,7 @@ export class FarmScene extends WorldScene {
 
       const texKey = `farm:plot:${i}`;
       if (!this.textures.exists(texKey)) {
-        this.textures.addCanvas(texKey, paintPlotTile(isStarter, false, undefined, undefined, price));
+        this.textures.addCanvas(texKey, paintPlotTile(isStarter, false, undefined, undefined, price, i));
       }
       const sprite = this.add.image(cx, cy, texKey).setOrigin(0.5, 0.5).setDepth(-5);
 
@@ -2381,6 +2397,7 @@ export class FarmScene extends WorldScene {
             p.cropId ?? undefined,
             p.growthStage ?? undefined,
             p.unlockPrice,
+            p.plotIndex,
           ),
         );
       }

@@ -17,7 +17,7 @@ import {
 import { hex, mulberry, shade } from './pixel';
 
 export const BUILDING_ROOF = 30;
-const C = {
+export const TOWN_PALETTE = {
   grass: '#85b876',
   grassLight: '#a2c58a',
   grassDark: '#7da266',
@@ -28,6 +28,7 @@ const C = {
   water: '#4bc0d2',
   waterDark: '#369fb5',
 };
+const C = TOWN_PALETTE;
 
 function rect(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number) {
   ctx.fillStyle = color;
@@ -90,63 +91,52 @@ export function paintTown(): HTMLCanvasElement {
   // double center medians, dashed dividing lines, zebra crossings & stop lines.
   // =========================================================================
 
-  // 1. High-grade Granite Terrazzo Sidewalks with Modular Joints & Tactile Paving
+  // 1. Granite Terrazzo Sidewalks with Modular Joints & Tactile Paving (Bớt trắng, dịu mắt tự nhiên)
   for (const path of PATHS) {
-    // Base light granite slab
-    rect(ctx, '#e2e8f0', path.x, path.y, path.w, path.h);
+    // Base warm stone pavement slab
+    rect(ctx, '#d8d8cf', path.x, path.y, path.w, path.h);
 
-    // Modern 16px geometric tile grid joints
+    // Subtle 16px geometric tile grid joints
     for (let px = path.x + 16; px < path.x + path.w; px += 16) {
-      rect(ctx, '#cbd5e1', px, path.y, 1, path.h);
+      rect(ctx, '#c4c8bc', px, path.y, 1, path.h);
     }
     for (let py = path.y + 16; py < path.y + path.h; py += 16) {
-      rect(ctx, '#cbd5e1', path.x, py, path.w, 1);
+      rect(ctx, '#c4c8bc', path.x, py, path.w, 1);
     }
 
     // Outer kerbstone bevel border where sidewalk borders lawns or roads
-    rect(ctx, '#64748b', path.x, path.y, path.w, 1);
-    rect(ctx, '#64748b', path.x, path.y + path.h - 1, path.w, 1);
-    rect(ctx, '#64748b', path.x, path.y, 1, path.h);
-    rect(ctx, '#64748b', path.x + path.w - 1, path.y, 1, path.h);
-    rect(ctx, '#94a3b8', path.x + 1, path.y + 1, path.w - 2, 1);
-
-    // Tactile Accessibility Paving (Gạch xúc giác dẫn hướng màu vàng cho người khiếm thị)
-    if (path.w >= 96 && path.h >= 16) {
-      const midY = Math.floor(path.y + path.h / 2);
-      rect(ctx, '#ca8a04', path.x + 8, midY - 1, path.w - 16, 3);
-      rect(ctx, '#facc15', path.x + 8, midY, path.w - 16, 1);
-    } else if (path.h >= 96 && path.w >= 16) {
-      const midX = Math.floor(path.x + path.w / 2);
-      rect(ctx, '#ca8a04', midX - 1, path.y + 8, 3, path.h - 16);
-      rect(ctx, '#facc15', midX, path.y + 8, 1, path.h - 16);
-    }
+    rect(ctx, '#8c918a', path.x, path.y, path.w, 1);
+    rect(ctx, '#8c918a', path.x, path.y + path.h - 1, path.w, 1);
+    rect(ctx, '#8c918a', path.x, path.y, 1, path.h);
+    rect(ctx, '#8c918a', path.x + path.w - 1, path.y, 1, path.h);
+    rect(ctx, '#b0b5ae', path.x + 1, path.y + 1, path.w - 2, 1);
   }
 
-  // 2. Modern Deep Slate Asphalt Road Network (Đại lộ Asphalt Đô thị)
+  // 2. Asphalt Road Network (Màu nhựa đường nhạt dịu như cũ)
   const streets = TOWN_ROADS;
   const onStreet = (x: number, y: number) => streets.some((r) => pointInRect(x, y, r));
 
   for (let y = 320; y < 896; y += 2) {
     for (let x = 32; x < 1504; x += 2) {
       if (!onStreet(x, y)) continue;
-      // Rich deep slate asphalt base
-      rect(ctx, '#1e293b', x, y, 2, 2);
+      // Soft natural asphalt base (màu nhạt tự nhiên như cũ)
+      rect(ctx, '#999e9b', x, y, 2, 2);
 
-      // Dark curb gutter along road perimeter
+      // Curb gutter along road perimeter
       const isPerimeter =
         !onStreet(x - 2, y) || !onStreet(x + 2, y) || !onStreet(x, y - 2) || !onStreet(x, y + 2);
       if (isPerimeter) {
-        rect(ctx, '#0f172a', x, y, 2, 2);
+        rect(ctx, '#7c8580', x, y, 2, 2);
       }
     }
   }
 
-  // Fine aggregate asphalt micro-speckles (lớp ma sát chống trượt tự nhiên)
+  // Fine aggregate asphalt micro-speckles
   for (let i = 0; i < 4200; i++) {
     const x = 32 + Math.floor(rng() * 1472),
       y = 320 + Math.floor(rng() * 576);
     if (onStreet(x, y)) {
-      rect(ctx, i % 3 === 0 ? '#334155' : i % 3 === 1 ? '#0f172a' : '#293548', x, y, 1, 1);
+      rect(ctx, i % 2 ? '#a5aaa5' : '#8f9691', x, y, 1, 1);
     }
   }
 
@@ -157,112 +147,104 @@ export function paintTown(): HTMLCanvasElement {
       for (let gx = r.x + 24; gx < r.x + r.w - 24; gx += 80) {
         if (INTERSECTIONS.some((j) => Math.abs(gx - j.x) < j.halfW + 30)) continue;
         // Top gutter grate
-        rect(ctx, '#020617', gx, r.y + 1, 8, 3);
-        rect(ctx, '#475569', gx + 1, r.y + 1, 6, 2);
-        rect(ctx, '#020617', gx + 3, r.y + 1, 2, 2);
+        rect(ctx, '#525854', gx, r.y + 1, 8, 3);
+        rect(ctx, '#6e7570', gx + 1, r.y + 1, 6, 2);
+        rect(ctx, '#525854', gx + 3, r.y + 1, 2, 2);
         // Bottom gutter grate
-        rect(ctx, '#020617', gx, r.y + r.h - 4, 8, 3);
-        rect(ctx, '#475569', gx + 1, r.y + r.h - 3, 6, 2);
-        rect(ctx, '#020617', gx + 3, r.y + r.h - 3, 2, 2);
+        rect(ctx, '#525854', gx, r.y + r.h - 4, 8, 3);
+        rect(ctx, '#6e7570', gx + 1, r.y + r.h - 3, 6, 2);
+        rect(ctx, '#525854', gx + 3, r.y + r.h - 3, 2, 2);
       }
     } else {
       // Vertical road: place drainage grates on left and right gutter edges
       for (let gy = r.y + 24; gy < r.y + r.h - 24; gy += 80) {
         if (INTERSECTIONS.some((j) => Math.abs(gy - j.y) < j.halfH + 30)) continue;
         // Left gutter grate
-        rect(ctx, '#020617', r.x + 1, gy, 3, 8);
-        rect(ctx, '#475569', r.x + 1, gy + 1, 2, 6);
+        rect(ctx, '#525854', r.x + 1, gy, 3, 8);
+        rect(ctx, '#6e7570', r.x + 1, gy + 1, 2, 6);
         // Right gutter grate
-        rect(ctx, '#020617', r.x + r.w - 4, gy, 3, 8);
-        rect(ctx, '#475569', r.x + r.w - 3, gy + 1, 2, 6);
+        rect(ctx, '#525854', r.x + r.w - 4, gy, 3, 8);
+        rect(ctx, '#6e7570', r.x + r.w - 3, gy + 1, 2, 6);
       }
     }
   }
 
-  // 3. Crisp Thermoplastic Road Edge Boundary Lines (Vạch liền mép đường trắng)
+  // 3. Crisp Thermoplastic Road Edge Boundary Lines (Vạch liền mép đường)
   for (const r of streets) {
     if (r.w > r.h) {
       for (let x = r.x + 2; x < r.x + r.w - 2; x++) {
         if (INTERSECTIONS.some((j) => Math.abs(x - j.x) < j.halfW + 12)) continue;
-        rect(ctx, '#f8fafc', x, r.y + 3, 1, 1);
-        rect(ctx, '#f8fafc', x, r.y + r.h - 4, 1, 1);
+        rect(ctx, '#f4f0e6', x, r.y + 3, 1, 1);
+        rect(ctx, '#f4f0e6', x, r.y + r.h - 4, 1, 1);
       }
     } else {
       for (let y = r.y + 2; y < r.y + r.h - 2; y++) {
         if (INTERSECTIONS.some((j) => Math.abs(y - j.y) < j.halfH + 12)) continue;
-        rect(ctx, '#f8fafc', r.x + 3, y, 1, 1);
-        rect(ctx, '#f8fafc', r.x + r.w - 4, y, 1, 1);
+        rect(ctx, '#f4f0e6', r.x + 3, y, 1, 1);
+        rect(ctx, '#f4f0e6', r.x + r.w - 4, y, 1, 1);
       }
     }
   }
 
-  // 4. Center Dividing Lines (Vạch phân làn & Dải phân cách)
+  // 4. Center Dividing Lines (Vạch tim đường sơn màu vàng nghệ tự nhiên dịu mắt)
+  const ROAD_YELLOW = '#caa055';
   // Avenue 0 (Main horizontal avenue: y = 332..372, center y = 352):
   for (let x = 36; x < 1500; x += 24) {
     if (INTERSECTIONS.some((j) => Math.abs(x - j.x) < j.halfW + 18)) continue;
-    rect(ctx, '#ca8a04', x - 1, 350, 14, 4); // shadow/border
-    rect(ctx, '#facc15', x, 351, 12, 2);
-    rect(ctx, '#fef08a', x + 1, 351, 10, 1);
+    rect(ctx, ROAD_YELLOW, x, 351, 12, 1);
   }
 
   // Avenue 3 (South horizontal avenue: y = 844..884, center y = 864):
   for (let x = 100; x < 1116; x += 24) {
     if (INTERSECTIONS.some((j) => Math.abs(x - j.x) < j.halfW + 18)) continue;
-    rect(ctx, '#ca8a04', x - 1, 862, 14, 4);
-    rect(ctx, '#facc15', x, 863, 12, 2);
-    rect(ctx, '#fef08a', x + 1, 863, 10, 1);
+    rect(ctx, ROAD_YELLOW, x, 863, 12, 1);
   }
 
   // Avenue 1 (West vertical avenue: x = 332..372, center x = 352):
   for (let y = 324; y < 892; y += 24) {
     if (INTERSECTIONS.some((j) => Math.abs(y - j.y) < j.halfH + 18)) continue;
-    rect(ctx, '#ca8a04', 350, y - 1, 4, 14);
-    rect(ctx, '#facc15', 351, y, 2, 12);
-    rect(ctx, '#fef08a', 351, y + 1, 1, 10);
+    rect(ctx, ROAD_YELLOW, 351, y, 1, 12);
   }
 
   // Avenue 2 (East 4-Lane Grand Boulevard: x = 1036..1108, w = 72, center x = 1072):
-  // Double solid yellow center median line (Dải phân cách kép vàng rực)
+  // Double solid yellow center median line (Vạch đôi liền màu vàng nghệ chuẩn đô thị)
   for (let y = 322; y < 894; y++) {
     if (INTERSECTIONS.some((j) => Math.abs(y - j.y) < j.halfH + 16)) continue;
-    rect(ctx, '#facc15', 1070, y, 1, 1);
-    rect(ctx, '#fef08a', 1070, y, 1, 1);
-    rect(ctx, '#0f172a', 1071, y, 2, 1);
-    rect(ctx, '#facc15', 1073, y, 1, 1);
-    rect(ctx, '#fef08a', 1073, y, 1, 1);
+    rect(ctx, ROAD_YELLOW, 1070, y, 1, 1);
+    rect(ctx, ROAD_YELLOW, 1073, y, 1, 1);
   }
   // Dashed white lane markers dividing the dual lanes (x = 1054 and x = 1090):
   for (let y = 324; y < 892; y += 20) {
     if (INTERSECTIONS.some((j) => Math.abs(y - j.y) < j.halfH + 18)) continue;
-    rect(ctx, '#f8fafc', 1054, y, 1, 10);
-    rect(ctx, '#f8fafc', 1090, y, 1, 10);
+    rect(ctx, '#f4f0e6', 1054, y, 1, 10);
+    rect(ctx, '#f4f0e6', 1090, y, 1, 10);
   }
 
   // 5. Pedestrian Zebra Crossings & Stop Lines at all 4 Intersections
   const drawZebraStripes = (zx: number, zy: number, zw: number, zh: number, isHoriz: boolean) => {
     // Backdrop shadow
-    rect(ctx, '#0f172a', zx, zy, zw, zh);
+    rect(ctx, '#68706b', zx, zy, zw, zh);
     if (isHoriz) {
       // Horizontal crossing: zebra bars run vertically (bx)
       for (let bx = zx + 1; bx < zx + zw - 2; bx += 6) {
-        rect(ctx, '#f8fafc', bx, zy + 1, 3, zh - 2);
+        rect(ctx, '#f4f0e6', bx, zy + 1, 3, zh - 2);
       }
     } else {
       // Vertical crossing: zebra bars run horizontally (by)
       for (let by = zy + 1; by < zy + zh - 2; by += 6) {
-        rect(ctx, '#f8fafc', zx + 1, by, zw - 2, 3);
+        rect(ctx, '#f4f0e6', zx + 1, by, zw - 2, 3);
       }
     }
   };
 
   for (const j of INTERSECTIONS) {
-    // Stop lines (Vạch dừng xe dày 3px màu trắng tinh trước vạch đi bộ)
+    // Stop lines (Vạch dừng xe dày 3px màu trắng ngà trước vạch đi bộ)
     // Horizontal stops
-    rect(ctx, '#ffffff', j.x - j.halfW - 8, j.y - j.halfH + 2, 2, j.halfH * 2 - 4);
-    rect(ctx, '#ffffff', j.x + j.halfW + 7, j.y - j.halfH + 2, 2, j.halfH * 2 - 4);
+    rect(ctx, '#f4f0e6', j.x - j.halfW - 8, j.y - j.halfH + 2, 2, j.halfH * 2 - 4);
+    rect(ctx, '#f4f0e6', j.x + j.halfW + 7, j.y - j.halfH + 2, 2, j.halfH * 2 - 4);
     // Vertical stops
-    rect(ctx, '#ffffff', j.x - j.halfW + 2, j.y - j.halfH - 8, j.halfW * 2 - 4, 2);
-    rect(ctx, '#ffffff', j.x - j.halfW + 2, j.y + j.halfH + 7, j.halfW * 2 - 4, 2);
+    rect(ctx, '#f4f0e6', j.x - j.halfW + 2, j.y - j.halfH - 8, j.halfW * 2 - 4, 2);
+    rect(ctx, '#f4f0e6', j.x - j.halfW + 2, j.y + j.halfH + 7, j.halfW * 2 - 4, 2);
 
     // Zebra crosswalks flanking the 4 arms of the intersection
     // West & East arms (across horizontal road)
@@ -277,20 +259,20 @@ export function paintTown(): HTMLCanvasElement {
   // Mid-block pedestrian zebra crossings at the Plaza Promenade entrance (x = 618 and x = 810)
   for (const x of [618, 810]) {
     drawZebraStripes(x, 334, 18, 36, false);
-    rect(ctx, '#ffffff', x - 4, 335, 2, 34);
-    rect(ctx, '#ffffff', x + 20, 335, 2, 34);
+    rect(ctx, '#f4f0e6', x - 4, 335, 2, 34);
+    rect(ctx, '#f4f0e6', x + 20, 335, 2, 34);
   }
 
   // 6. Directional Lane Arrows Stenciled into Asphalt (Mũi tên chỉ hướng làn xe)
   const drawStraightArrow = (ax: number, ay: number) => {
-    rect(ctx, '#f8fafc', ax - 1, ay, 2, 8); // stem
-    rect(ctx, '#f8fafc', ax - 2, ay + 1, 4, 1);
-    rect(ctx, '#f8fafc', ax - 1, ay - 1, 2, 2); // point
+    rect(ctx, '#f4f0e6', ax - 1, ay, 2, 8); // stem
+    rect(ctx, '#f4f0e6', ax - 2, ay + 1, 4, 1);
+    rect(ctx, '#f4f0e6', ax - 1, ay - 1, 2, 2); // point
   };
   const drawHorizArrow = (ax: number, ay: number, toRight: boolean) => {
-    rect(ctx, '#f8fafc', ax - 4, ay - 1, 8, 2); // stem
+    rect(ctx, '#f4f0e6', ax - 4, ay - 1, 8, 2); // stem
     const hx = toRight ? ax + 3 : ax - 4;
-    rect(ctx, '#f8fafc', hx, ay - 2, 1, 4);
+    rect(ctx, '#f4f0e6', hx, ay - 2, 1, 4);
   };
   // Stencil arrows approaching West Intersection
   drawHorizArrow(280, 342, true);
@@ -303,55 +285,55 @@ export function paintTown(): HTMLCanvasElement {
   drawStraightArrow(1090, 420);
   drawStraightArrow(1090, 280);
 
-  // DNTU front courtyard paving with modern architectural granite slabs and driveway
-  rect(ctx, '#f1f5f9', 21 * TILE, 8 * TILE, 11 * TILE, 2 * TILE + 8);
+  // DNTU front courtyard paving with warm architectural stone slabs and driveway
+  rect(ctx, '#dcd8cc', 21 * TILE, 8 * TILE, 11 * TILE, 2 * TILE + 8);
   for (let y = 8 * TILE; y <= 10 * TILE + 8; y += 16) {
-    rect(ctx, '#cbd5e1', 21 * TILE, y, 11 * TILE, 1);
+    rect(ctx, '#c4c0b4', 21 * TILE, y, 11 * TILE, 1);
   }
   for (let x = 21 * TILE; x <= 32 * TILE; x += 16) {
-    rect(ctx, '#cbd5e1', x, 8 * TILE, 1, 2 * TILE + 8);
+    rect(ctx, '#c4c0b4', x, 8 * TILE, 1, 2 * TILE + 8);
   }
   // Central driveway connecting the main street directly to DNTU grand entrance
-  rect(ctx, '#0f172a', 25 * TILE - 2, 8 * TILE, 3 * TILE + 4, 2 * TILE + 12);
-  rect(ctx, '#1e293b', 25 * TILE, 8 * TILE, 3 * TILE, 2 * TILE + 12);
+  rect(ctx, '#7c8580', 25 * TILE - 2, 8 * TILE, 3 * TILE + 4, 2 * TILE + 12);
+  rect(ctx, '#999e9b', 25 * TILE, 8 * TILE, 3 * TILE, 2 * TILE + 12);
   for (let i = 0; i < 60; i++) {
     const sx = 25 * TILE + Math.floor(rng() * (3 * TILE));
     const sy = 8 * TILE + Math.floor(rng() * (2 * TILE + 12));
-    rect(ctx, i % 2 ? '#334155' : '#0f172a', sx, sy, 1, 1);
+    rect(ctx, i % 2 ? '#a5aaa5' : '#8f9691', sx, sy, 1, 1);
   }
-  // White entrance curb lines
-  rect(ctx, '#f8fafc', 25 * TILE, 8 * TILE, 1, 2 * TILE + 12);
-  rect(ctx, '#f8fafc', 28 * TILE - 1, 8 * TILE, 1, 2 * TILE + 12);
+  // Soft off-white entrance curb lines
+  rect(ctx, '#f4f0e6', 25 * TILE, 8 * TILE, 1, 2 * TILE + 12);
+  rect(ctx, '#f4f0e6', 28 * TILE - 1, 8 * TILE, 1, 2 * TILE + 12);
 
   // =========================================================================
   // MODERN CIVIC PLAZA & ILLUMINATED TURQUOISE FOUNTAIN
-  // Geometric Terrazzo modular paving, obsidian granite basin, underwater cyan LEDs
+  // Geometric Terrazzo modular paving, warm limestone basin, underwater cyan LEDs
   // =========================================================================
   ctx.save();
   ctx.beginPath();
   ctx.rect(PLAZA.x, PLAZA.y, PLAZA.w, PLAZA.h);
   ctx.clip();
-  // Modular 32x32 polished granite and terrazzo tiles with slate borders
+  // Modular 32x32 polished limestone and warm terracotta tiles
   for (let y = PLAZA.y; y < PLAZA.y + PLAZA.h; y += 16) {
     for (let x = PLAZA.x; x < PLAZA.x + PLAZA.w; x += 32) {
       const offset = ((y - PLAZA.y) / 16) % 2 ? 16 : 0;
-      rect(ctx, '#cbd5e1', x - offset, y, 32, 16);
-      rect(ctx, '#e2e8f0', x - offset + 1, y + 1, 30, 14);
-      rect(ctx, '#f8fafc', x - offset + 2, y + 2, 28, 1);
+      rect(ctx, '#c7b99a', x - offset, y, 32, 16);
+      rect(ctx, '#eee3ca', x - offset + 1, y + 1, 30, 14);
+      rect(ctx, '#f7eedb', x - offset + 2, y + 2, 28, 1);
     }
   }
-  // Dark basalt stone architectural feature bands framing the central plaza
-  rect(ctx, '#475569', PLAZA.x, PLAZA.y + 4, PLAZA.w, 3);
-  rect(ctx, '#475569', PLAZA.x, PLAZA.y + PLAZA.h - 7, PLAZA.w, 3);
-  rect(ctx, '#475569', PLAZA.x + 4, PLAZA.y, 3, PLAZA.h);
-  rect(ctx, '#475569', PLAZA.x + PLAZA.w - 7, PLAZA.y, 3, PLAZA.h);
+  // Warm architectural feature bands framing the central plaza
+  rect(ctx, '#b5a588', PLAZA.x, PLAZA.y + 4, PLAZA.w, 3);
+  rect(ctx, '#b5a588', PLAZA.x, PLAZA.y + PLAZA.h - 7, PLAZA.w, 3);
+  rect(ctx, '#b5a588', PLAZA.x + 4, PLAZA.y, 3, PLAZA.h);
+  rect(ctx, '#b5a588', PLAZA.x + PLAZA.w - 7, PLAZA.y, 3, PLAZA.h);
 
   // Modern Circular/Oval Illuminated Fountain Feature
-  // Obsidian granite outer rim
-  oval(ctx, '#0f172a', 24 * TILE, 16 * TILE, 84, 68);
-  oval(ctx, '#1e293b', 24 * TILE, 16 * TILE, 82, 66);
-  oval(ctx, '#475569', 24 * TILE, 16 * TILE, 79, 63);
-  oval(ctx, '#94a3b8', 24 * TILE, 16 * TILE, 76, 60);
+  // Warm architectural stone outer rim
+  oval(ctx, '#c39a77', 24 * TILE, 16 * TILE, 84, 68);
+  oval(ctx, '#d1bea0', 24 * TILE, 16 * TILE, 82, 66);
+  oval(ctx, '#e9dbbd', 24 * TILE, 16 * TILE, 79, 63);
+  oval(ctx, '#f2e5c9', 24 * TILE, 16 * TILE, 76, 60);
 
   // Sunken basin pool with luminous tropical turquoise/cyan water
   oval(ctx, '#0284c7', 24 * TILE, 16 * TILE, 64, 50);
@@ -363,15 +345,15 @@ export function paintTown(): HTMLCanvasElement {
   oval(ctx, 'rgba(224, 242, 254, 0.9)', 24 * TILE, 16 * TILE, 38, 28);
   oval(ctx, '#ffffff', 24 * TILE, 16 * TILE, 12, 8); // Central spouting jet core
 
-  // Radial bench seating & granite planters surrounding the fountain
+  // Radial bench seating & warm stone planters surrounding the fountain
   for (const [dx, dy] of [
     [0, -56],
     [0, 56],
     [-72, 0],
     [72, 0],
   ]) {
-    rect(ctx, '#0f172a', 24 * TILE + dx! - 5, 16 * TILE + dy! - 5, 10, 10);
-    rect(ctx, '#334155', 24 * TILE + dx! - 4, 16 * TILE + dy! - 4, 8, 8);
+    rect(ctx, '#8a674f', 24 * TILE + dx! - 5, 16 * TILE + dy! - 5, 10, 10);
+    rect(ctx, '#b78666', 24 * TILE + dx! - 4, 16 * TILE + dy! - 4, 8, 8);
     rect(ctx, '#22c55e', 24 * TILE + dx! - 2, 16 * TILE + dy! - 2, 4, 4); // Evergreen shrub
   }
   ctx.restore();
@@ -631,37 +613,37 @@ export function paintTown(): HTMLCanvasElement {
   rect(ctx, '#cbd5e1', PIER.x + PIER.w + 3, PIER.y, 1, PIER.h);
 
   // Mặt đường nhựa cầu (Asphalt roadway surface)
-  rect(ctx, '#1e293b', PIER.x + 2, PIER.y, PIER.w - 4, PIER.h);
-  rect(ctx, '#334155', PIER.x + 4, PIER.y, PIER.w - 8, PIER.h);
+  rect(ctx, '#7c8580', PIER.x + 2, PIER.y, PIER.w - 4, PIER.h);
+  rect(ctx, '#999e9b', PIER.x + 4, PIER.y, PIER.w - 8, PIER.h);
 
   // 5. RAISED PEDESTRIAN SIDEWALK CURBS (Vỉa hè người đi bộ hai bên mép cầu)
   // Vỉa hè đi bộ bên Tây
-  rect(ctx, '#94a3b8', PIER.x - 2, PIER.y, 6, PIER.h);
-  rect(ctx, '#e2e8f0', PIER.x - 1, PIER.y, 4, PIER.h);
-  rect(ctx, '#cbd5e1', PIER.x + 3, PIER.y, 1, PIER.h); // Gờ bó vỉa granite
+  rect(ctx, '#8c918a', PIER.x - 2, PIER.y, 6, PIER.h);
+  rect(ctx, '#d8d8cf', PIER.x - 1, PIER.y, 4, PIER.h);
+  rect(ctx, '#b0b5ae', PIER.x + 3, PIER.y, 1, PIER.h); // Gờ bó vỉa granite
   // Vỉa hè đi bộ bên Đông
-  rect(ctx, '#94a3b8', PIER.x + PIER.w - 4, PIER.y, 6, PIER.h);
-  rect(ctx, '#e2e8f0', PIER.x + PIER.w - 3, PIER.y, 4, PIER.h);
-  rect(ctx, '#cbd5e1', PIER.x + PIER.w - 4, PIER.y, 1, PIER.h);
+  rect(ctx, '#8c918a', PIER.x + PIER.w - 4, PIER.y, 6, PIER.h);
+  rect(ctx, '#d8d8cf', PIER.x + PIER.w - 3, PIER.y, 4, PIER.h);
+  rect(ctx, '#b0b5ae', PIER.x + PIER.w - 4, PIER.y, 1, PIER.h);
 
   // Vạch kẻ trắng biên an toàn xe chạy (Solid white edge lines)
-  rect(ctx, '#f8fafc', PIER.x + 5, PIER.y, 1, PIER.h);
-  rect(ctx, '#f8fafc', PIER.x + PIER.w - 6, PIER.y, 1, PIER.h);
+  rect(ctx, '#f4f0e6', PIER.x + 5, PIER.y, 1, PIER.h);
+  rect(ctx, '#f4f0e6', PIER.x + PIER.w - 6, PIER.y, 1, PIER.h);
 
   // Vạch vàng đứt nét phân làn đường cao tốc (Yellow dashed centerline)
   for (let my = PIER.y + 4; my < PIER.y + PIER.h - 26; my += 16) {
-    rect(ctx, '#fde047', PIER.x + Math.floor(PIER.w / 2) - 1, my, 2, 8);
+    rect(ctx, ROAD_YELLOW, PIER.x + Math.floor(PIER.w / 2), my, 1, 8);
   }
 
   // 6. TRANSVERSE STEEL FINGER EXPANSION JOINTS (Khe co giãn cầu tại các nhịp)
   for (const py of pierSpans) {
     // Rãnh khe co giãn cao su & thép
-    rect(ctx, '#0f172a', PIER.x + 4, py, PIER.w - 8, 3);
+    rect(ctx, '#525854', PIER.x + 4, py, PIER.w - 8, 3);
     // Bản thép răng lược đan xen (Steel finger joint plates)
     for (let jx = PIER.x + 5; jx < PIER.x + PIER.w - 6; jx += 4) {
-      rect(ctx, '#cbd5e1', jx, py, 2, 1);
-      rect(ctx, '#94a3b8', jx + 1, py + 1, 2, 1);
-      rect(ctx, '#cbd5e1', jx, py + 2, 2, 1);
+      rect(ctx, '#b0b5ae', jx, py, 2, 1);
+      rect(ctx, '#8c918a', jx + 1, py + 1, 2, 1);
+      rect(ctx, '#b0b5ae', jx, py + 2, 2, 1);
     }
   }
 
@@ -723,7 +705,20 @@ export function paintTown(): HTMLCanvasElement {
   return canvas;
 }
 
-export function drawTree(ctx: CanvasRenderingContext2D, cx: number, by: number, s = 1) {
+export function drawTree(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  by: number,
+  s = 1,
+  canopy: readonly [string, string, string, string, string, string] = [
+    '#2d5a2b',
+    '#4a9347',
+    '#6eaa55',
+    '#96bd6c',
+    '#a7c180',
+    '#557e4b',
+  ],
+) {
   const rng = mulberry(Math.floor(cx + by * 7));
   oval(ctx, 'rgba(48,64,43,0.2)', cx + 2, by - 1, 18 * s, 5 * s);
   rect(ctx, '#694c38', cx - 4 * s, by - 18 * s, 8 * s, 18 * s);
@@ -739,14 +734,14 @@ export function drawTree(ctx: CanvasRenderingContext2D, cx: number, by: number, 
   for (const [dx, dy, rx, ry] of clusters) {
     const x = cx + dx! * s,
       y = by + dy! * s;
-    oval(ctx, '#2d5a2b', x, y, rx! * s + 1, ry! * s + 1);
-    oval(ctx, '#4a9347', x, y - 1, rx! * s, ry! * s - 1);
-    oval(ctx, '#6eaa55', x - 2 * s, y - 3 * s, rx! * s * 0.78, ry! * s * 0.65);
-    oval(ctx, '#96bd6c', x - 3 * s, y - 5 * s, rx! * s * 0.5, ry! * s * 0.35);
+    oval(ctx, canopy[0], x, y, rx! * s + 1, ry! * s + 1);
+    oval(ctx, canopy[1], x, y - 1, rx! * s, ry! * s - 1);
+    oval(ctx, canopy[2], x - 2 * s, y - 3 * s, rx! * s * 0.78, ry! * s * 0.65);
+    oval(ctx, canopy[3], x - 3 * s, y - 5 * s, rx! * s * 0.5, ry! * s * 0.35);
     for (let i = 0; i < 7; i++) {
       rect(
         ctx,
-        i % 2 ? '#a7c180' : '#557e4b',
+        i % 2 ? canopy[4] : canopy[5],
         x - 7 * s + rng() * 14 * s,
         y - 6 * s + rng() * 10 * s,
         2 * s,

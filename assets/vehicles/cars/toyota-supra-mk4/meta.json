@@ -1,0 +1,50 @@
+{
+  "id": "cars/toyota-supra-mk4",
+  "name": "Toyota Supra MK4 1994",
+  "brand": "Toyota",
+  "category": "car",
+  "price": 2500,
+  "speed": 290,
+  "description": "Huyền thoại đường phố Nhật Bản Toyota Supra MK4 động cơ 2JZ-GTE trứ danh.",
+  "dimensions": {
+    "frameWidth": 48,
+    "frameHeight": 40,
+    "spritesheetWidth": 192,
+    "spritesheetHeight": 160,
+    "previewWidth": 144,
+    "previewHeight": 120,
+    "iconWidth": 48,
+    "iconHeight": 40
+  },
+  "anchorPoints": {
+    "contactY": 37,
+    "seat": {
+      "x": 24,
+      "y": 18
+    },
+    "center": {
+      "x": 24,
+      "y": 20
+    }
+  },
+  "lights": {
+    "headlight": {
+      "frontOffsetX": 20,
+      "frontOffsetY": 18,
+      "color": "#ffffff"
+    },
+    "taillight": {
+      "rearOffsetX": 18,
+      "rearOffsetY": 18,
+      "color": "#ef4444"
+    }
+  },
+  "colors": {
+    "primary": "#ea580c",
+    "secondary": "#18181b",
+    "accent": "#fb923c",
+    "trim": "#cbd5e1",
+    "glass": "#93c5fd",
+    "saddle": null
+  }
+}

@@ -632,6 +632,13 @@ export const FARM_POIS = {
   crops_field: t(33, 17, 12, 12),
 };
 
+export const FARM_SHELTER_WIDTH = {
+  poultry: 136,
+  pig: 112,
+  cattle: 128,
+  goat: 96,
+} as const;
+
 export const FARM_ZONES: FarmZone[] = [
   { id: 'farm_gate', label: 'Cổng Về Thị Trấn', prompt: 'Trở về thị trấn', rect: FARM_GATE_PORTAL },
   {
@@ -669,16 +676,77 @@ export const FARM_PATHS: Rect[] = [
 export const FARM_GARDEN = {
   well: t(20, 13, 1, 1),
   bench: t(23, 15, 2, 1),
+  greenhouse: { x: 242, y: 98, w: 204, h: 58 },
+  windmill: { x: 814, y: 236, w: 68, h: 36 },
+  flowerCart: { x: 224, y: 366, w: 80, h: 26 },
+  tractor: { x: 784, y: 302, w: 88, h: 34 },
+  pergolaPosts: [
+    { x: 696, y: 507, w: 6, h: 13 },
+    { x: 810, y: 507, w: 6, h: 13 },
+  ],
   trees: [
     [18, 15],
     [3, 7],
     [14, 6],
-    [26, 5],
+    [25, 3.5],
     [44, 6],
     [44, 11],
     [2, 23],
     [15, 29],
     [28, 30],
+    // Orchard and perimeter shade; trunk collisions are derived below for both client and server.
+    [5.5, 2],
+    [14.8, 2.8],
+    [17, 2.2],
+    [30, 3],
+    [32.5, 3],
+    [35, 3],
+    [37.5, 3],
+    [40, 3],
+    [2, 12],
+    [46, 17],
+    [46, 22],
+    [46, 29],
+    [5, 32],
+    [8, 32],
+    [11, 32],
+    [19, 32],
+    [22, 32],
+    [25, 32],
+    // A layered woodland frame and informal orchard groves, clear of all entrances.
+    [1.1, 2],
+    [1, 7.8],
+    [1.2, 10.2],
+    [1.2, 14.8],
+    [1.1, 18.2],
+    [1.2, 21],
+    [1.2, 26],
+    [1.2, 29],
+    [1.2, 32],
+    [3, 2],
+    [3.2, 10.1],
+    [3.2, 14.3],
+    [47, 2.4],
+    [46, 4.2],
+    [47, 7.3],
+    [46.6, 9.5],
+    [47, 12.5],
+    [46.8, 15],
+    [47.2, 19.5],
+    [47, 25.5],
+    [47.2, 32],
+    [16, 2],
+    [19.5, 2],
+    [22.2, 2],
+    [27.5, 2.3],
+    [42.6, 2.2],
+    [32, 31.8],
+    [35, 32],
+    [38, 31.8],
+    [41, 32],
+    [44, 31.8],
+    [5, 13.8],
+    [13.2, 13.7],
   ] as const,
 };
 
@@ -709,18 +777,28 @@ export const FARM_BLOCKERS: Rect[] = [
   FARM_POIS.aquaculture_pond,
   FARM_GARDEN.well,
   FARM_GARDEN.bench,
+  FARM_GARDEN.greenhouse,
+  FARM_GARDEN.windmill,
+  FARM_GARDEN.flowerCart,
+  FARM_GARDEN.tractor,
+  ...FARM_GARDEN.pergolaPosts,
   ...FARM_GARDEN.trees.map(([x, y]) => ({ x: x * TILE - 8, y: y * TILE - 12, w: 16, h: 12 })),
   // Pen rails have a two-tile entrance centered on their southern side.
-  ...[FARM_POIS.poultry_coop, FARM_POIS.pig_pen, FARM_POIS.cattle_pasture, FARM_POIS.goat_pen].flatMap(
-    (p) => [
-      { x: p.x, y: p.y, w: p.w, h: 8 },
-      { x: p.x, y: p.y, w: 8, h: p.h },
-      { x: p.x + p.w - 8, y: p.y, w: 8, h: p.h },
-      { x: p.x, y: p.y + p.h - 8, w: p.w / 2 - TILE, h: 8 },
-      { x: p.x + p.w / 2 + TILE, y: p.y + p.h - 8, w: p.w / 2 - TILE, h: 8 },
-      { x: p.x + 16, y: p.y + 12, w: 80, h: 48 },
-    ],
-  ),
+  ...(
+    [
+      [FARM_POIS.poultry_coop, FARM_SHELTER_WIDTH.poultry],
+      [FARM_POIS.pig_pen, FARM_SHELTER_WIDTH.pig],
+      [FARM_POIS.cattle_pasture, FARM_SHELTER_WIDTH.cattle],
+      [FARM_POIS.goat_pen, FARM_SHELTER_WIDTH.goat],
+    ] as const
+  ).flatMap(([p, shelterWidth]) => [
+    { x: p.x, y: p.y, w: p.w, h: 8 },
+    { x: p.x, y: p.y, w: 8, h: p.h },
+    { x: p.x + p.w - 8, y: p.y, w: 8, h: p.h },
+    { x: p.x, y: p.y + p.h - 8, w: p.w / 2 - TILE, h: 8 },
+    { x: p.x + p.w / 2 + TILE, y: p.y + p.h - 8, w: p.w / 2 - TILE, h: 8 },
+    { x: p.x + 16, y: p.y + 12, w: shelterWidth, h: 48 },
+  ]),
 ];
 
 /** Consolidated Farm Map authoritative metadata */

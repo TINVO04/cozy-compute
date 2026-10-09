@@ -19,4 +19,6 @@ infra/postgres/local_data/
 infra/redis/
 apps/web/output/
 output/
+__pycache__/
+*.pyc
 
