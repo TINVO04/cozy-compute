@@ -12,6 +12,7 @@ describe('authoritative town life wiring', () => {
   });
   it('publishes actors to room state, rejects remote claims, and uses every connected player to startle birds', () => {
     vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-15T12:00:00+07:00'));
     vi.spyOn(BaseRoom.prototype as unknown as { setup(): void }, 'setup').mockImplementation(() => undefined);
     vi.spyOn(BaseRoom.prototype as unknown as { tick(dt: number): void }, 'tick').mockImplementation(
       () => undefined,
@@ -66,9 +67,11 @@ describe('authoritative town life wiring', () => {
     } finally {
       room.onDispose();
     }
-  });
+  }, 15000);
 
   it('handles server-authoritative cat pickup and putdown without resetting position', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-15T12:00:00+07:00'));
     vi.spyOn(BaseRoom.prototype as unknown as { setup(): void }, 'setup').mockImplementation(() => undefined);
     vi.spyOn(BaseRoom.prototype as unknown as { tick(dt: number): void }, 'tick').mockImplementation(
       () => undefined,

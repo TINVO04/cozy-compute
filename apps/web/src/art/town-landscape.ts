@@ -1,5 +1,6 @@
 import {
   TOWN_ROADS,
+  INTERSECTIONS,
   DEALER_DRIVEWAY,
   MAP_HEIGHT,
   MAP_WIDTH,
@@ -84,80 +85,295 @@ export function paintTown(): HTMLCanvasElement {
     if (i % 4 === 0) rect(ctx, C.grassLight, x + 2, y + 1, 1, 2);
   }
 
-  // Continuous concrete sidewalks serve entrances. Asphalt is a separate
-  // connected street surface; only the central square has stone tile joints.
-  for (const path of PATHS) rect(ctx, '#d8d8cf', path.x, path.y, path.w, path.h);
+  // =========================================================================
+  // MODERN URBAN INFRASTRUCTURE (Option 2: Modern Cozy Urban Indie)
+  // High-grade terrazzo sidewalks, tactile accessibility paving, deep slate asphalt,
+  // double center medians, dashed dividing lines, zebra crossings & stop lines.
+  // =========================================================================
+
+  // 1. High-grade Granite Terrazzo Sidewalks with Modular Joints & Tactile Paving
+  for (const path of PATHS) {
+    // Base light granite slab
+    rect(ctx, '#e2e8f0', path.x, path.y, path.w, path.h);
+
+    // Modern 16px geometric tile grid joints
+    for (let px = path.x + 16; px < path.x + path.w; px += 16) {
+      rect(ctx, '#cbd5e1', px, path.y, 1, path.h);
+    }
+    for (let py = path.y + 16; py < path.y + path.h; py += 16) {
+      rect(ctx, '#cbd5e1', path.x, py, path.w, 1);
+    }
+
+    // Outer kerbstone bevel border where sidewalk borders lawns or roads
+    rect(ctx, '#64748b', path.x, path.y, path.w, 1);
+    rect(ctx, '#64748b', path.x, path.y + path.h - 1, path.w, 1);
+    rect(ctx, '#64748b', path.x, path.y, 1, path.h);
+    rect(ctx, '#64748b', path.x + path.w - 1, path.y, 1, path.h);
+    rect(ctx, '#94a3b8', path.x + 1, path.y + 1, path.w - 2, 1);
+
+    // Tactile Accessibility Paving (Gạch xúc giác dẫn hướng màu vàng cho người khiếm thị)
+    if (path.w >= 96 && path.h >= 16) {
+      const midY = Math.floor(path.y + path.h / 2);
+      rect(ctx, '#ca8a04', path.x + 8, midY - 1, path.w - 16, 3);
+      rect(ctx, '#facc15', path.x + 8, midY, path.w - 16, 1);
+    } else if (path.h >= 96 && path.w >= 16) {
+      const midX = Math.floor(path.x + path.w / 2);
+      rect(ctx, '#ca8a04', midX - 1, path.y + 8, 3, path.h - 16);
+      rect(ctx, '#facc15', midX, path.y + 8, 1, path.h - 16);
+    }
+  }
+
+  // 2. Modern Deep Slate Asphalt Road Network (Đại lộ Asphalt Đô thị)
   const streets = TOWN_ROADS;
   const onStreet = (x: number, y: number) => streets.some((r) => pointInRect(x, y, r));
+
   for (let y = 320; y < 896; y += 2) {
     for (let x = 32; x < 1504; x += 2) {
       if (!onStreet(x, y)) continue;
-      rect(ctx, '#999e9b', x, y, 2, 2);
-      if (!onStreet(x - 2, y) || !onStreet(x + 2, y) || !onStreet(x, y - 2) || !onStreet(x, y + 2))
-        rect(ctx, '#7c8580', x, y, 2, 2);
+      // Rich deep slate asphalt base
+      rect(ctx, '#1e293b', x, y, 2, 2);
+
+      // Dark curb gutter along road perimeter
+      const isPerimeter =
+        !onStreet(x - 2, y) || !onStreet(x + 2, y) || !onStreet(x, y - 2) || !onStreet(x, y + 2);
+      if (isPerimeter) {
+        rect(ctx, '#0f172a', x, y, 2, 2);
+      }
     }
   }
-  for (let i = 0; i < 3600; i++) {
+
+  // Fine aggregate asphalt micro-speckles (lớp ma sát chống trượt tự nhiên)
+  for (let i = 0; i < 4200; i++) {
     const x = 32 + Math.floor(rng() * 1472),
       y = 320 + Math.floor(rng() * 576);
-    if (onStreet(x, y)) rect(ctx, i % 2 ? '#a5aaa5' : '#8f9691', x, y, 1, 1);
+    if (onStreet(x, y)) {
+      rect(ctx, i % 3 === 0 ? '#334155' : i % 3 === 1 ? '#0f172a' : '#293548', x, y, 1, 1);
+    }
   }
-  // Sparse sidewalk expansion seams, without repeating brick grids.
-  for (const path of PATHS) {
-    if (path.w > path.h) {
-      for (let x = path.x + 48; x < path.x + path.w; x += 64) {
-        for (let y = path.y; y < path.y + path.h; y++) if (!onStreet(x, y)) rect(ctx, '#c4c8bc', x, y, 1, 1);
+
+  // Periodic storm sewer drainage grates along road gutters (Nắp cống thoát nước kim loại)
+  for (const r of streets) {
+    if (r.w > r.h) {
+      // Horizontal road: place drainage grates on top and bottom gutter edges
+      for (let gx = r.x + 24; gx < r.x + r.w - 24; gx += 80) {
+        if (INTERSECTIONS.some((j) => Math.abs(gx - j.x) < j.halfW + 30)) continue;
+        // Top gutter grate
+        rect(ctx, '#020617', gx, r.y + 1, 8, 3);
+        rect(ctx, '#475569', gx + 1, r.y + 1, 6, 2);
+        rect(ctx, '#020617', gx + 3, r.y + 1, 2, 2);
+        // Bottom gutter grate
+        rect(ctx, '#020617', gx, r.y + r.h - 4, 8, 3);
+        rect(ctx, '#475569', gx + 1, r.y + r.h - 3, 6, 2);
+        rect(ctx, '#020617', gx + 3, r.y + r.h - 3, 2, 2);
       }
     } else {
-      for (let y = path.y + 48; y < path.y + path.h; y += 64) {
-        for (let x = path.x; x < path.x + path.w; x++) if (!onStreet(x, y)) rect(ctx, '#c4c8bc', x, y, 1, 1);
+      // Vertical road: place drainage grates on left and right gutter edges
+      for (let gy = r.y + 24; gy < r.y + r.h - 24; gy += 80) {
+        if (INTERSECTIONS.some((j) => Math.abs(gy - j.y) < j.halfH + 30)) continue;
+        // Left gutter grate
+        rect(ctx, '#020617', r.x + 1, gy, 3, 8);
+        rect(ctx, '#475569', r.x + 1, gy + 1, 2, 6);
+        // Right gutter grate
+        rect(ctx, '#020617', r.x + r.w - 4, gy, 3, 8);
+        rect(ctx, '#475569', r.x + r.w - 3, gy + 1, 2, 6);
       }
     }
   }
-  // Modest crossing stripes where the main street meets the plaza promenade.
-  for (const x of [618, 810]) for (let y = 337; y < 369; y += 7) rect(ctx, '#e3e3d7', x, y, 20, 3);
 
-  // DNTU front courtyard paving with authentic stone grid tiles and central driveway
-  rect(ctx, '#ded7b2', 21 * TILE, 8 * TILE, 11 * TILE, 2 * TILE + 8);
-  for (let y = 8 * TILE; y <= 10 * TILE + 8; y += 8) {
-    rect(ctx, '#c8be98', 21 * TILE, y, 11 * TILE, 1);
+  // 3. Crisp Thermoplastic Road Edge Boundary Lines (Vạch liền mép đường trắng)
+  for (const r of streets) {
+    if (r.w > r.h) {
+      for (let x = r.x + 2; x < r.x + r.w - 2; x++) {
+        if (INTERSECTIONS.some((j) => Math.abs(x - j.x) < j.halfW + 12)) continue;
+        rect(ctx, '#f8fafc', x, r.y + 3, 1, 1);
+        rect(ctx, '#f8fafc', x, r.y + r.h - 4, 1, 1);
+      }
+    } else {
+      for (let y = r.y + 2; y < r.y + r.h - 2; y++) {
+        if (INTERSECTIONS.some((j) => Math.abs(y - j.y) < j.halfH + 12)) continue;
+        rect(ctx, '#f8fafc', r.x + 3, y, 1, 1);
+        rect(ctx, '#f8fafc', r.x + r.w - 4, y, 1, 1);
+      }
+    }
   }
-  for (let x = 21 * TILE; x <= 32 * TILE; x += 8) {
-    rect(ctx, '#c8be98', x, 8 * TILE, 1, 2 * TILE + 8);
+
+  // 4. Center Dividing Lines (Vạch phân làn & Dải phân cách)
+  // Avenue 0 (Main horizontal avenue: y = 332..372, center y = 352):
+  for (let x = 36; x < 1500; x += 24) {
+    if (INTERSECTIONS.some((j) => Math.abs(x - j.x) < j.halfW + 18)) continue;
+    rect(ctx, '#ca8a04', x - 1, 350, 14, 4); // shadow/border
+    rect(ctx, '#facc15', x, 351, 12, 2);
+    rect(ctx, '#fef08a', x + 1, 351, 10, 1);
+  }
+
+  // Avenue 3 (South horizontal avenue: y = 844..884, center y = 864):
+  for (let x = 100; x < 1116; x += 24) {
+    if (INTERSECTIONS.some((j) => Math.abs(x - j.x) < j.halfW + 18)) continue;
+    rect(ctx, '#ca8a04', x - 1, 862, 14, 4);
+    rect(ctx, '#facc15', x, 863, 12, 2);
+    rect(ctx, '#fef08a', x + 1, 863, 10, 1);
+  }
+
+  // Avenue 1 (West vertical avenue: x = 332..372, center x = 352):
+  for (let y = 324; y < 892; y += 24) {
+    if (INTERSECTIONS.some((j) => Math.abs(y - j.y) < j.halfH + 18)) continue;
+    rect(ctx, '#ca8a04', 350, y - 1, 4, 14);
+    rect(ctx, '#facc15', 351, y, 2, 12);
+    rect(ctx, '#fef08a', 351, y + 1, 1, 10);
+  }
+
+  // Avenue 2 (East 4-Lane Grand Boulevard: x = 1036..1108, w = 72, center x = 1072):
+  // Double solid yellow center median line (Dải phân cách kép vàng rực)
+  for (let y = 322; y < 894; y++) {
+    if (INTERSECTIONS.some((j) => Math.abs(y - j.y) < j.halfH + 16)) continue;
+    rect(ctx, '#facc15', 1070, y, 1, 1);
+    rect(ctx, '#fef08a', 1070, y, 1, 1);
+    rect(ctx, '#0f172a', 1071, y, 2, 1);
+    rect(ctx, '#facc15', 1073, y, 1, 1);
+    rect(ctx, '#fef08a', 1073, y, 1, 1);
+  }
+  // Dashed white lane markers dividing the dual lanes (x = 1054 and x = 1090):
+  for (let y = 324; y < 892; y += 20) {
+    if (INTERSECTIONS.some((j) => Math.abs(y - j.y) < j.halfH + 18)) continue;
+    rect(ctx, '#f8fafc', 1054, y, 1, 10);
+    rect(ctx, '#f8fafc', 1090, y, 1, 10);
+  }
+
+  // 5. Pedestrian Zebra Crossings & Stop Lines at all 4 Intersections
+  const drawZebraStripes = (zx: number, zy: number, zw: number, zh: number, isHoriz: boolean) => {
+    // Backdrop shadow
+    rect(ctx, '#0f172a', zx, zy, zw, zh);
+    if (isHoriz) {
+      // Horizontal crossing: zebra bars run vertically (bx)
+      for (let bx = zx + 1; bx < zx + zw - 2; bx += 6) {
+        rect(ctx, '#f8fafc', bx, zy + 1, 3, zh - 2);
+      }
+    } else {
+      // Vertical crossing: zebra bars run horizontally (by)
+      for (let by = zy + 1; by < zy + zh - 2; by += 6) {
+        rect(ctx, '#f8fafc', zx + 1, by, zw - 2, 3);
+      }
+    }
+  };
+
+  for (const j of INTERSECTIONS) {
+    // Stop lines (Vạch dừng xe dày 3px màu trắng tinh trước vạch đi bộ)
+    // Horizontal stops
+    rect(ctx, '#ffffff', j.x - j.halfW - 8, j.y - j.halfH + 2, 2, j.halfH * 2 - 4);
+    rect(ctx, '#ffffff', j.x + j.halfW + 7, j.y - j.halfH + 2, 2, j.halfH * 2 - 4);
+    // Vertical stops
+    rect(ctx, '#ffffff', j.x - j.halfW + 2, j.y - j.halfH - 8, j.halfW * 2 - 4, 2);
+    rect(ctx, '#ffffff', j.x - j.halfW + 2, j.y + j.halfH + 7, j.halfW * 2 - 4, 2);
+
+    // Zebra crosswalks flanking the 4 arms of the intersection
+    // West & East arms (across horizontal road)
+    drawZebraStripes(j.x - j.halfW - 6, j.y - j.halfH + 3, 5, j.halfH * 2 - 6, false);
+    drawZebraStripes(j.x + j.halfW + 2, j.y - j.halfH + 3, 5, j.halfH * 2 - 6, false);
+
+    // North & South arms (across vertical road)
+    drawZebraStripes(j.x - j.halfW + 3, j.y - j.halfH - 6, j.halfW * 2 - 6, 5, true);
+    drawZebraStripes(j.x - j.halfW + 3, j.y + j.halfH + 2, j.halfW * 2 - 6, 5, true);
+  }
+
+  // Mid-block pedestrian zebra crossings at the Plaza Promenade entrance (x = 618 and x = 810)
+  for (const x of [618, 810]) {
+    drawZebraStripes(x, 334, 18, 36, false);
+    rect(ctx, '#ffffff', x - 4, 335, 2, 34);
+    rect(ctx, '#ffffff', x + 20, 335, 2, 34);
+  }
+
+  // 6. Directional Lane Arrows Stenciled into Asphalt (Mũi tên chỉ hướng làn xe)
+  const drawStraightArrow = (ax: number, ay: number) => {
+    rect(ctx, '#f8fafc', ax - 1, ay, 2, 8); // stem
+    rect(ctx, '#f8fafc', ax - 2, ay + 1, 4, 1);
+    rect(ctx, '#f8fafc', ax - 1, ay - 1, 2, 2); // point
+  };
+  const drawHorizArrow = (ax: number, ay: number, toRight: boolean) => {
+    rect(ctx, '#f8fafc', ax - 4, ay - 1, 8, 2); // stem
+    const hx = toRight ? ax + 3 : ax - 4;
+    rect(ctx, '#f8fafc', hx, ay - 2, 1, 4);
+  };
+  // Stencil arrows approaching West Intersection
+  drawHorizArrow(280, 342, true);
+  drawHorizArrow(424, 362, false);
+  drawStraightArrow(342, 420);
+  drawStraightArrow(362, 280);
+  // Stencil arrows approaching East 4-Lane Boulevard Intersection
+  drawStraightArrow(1054, 420);
+  drawStraightArrow(1054, 280);
+  drawStraightArrow(1090, 420);
+  drawStraightArrow(1090, 280);
+
+  // DNTU front courtyard paving with modern architectural granite slabs and driveway
+  rect(ctx, '#f1f5f9', 21 * TILE, 8 * TILE, 11 * TILE, 2 * TILE + 8);
+  for (let y = 8 * TILE; y <= 10 * TILE + 8; y += 16) {
+    rect(ctx, '#cbd5e1', 21 * TILE, y, 11 * TILE, 1);
+  }
+  for (let x = 21 * TILE; x <= 32 * TILE; x += 16) {
+    rect(ctx, '#cbd5e1', x, 8 * TILE, 1, 2 * TILE + 8);
   }
   // Central driveway connecting the main street directly to DNTU grand entrance
-  rect(ctx, '#7c8580', 25 * TILE - 2, 8 * TILE, 3 * TILE + 4, 2 * TILE + 12);
-  rect(ctx, '#999e9b', 25 * TILE, 8 * TILE, 3 * TILE, 2 * TILE + 12);
+  rect(ctx, '#0f172a', 25 * TILE - 2, 8 * TILE, 3 * TILE + 4, 2 * TILE + 12);
+  rect(ctx, '#1e293b', 25 * TILE, 8 * TILE, 3 * TILE, 2 * TILE + 12);
   for (let i = 0; i < 60; i++) {
     const sx = 25 * TILE + Math.floor(rng() * (3 * TILE));
     const sy = 8 * TILE + Math.floor(rng() * (2 * TILE + 12));
-    rect(ctx, i % 2 ? '#a5aaa5' : '#8f9691', sx, sy, 1, 1);
+    rect(ctx, i % 2 ? '#334155' : '#0f172a', sx, sy, 1, 1);
   }
+  // White entrance curb lines
+  rect(ctx, '#f8fafc', 25 * TILE, 8 * TILE, 1, 2 * TILE + 12);
+  rect(ctx, '#f8fafc', 28 * TILE - 1, 8 * TILE, 1, 2 * TILE + 12);
 
-  // Limestone square, with an understated terracotta inlay around the fountain.
+  // =========================================================================
+  // MODERN CIVIC PLAZA & ILLUMINATED TURQUOISE FOUNTAIN
+  // Geometric Terrazzo modular paving, obsidian granite basin, underwater cyan LEDs
+  // =========================================================================
   ctx.save();
   ctx.beginPath();
   ctx.rect(PLAZA.x, PLAZA.y, PLAZA.w, PLAZA.h);
   ctx.clip();
+  // Modular 32x32 polished granite and terrazzo tiles with slate borders
   for (let y = PLAZA.y; y < PLAZA.y + PLAZA.h; y += 16) {
     for (let x = PLAZA.x; x < PLAZA.x + PLAZA.w; x += 32) {
       const offset = ((y - PLAZA.y) / 16) % 2 ? 16 : 0;
-      rect(ctx, '#c7b99a', x - offset, y, 32, 16);
-      rect(ctx, '#eee3ca', x - offset + 1, y + 1, 30, 14);
-      rect(ctx, '#f7eedb', x - offset + 2, y + 2, 28, 1);
+      rect(ctx, '#cbd5e1', x - offset, y, 32, 16);
+      rect(ctx, '#e2e8f0', x - offset + 1, y + 1, 30, 14);
+      rect(ctx, '#f8fafc', x - offset + 2, y + 2, 28, 1);
     }
   }
-  oval(ctx, '#c39a77', 24 * TILE, 16 * TILE, 82, 66);
-  oval(ctx, '#f2e5c9', 24 * TILE, 16 * TILE, 77, 61);
-  oval(ctx, '#d1bea0', 24 * TILE, 16 * TILE, 59, 45);
-  oval(ctx, '#e9dbbd', 24 * TILE, 16 * TILE, 56, 42);
+  // Dark basalt stone architectural feature bands framing the central plaza
+  rect(ctx, '#475569', PLAZA.x, PLAZA.y + 4, PLAZA.w, 3);
+  rect(ctx, '#475569', PLAZA.x, PLAZA.y + PLAZA.h - 7, PLAZA.w, 3);
+  rect(ctx, '#475569', PLAZA.x + 4, PLAZA.y, 3, PLAZA.h);
+  rect(ctx, '#475569', PLAZA.x + PLAZA.w - 7, PLAZA.y, 3, PLAZA.h);
+
+  // Modern Circular/Oval Illuminated Fountain Feature
+  // Obsidian granite outer rim
+  oval(ctx, '#0f172a', 24 * TILE, 16 * TILE, 84, 68);
+  oval(ctx, '#1e293b', 24 * TILE, 16 * TILE, 82, 66);
+  oval(ctx, '#475569', 24 * TILE, 16 * TILE, 79, 63);
+  oval(ctx, '#94a3b8', 24 * TILE, 16 * TILE, 76, 60);
+
+  // Sunken basin pool with luminous tropical turquoise/cyan water
+  oval(ctx, '#0284c7', 24 * TILE, 16 * TILE, 64, 50);
+  oval(ctx, '#06b6d4', 24 * TILE, 16 * TILE, 60, 46);
+  oval(ctx, '#22d3ee', 24 * TILE, 16 * TILE, 56, 42);
+
+  // Underwater LED illumination rings (Đèn LED âm nước đổi màu rực rỡ)
+  oval(ctx, 'rgba(103, 232, 249, 0.75)', 24 * TILE, 16 * TILE, 46, 34);
+  oval(ctx, 'rgba(224, 242, 254, 0.9)', 24 * TILE, 16 * TILE, 38, 28);
+  oval(ctx, '#ffffff', 24 * TILE, 16 * TILE, 12, 8); // Central spouting jet core
+
+  // Radial bench seating & granite planters surrounding the fountain
   for (const [dx, dy] of [
-    [0, -54],
-    [0, 54],
-    [-70, 0],
-    [70, 0],
+    [0, -56],
+    [0, 56],
+    [-72, 0],
+    [72, 0],
   ]) {
-    rect(ctx, '#b78666', 24 * TILE + dx! - 3, 16 * TILE + dy! - 3, 6, 6);
+    rect(ctx, '#0f172a', 24 * TILE + dx! - 5, 16 * TILE + dy! - 5, 10, 10);
+    rect(ctx, '#334155', 24 * TILE + dx! - 4, 16 * TILE + dy! - 4, 8, 8);
+    rect(ctx, '#22c55e', 24 * TILE + dx! - 2, 16 * TILE + dy! - 2, 4, 4); // Evergreen shrub
   }
   ctx.restore();
   // Small eastern temple garden and its stone approach. Walls and gate are
@@ -193,10 +409,12 @@ export function paintTown(): HTMLCanvasElement {
     rect(ctx, '#f7ecc9', x, 796, 2, 34);
     rect(ctx, '#f7ecc9', x, 828, 28, 2);
   }
-  // Café terrace and residential garden read as distinct little destinations.
-  rect(ctx, '#b7ad89', 4 * TILE, 8 * TILE, 7 * TILE, 2 * TILE);
-  for (let y = 8 * TILE; y < 10 * TILE; y += 8) {
-    rect(ctx, '#d3c39e', 4 * TILE + 1, y + 1, 7 * TILE - 2, 6);
+  // Modern Café outdoor wooden terrace deck & patio
+  rect(ctx, '#1e293b', 4 * TILE - 1, 8 * TILE - 1, 7 * TILE + 2, 2 * TILE + 2);
+  rect(ctx, '#78350f', 4 * TILE, 8 * TILE, 7 * TILE, 2 * TILE);
+  for (let y = 8 * TILE; y < 10 * TILE; y += 6) {
+    rect(ctx, '#b45309', 4 * TILE + 1, y + 1, 7 * TILE - 2, 4);
+    rect(ctx, '#d97706', 4 * TILE + 1, y + 1, 7 * TILE - 2, 1);
   }
   // Short fence segments frame lawns, leaving all paths open.
   for (const fence of TOWN_FENCES) {
@@ -212,24 +430,71 @@ export function paintTown(): HTMLCanvasElement {
     }
   }
 
+  // =========================================================================
+  // MODERN WATERFRONT RETAINING WALL & MARINA SLIPWAY
+  // Precast concrete sea walls, stainless steel railings, composite pontoon slipway
+  // =========================================================================
   for (const w of WATER) {
-    rect(ctx, '#c7bc8b', w.x - 5, w.y - 5, w.w + 5, w.h + 5);
-    rect(ctx, C.waterDark, w.x, w.y, w.w, w.h);
-    rect(ctx, C.water, w.x + 4, w.y + 5, w.w - 4, w.h - 5);
-    const pondDepth = ctx.createLinearGradient(w.x, w.y, w.x + w.w, w.y + w.h);
-    pondDepth.addColorStop(0, '#8dad8c');
-    pondDepth.addColorStop(0.3, '#619991');
-    pondDepth.addColorStop(0.7, '#457d79');
-    pondDepth.addColorStop(1, '#729a89');
-    ctx.fillStyle = pondDepth;
-    ctx.fillRect(w.x + 4, w.y + 5, w.w - 4, w.h - 5);
-    rect(ctx, '#76d7e5', w.x + 4, w.y + 5, w.w - 4, 4);
-    rect(ctx, '#76d7e5', w.x + 4, w.y + 5, 4, w.h - 5);
-    for (let i = 0; i < 210; i++) {
+    // 1. Reinforced Precast Concrete Seawall with Granite Coping
+    rect(ctx, '#1e293b', w.x - 8, w.y - 8, w.w + 8, w.h + 8); // foundation
+    rect(ctx, '#334155', w.x - 6, w.y - 6, w.w + 6, w.h + 6); // sea wall face
+    rect(ctx, '#64748b', w.x - 4, w.y - 4, w.w + 4, w.h + 4); // upper batter
+    rect(ctx, '#cbd5e1', w.x - 2, w.y - 2, w.w + 2, w.h + 2); // polished granite coping
+
+    // Modern Stainless Steel Waterfront Promenade Railing along the shoreline
+    for (let rx = w.x + 8; rx < w.x + w.w - 16; rx += 16) {
+      if (rx >= PIER.x - 12 && rx <= PIER.x + PIER.w + 12) continue; // skip bridge
+      rect(ctx, '#94a3b8', rx, w.y - 8, 2, 7); // vertical post
+      rect(ctx, '#e2e8f0', rx - 8, w.y - 7, 16, 2); // top rail
+      rect(ctx, '#cbd5e1', rx - 8, w.y - 4, 16, 1); // intermediate cable
+    }
+
+    // 2. Crystal Clear Flowing River Water with Tropical Depth Gradient
+    rect(ctx, '#0369a1', w.x, w.y, w.w, w.h);
+    const riverDepth = ctx.createLinearGradient(w.x, w.y, w.x + w.w, w.y + w.h);
+    riverDepth.addColorStop(0, '#0284c7');
+    riverDepth.addColorStop(0.35, '#0891b2');
+    riverDepth.addColorStop(0.7, '#0e7490');
+    riverDepth.addColorStop(1, '#042f2e');
+    ctx.fillStyle = riverDepth;
+    ctx.fillRect(w.x + 4, w.y + 4, w.w - 4, w.h - 4);
+
+    // Water surface wavelets & sunlight glint
+    rect(ctx, '#67e8f9', w.x + 4, w.y + 4, w.w - 4, 3);
+    rect(ctx, '#67e8f9', w.x + 4, w.y + 4, 3, w.h - 4);
+    for (let i = 0; i < 240; i++) {
       const x = w.x + 12 + rng() * (w.w - 24),
         y = w.y + 12 + rng() * (w.h - 24);
-      rect(ctx, i % 3 ? 'rgba(190,220,203,0.3)' : 'rgba(36,86,78,0.25)', x, y, 4 + rng() * 12, 1);
+      rect(
+        ctx,
+        i % 3 === 0 ? 'rgba(224, 242, 254, 0.45)' : 'rgba(8, 145, 178, 0.35)',
+        x,
+        y,
+        4 + rng() * 12,
+        1,
+      );
     }
+
+    // 3. Modern Marina Pontoon Slipway Docking Platform (x ~ 1280..1320, y ~ 860..900)
+    // Dock ramp leading from shore
+    const slipX = 40.5 * TILE; // 1296
+    const slipY = 27.5 * TILE; // 880
+    // Concrete slipway ramp
+    rect(ctx, '#334155', slipX - 28, slipY - 36, 44, 48);
+    rect(ctx, '#64748b', slipX - 26, slipY - 34, 40, 44);
+    for (let sy = slipY - 30; sy < slipY + 8; sy += 6) {
+      rect(ctx, '#475569', slipX - 24, sy, 36, 2); // anti-slip ridges
+    }
+    // High-visibility yellow/black safety edge
+    for (let hx = slipX - 26; hx < slipX + 14; hx += 8) {
+      rect(ctx, '#facc15', hx, slipY + 10, 4, 3);
+      rect(ctx, '#0f172a', hx + 4, slipY + 10, 4, 3);
+    }
+    // Mooring bollards in stainless steel
+    rect(ctx, '#0f172a', slipX - 22, slipY + 8, 4, 5);
+    rect(ctx, '#f8fafc', slipX - 21, slipY + 7, 2, 4);
+    rect(ctx, '#0f172a', slipX + 8, slipY + 8, 4, 5);
+    rect(ctx, '#f8fafc', slipX + 9, slipY + 7, 2, 4);
     for (const [dx, dy] of [
       [22, 40],
       [42, 128],
@@ -506,11 +771,11 @@ export function drawTree(
 }
 
 const SIGNS: Record<string, string> = {
-  cafe: 'BEAN THERE',
+  cafe: 'CÀ PHÊ BEAN THERE',
   fashion: 'THREADBARE',
-  furniture: 'SOFA SO GOOD',
-  apartments: 'CHUNG CƯ',
-  delivery: 'BƯU TRẠM',
+  furniture: 'NỘI THẤT SOFA',
+  apartments: 'CHUNG CƯ BCONS',
+  delivery: 'BƯU CỤC 24/7',
   fishing_shop: 'NGƯ CỤ BÁC BA',
   comga: 'CƠM GÀ 68',
   bida: 'BIDA H2S',
@@ -1787,6 +2052,522 @@ export function paintBconsApartment(b: Building): HTMLCanvasElement {
   return canvas;
 }
 
+/**
+ * 1. BEAN THERE · SPECIALTY COFFEE & ROASTERY
+ * Modern Industrial Chic Glasshouse Cafe with warm Scandinavian timber louvers,
+ * illuminated 3D signboard, La Marzocco espresso bar, hanging Edison bulbs,
+ * and double frameless glass pivot doors.
+ */
+function paintModernCafeBuilding(b: Building): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = b.rect.w + 8; // 232
+  canvas.height = b.rect.h + BUILDING_ROOF; // 190
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+  const w = b.rect.w; // 224
+  const bottom = canvas.height - 2; // 188
+  const dx = 4 + b.door.x * TILE - b.rect.x; // 68
+  const doorW = b.door.w * TILE; // 64
+
+  // Ground contact shadow
+  oval(ctx, 'rgba(15, 23, 42, 0.35)', w / 2 + 4, bottom + 1, w / 2 - 4, 4);
+
+  // Modern Matte Black & Industrial Steel Building Frame (y: 10..bottom)
+  rect(ctx, '#0f172a', 3, 10, w + 2, bottom - 10);
+  rect(ctx, '#1e293b', 4, 12, w, bottom - 12);
+
+  // Rooftop flat architectural parapet with vertical standing seams (y: 10..36)
+  rect(ctx, '#020617', 2, 10, w + 4, 6);
+  rect(ctx, '#334155', 4, 16, w, 20);
+  for (let sx = 12; sx < w; sx += 20) {
+    rect(ctx, '#1e293b', sx, 16, 2, 20);
+    rect(ctx, '#475569', sx + 2, 16, 1, 20);
+  }
+  rect(ctx, '#0f172a', 3, 36, w + 2, 3); // Parapet base shadow
+
+  // Second Floor Facade: Warm Scandinavian Teak Wood Louvers (y: 39..92)
+  rect(ctx, '#78350f', 5, 39, w - 2, 53);
+  rect(ctx, '#b45309', 6, 40, w - 4, 51);
+  for (let ly = 41; ly < 90; ly += 5) {
+    rect(ctx, '#d97706', 7, ly, w - 6, 3);
+    rect(ctx, '#fde68a', 8, ly, w - 8, 1); // warm wood grain sheen
+  }
+  // Architectural Ribbon Windows on Second Floor
+  for (const wx of [16, w - 68]) {
+    rect(ctx, '#0f172a', wx, 48, 52, 28);
+    rect(ctx, '#0284c7', wx + 2, 50, 48, 24);
+    rect(ctx, '#38bdf8', wx + 4, 52, 44, 12);
+    rect(ctx, 'rgba(254, 240, 138, 0.65)', wx + 6, 54, 20, 18); // cozy interior light
+    rect(ctx, '#0f172a', wx + 26, 50, 2, 24); // window frame mullion
+  }
+
+  // Modern Backlit 3D Acrylic Signboard (y: 92..112)
+  rect(ctx, '#0f172a', 14, 92, w - 20, 22);
+  rect(ctx, '#1e293b', 16, 94, w - 24, 18);
+  // Warm LED backlight halo
+  rect(ctx, 'rgba(254, 240, 138, 0.4)', 18, 95, w - 28, 16);
+  ctx.font = '800 10.5px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fef08a';
+  ctx.fillText('CÀ PHÊ BEAN THERE', canvas.width / 2, 104, w - 36);
+  ctx.font = '600 7px sans-serif';
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fillText('CÀ PHÊ ĐẶC SẢN & RANG XAY MỘC', canvas.width / 2, 111, w - 36);
+
+  // Modern Industrial Steel Canopy projecting over ground floor (y: 114..119)
+  rect(ctx, '#020617', 6, 114, w - 4, 5);
+  rect(ctx, '#475569', 8, 115, w - 8, 2);
+  for (let cx = 12; cx < w; cx += 28) {
+    rect(ctx, '#fef08a', cx, 118, 3, 2); // Downlight LED spots
+  }
+
+  // Ground Floor: Expansive Floor-to-Ceiling Panoramic Glass Showroom (y: 119..bottom)
+  rect(ctx, '#0f172a', 6, 119, w - 4, bottom - 119);
+  rect(ctx, '#0284c7', 8, 121, w - 8, bottom - 123);
+  rect(ctx, '#38bdf8', 10, 123, w - 12, bottom - 127);
+
+  // Visible Interior Roastery & Espresso Bar (Left Wing: x = 12..dx - 6)
+  // Polished terrazzo counter
+  rect(ctx, '#cbd5e1', 14, bottom - 38, dx - 22, 28);
+  rect(ctx, '#e2e8f0', 14, bottom - 40, dx - 22, 3);
+  // Chrome Espresso Machine (La Marzocco Style)
+  rect(ctx, '#0f172a', 22, bottom - 54, 26, 15);
+  rect(ctx, '#f8fafc', 23, bottom - 53, 24, 13);
+  rect(ctx, '#94a3b8', 25, bottom - 47, 8, 6); // portafilter groups
+  rect(ctx, '#ef4444', 33, bottom - 52, 4, 3); // red brand badge
+  // Professional grinder & coffee bags
+  rect(ctx, '#1e293b', 50, bottom - 56, 8, 17);
+  rect(ctx, '#d97706', 14, bottom - 50, 6, 10); // coffee bean bag
+
+  // Hanging warm Edison bulb pendants with ambient glow
+  for (const px of [28, 54]) {
+    rect(ctx, '#0f172a', px, 121, 1, 12); // cord
+    rect(ctx, '#facc15', px - 2, 133, 5, 5); // bulb
+    rect(ctx, 'rgba(254, 240, 138, 0.5)', px - 4, 131, 9, 9); // glow
+  }
+
+  // Right Wing Interior (x = dx + doorW + 6..w - 12):
+  const rx = dx + doorW + 8;
+  const rw = w - 12 - rx;
+  // Modern bookshelf & pourover coffee station
+  rect(ctx, '#b45309', rx, bottom - 56, rw, 46);
+  for (let by = bottom - 52; by < bottom - 14; by += 14) {
+    rect(ctx, '#fde68a', rx + 2, by, rw - 4, 2);
+    // Display items: books, brass cups
+    rect(ctx, '#f8fafc', rx + 4, by - 8, 6, 8);
+    rect(ctx, '#eab308', rx + 14, by - 6, 8, 6);
+  }
+
+  // Entrance Double Glass Doors at dx = 68, doorW = 64
+  rect(ctx, '#0f172a', dx, bottom - 62, doorW, 62);
+  rect(ctx, '#38bdf8', dx + 2, bottom - 60, doorW - 4, 58);
+  rect(ctx, '#e0f2fe', dx + 4, bottom - 58, doorW - 8, 54);
+  // Center door split mullion & full-height brushed chrome pull handles
+  rect(ctx, '#0f172a', dx + doorW / 2 - 1, bottom - 60, 2, 58);
+  rect(ctx, '#f8fafc', dx + doorW / 2 - 6, bottom - 46, 2, 30);
+  rect(ctx, '#f8fafc', dx + doorW / 2 + 4, bottom - 46, 2, 30);
+  // Modern charcoal entrance doormat
+  rect(ctx, '#1e293b', dx + 6, bottom - 4, doorW - 12, 4);
+
+  // Modern Geometric Planters flanking entrance
+  for (const plx of [dx - 14, dx + doorW + 4]) {
+    rect(ctx, '#0f172a', plx - 1, bottom - 24, 12, 24);
+    rect(ctx, '#f8fafc', plx, bottom - 23, 10, 22); // white planter
+    rect(ctx, '#15803d', plx + 2, bottom - 32, 6, 10); // lush ficus plant
+    rect(ctx, '#22c55e', plx + 1, bottom - 30, 8, 5);
+  }
+
+  return canvas;
+}
+
+/**
+ * 2. THREADBARE BOUTIQUE · GEN-Z STREETWEAR
+ * Contemporary Minimalist Pearl White Terrazzo facade with champagne brass reveals,
+ * neon script lightbox, lighted vitrine showcase with stylish mannequin,
+ * and frameless automatic glass sliding doors.
+ */
+function paintModernFashionBuilding(b: Building): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = b.rect.w + 8; // 168
+  canvas.height = b.rect.h + BUILDING_ROOF; // 190
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+  const w = b.rect.w; // 160
+  const bottom = canvas.height - 2; // 188
+  const dx = 4 + b.door.x * TILE - b.rect.x; // 36
+  const doorW = b.door.w * TILE; // 64
+
+  oval(ctx, 'rgba(15, 23, 42, 0.35)', w / 2 + 4, bottom + 1, w / 2 - 4, 4);
+
+  // Contemporary Pearl White Terrazzo & Brass Luxury Architecture (y: 8..bottom)
+  rect(ctx, '#0f172a', 3, 8, w + 2, bottom - 8);
+  rect(ctx, '#f8fafc', 4, 10, w, bottom - 10);
+  rect(ctx, '#e2e8f0', 6, 12, w - 4, bottom - 12);
+
+  // Rooftop architectural coping in brushed champagne brass (y: 8..24)
+  rect(ctx, '#d97706', 2, 8, w + 4, 5);
+  rect(ctx, '#f59e0b', 3, 9, w + 2, 2);
+  rect(ctx, '#f1f5f9', 4, 14, w, 20);
+
+  // Upper Facade: Monolithic Minimalist White Terrazzo with Vertical Feature Slit
+  rect(ctx, '#ffffff', 8, 34, w - 8, 48);
+  // Brass brand reveal groove lines
+  rect(ctx, '#d97706', 12, 40, w - 16, 1);
+  rect(ctx, '#f59e0b', 12, 78, w - 16, 1);
+  // Recessed architectural vertical window with soft warm glow
+  rect(ctx, '#0f172a', w / 2 - 8, 44, 16, 32);
+  rect(ctx, '#fef08a', w / 2 - 6, 46, 12, 28);
+  rect(ctx, '#f59e0b', w / 2 - 1, 44, 2, 32);
+
+  // Glowing Neon Signboard: "THREADBARE BOUTIQUE" (y: 84..108)
+  rect(ctx, '#0f172a', 10, 84, w - 12, 24);
+  rect(ctx, '#701a75', 12, 86, w - 16, 20); // deep royal magenta/plum
+  rect(ctx, '#a21caf', 14, 88, w - 20, 16);
+  // Neon script lettering
+  ctx.font = '800 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fdf4ff';
+  ctx.fillText('THREADBARE', canvas.width / 2, 97, w - 28);
+  ctx.font = '700 7px sans-serif';
+  ctx.fillStyle = '#f472b6';
+  ctx.fillText('THỜI TRANG GEN-Z & STREETWEAR', canvas.width / 2, 104, w - 28);
+
+  // Ground Floor Showcase Vitrine & Entrance (y: 110..bottom)
+  rect(ctx, '#0f172a', 6, 110, w - 4, bottom - 110);
+  rect(ctx, '#fdf4ff', 8, 112, w - 8, bottom - 114);
+
+  // Left Showcase Vitrine (x = 8..dx - 4):
+  const leftW = dx - 12;
+  rect(ctx, '#0f172a', 8, 112, leftW, bottom - 114);
+  rect(ctx, '#0284c7', 10, 114, leftW - 4, bottom - 118);
+  rect(ctx, '#38bdf8', 12, 116, leftW - 8, bottom - 122);
+  // Showcase podium & stylish mannequin silhouette
+  rect(ctx, '#f59e0b', 14, bottom - 26, leftW - 12, 6);
+  rect(ctx, '#ffffff', 14, bottom - 20, leftW - 12, 18);
+  // Mannequin wearing streetwear hoodie & sneakers
+  rect(ctx, '#fbcfe8', 18, bottom - 60, 8, 8); // head
+  rect(ctx, '#9333ea', 16, bottom - 52, 12, 20); // purple hoodie
+  rect(ctx, '#1e293b', 17, bottom - 32, 10, 14); // cargo pants
+  rect(ctx, '#ffffff', 16, bottom - 18, 12, 4); // chunky white sneakers
+  // Directional gallery spotlights shining down on mannequin
+  rect(ctx, '#ffffff', 20, 116, 4, 3);
+  rect(ctx, 'rgba(255, 255, 255, 0.45)', 16, 119, 12, 30);
+
+  // Entrance Automatic Sliding Glass Doors at dx = 36, doorW = 64
+  rect(ctx, '#0f172a', dx, bottom - 66, doorW, 66);
+  rect(ctx, '#d97706', dx + 2, bottom - 64, doorW - 4, 62); // brass portal frame
+  rect(ctx, '#38bdf8', dx + 4, bottom - 62, doorW - 8, 58);
+  rect(ctx, '#e0f2fe', dx + 6, bottom - 60, doorW - 12, 54);
+  // Glass sliding seams & brass horizontal push bars
+  rect(ctx, '#d97706', dx + doorW / 2 - 1, bottom - 62, 2, 58);
+  rect(ctx, '#f59e0b', dx + 10, bottom - 38, doorW - 20, 3);
+  // Luxury entrance runner carpet
+  rect(ctx, '#831843', dx + 8, bottom - 4, doorW - 16, 4);
+
+  // Right Showcase Vitrine (x = dx + doorW + 4..w - 8):
+  const rightX = dx + doorW + 4;
+  const rightW = w - 8 - rightX;
+  rect(ctx, '#0f172a', rightX, 112, rightW, bottom - 114);
+  rect(ctx, '#0284c7', rightX + 2, 114, rightW - 4, bottom - 118);
+  rect(ctx, '#38bdf8', rightX + 4, 116, rightW - 8, bottom - 122);
+  // Designer bags & caps display shelves
+  for (let sy = bottom - 50; sy < bottom - 16; sy += 18) {
+    rect(ctx, '#f59e0b', rightX + 4, sy, rightW - 8, 2);
+    rect(ctx, '#ec4899', rightX + 8, sy - 8, 8, 8); // designer bag
+    rect(ctx, '#3b82f6', rightX + 20, sy - 6, 8, 6); // cap
+  }
+
+  return canvas;
+}
+
+/**
+ * 3. SOFA SO GOOD · SCANDINAVIAN INTERIOR STUDIO
+ * Nordic Architecture featuring light oak vertical timber louvers over architectural concrete,
+ * 3D channel letter signage, panoramic showroom displaying designer curved lounge chair,
+ * marble coffee table, tripod floor lamp, and oak pivot door.
+ */
+function paintModernFurnitureBuilding(b: Building): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = b.rect.w + 8; // 168
+  canvas.height = b.rect.h + BUILDING_ROOF; // 190
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+  const w = b.rect.w; // 160
+  const bottom = canvas.height - 2; // 188
+  const dx = 4 + b.door.x * TILE - b.rect.x; // 36
+  const doorW = b.door.w * TILE; // 64
+
+  oval(ctx, 'rgba(15, 23, 42, 0.35)', w / 2 + 4, bottom + 1, w / 2 - 4, 4);
+
+  // Scandinavian Architectural Oak Wood Louvers & Smooth Concrete (y: 8..bottom)
+  rect(ctx, '#0f172a', 3, 8, w + 2, bottom - 8);
+  rect(ctx, '#475569', 4, 10, w, bottom - 10);
+  rect(ctx, '#64748b', 6, 12, w - 4, bottom - 12);
+
+  // Cantilevered Flat Roofline with architectural basalt fascia (y: 8..24)
+  rect(ctx, '#020617', 2, 8, w + 4, 6);
+  rect(ctx, '#1e293b', 4, 14, w, 14);
+  rect(ctx, '#334155', 4, 14, w, 2);
+
+  // Upper Facade: Vertical Scandinavian Light Oak Battens (y: 28..84)
+  rect(ctx, '#78350f', 6, 28, w - 4, 56);
+  rect(ctx, '#b45309', 7, 29, w - 6, 54);
+  for (let bx = 10; bx < w - 6; bx += 6) {
+    rect(ctx, '#d97706', bx, 29, 3, 54);
+    rect(ctx, '#fde68a', bx + 1, 29, 1, 54); // bright oak grain highlight
+    rect(ctx, '#78350f', bx + 3, 29, 3, 54); // deep shadow between slats
+  }
+
+  // Integrated Minimalist Signboard: "SOFA SO GOOD" (y: 84..108)
+  rect(ctx, '#0f172a', 10, 84, w - 12, 24);
+  rect(ctx, '#1e293b', 12, 86, w - 16, 20);
+  rect(ctx, '#334155', 13, 87, w - 18, 1);
+  ctx.font = '800 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fde68a';
+  ctx.fillText('SOFA SO GOOD', canvas.width / 2, 97, w - 28);
+  ctx.font = '700 7px sans-serif';
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fillText('NỘI THẤT BẮC ÂU HIỆN ĐẠI', canvas.width / 2, 104, w - 28);
+
+  // Ground Floor Showroom: Panoramic Glazing Display (y: 110..bottom)
+  rect(ctx, '#0f172a', 6, 110, w - 4, bottom - 110);
+  rect(ctx, '#0284c7', 8, 112, w - 8, bottom - 114);
+  rect(ctx, '#38bdf8', 10, 114, w - 12, bottom - 118);
+
+  // Designer Living Room Showroom (Left Wing: x = 10..dx - 4):
+  const leftW = dx - 14;
+  // Hardwood floor inside
+  rect(ctx, '#92400e', 10, bottom - 28, leftW, 26);
+  rect(ctx, '#b45309', 10, bottom - 26, leftW, 24);
+  // Modern terracotta curved lounge armchair
+  rect(ctx, '#7c2d12', 12, bottom - 46, 16, 24);
+  rect(ctx, '#ea580c', 13, bottom - 44, 14, 20);
+  rect(ctx, '#fdba74', 15, bottom - 40, 10, 8); // seat cushion
+  // Round marble coffee table with design book
+  rect(ctx, '#f8fafc', 30, bottom - 32, 14, 10);
+  rect(ctx, '#cbd5e1', 31, bottom - 31, 12, 8);
+  rect(ctx, '#0284c7', 33, bottom - 30, 6, 4); // design book
+  // Minimalist black tripod floor lamp emitting warm cone of light
+  rect(ctx, '#0f172a', 14, bottom - 66, 1, 24);
+  rect(ctx, '#facc15', 11, bottom - 70, 7, 5); // lampshade
+  rect(ctx, 'rgba(254, 240, 138, 0.45)', 9, bottom - 68, 11, 28); // light cone
+
+  // Entrance Pivot Glass Door at dx = 36, doorW = 64
+  rect(ctx, '#0f172a', dx, bottom - 66, doorW, 66);
+  rect(ctx, '#38bdf8', dx + 2, bottom - 64, doorW - 4, 62);
+  rect(ctx, '#e0f2fe', dx + 4, bottom - 62, doorW - 8, 58);
+  // Natural oak vertical pull handle
+  rect(ctx, '#78350f', dx + doorW / 2 + 10, bottom - 48, 4, 32);
+  rect(ctx, '#fde68a', dx + doorW / 2 + 11, bottom - 48, 2, 32);
+  // Recessed porch downlights
+  rect(ctx, '#fef08a', dx + 16, bottom - 64, 4, 2);
+  rect(ctx, '#fef08a', dx + doorW - 20, bottom - 64, 4, 2);
+
+  // Right Wing Showroom (x = dx + doorW + 4..w - 8):
+  const rightX = dx + doorW + 4;
+  const rightW = w - 8 - rightX;
+  rect(ctx, '#0f172a', rightX, 112, rightW, bottom - 114);
+  rect(ctx, '#0284c7', rightX + 2, 114, rightW - 4, bottom - 118);
+  rect(ctx, '#38bdf8', rightX + 4, 116, rightW - 8, bottom - 122);
+  // Designer wooden dining chair & pendant lamp
+  rect(ctx, '#b45309', rightX + 8, bottom - 42, 14, 22);
+  rect(ctx, '#fde68a', rightX + 10, bottom - 38, 10, 6);
+  rect(ctx, '#0f172a', rightX + 14, 116, 1, 14); // cord
+  rect(ctx, '#facc15', rightX + 11, 130, 7, 6); // brass pendant
+
+  return canvas;
+}
+
+/**
+ * 4. 24/7 SMART LOGISTICS HUB & PARCEL LOCKER STATION
+ * High-tech graphite composite panels with cyan/orange branding, dynamic LED matrix sign,
+ * modular Smart Locker Wall with touchscreen QR scanner & status LEDs,
+ * automated sliding glass door, and parcel sorting display.
+ */
+function paintModernDeliveryBuilding(b: Building): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = b.rect.w + 8; // 168
+  canvas.height = b.rect.h + BUILDING_ROOF; // 158
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+  const w = b.rect.w; // 160
+  const bottom = canvas.height - 2; // 156
+  const dx = 4 + b.door.x * TILE - b.rect.x; // 68
+  const doorW = b.door.w * TILE; // 64
+
+  oval(ctx, 'rgba(15, 23, 42, 0.35)', w / 2 + 4, bottom + 1, w / 2 - 4, 4);
+
+  // Modern High-Tech Smart Logistics Hub (y: 8..bottom)
+  rect(ctx, '#020617', 3, 8, w + 2, bottom - 8);
+  rect(ctx, '#0f172a', 4, 10, w, bottom - 10);
+  rect(ctx, '#1e293b', 6, 12, w - 4, bottom - 12);
+
+  // High-Tech Architectural Fascia with Signal Orange Accent (y: 8..24)
+  rect(ctx, '#ea580c', 2, 8, w + 4, 5);
+  rect(ctx, '#f97316', 3, 9, w + 2, 2);
+  rect(ctx, '#0284c7', 4, 14, w, 3); // Cyan tech stripe
+
+  // Dynamic LED Matrix Billboard Signboard (y: 26..54)
+  rect(ctx, '#020617', 6, 26, w - 4, 28);
+  rect(ctx, '#0f172a', 8, 28, w - 8, 24);
+  // Glowing cyan / orange branding
+  ctx.font = '800 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillText('BƯU CỤC THÔNG MINH', canvas.width / 2, 39, w - 16);
+  ctx.font = '700 7px sans-serif';
+  ctx.fillStyle = '#fb923c';
+  ctx.fillText('GIAO NHẬN HỎA TỐC 24/7', canvas.width / 2, 47, w - 16);
+
+  // Ground Floor: 24/7 Smart Locker Wall & Automated Hub (y: 56..bottom)
+  rect(ctx, '#0f172a', 6, 56, w - 4, bottom - 56);
+
+  // Left Wing: 24/7 Smart Parcel Locker Grid (x = 8..dx - 6):
+  const lockerW = dx - 14;
+  rect(ctx, '#1e293b', 8, 58, lockerW, bottom - 60);
+  rect(ctx, '#334155', 10, 60, lockerW - 4, bottom - 64);
+  // Grid of individual parcel lockers
+  const cols = 3;
+  const colW = Math.floor((lockerW - 8) / cols);
+  for (let c = 0; c < cols; c++) {
+    const lx = 12 + c * colW;
+    for (let ly = 62; ly < bottom - 12; ly += 16) {
+      rect(ctx, '#0f172a', lx, ly, colW - 2, 14);
+      rect(ctx, '#475569', lx + 1, ly + 1, colW - 4, 12);
+      // Status LEDs: green = available, amber = package ready
+      const isGreen = (c + ly) % 2 === 0;
+      rect(ctx, isGreen ? '#22c55e' : '#facc15', lx + colW - 5, ly + 3, 2, 2);
+      rect(ctx, '#94a3b8', lx + 3, ly + 6, colW - 8, 2); // handle slot
+    }
+  }
+  // Central touchscreen kiosk terminal
+  rect(ctx, '#0284c7', 24, 76, 18, 16);
+  rect(ctx, '#38bdf8', 25, 77, 16, 14);
+  rect(ctx, '#ffffff', 28, 80, 10, 8); // QR scanner pad
+
+  // Entrance Automated Glass Sliding Doors at dx = 68, doorW = 64
+  rect(ctx, '#020617', dx, bottom - 72, doorW, 72);
+  rect(ctx, '#0284c7', dx + 2, bottom - 70, doorW - 4, 68);
+  rect(ctx, '#38bdf8', dx + 4, bottom - 68, doorW - 8, 64);
+  rect(ctx, '#e0f2fe', dx + 6, bottom - 66, doorW - 12, 60);
+  // Digital entrance header
+  rect(ctx, '#0f172a', dx + 6, bottom - 66, doorW - 12, 12);
+  ctx.font = '700 7px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillText('GỬI & NHẬN', dx + doorW / 2, bottom - 58, doorW - 16);
+  // High-visibility cyan edge markers & door sensors
+  rect(ctx, '#0284c7', dx + doorW / 2 - 1, bottom - 54, 2, 50);
+  rect(ctx, '#ea580c', dx + 8, bottom - 30, 4, 20);
+  rect(ctx, '#ea580c', dx + doorW - 12, bottom - 30, 4, 20);
+
+  // Right Wing: Automated Sorting Window with Parcell Packages (x = dx + doorW + 6..w - 8):
+  const sortX = dx + doorW + 6;
+  const sortW = w - 8 - sortX;
+  rect(ctx, '#1e293b', sortX, 58, sortW, bottom - 60);
+  rect(ctx, '#0284c7', sortX + 2, 60, sortW - 4, bottom - 64);
+  rect(ctx, '#38bdf8', sortX + 4, 62, sortW - 8, bottom - 68);
+  // Neatly stacked courier packages with shipping labels
+  rect(ctx, '#b45309', sortX + 6, bottom - 32, 14, 12);
+  rect(ctx, '#d97706', sortX + 7, bottom - 31, 12, 10);
+  rect(ctx, '#ffffff', sortX + 9, bottom - 28, 6, 4); // shipping label
+  rect(ctx, '#92400e', sortX + 16, bottom - 22, 10, 8);
+  rect(ctx, '#ffffff', sortX + 18, bottom - 20, 5, 3);
+
+  return canvas;
+}
+
+/**
+ * 5. MARINA PRO ANGLER MART · ĐỒ CÂU BIỂN BÁC BA
+ * Waterfront Pro Angler Mart featuring deep ocean navy composite siding, brushed aluminum trims,
+ * marine radio antenna mast, illuminated blue neon signboard, vertical carbon rod showcase,
+ * orange/white safety lifebuoy ring, and boat-cleat entrance door.
+ */
+function paintModernFishingShopBuilding(b: Building): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = b.rect.w + 8; // 168
+  canvas.height = b.rect.h + BUILDING_ROOF; // 126
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+  const w = b.rect.w; // 160
+  const bottom = canvas.height - 2; // 124
+  const dx = 4 + b.door.x * TILE - b.rect.x; // 36
+  const doorW = b.door.w * TILE; // 64
+
+  oval(ctx, 'rgba(15, 23, 42, 0.35)', w / 2 + 4, bottom + 1, w / 2 - 4, 4);
+
+  // Coastal Marine Contemporary Cladding in Ocean Navy & Carbon (y: 8..bottom)
+  rect(ctx, '#020617', 3, 8, w + 2, bottom - 8);
+  rect(ctx, '#0c4a6e', 4, 10, w, bottom - 10);
+  rect(ctx, '#0369a1', 6, 12, w - 4, bottom - 12);
+
+  // Architectural Coastal Parapet with Marine Antenna Mast (y: 8..24)
+  rect(ctx, '#0f172a', 2, 8, w + 4, 5);
+  rect(ctx, '#38bdf8', 3, 9, w + 2, 2); // Cyan marine trim
+  rect(ctx, '#075985', 4, 14, w, 12);
+  // Marine radio antenna & wind anemometer
+  rect(ctx, '#f8fafc', w - 18, 0, 2, 14);
+  rect(ctx, '#ef4444', w - 21, 0, 8, 3); // wind cup
+
+  // Neon Marine Signboard: "MARINA PRO ANGLER MART" (y: 26..50)
+  rect(ctx, '#020617', 8, 26, w - 8, 24);
+  rect(ctx, '#082f49', 10, 28, w - 12, 20);
+  // Neon cyan lettering
+  ctx.font = '800 10.5px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillText('ĐỒ CÂU BIỂN BÁC BA', canvas.width / 2, 38, w - 28);
+  ctx.font = '700 7px sans-serif';
+  ctx.fillStyle = '#67e8f9';
+  ctx.fillText('NGƯ CỤ & CHO THUÊ THUYỀN', canvas.width / 2, 45, w - 28);
+
+  // Ground Floor Marine Storefront (y: 52..bottom)
+  rect(ctx, '#020617', 6, 52, w - 4, bottom - 52);
+
+  // Left Showcase Vitrine (x = 8..dx - 4):
+  const leftW = dx - 12;
+  rect(ctx, '#0c4a6e', 8, 54, leftW, bottom - 56);
+  rect(ctx, '#0284c7', 10, 56, leftW - 4, bottom - 60);
+  rect(ctx, '#38bdf8', 12, 58, leftW - 8, bottom - 64);
+  // Vertical Carbon Fishing Rods on Stainless Steel Rack
+  for (let rx = 14; rx < leftW + 4; rx += 5) {
+    rect(ctx, '#0f172a', rx, bottom - 48, 1, 38); // carbon blank
+    rect(ctx, '#f8fafc', rx - 1, bottom - 30, 3, 2); // line guide
+    rect(ctx, '#eab308', rx - 1, bottom - 18, 3, 6); // metallic spinning reel
+  }
+
+  // Entrance Marine Weather-Sealed Glass Door at dx = 36, doorW = 64
+  rect(ctx, '#020617', dx, bottom - 60, doorW, 60);
+  rect(ctx, '#0284c7', dx + 2, bottom - 58, doorW - 4, 56);
+  rect(ctx, '#38bdf8', dx + 4, bottom - 56, doorW - 8, 52);
+  rect(ctx, '#e0f2fe', dx + 6, bottom - 54, doorW - 12, 48);
+  // Stainless steel boat cleat door handle
+  rect(ctx, '#0f172a', dx + doorW / 2 - 1, bottom - 56, 2, 52);
+  rect(ctx, '#f8fafc', dx + doorW / 2 - 5, bottom - 36, 4, 12);
+  // Marine Safety Lifebuoy Ring on facade
+  const buoyX = dx - 10;
+  oval(ctx, '#ea580c', buoyX, bottom - 32, 7, 7);
+  oval(ctx, '#ffffff', buoyX, bottom - 32, 5, 5);
+  oval(ctx, '#0c4a6e', buoyX, bottom - 32, 3, 3);
+
+  // Right Showcase Vitrine (x = dx + doorW + 4..w - 8):
+  const rightX = dx + doorW + 4;
+  const rightW = w - 8 - rightX;
+  rect(ctx, '#0c4a6e', rightX, 54, rightW, bottom - 56);
+  rect(ctx, '#0284c7', rightX + 2, 56, rightW - 4, bottom - 60);
+  rect(ctx, '#38bdf8', rightX + 4, 58, rightW - 8, bottom - 64);
+  // Marine Fishfinder / GPS Console Screen
+  rect(ctx, '#0f172a', rightX + 6, bottom - 42, 18, 16);
+  rect(ctx, '#15803d', rightX + 8, bottom - 40, 14, 12);
+  rect(ctx, '#22c55e', rightX + 10, bottom - 36, 8, 2); // sonar echo pulse
+  // Lure tackle boxes on shelf
+  rect(ctx, '#f97316', rightX + 6, bottom - 20, 16, 6);
+  rect(ctx, '#3b82f6', rightX + 8, bottom - 14, 18, 6);
+
+  return canvas;
+}
+
 export function paintBuilding(b: Building): HTMLCanvasElement {
   if (b.id === 'apartments') {
     return paintBconsApartment(b);
@@ -1803,6 +2584,21 @@ export function paintBuilding(b: Building): HTMLCanvasElement {
   if (b.id === 'cybernet') return paintCyberNetBuilding(b);
   if (b.id === 'bida') {
     return paintBidaBuilding(b);
+  }
+  if (b.id === 'cafe') {
+    return paintModernCafeBuilding(b);
+  }
+  if (b.id === 'fashion') {
+    return paintModernFashionBuilding(b);
+  }
+  if (b.id === 'furniture') {
+    return paintModernFurnitureBuilding(b);
+  }
+  if (b.id === 'delivery') {
+    return paintModernDeliveryBuilding(b);
+  }
+  if (b.id === 'fishing_shop') {
+    return paintModernFishingShopBuilding(b);
   }
   const canvas = document.createElement('canvas');
   canvas.width = b.rect.w + 8;

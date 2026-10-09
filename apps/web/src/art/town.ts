@@ -51,17 +51,20 @@ export function paintProp(kind: TownPropKind): HTMLCanvasElement {
       box('#6c5140', 19, 8, 4, 2);
       box('#ecce94', 29, 9, 7, 3);
     } else {
-      box('#785d42', 34, 17, 5, 35);
-      box('#b59a6c', 35, 17, 2, 32);
-      box('#725b44', 3, 8, 66, 14);
-      box('#e2cf9e', 4, 9, 64, 11);
-      box('#725b44', 3, 25, 66, 14);
-      box('#c5b985', 4, 26, 64, 11);
+      // Modern Urban Highway Direction Sign (Option 2: Modern Cozy Urban Indie)
+      box('#1e293b', 34, 15, 4, 37); // Dark steel post
+      box('#475569', 35, 15, 2, 37);
+      box('#0f172a', 2, 6, 68, 16);
+      box('#0284c7', 3, 7, 66, 14); // Cobalt blue reflective panel
+      box('#cbd5e1', 3, 7, 66, 1);
+      box('#0f172a', 2, 24, 68, 16);
+      box('#0284c7', 3, 25, 66, 14);
+      box('#cbd5e1', 3, 25, 66, 1);
       ctx.font = '700 8px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#4d5140';
-      ctx.fillText('CẦU HÓA AN →', 36, 18);
-      ctx.fillText('← PHỐ CHỢ', 36, 35);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('CẦU HÓA AN →', 36, 17);
+      ctx.fillText('← PHỐ TRUNG TÂM', 36, 35);
     }
   } else if (kind === 'fountain') {
     c.width = 76;
@@ -275,7 +278,7 @@ export function paintProp(kind: TownPropKind): HTMLCanvasElement {
     ctx.fillStyle = INK;
     ctx.font = '700 9px "Pixelify Sans", monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('⚡ AI REWARDS ⚡', 40, 11.5);
+    ctx.fillText('⚡ ĐỔI THƯỞNG ⚡', 40, 11.5);
   } else if (kind === 'bench') {
     c.width = 52;
     c.height = 26;

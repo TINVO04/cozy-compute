@@ -766,7 +766,8 @@ function WorldHud({
           <div className="event-chip">
             <span>
               {ev.status === 'running' ? '🦆 ' : ''}
-              {ev.title} {ev.status === 'running' ? 'kết thúc sau' : 'bắt đầu sau'} <strong>{mmss}</strong>
+              {ev.title === 'Find the Duck' ? 'Truy tìm Vịt vàng' : ev.title}{' '}
+              {ev.status === 'running' ? 'kết thúc sau' : 'bắt đầu sau'} <strong>{mmss}</strong>
             </span>
             <Button size="sm" variant={ev.joined ? 'secondary' : 'reward'} onClick={() => setPanel('events')}>
               {ev.joined ? (ev.status === 'running' ? `Điểm ${ev.myScore}` : 'Đã tham gia') : 'Tham gia'}
