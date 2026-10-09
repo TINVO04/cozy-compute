@@ -110,17 +110,6 @@ export function paintTown(): HTMLCanvasElement {
     rect(ctx, '#8c918a', path.x, path.y, 1, path.h);
     rect(ctx, '#8c918a', path.x + path.w - 1, path.y, 1, path.h);
     rect(ctx, '#b0b5ae', path.x + 1, path.y + 1, path.w - 2, 1);
-
-    // Tactile Accessibility Paving (Gạch xúc giác dẫn hướng màu vàng cho người khiếm thị)
-    if (path.w >= 96 && path.h >= 16) {
-      const midY = Math.floor(path.y + path.h / 2);
-      rect(ctx, '#ca8a04', path.x + 8, midY - 1, path.w - 16, 3);
-      rect(ctx, '#facc15', path.x + 8, midY, path.w - 16, 1);
-    } else if (path.h >= 96 && path.w >= 16) {
-      const midX = Math.floor(path.x + path.w / 2);
-      rect(ctx, '#ca8a04', midX - 1, path.y + 8, 3, path.h - 16);
-      rect(ctx, '#facc15', midX, path.y + 8, 1, path.h - 16);
-    }
   }
 
   // 2. Asphalt Road Network (Màu nhựa đường nhạt dịu như cũ)
@@ -197,40 +186,32 @@ export function paintTown(): HTMLCanvasElement {
     }
   }
 
-  // 4. Center Dividing Lines (Vạch phân làn & Dải phân cách)
+  // 4. Center Dividing Lines (Vạch tim đường sơn màu vàng nghệ tự nhiên dịu mắt)
+  const ROAD_YELLOW = '#caa055';
   // Avenue 0 (Main horizontal avenue: y = 332..372, center y = 352):
   for (let x = 36; x < 1500; x += 24) {
     if (INTERSECTIONS.some((j) => Math.abs(x - j.x) < j.halfW + 18)) continue;
-    rect(ctx, '#854d0e', x - 1, 350, 14, 4); // warm shadow/border
-    rect(ctx, '#facc15', x, 351, 12, 2);
-    rect(ctx, '#fef08a', x + 1, 351, 10, 1);
+    rect(ctx, ROAD_YELLOW, x, 351, 12, 1);
   }
 
   // Avenue 3 (South horizontal avenue: y = 844..884, center y = 864):
   for (let x = 100; x < 1116; x += 24) {
     if (INTERSECTIONS.some((j) => Math.abs(x - j.x) < j.halfW + 18)) continue;
-    rect(ctx, '#854d0e', x - 1, 862, 14, 4);
-    rect(ctx, '#facc15', x, 863, 12, 2);
-    rect(ctx, '#fef08a', x + 1, 863, 10, 1);
+    rect(ctx, ROAD_YELLOW, x, 863, 12, 1);
   }
 
   // Avenue 1 (West vertical avenue: x = 332..372, center x = 352):
   for (let y = 324; y < 892; y += 24) {
     if (INTERSECTIONS.some((j) => Math.abs(y - j.y) < j.halfH + 18)) continue;
-    rect(ctx, '#854d0e', 350, y - 1, 4, 14);
-    rect(ctx, '#facc15', 351, y, 2, 12);
-    rect(ctx, '#fef08a', 351, y + 1, 1, 10);
+    rect(ctx, ROAD_YELLOW, 351, y, 1, 12);
   }
 
   // Avenue 2 (East 4-Lane Grand Boulevard: x = 1036..1108, w = 72, center x = 1072):
-  // Double solid yellow center median line (Dải phân cách kép vàng rực)
+  // Double solid yellow center median line (Vạch đôi liền màu vàng nghệ chuẩn đô thị)
   for (let y = 322; y < 894; y++) {
     if (INTERSECTIONS.some((j) => Math.abs(y - j.y) < j.halfH + 16)) continue;
-    rect(ctx, '#facc15', 1070, y, 1, 1);
-    rect(ctx, '#fef08a', 1070, y, 1, 1);
-    rect(ctx, '#7c8580', 1071, y, 2, 1);
-    rect(ctx, '#facc15', 1073, y, 1, 1);
-    rect(ctx, '#fef08a', 1073, y, 1, 1);
+    rect(ctx, ROAD_YELLOW, 1070, y, 1, 1);
+    rect(ctx, ROAD_YELLOW, 1073, y, 1, 1);
   }
   // Dashed white lane markers dividing the dual lanes (x = 1054 and x = 1090):
   for (let y = 324; y < 892; y += 20) {
@@ -651,7 +632,7 @@ export function paintTown(): HTMLCanvasElement {
 
   // Vạch vàng đứt nét phân làn đường cao tốc (Yellow dashed centerline)
   for (let my = PIER.y + 4; my < PIER.y + PIER.h - 26; my += 16) {
-    rect(ctx, '#fde047', PIER.x + Math.floor(PIER.w / 2) - 1, my, 2, 8);
+    rect(ctx, ROAD_YELLOW, PIER.x + Math.floor(PIER.w / 2), my, 1, 8);
   }
 
   // 6. TRANSVERSE STEEL FINGER EXPANSION JOINTS (Khe co giãn cầu tại các nhịp)
