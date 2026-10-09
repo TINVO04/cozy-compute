@@ -1423,7 +1423,8 @@ export class Avatar {
     }
     if (this.heldFishContainer && !useUi.getState().reducedMotion) {
       const bob = Math.sin(time * 0.0035 + this.breathSeed) * 1.5;
-      const verticalShift = this.boatSeatOffsetY !== 0 ? this.boatSeatOffsetY : this.sprite.y - this.baseSpriteY;
+      const verticalShift =
+        this.boatSeatOffsetY !== 0 ? this.boatSeatOffsetY : this.sprite.y - this.baseSpriteY;
       this.heldFishContainer.setY(this.heldFishBaseY + verticalShift + bob);
     }
   }
