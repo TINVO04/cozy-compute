@@ -34,7 +34,7 @@ export function itemIcon(
   }
 
   if (type === 'boat') {
-    const url = boatIcon(sprite, 2);
+    const url = boatIcon(sprite);
     iconCache.set(key, url);
     return url;
   }

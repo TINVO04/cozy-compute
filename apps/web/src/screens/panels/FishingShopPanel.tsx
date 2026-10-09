@@ -26,6 +26,25 @@ const SEA_ZONE_LABELS: Record<string, { title: string; desc: string; color: stri
 
 type ShopEntry = { kind: 'rod'; item: RodConfig } | { kind: 'boat'; item: BoatConfig };
 
+const BOAT_DISPLAY_OVERRIDES: Partial<Record<string, Pick<BoatConfig, 'name' | 'description'>>> = {
+  boat_coracle: {
+    name: 'Kayak Thám Hiểm Ven Bờ',
+    description: 'Chiếc kayak nhỏ gọn, nhẹ nhàng lướt êm qua đầm lầy và cửa sông ven bờ.',
+  },
+};
+
+function boatDisplayName(boat: BoatConfig) {
+  return BOAT_DISPLAY_OVERRIDES[boat.id]?.name ?? boat.name;
+}
+
+function boatDisplayDescription(boat: BoatConfig) {
+  return BOAT_DISPLAY_OVERRIDES[boat.id]?.description ?? boat.description;
+}
+
+function shopEntryDisplayName(entry: ShopEntry) {
+  return entry.kind === 'boat' ? boatDisplayName(entry.item) : entry.item.name;
+}
+
 export function FishingShopPanel({ me, onClose }: { me: Me; onClose: () => void }) {
   const qc = useQueryClient();
   const refresh = useRefreshEconomy();
@@ -72,6 +91,7 @@ export function FishingShopPanel({ me, onClose }: { me: Me; onClose: () => void 
   const equippedBoatId =
     items.find((i) => i.type === 'boat' && i.equipped)?.id ??
     (me.appearance.boat ? me.appearance.boat.replace(/^boat:/, 'boat_') : null);
+  const equippedBoat = equippedBoatId ? BOATS[equippedBoatId] : undefined;
 
   // Mutation: Buy Item (Rod or Boat)
   const buyMutation = useMutation({
@@ -84,7 +104,7 @@ export function FishingShopPanel({ me, onClose }: { me: Me; onClose: () => void 
       play('coin');
       useUi.getState().toast({
         kind: 'success',
-        title: `Đã mua ${entry.item.name}!`,
+        title: `Đã mua ${shopEntryDisplayName(entry)}!`,
         body:
           entry.kind === 'rod'
             ? 'Cần câu đã được thêm vào túi đồ. Hãy bấm "Trang bị" để bắt đầu câu cá.'
@@ -122,7 +142,7 @@ export function FishingShopPanel({ me, onClose }: { me: Me; onClose: () => void 
         const boat = BOATS[itemId];
         useUi.getState().toast({
           kind: 'success',
-          title: `Đã trang bị ${boat?.name ?? 'Thuyền'}`,
+          title: `Đã trang bị ${boat ? boatDisplayName(boat) : 'Thuyền'}`,
           body: 'Chiếc thuyền đã sẵn sàng tại cầu tàu! Hãy tiến lại mạn cầu để lên thuyền ra khơi.',
         });
       }
@@ -508,7 +528,11 @@ export function FishingShopPanel({ me, onClose }: { me: Me; onClose: () => void 
                     color: equippedBoatId ? '#38bdf8' : '#94a3b8',
                   }}
                 >
-                  {equippedBoatId ? (BOATS[equippedBoatId]?.name ?? 'Đã trang bị thuyền') : 'Chưa có thuyền'}
+                  {equippedBoatId
+                    ? equippedBoat
+                      ? boatDisplayName(equippedBoat)
+                      : 'Đã trang bị thuyền'
+                    : 'Chưa có thuyền'}
                 </span>
               </div>
             </div>
@@ -525,6 +549,8 @@ export function FishingShopPanel({ me, onClose }: { me: Me; onClose: () => void 
                 }}
               >
                 {boatsList.map((boat) => {
+                  const boatName = boatDisplayName(boat);
+                  const boatDescription = boatDisplayDescription(boat);
                   const status = ownedBoats.get(boat.id);
                   const isOwned = Boolean(status?.owned);
                   const isEquipped = equippedBoatId === boat.id;
@@ -566,8 +592,8 @@ export function FishingShopPanel({ me, onClose }: { me: Me; onClose: () => void 
                           }}
                         >
                           <img
-                            src={boatIcon(boat.id, 2)}
-                            alt={boat.name}
+                            src={boatIcon(boat.id)}
+                            alt={boatName}
                             className="pixel"
                             style={{ width: 56, height: 56, objectFit: 'contain' }}
                           />
@@ -608,10 +634,10 @@ export function FishingShopPanel({ me, onClose }: { me: Me; onClose: () => void 
                           <h4
                             style={{ margin: '4px 0 2px', fontSize: 15, color: '#f8fafc', fontWeight: 700 }}
                           >
-                            {boat.name}
+                            {boatName}
                           </h4>
                           <p style={{ margin: 0, fontSize: 11, color: '#94a3b8', lineHeight: 1.3 }}>
-                            {boat.description}
+                            {boatDescription}
                           </p>
                         </div>
                       </div>
@@ -710,7 +736,7 @@ export function FishingShopPanel({ me, onClose }: { me: Me; onClose: () => void 
       {/* Confirmation Dialog */}
       {confirmBuy && (
         <ConfirmDialog
-          title={`Mua ${confirmBuy.item.name}?`}
+          title={`Mua ${shopEntryDisplayName(confirmBuy)}?`}
           body={`Bạn có chắc muốn chi ${num(confirmBuy.item.coinPrice)} Xu để sở hữu ${
             confirmBuy.kind === 'rod' ? 'chiếc cần câu' : 'chiếc thuyền'
           } này không? Sau khi mua, bạn có thể trang bị ngay để chuẩn bị ra khơi.`}

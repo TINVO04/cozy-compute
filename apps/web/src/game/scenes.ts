@@ -48,7 +48,7 @@ import Phaser from 'phaser';
 import { duckGrid } from '../art/items';
 import { decorateFarm } from '../art/farm-scenery';
 import { paintOceanLandscape } from '../art/ocean-landscape';
-import { ensureBoatTexture } from '../art/boat';
+import { BOAT_WORLD_SCALE, boatWorldScaleFor, ensureBoatTexture, preloadBoatTextures } from '../art/boat';
 import {
   paintShopBacSau,
   paintSiloWarehouse,
@@ -139,6 +139,10 @@ export abstract class WorldScene extends Phaser.Scene {
     Phaser.Input.Keyboard.Key
   >;
   private offRoom: (() => void) | null = null;
+
+  preload() {
+    preloadBoatTextures(this);
+  }
 
   create() {
     registerActiveWorldScene(this);
@@ -327,12 +331,13 @@ export class TownScene extends WorldScene {
     }
 
     this.dockedBoatContainer.setVisible(true);
-    const tex = ensureBoatTexture(this, boatId, 1, 0);
-    const bImg = this.add.image(0, 0, tex).setOrigin(0.5, 0.7);
+    const tex = ensureBoatTexture(this, boatId, 1);
+    const boatScale = boatWorldScaleFor(boatId);
+    const bImg = this.add.image(0, 0, tex).setOrigin(0.5, 0.7).setScale(boatScale);
     this.dockedBoatContainer.add(bImg);
 
     const txt = this.add
-      .text(0, -28, '⛵ Lên Thuyền (E)', {
+      .text(0, -54 - Math.max(0, boatScale - BOAT_WORLD_SCALE) * 48, '⛵ Lên Thuyền (E)', {
         fontFamily: 'Inter, sans-serif',
         fontSize: '10px',
         fontStyle: 'bold',
@@ -459,7 +464,10 @@ export class TownScene extends WorldScene {
     pontoon.fillStyle(0x0284c7, 0.95).fillRect(40.0 * TILE, 26.5 * TILE, 10, 36);
     pontoon.fillStyle(0x38bdf8, 1.0).fillRect(40.2 * TILE, 26.5 * TILE, 2, 36);
 
-    const dockedBoatContainer = this.add.container(slipX + 16, slipY).setDepth(slipY);
+    // The pier click zone and E-key range stay at their existing coordinates;
+    // move the enlarged boat prop out over open water so it clears Cầu Hóa An.
+    const dockVisualOffsetX = 3 * TILE;
+    const dockedBoatContainer = this.add.container(slipX + 16 + dockVisualOffsetX, slipY).setDepth(slipY);
     this.dockedBoatContainer = dockedBoatContainer;
     this.updateTraffic?.();
     this.syncDockedBoat();
