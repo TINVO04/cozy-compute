@@ -3,9 +3,7 @@ import { expect, test } from '@playwright/test';
 import { CANONICAL_VEHICLE_IDS, SHOWROOM_PEDESTALS, VEHICLE_DISPLAYS, vehicleById } from '@cozy/game-data';
 
 test.describe('Showroom & Luxury Vehicles E2E', () => {
-  test('renders and cycles all 16 vehicles across the four showroom categories', async ({
-    page,
-  }) => {
+  test('renders and cycles all 16 vehicles across the four showroom categories', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
 
@@ -49,18 +47,28 @@ test.describe('Showroom & Luxury Vehicles E2E', () => {
     const visited: string[] = [];
     for (let selection = 0; selection < 4; selection++) {
       const expected = SHOWROOM_PEDESTALS.map((pedestal) => pedestal.vehicles[selection]!);
-      await expect.poll(() => page.evaluate(() => {
-        const g = (window as unknown as { showroomPreview: Game }).showroomPreview;
-        return g.scene.getScene('showroom').children.list
-          .filter((object) => object.type === 'Image')
-          .map((object) => (object as unknown as { texture: { key: string } }).texture.key)
-          .filter((key) => key.startsWith('vehicle:')).sort();
-      })).toEqual(expected.map((id) => `vehicle:${id}:2:0`).sort());
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const g = (window as unknown as { showroomPreview: Game }).showroomPreview;
+            return g.scene
+              .getScene('showroom')
+              .children.list.filter((object) => object.type === 'Image')
+              .map((object) => (object as unknown as { texture: { key: string } }).texture.key)
+              .filter((key) => key.startsWith('vehicle:'))
+              .sort();
+          }),
+        )
+        .toEqual(expected.map((id) => `vehicle:${id}:2:0`).sort());
       visited.push(...expected);
       await page.waitForTimeout(250);
       await page.screenshot({ path: `../../output/vehicles/showroom-selection-${selection}.png` });
       await page.evaluate(() => {
-        const ui = (window as unknown as { showroomUi: { getState: () => { cycleShowroomPedestal: (direction: 1, index: number) => void } } }).showroomUi;
+        const ui = (
+          window as unknown as {
+            showroomUi: { getState: () => { cycleShowroomPedestal: (direction: 1, index: number) => void } };
+          }
+        ).showroomUi;
         for (let index = 0; index < 4; index++) ui.getState().cycleShowroomPedestal(1, index);
       });
     }

@@ -9,7 +9,9 @@ describe('seated rider anatomy', () => {
     for (let d = 0; d < 4; d++) {
       for (let frame = 0; frame < 4; frame++) {
         const { near, hip } = riderLayers(DEFAULT_APPEARANCE, id, d as Dir, frame);
-        const boots = near.px.flatMap((color, index) => color === '#e8e3d6' ? [{ x: index % 48, y: Math.floor(index / 48) }] : []);
+        const boots = near.px.flatMap((color, index) =>
+          color === '#e8e3d6' ? [{ x: index % 48, y: Math.floor(index / 48) }] : [],
+        );
         expect(boots.length).toBeGreaterThanOrEqual(6);
         expect(boots.every((point) => point.y > hip.y && point.y < 63)).toBe(true);
         if (d === 0 || d === 3) {
@@ -25,12 +27,21 @@ describe('seated rider anatomy', () => {
     expect(ridingStyle('motorcycle_harley_fat_boy')).toBe('cruiser');
     expect(ridingStyle('motorcycle_bmw_r1250_gs')).toBe('touring');
     expect(ridingStyle('motorcycle_ducati')).toBe('sport');
-    const legs = [0, 1, 2, 3].map((frame) => riderLayers(DEFAULT_APPEARANCE, 'bicycle_sky', 2, frame).near.px.slice(48 * 44).join());
+    const legs = [0, 1, 2, 3].map((frame) =>
+      riderLayers(DEFAULT_APPEARANCE, 'bicycle_sky', 2, frame)
+        .near.px.slice(48 * 44)
+        .join(),
+    );
     expect(new Set(legs).size).toBe(4);
   });
   it('preserves appearance changes instead of baking in a generic rider', () => {
     const first = riderLayers(DEFAULT_APPEARANCE, 'motorcycle_ducati', 2, 0).near.px;
-    const second = riderLayers({ ...DEFAULT_APPEARANCE, skin: 3, hairColor: 4, top: 'hoodie:#da548a' }, 'motorcycle_ducati', 2, 0).near.px;
+    const second = riderLayers(
+      { ...DEFAULT_APPEARANCE, skin: 3, hairColor: 4, top: 'hoodie:#da548a' },
+      'motorcycle_ducati',
+      2,
+      0,
+    ).near.px;
     expect(first).not.toEqual(second);
     expect(second).toContain('#da548a');
   });

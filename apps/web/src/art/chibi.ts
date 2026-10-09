@@ -507,6 +507,8 @@ export function drawChibiSlungSword(
   ctx.restore();
 }
 
+export type RidingStyle = 'pedal' | 'scooter' | 'cruiser' | 'touring' | 'sport';
+
 /**
  * Renders an HD Chibi character on any 2D canvas context.
  */
@@ -517,10 +519,13 @@ export function drawChibiAvatar(
     cx?: number;
     cy?: number;
     scale?: number;
-    pose?: 'idle' | 'holding' | 'trophy' | 'fishing';
+    pose?: 'idle' | 'holding' | 'trophy' | 'fishing' | 'riding';
     dir?: 0 | 1 | 2 | 3;
-    frame?: 0 | 1 | 2;
+    frame?: number;
     showFish?: boolean;
+    ridingStyle?: RidingStyle;
+    ridingLayer?: 'far' | 'near' | 'both';
+    vehicleId?: string;
   } = {},
 ) {
   const {
@@ -531,6 +536,8 @@ export function drawChibiAvatar(
     dir = 0,
     frame = 0,
     showFish = true,
+    ridingStyle = 'sport',
+    ridingLayer = 'both',
   } = options;
 
   ctx.save();
@@ -548,18 +555,112 @@ export function drawChibiAvatar(
   const isSide = dir === 1 || dir === 2;
   const isMirror = dir === 2;
 
+  // Walk cycle physics or engine vibration
+  const bodyBob = pose === 'riding' ? 0 : frame === 0 ? 0 : -2;
+  const torsoY = -4 + bodyBob;
+  const ridingPivotY = 16;
+  const isRiding = pose === 'riding';
+  const leanAngle =
+    isSide && isRiding
+      ? ridingStyle === 'sport'
+        ? -0.26
+        : ridingStyle === 'pedal'
+          ? -0.16
+          : ridingStyle === 'touring'
+            ? -0.09
+            : ridingStyle === 'cruiser'
+              ? 0.05
+              : 0
+      : 0;
+  const leanX =
+    isSide && isRiding
+      ? ridingStyle === 'sport'
+        ? -8
+        : ridingStyle === 'pedal'
+          ? -5
+          : ridingStyle === 'touring'
+            ? -3
+            : 0
+      : 0;
+
   if (isMirror) {
     ctx.scale(-1, 1);
   }
 
-  // Walk cycle physics
-  const bodyBob = frame === 0 ? 0 : -2;
+  // --- RIDING FAR LAYER (drawn behind vehicle chassis in profile) ---
+  if (pose === 'riding' && ridingLayer === 'far') {
+    if (isSide) {
+      // Far leg (straddling far side of vehicle)
+      const farHipX = 2;
+      const farHipY = 16;
+      let farKneeX = -12;
+      let farKneeY = 25;
+      let farAnkleX = -8;
+      let farAnkleY = 36;
+      if (ridingStyle === 'cruiser') {
+        farKneeX = -15;
+        farKneeY = 23;
+        farAnkleX = -16;
+        farAnkleY = 35;
+      } else if (ridingStyle === 'scooter') {
+        farKneeX = -12;
+        farKneeY = 26;
+        farAnkleX = -10;
+        farAnkleY = 36;
+      } else if (ridingStyle === 'pedal') {
+        const ang = (frame % 4) * Math.PI * 0.5 + Math.PI;
+        farAnkleX = -9 + Math.cos(ang) * 5;
+        farAnkleY = 35 + Math.sin(ang) * 5;
+        farKneeY = 25 + Math.sin(ang) * 2.5;
+      }
+      ctx.save();
+      ctx.lineWidth = 9;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#181e30'; // shadowed far pants
+      ctx.beginPath();
+      ctx.moveTo(farHipX, farHipY);
+      ctx.lineTo(farKneeX, farKneeY);
+      ctx.lineTo(farAnkleX, farAnkleY);
+      ctx.stroke();
+
+      // Far shoe
+      ctx.fillStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.roundRect(farAnkleX - 4, farAnkleY - 2, 13, 7, 3);
+      ctx.fill();
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(farAnkleX - 4, farAnkleY + 3, 13, 2);
+
+      // Far arm reaching forward to far handlebar
+      const farHandlebarX = -28;
+      const farHandlebarY = 5;
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = topColor;
+      ctx.beginPath();
+      ctx.moveTo(leanX + 2, torsoY + 4);
+      ctx.lineTo(leanX - 11, torsoY + 10);
+      ctx.lineTo(farHandlebarX, torsoY + farHandlebarY);
+      ctx.stroke();
+
+      ctx.fillStyle = skin;
+      ctx.beginPath();
+      ctx.arc(farHandlebarX, torsoY + farHandlebarY, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+    return;
+  }
 
   // --- 1. SHADOW ON GROUND ---
-  ctx.beginPath();
-  ctx.ellipse(0, 48, 28, 9, 0, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.22)';
-  ctx.fill();
+  if (pose !== 'riding') {
+    ctx.beginPath();
+    ctx.ellipse(0, 48, 28, 9, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.22)';
+    ctx.fill();
+  }
 
   // --- 2. LOWER BODY (LEGS & SHOES) ---
   const pantsCol = '#252d44';
@@ -567,7 +668,96 @@ export function drawChibiAvatar(
   const shoeCol = '#e2e8f0';
   const shoeSole = '#94a3b8';
 
-  if (isSide) {
+  if (pose === 'riding') {
+    if (isSide) {
+      // Near leg (in front of vehicle)
+      const nearHipX = 0;
+      const nearHipY = 16;
+      let nearKneeX = -13;
+      let nearKneeY = 25;
+      let nearAnkleX = -8;
+      let nearAnkleY = 36;
+      if (ridingStyle === 'cruiser') {
+        nearKneeX = -16;
+        nearKneeY = 23;
+        nearAnkleX = -16;
+        nearAnkleY = 35;
+      } else if (ridingStyle === 'scooter') {
+        nearKneeX = -12;
+        nearKneeY = 26;
+        nearAnkleX = -10;
+        nearAnkleY = 36;
+      } else if (ridingStyle === 'pedal') {
+        const ang = (frame % 4) * Math.PI * 0.5;
+        nearAnkleX = -9 + Math.cos(ang) * 5;
+        nearAnkleY = 35 + Math.sin(ang) * 5;
+        nearKneeY = 25 + Math.sin(ang) * 2.5;
+      }
+      ctx.save();
+      ctx.lineWidth = 10;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = pantsCol;
+      ctx.beginPath();
+      ctx.moveTo(nearHipX, nearHipY);
+      ctx.lineTo(nearKneeX, nearKneeY);
+      ctx.lineTo(nearAnkleX, nearAnkleY);
+      ctx.stroke();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = pantsShadow;
+      ctx.stroke();
+
+      // Near shoe
+      ctx.fillStyle = shoeCol;
+      ctx.beginPath();
+      ctx.roundRect(nearAnkleX - 5, nearAnkleY - 2, 14, 8, 3);
+      ctx.fill();
+      ctx.fillStyle = '#e8e3d6'; // rubber cupsole
+      ctx.fillRect(nearAnkleX - 5, nearAnkleY + 4, 14, 2.5);
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      // Front / Back View straddling legs
+      for (const sign of [-1, 1]) {
+        const hipX = sign * 10;
+        const hipY = 16;
+        const kneeX = sign * 18;
+        const kneeY = 26;
+        const ankleX = sign * 16;
+        let ankleY = 36;
+        if (ridingStyle === 'pedal') {
+          const pedalDy = sign === 1 ? [0, 4, 0, -4][frame % 4]! : [0, -4, 0, 4][frame % 4]!;
+          ankleY += pedalDy;
+        }
+        ctx.save();
+        ctx.lineWidth = 10;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = pantsCol;
+        ctx.beginPath();
+        ctx.moveTo(hipX, hipY);
+        ctx.lineTo(kneeX, kneeY);
+        ctx.lineTo(ankleX, ankleY);
+        ctx.stroke();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = pantsShadow;
+        ctx.stroke();
+
+        // Shoe
+        ctx.fillStyle = shoeCol;
+        ctx.beginPath();
+        const shoeX = sign === -1 ? ankleX - 7 : ankleX - 5;
+        ctx.roundRect(shoeX, ankleY - 2, 12, 8, 3);
+        ctx.fill();
+        ctx.fillStyle = '#e8e3d6';
+        ctx.fillRect(shoeX, ankleY + 4, 12, 2.5);
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  } else if (isSide) {
     // Profile Walk Cycle: Moving forward (-X when dir=1)
     // frame 1: lead leg steps forward (-X), trailing leg back (+X)
     // frame 2: lead leg swings back (+X), trailing leg forward (-X)
@@ -647,7 +837,13 @@ export function drawChibiAvatar(
   }
 
   // --- 3. TORSO & CLOTHING ---
-  const torsoY = -4 + bodyBob;
+  const hasLean = leanAngle !== 0;
+  if (hasLean) {
+    ctx.save();
+    ctx.translate(0, ridingPivotY);
+    ctx.rotate(leanAngle);
+    ctx.translate(0, -ridingPivotY);
+  }
   ctx.beginPath();
   if (isSide) {
     ctx.roundRect(-14, torsoY, 28, 28, 8);
@@ -1034,6 +1230,13 @@ export function drawChibiAvatar(
 
   // --- 5. HEAD & FACE ---
   const headY = -44 + bodyBob;
+  const hasHeadTilt = hasLean && leanAngle < 0;
+  if (hasHeadTilt) {
+    ctx.save();
+    ctx.translate(0, headY + 26);
+    ctx.rotate(-leanAngle * 0.5);
+    ctx.translate(0, -(headY + 26));
+  }
 
   ctx.beginPath();
   if (isSide) {
@@ -1048,29 +1251,13 @@ export function drawChibiAvatar(
   ctx.stroke();
 
   if (isSide) {
-    // Cute ear on side of head towards the back (+X)
+    // Soft subtle ear on side of head towards the back (+X)
     ctx.beginPath();
-    ctx.arc(8, headY + 22, 5.5, -Math.PI / 2, Math.PI / 2);
+    ctx.arc(8, headY + 22, 4.5, -Math.PI / 2, Math.PI / 2);
     ctx.fillStyle = skin;
     ctx.fill();
-    ctx.strokeStyle = '#2d2238';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    // Inner ear notch
-    ctx.beginPath();
-    ctx.arc(7, headY + 22, 2.5, -Math.PI / 2, Math.PI / 2);
-    ctx.strokeStyle = 'rgba(225, 29, 72, 0.35)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // Cute anime nose profile bump at the front (-X)
-    ctx.beginPath();
-    ctx.moveTo(-22, headY + 20);
-    ctx.quadraticCurveTo(-24.5, headY + 22.5, -22, headY + 24);
-    ctx.fillStyle = skin;
-    ctx.fill();
-    ctx.strokeStyle = '#2d2238';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(180, 83, 9, 0.35)';
+    ctx.lineWidth = 1.2;
     ctx.stroke();
   }
 
@@ -1129,47 +1316,48 @@ export function drawChibiAvatar(
       ctx.stroke();
     } else {
       // --- SIDE PROFILE FACE (Looking forward to -X) ---
-      // Rosy cheek at front cheek (-X)
-      const gradSide = ctx.createRadialGradient(-10, headY + 26, 1, -10, headY + 26, 8);
-      gradSide.addColorStop(0, 'rgba(244, 63, 94, 0.42)');
+      const eyeX = -10;
+
+      // Soft rosy blush under eye
+      const gradSide = ctx.createRadialGradient(eyeX, headY + 26, 1, eyeX, headY + 26, 7);
+      gradSide.addColorStop(0, 'rgba(244, 63, 94, 0.40)');
       gradSide.addColorStop(1, 'rgba(244, 63, 94, 0)');
       ctx.fillStyle = gradSide;
       ctx.beginPath();
-      ctx.arc(-10, headY + 26, 8, 0, Math.PI * 2);
+      ctx.arc(eyeX, headY + 26, 7, 0, Math.PI * 2);
       ctx.fill();
 
-      // Large Anime Profile Eye at front (-X)
-      const eyeX = -9;
+      // Large Anime Profile Eye at front (-X) matching front-view anime catchlights
       // Upper thick lash line curved forward
       ctx.beginPath();
       ctx.arc(eyeX, headY + 19, 5.5, Math.PI * 1.1, Math.PI * 1.95);
       ctx.strokeStyle = '#1e1b2e';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 2.8;
       ctx.stroke();
 
       // Deep shiny pupil looking forward (-X)
       ctx.beginPath();
-      ctx.ellipse(eyeX - 1, headY + 22, 4, 5.5, -0.1, 0, Math.PI * 2);
+      ctx.ellipse(eyeX, headY + 22, 4, 5.5, 0, 0, Math.PI * 2);
       ctx.fillStyle = '#1e293b';
       ctx.fill();
 
-      // Dual sparkling catchlights (twinkle) looking forward
+      // Dual sparkling catchlights (twinkle)
       ctx.beginPath();
-      ctx.arc(eyeX - 2.5, headY + 20.5, 1.8, 0, Math.PI * 2);
+      ctx.arc(eyeX - 1.5, headY + 20.5, 1.8, 0, Math.PI * 2);
       ctx.fillStyle = '#ffffff';
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(eyeX - 0.5, headY + 23.5, 1, 0, Math.PI * 2);
+      ctx.arc(eyeX + 1.2, headY + 23.5, 1, 0, Math.PI * 2);
       ctx.fill();
 
       // Eyebrow
       ctx.beginPath();
-      ctx.arc(eyeX - 0.5, headY + 13, 5, Math.PI * 1.15, Math.PI * 1.85);
+      ctx.arc(eyeX, headY + 14, 5, Math.PI * 1.15, Math.PI * 1.85);
       ctx.strokeStyle = hair;
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Cute anime mouth smile at profile edge (-X)
+      // Cute anime mouth smile
       ctx.beginPath();
       ctx.arc(-14, headY + 28, 3.5, -0.2, Math.PI * 0.55);
       ctx.strokeStyle = '#e11d48';
@@ -1616,11 +1804,63 @@ export function drawChibiAvatar(
     }
   }
 
+  if (hasHeadTilt) {
+    ctx.restore();
+  }
+  if (hasLean) {
+    ctx.restore();
+  }
+
   // --- 9. ARMS & HANDHELD TROPHY FISH ---
   const held = a.heldFish;
   const armSwing = frame === 0 ? 0 : frame === 1 ? 4 : -4;
 
-  if (held) {
+  if (pose === 'riding') {
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = topColor;
+
+    if (isSide) {
+      // Near arm reaching naturally forward to handlebar grip
+      const nearHandlebarX = -28;
+      const nearHandlebarY = 6;
+      ctx.beginPath();
+      ctx.moveTo(leanX - 1, torsoY + 4);
+      ctx.lineTo(leanX - 13, torsoY + 11);
+      ctx.lineTo(nearHandlebarX, torsoY + nearHandlebarY);
+      ctx.stroke();
+
+      // Near hand wrapping handlebar grip
+      ctx.fillStyle = skin;
+      ctx.beginPath();
+      ctx.arc(nearHandlebarX, torsoY + nearHandlebarY, 4, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Front / Back View: both hands on handlebars
+      const barY = isBack ? torsoY + 12 : torsoY + 18;
+      // Left arm
+      ctx.beginPath();
+      ctx.moveTo(-14, torsoY + 6);
+      ctx.lineTo(-18, barY);
+      ctx.stroke();
+      ctx.fillStyle = skin;
+      ctx.beginPath();
+      ctx.arc(-18, barY, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Right arm
+      ctx.strokeStyle = topColor;
+      ctx.beginPath();
+      ctx.moveTo(14, torsoY + 6);
+      ctx.lineTo(18, barY);
+      ctx.stroke();
+      ctx.fillStyle = skin;
+      ctx.beginPath();
+      ctx.arc(18, barY, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (held) {
     const cm = held.sizeCm;
     const isGiant = cm > 120;
     const isColossal = cm > 450;

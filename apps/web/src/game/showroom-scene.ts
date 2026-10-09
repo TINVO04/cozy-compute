@@ -32,7 +32,10 @@ export class ShowroomScene extends WorldScene {
   }
 
   protected override fitCamera() {
-    const zoom = Math.max(1, Math.floor(Math.min(this.scale.width / SHOWROOM.width, this.scale.height / SHOWROOM.height)));
+    const zoom = Math.max(
+      1,
+      Math.floor(Math.min(this.scale.width / SHOWROOM.width, this.scale.height / SHOWROOM.height)),
+    );
     const camera = this.cameras.main;
     camera.setZoom(zoom);
     const width = this.scale.width / zoom;

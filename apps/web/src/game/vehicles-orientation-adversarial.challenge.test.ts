@@ -320,7 +320,9 @@ describe('Adversarial Vehicle Orientation & Avatar Mounting Challenge (Milestone
         // When stopped (moving = false), vehicle sprite stays at dir = 1 with idle frame 0
         avatar.moving = false;
         avatar.update(16, 300);
-        expect((avatar.vehicleSprite as any)?.textureKey).toMatch(new RegExp(`^(?:vehicle|rider:.*):${vehicleId}:1:0$`));
+        expect((avatar.vehicleSprite as any)?.textureKey).toMatch(
+          new RegExp(`^(?:vehicle|rider:.*):${vehicleId}:1:0$`),
+        );
 
         // 2. Avatar Mounting Check
         if (def.kind === 'bicycle' || def.kind === 'motorcycle') {

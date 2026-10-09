@@ -1,12 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { CANONICAL_VEHICLE_IDS, vehicleById } from '@cozy/game-data';
+import type { Game, GameObjects } from 'phaser';
+import type * as VehicleModule from '../src/art/vehicle';
 
 test('every canvas fallback frame matches its decoded PNG in a real browser', async ({ page }) => {
   await page.goto('/e2e/fixtures/showroom.html');
   const models = CANONICAL_VEHICLE_IDS.map((id) => ({ id, path: vehicleById(id)!.assetPath! }));
   const results = await page.evaluate(async (models) => {
     const modulePath = '/src/art/vehicle.ts';
-    const { vehicleCanvas } = (await import(modulePath)) as typeof import('../src/art/vehicle');
+    const { vehicleCanvas } = (await import(modulePath)) as typeof VehicleModule;
     const differences: string[] = [];
     for (const { id, path } of models) {
       const image = new Image();
@@ -22,7 +24,8 @@ test('every canvas fallback frame matches its decoded PNG in a real browser', as
           const expected = ctx.getImageData(0, 0, 48, 40).data;
           const canvas = vehicleCanvas(id, direction, frame);
           const actual = canvas.getContext('2d')!.getImageData(0, 0, 48, 40).data;
-          if (actual.some((value, i) => value !== expected[i])) differences.push(`${id}/${direction}/${frame}`);
+          if (actual.some((value, i) => value !== expected[i]))
+            differences.push(`${id}/${direction}/${frame}`);
           const transform = canvas.getContext('2d')!.getTransform();
           if (!transform.isIdentity) differences.push(`${id}: transform leak`);
         }
@@ -42,17 +45,35 @@ test('showroom retains all four detailed vehicle textures when PNG requests fail
   await page.waitForTimeout(500);
   await page.screenshot({ path: '../../output/vehicles/showroom-png-offline.png' });
   const textures = await page.evaluate(() => {
-    const game = (window as unknown as { showroomPreview: import('phaser').Game }).showroomPreview;
+    const game = (window as unknown as { showroomPreview: Game }).showroomPreview;
     const scene = game.scene.getScene('showroom');
-    return scene.children.list.filter((object) => object.type === 'Image')
-      .map((object) => (object as import('phaser').GameObjects.Image).texture)
+    return scene.children.list
+      .filter((object) => object.type === 'Image')
+      .map((object) => (object as GameObjects.Image).texture)
       .filter((texture) => texture.key.startsWith('vehicle:'))
       .map((texture) => {
         const canvas = texture.getSourceImage() as HTMLCanvasElement;
-        return [...canvas.getContext('2d')!.getImageData(0, 0, 48, 40).data].filter((value, i) => i % 4 === 3 && value > 128).length;
+        return [...canvas.getContext('2d')!.getImageData(0, 0, 48, 40).data].filter(
+          (value, i) => i % 4 === 3 && value > 128,
+        ).length;
       });
   });
   expect(textures).toHaveLength(4);
   expect(textures.every((pixels) => pixels > 180)).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('riders fixture renders mounted riders with authentic chibi face and posture', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => {
+    console.error('BROWSER PAGE ERROR:', error.message);
+    errors.push(error.message);
+  });
+  await page.goto('/e2e/fixtures/riders.html');
+  await expect(page.locator('canvas').first()).toBeVisible();
+  const canvasCount = await page.locator('canvas').count();
+  // 1 reference row + 8 bikes = 9 rows * 4 directions = 36 canvases
+  expect(canvasCount).toBe(36);
+  await page.screenshot({ path: '../../output/vehicles/riders-preview.png', fullPage: true });
   expect(errors).toEqual([]);
 });

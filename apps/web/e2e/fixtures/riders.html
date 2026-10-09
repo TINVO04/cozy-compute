@@ -4,17 +4,51 @@
     <meta charset="UTF-8" />
     <title>Mounted rider visual QA</title>
     <style>
-      body { margin: 24px; background: #25343a; color: #f0eadb; font: 14px sans-serif; }
-      section { display: grid; grid-template-columns: 230px repeat(4, 192px); align-items: center; border-bottom: 1px solid #46535a; }
-      canvas { width: 192px; height: 256px; image-rendering: pixelated; background: #59616a; }
-      h1 { font-size: 20px; }
+      body {
+        margin: 24px;
+        background: #25343a;
+        color: #f0eadb;
+        font: 14px sans-serif;
+      }
+      section {
+        display: grid;
+        grid-template-columns: 230px repeat(4, 192px);
+        align-items: center;
+        border-bottom: 1px solid #46535a;
+      }
+      canvas {
+        width: 192px;
+        height: 256px;
+        image-rendering: pixelated;
+        background: #59616a;
+      }
+      h1 {
+        font-size: 20px;
+      }
     </style>
   </head>
   <body>
     <h1>Seated rider — Down / Left / Right / Up · 4× pixel inspection</h1>
     <script type="module">
       import { CANONICAL_VEHICLE_IDS, DEFAULT_APPEARANCE, vehicleById } from '@cozy/game-data';
+      import { drawChibiAvatar } from '/src/art/chibi.ts';
       import { riddenVehicleCanvas } from '/src/art/rider.ts';
+
+      // Reference row: Original walking avatar in all 4 directions
+      const refRow = document.createElement('section');
+      const refName = document.createElement('p');
+      refName.innerHTML = '<strong>ORIGINAL AVATAR (Walk/Idle)</strong>';
+      refRow.append(refName);
+      for (let dir = 0; dir < 4; dir++) {
+        const c = document.createElement('canvas');
+        c.width = 48;
+        c.height = 64;
+        const ctx = c.getContext('2d');
+        drawChibiAvatar(ctx, DEFAULT_APPEARANCE, { cx: 24, cy: 34, scale: 0.42, dir, frame: 0 });
+        refRow.append(c);
+      }
+      document.body.append(refRow);
+
       for (const id of CANONICAL_VEHICLE_IDS) {
         const vehicle = vehicleById(id);
         if (vehicle.kind === 'car') continue;
