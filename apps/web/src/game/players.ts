@@ -29,6 +29,7 @@ import { MovementPrediction, smoothMovement } from './movement-prediction';
 import { MovementInterpolation } from './movement-interpolation';
 import { boatPose } from './river-motion';
 import { SteamboatLights } from './boat-lights';
+import { BoatRowingController } from './boat-rowing';
 import { VehicleLights } from './vehicle-lights';
 import { ensureWingTexture, WING_FLAP_CONFIG } from '../art/wing-textures';
 
@@ -108,6 +109,7 @@ export class Avatar {
   private baseLabelY = 0;
   private boatSeatOffsetY = 0;
   private steamboatLights: SteamboatLights | null = null;
+  private boatRowing: BoatRowingController | null = null;
   interpolation = new MovementInterpolation();
   private animationState = '';
   vehicle = '';
@@ -1236,10 +1238,11 @@ export class Avatar {
     this.swordGlowContainer?.setY(this.swordGlowContainer.y + delta);
   }
 
-  updateBoat(time: number) {
+  updateBoat(time: number, dtMs = 16) {
     if (this.scene.scene.key !== 'ocean') {
       this.setBoatSeatOffset(0);
       this.steamboatLights?.hide();
+      this.boatRowing?.hide();
       if (this.boatSprite) {
         this.boatSprite.destroy();
         this.boatSprite = null;
@@ -1300,6 +1303,9 @@ export class Avatar {
     // Center the passenger on the deck and rotate them with the hull; labels stay level.
     this.sprite.setPosition(-Math.sin(pose.roll) * seatY, Math.cos(pose.roll) * seatY + pose.heave);
     this.sprite.setRotation(pose.roll);
+
+    this.boatRowing ??= new BoatRowingController(this.scene, this);
+    this.boatRowing.update(time, dtMs, this.moving, dir, boatId, seatY, pose);
   }
 
   update(dtMs: number, time: number) {
@@ -1334,7 +1340,7 @@ export class Avatar {
       this.vehicleSprite.y = riding ? -29 : -17;
     } else this.vehicleSprite?.setVisible(false);
     if (this.scene.scene.key === 'ocean') {
-      this.updateBoat(time);
+      this.updateBoat(time, dtMs);
       if (this.moving && !useUi.getState().reducedMotion) {
         this.dustTimer += dtMs;
         if (this.dustTimer >= 180) {
@@ -1441,6 +1447,8 @@ export class Avatar {
     this.rodGlowContainer?.destroy();
     this.swordGlowContainer?.destroy();
     this.backGlowContainer?.destroy();
+    this.boatRowing?.destroy();
+    this.boatRowing = null;
     this.boatSprite?.destroy();
     this.boatSprite = null;
     this.container.destroy();

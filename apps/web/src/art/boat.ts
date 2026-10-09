@@ -110,8 +110,46 @@ export function ensureBoatTexture(scene: Phaser.Scene, boatId: string, dir: numb
     BOAT_DISPLAY_FRAME_SIZE,
     BOAT_DISPLAY_FRAME_SIZE,
   );
+  if (art.id === 'boat_coracle') {
+    cleanKayakPaddle(context, dir);
+  }
   scene.textures.addCanvas(textureKey, canvas);
   return textureKey;
+}
+
+export type BoatOarType = 'kayak_double' | 'sampan_oars' | 'none';
+
+export function boatOarType(boatId?: string | null): BoatOarType {
+  const norm = boatId ? normalizeBoatId(boatId) : null;
+  if (norm === 'boat_coracle') return 'kayak_double';
+  if (norm === 'boat_sampan') return 'sampan_oars';
+  return 'none';
+}
+
+export function boatHasOars(boatId?: string | null): boolean {
+  return boatOarType(boatId) !== 'none';
+}
+
+/** Cleans baked-in static paddle blades from the raw kayak hull so animated rowing can render dynamically. */
+export function cleanKayakPaddle(context: CanvasRenderingContext2D, dir: number) {
+  const imgData = context.getImageData(0, 0, BOAT_DISPLAY_FRAME_SIZE, BOAT_DISPLAY_FRAME_SIZE);
+  const d = imgData.data;
+  for (let y = 0; y < BOAT_DISPLAY_FRAME_SIZE; y++) {
+    for (let x = 0; x < BOAT_DISPLAY_FRAME_SIZE; x++) {
+      const i = (y * BOAT_DISPLAY_FRAME_SIZE + x) * 4;
+      if (d[i + 3] === 0) continue;
+      if (dir === 2 || dir === 1) {
+        // East (frame 12) or West (frame 36)
+        if (y <= 31 && x <= 30) d[i + 3] = 0;
+        if (y >= 47 && x >= 28) d[i + 3] = 0;
+      } else if (dir === 3 || dir === 0) {
+        // North (frame 0) or South (frame 24)
+        if (x <= 23 && y >= 40 && y <= 50) d[i + 3] = 0;
+        if (x >= 40 && y >= 27 && y <= 36) d[i + 3] = 0;
+      }
+    }
+  }
+  context.putImageData(imgData, 0, 0);
 }
 
 /** Uses a pre-cropped, transparent 64px icon from the same art pack as the in-world hull. */

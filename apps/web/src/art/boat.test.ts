@@ -38,3 +38,21 @@ it('resolves legacy boat sprites to the same art and keeps four cardinal hull di
 it('uses the matching new hull artwork in item icons', () => {
   expect(boatIcon('boat_cutter')).toBe('/boats/icons/boat_cutter.png');
 });
+
+it('correctly categorizes boats that have oars vs motorized boats', async () => {
+  const { boatOarType, boatHasOars } = await import('./boat');
+  expect(boatOarType('boat_coracle')).toBe('kayak_double');
+  expect(boatHasOars('boat_coracle')).toBe(true);
+
+  expect(boatOarType('boat_sampan')).toBe('sampan_oars');
+  expect(boatHasOars('boat_sampan')).toBe(true);
+
+  expect(boatOarType('boat_cutter')).toBe('none');
+  expect(boatHasOars('boat_cutter')).toBe(false);
+
+  expect(boatOarType('boat_trawler')).toBe('none');
+  expect(boatHasOars('boat_trawler')).toBe(false);
+
+  expect(boatOarType(null)).toBe('none');
+  expect(boatHasOars(undefined)).toBe(false);
+});

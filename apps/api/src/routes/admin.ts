@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireAdmin } from '../auth.js';
 import type { AppContext } from '../context.js';
 import { withTx } from '../db.js';
+import { postLedger } from '../ledger.js';
 import { AppError, badRequest, forbidden, notFound } from '../errors.js';
 import * as ai from '../services/ai.js';
 import { audit } from '../services/audit.js';
@@ -653,6 +654,81 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext) {
         room: pres?.roomLabel ?? null,
       };
     });
+  });
+
+  app.post('/admin/players/:id/coin', async (req) => {
+    const admin = requireAdmin(req);
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const b = z
+      .object({
+        action: z.enum(['add', 'subtract', 'set']),
+        amount: z.number().int().min(0).max(1_000_000_000),
+        reason: z.string().trim().max(200).default('admin_adjust'),
+      })
+      .parse(req.body);
+
+    const result = await withTx(ctx.db, async (tx) => {
+      const current = await tx.query<{ coin: number }>(
+        'SELECT coin FROM balances WHERE user_id = $1 FOR UPDATE',
+        [id],
+      );
+      if (!current.rows[0]) throw notFound('Player not found.');
+      const curCoin = current.rows[0].coin;
+
+      let delta = 0;
+      if (b.action === 'add') {
+        delta = b.amount;
+      } else if (b.action === 'subtract') {
+        if (b.amount > curCoin) {
+          throw badRequest(
+            'insufficient_coin',
+            `Không thể trừ ${b.amount} xu vì người chơi hiện chỉ có ${curCoin} xu.`,
+          );
+        }
+        delta = -b.amount;
+      } else if (b.action === 'set') {
+        delta = b.amount - curCoin;
+      }
+
+      if (delta === 0) {
+        return { previousCoin: curCoin, newCoin: curCoin, delta: 0 };
+      }
+
+      const leg = await postLedger(tx, {
+        userId: id,
+        currency: 'coin',
+        amount: delta,
+        reason: 'admin_adjust',
+        metadata: {
+          adminId: admin.id,
+          adminEmail: admin.email,
+          action: b.action,
+          requestedAmount: b.amount,
+          note: b.reason || 'Admin điều chỉnh số dư',
+        },
+      });
+
+      await audit(
+        tx,
+        admin.id,
+        'player.coin_adjust',
+        'user',
+        id,
+        { coin: curCoin },
+        { coin: leg.balanceAfter, delta, action: b.action, note: b.reason },
+      );
+
+      return {
+        previousCoin: curCoin,
+        newCoin: leg.balanceAfter,
+        delta,
+      };
+    });
+
+    return {
+      ok: true,
+      ...result,
+    };
   });
 
   app.post('/admin/players/:id/status', async (req) => {
