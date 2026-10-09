@@ -100,6 +100,7 @@ export async function resolvedAppearance(q: Queryable, userId: string): Promise<
     hat: null,
     top: null,
     face: null,
+    back: null,
     rod: null,
     sword: null,
     boat: null,
@@ -107,7 +108,7 @@ export async function resolvedAppearance(q: Queryable, userId: string): Promise<
     heldFish,
   };
   for (const row of r.rows) {
-    if (row.slot === 'hat' || row.slot === 'top' || row.slot === 'face') {
+    if (row.slot === 'hat' || row.slot === 'top' || row.slot === 'face' || row.slot === 'back') {
       out[row.slot] = row.sprite;
     } else if (row.slot === 'rod') {
       out.rod = row.item_id ?? (row.sprite ? normalizeRodId(row.sprite) : null);

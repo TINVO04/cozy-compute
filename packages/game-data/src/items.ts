@@ -3,7 +3,7 @@ import { GEN_Z_FURNITURE } from './furniture.js';
 export { GEN_Z_FURNITURE, GEN_Z_FURNITURE_IDS } from './furniture.js';
 
 export type ItemType = 'clothing' | 'furniture' | 'rod' | 'boat' | 'vehicle' | 'sword';
-export type ClothingSlot = 'hat' | 'top' | 'face' | 'rod' | 'boat' | 'vehicle' | 'sword';
+export type ClothingSlot = 'hat' | 'top' | 'face' | 'back' | 'rod' | 'boat' | 'vehicle' | 'sword';
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary' | 'defiant' | 'sovereign';
 
 export const RARITY_LABELS: Record<Rarity, string> = {
@@ -626,6 +626,90 @@ export const ITEM_SEEDS: ItemDefinitionSeed[] = [
     rarity: 'common',
     coinPrice: 150,
     description: 'Khẩu trang mềm mại in hình mũi gấu bông siêu dễ thương.',
+  },
+  {
+    id: 'face_starlight_pin',
+    type: 'clothing',
+    slot: 'face',
+    sprite: 'starlight_pin:#facc15',
+    name: 'Trâm Cài Tinh Tú Lấp Lánh',
+    rarity: 'rare',
+    coinPrice: 880,
+    description: 'Trâm cài tóc ánh sao pha lê lung linh và hiệu ứng ngôi sao lấp lánh nơi gò má.',
+  },
+  // clothing: sparkly hat accessories
+  {
+    id: 'hat_diamond_crown',
+    type: 'clothing',
+    slot: 'hat',
+    sprite: 'diamond_crown:#38bdf8',
+    name: 'Vương Miện Kim Cương Tinh Khiết',
+    rarity: 'sovereign',
+    coinPrice: 9999,
+    description:
+      'Được chế tác từ bạch kim và kim cương vạn mặt cắt, tỏa ra tia sáng khúc xạ cầu vồng rực rỡ.',
+  },
+  // clothing: wings & back accessories
+  {
+    id: 'back_wings_angel',
+    type: 'clothing',
+    slot: 'back',
+    sprite: 'wings_angel:#facc15',
+    name: 'Cánh Thiên Thần Phát Sáng',
+    rarity: 'legendary',
+    coinPrice: 6800,
+    description: 'Đôi cánh thiên giới lông vũ trắng muốt viền hào quang hoàng kim lấp lánh thuần khiết.',
+  },
+  {
+    id: 'back_wings_fairy',
+    type: 'clothing',
+    slot: 'back',
+    sprite: 'wings_fairy:#38bdf8',
+    name: 'Cánh Tiên Bướm Dạ Quang',
+    rarity: 'epic',
+    coinPrice: 4200,
+    description: 'Cánh mỏng cánh bướm trong suốt đổi sắc pastel ngũ sắc kèm bụi phấn phát sáng huyền ảo.',
+  },
+  {
+    id: 'back_wings_cyber',
+    type: 'clothing',
+    slot: 'back',
+    sprite: 'wings_cyber:#06b6d4',
+    name: 'Cánh Cơ Giáp Cyberpunk LED',
+    rarity: 'epic',
+    coinPrice: 5500,
+    description:
+      'Cánh năng lượng phản lực Mecha tương lai với phiến sáng Neon Cyan và luồng plasma cam rực lửa.',
+  },
+  {
+    id: 'back_wings_demon',
+    type: 'clothing',
+    slot: 'back',
+    sprite: 'wings_demon:#a855f7',
+    name: 'Cánh Ác Ma Bóng Đêm',
+    rarity: 'legendary',
+    coinPrice: 6666,
+    description: 'Đôi cánh rồng ác ma gai góc bóng đêm bằng hắc diện thạch toát lên đốm lửa ma mị tím biếc.',
+  },
+  {
+    id: 'back_sparkle_aura',
+    type: 'clothing',
+    slot: 'back',
+    sprite: 'sparkle_aura:#fef08a',
+    name: 'Hào Quang Tinh Tú Lấp Lánh',
+    rarity: 'legendary',
+    coinPrice: 7200,
+    description: 'Hàng ngàn hạt bụi sao và ánh sao tinh tú 4 cánh xoay tròn lấp lánh bao quanh cơ thể.',
+  },
+  {
+    id: 'back_magic_orb',
+    type: 'clothing',
+    slot: 'back',
+    sprite: 'magic_orb:#c084fc',
+    name: 'Quả Cầu Ma Thuật & Đom Đóm Vai',
+    rarity: 'epic',
+    coinPrice: 3800,
+    description: 'Quả cầu pha lê phép thuật lơ lửng bên vai cùng đàn đom đóm dạ quang lấp lánh như cổ tích.',
   },
   // furniture
   ...GEN_Z_FURNITURE,

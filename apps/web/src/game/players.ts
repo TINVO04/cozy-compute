@@ -9,7 +9,7 @@ import {
   type Rect,
 } from '@cozy/game-data';
 import { getStateCallbacks, type Room } from 'colyseus.js';
-import type Phaser from 'phaser';
+import Phaser from 'phaser';
 import { AVATAR_FEET_OFFSET, ensureAvatarTexture } from './avatars';
 import { spawnFootstepDust, spawnWaterWake } from './atmosphere';
 import { ensureVehicleTexture } from '../art/vehicle';
@@ -23,6 +23,7 @@ import { MovementPrediction, smoothMovement } from './movement-prediction';
 import { MovementInterpolation } from './movement-interpolation';
 import { boatPose } from './river-motion';
 import { VehicleLights } from './vehicle-lights';
+import { ensureWingTexture, WING_FLAP_CONFIG } from '../art/wing-textures';
 
 interface PlayerSnapshot {
   userId: string;
@@ -85,6 +86,17 @@ export class Avatar {
   rodTweens: Phaser.Tweens.Tween[] = [];
   swordGlowContainer: Phaser.GameObjects.Container | null = null;
   swordTweens: Phaser.Tweens.Tween[] = [];
+  backGlowContainer: Phaser.GameObjects.Container | null = null;
+  backTweens: Phaser.Tweens.Tween[] = [];
+  facingDependentBackEffects: { obj: { x: number }; baseRelX: number }[] = [];
+  hasWings = false;
+  wingTweens: Phaser.Tweens.Tween[] = [];
+  wingContainer: Phaser.GameObjects.Container | null = null;
+  leftWingSprite: Phaser.GameObjects.Image | null = null;
+  rightWingSprite: Phaser.GameObjects.Image | null = null;
+  profileNearWingSprite: Phaser.GameObjects.Image | null = null;
+  profileFarWingSprite: Phaser.GameObjects.Image | null = null;
+  private currentWingDir = -1;
   boatSprite: Phaser.GameObjects.Image | null = null;
   interpolation = new MovementInterpolation();
   private animationState = '';
@@ -128,6 +140,7 @@ export class Avatar {
     this.updateHeldFish();
     this.updateEquippedRodEffect();
     this.updateEquippedSwordEffect();
+    this.updateEquippedBackEffect();
   }
 
   clearHeldFishEffects() {
@@ -160,6 +173,34 @@ export class Avatar {
     if (this.swordGlowContainer) {
       this.swordGlowContainer.destroy();
       this.swordGlowContainer = null;
+    }
+  }
+
+  clearBackEffects() {
+    for (const t of this.backTweens) {
+      t.stop();
+      t.remove();
+    }
+    this.backTweens = [];
+    for (const t of this.wingTweens) {
+      t.stop();
+      t.remove();
+    }
+    this.wingTweens = [];
+    this.facingDependentBackEffects = [];
+    this.hasWings = false;
+    this.currentWingDir = -1;
+    this.leftWingSprite = null;
+    this.rightWingSprite = null;
+    this.profileNearWingSprite = null;
+    this.profileFarWingSprite = null;
+    this.wingContainer = null;
+    this.shadow?.setScale?.(1, 1);
+    this.shadow?.setAlpha?.(0.25);
+    this.sprite.y = this.baseSpriteY;
+    if (this.backGlowContainer) {
+      this.backGlowContainer.destroy();
+      this.backGlowContainer = null;
     }
   }
 
@@ -648,13 +689,425 @@ export class Avatar {
     this.clearSwordEffects();
   }
 
+  updateBackFacing() {
+    if (!this.backGlowContainer) return;
+    const def = vehicleById(this.vehicle);
+    const kind = def?.kind;
+    const driving =
+      Boolean(this.vehicle) && (this.scene.scene.key === 'town' || this.scene.scene.key === 'farm');
+    const riding = driving && (kind === 'bicycle' || kind === 'motorcycle');
+
+    const isLeft = this.dir === 1;
+    const isRight = this.dir === 2;
+
+    const relX = riding ? (isLeft ? 9 : isRight ? -9 : 0) : isLeft ? 10 : isRight ? -10 : 0;
+    const relY = riding ? -34 : this.sprite ? this.sprite.y + 4 : this.baseSpriteY + 4;
+    this.backGlowContainer.setPosition(relX, relY);
+
+    for (const fx of this.facingDependentBackEffects) {
+      fx.obj.x = isLeft ? -fx.baseRelX : fx.baseRelX;
+    }
+
+    // Dynamic wing flap sprites and animations based on facing direction
+    const rawBack = this.appearance.back;
+    const backKind = rawBack ? rawBack.split(':')[0] : null;
+    if (this.hasWings && this.wingContainer && backKind) {
+      if (this.currentWingDir !== this.dir) {
+        this.currentWingDir = this.dir;
+        for (const t of this.wingTweens) {
+          t.stop();
+          t.remove();
+        }
+        this.wingTweens = [];
+        this.wingContainer.removeAll(true);
+        this.leftWingSprite = null;
+        this.rightWingSprite = null;
+        this.profileNearWingSprite = null;
+        this.profileFarWingSprite = null;
+
+        const flap = WING_FLAP_CONFIG[backKind] ?? WING_FLAP_CONFIG.wings_angel!;
+        const reducedMotion = useUi.getState().reducedMotion;
+
+        if (this.dir === 0 || this.dir === 3) {
+          // Front or Back: Symmetrical dual wings spreading from shoulders (nicely balanced scale)
+          const frontTex = ensureWingTexture(this.scene, backKind, 'front');
+          const baseScale = 1.15;
+          this.leftWingSprite = this.scene.add.image(-4, -6, frontTex);
+          this.leftWingSprite.setOrigin(0.88, 0.46);
+          this.leftWingSprite.setScale(baseScale);
+          this.rightWingSprite = this.scene.add.image(4, -6, frontTex);
+          this.rightWingSprite.setFlipX(true);
+          this.rightWingSprite.setOrigin(0.12, 0.46);
+          this.rightWingSprite.setScale(baseScale);
+          this.wingContainer.add([this.leftWingSprite, this.rightWingSprite]);
+
+          if (!reducedMotion) {
+            const twL = this.scene.tweens.add({
+              targets: this.leftWingSprite,
+              angle: -flap.maxAngle,
+              scaleX: baseScale * flap.scaleXCompress,
+              scaleY: baseScale * flap.scaleYStretch,
+              yoyo: true,
+              repeat: -1,
+              duration: flap.duration,
+              ease: flap.ease,
+            });
+            const twR = this.scene.tweens.add({
+              targets: this.rightWingSprite,
+              angle: flap.maxAngle,
+              scaleX: baseScale * flap.scaleXCompress,
+              scaleY: baseScale * flap.scaleYStretch,
+              yoyo: true,
+              repeat: -1,
+              duration: flap.duration,
+              ease: flap.ease,
+            });
+            this.wingTweens.push(twL, twR);
+          }
+        } else {
+          // Side Profile: Aerodynamic swept-back wings with 3D far/near offset (nicely balanced scale)
+          const profileTex = ensureWingTexture(this.scene, backKind, 'profile');
+          const profileBaseScale = 1.1;
+          this.profileFarWingSprite = this.scene.add.image(isLeft ? 6 : -6, -8, profileTex);
+          this.profileFarWingSprite.setOrigin(isLeft ? 0.12 : 0.88, 0.46);
+          if (!isLeft) this.profileFarWingSprite.setFlipX(true);
+          this.profileFarWingSprite.setScale(profileBaseScale * 0.88);
+          this.profileFarWingSprite.setAlpha(0.72);
+
+          this.profileNearWingSprite = this.scene.add.image(isLeft ? 3 : -3, -5, profileTex);
+          this.profileNearWingSprite.setOrigin(isLeft ? 0.12 : 0.88, 0.46);
+          if (!isLeft) this.profileNearWingSprite.setFlipX(true);
+          this.profileNearWingSprite.setScale(profileBaseScale);
+
+          this.wingContainer.add([this.profileFarWingSprite, this.profileNearWingSprite]);
+
+          if (!reducedMotion) {
+            const twNear = this.scene.tweens.add({
+              targets: this.profileNearWingSprite,
+              angle: isLeft ? -flap.maxAngle * 0.75 : flap.maxAngle * 0.75,
+              scaleY: profileBaseScale * flap.scaleYStretch,
+              yoyo: true,
+              repeat: -1,
+              duration: flap.duration,
+              ease: flap.ease,
+            });
+            const twFar = this.scene.tweens.add({
+              targets: this.profileFarWingSprite,
+              angle: isLeft ? -flap.maxAngle * 0.6 : flap.maxAngle * 0.6,
+              scaleY: profileBaseScale * 0.88 * 1.08,
+              delay: 50,
+              yoyo: true,
+              repeat: -1,
+              duration: flap.duration,
+              ease: flap.ease,
+            });
+            this.wingTweens.push(twNear, twFar);
+          }
+        }
+      }
+
+      const timeScale = this.moving ? 1.6 : 1.0;
+      for (const tw of this.wingTweens) {
+        tw.setTimeScale(timeScale);
+      }
+    }
+
+    if (this.dir === 3) {
+      this.container.bringToTop(this.backGlowContainer);
+      if (this.status) this.container.bringToTop(this.status);
+      if (this.bubble) this.container.bringToTop(this.bubble);
+      if (this.emote) this.container.bringToTop(this.emote);
+      this.container.bringToTop(this.label);
+    } else {
+      this.container.sendToBack(this.backGlowContainer);
+      this.container.sendToBack(this.shadow);
+    }
+  }
+
+  updateEquippedBackEffect() {
+    this.clearBackEffects();
+    const rawBack = this.appearance.back;
+    const rawHat = this.appearance.hat;
+    const rawFace = this.appearance.face;
+    const backKind = rawBack ? rawBack.split(':')[0] : null;
+    const hatKind = rawHat ? rawHat.split(':')[0] : null;
+    const faceKind = rawFace ? rawFace.split(':')[0] : null;
+
+    const isWing =
+      backKind === 'wings_angel' ||
+      backKind === 'wings_fairy' ||
+      backKind === 'wings_cyber' ||
+      backKind === 'wings_demon';
+    this.hasWings = Boolean(isWing);
+
+    const hasBackEffect = isWing || backKind === 'sparkle_aura' || backKind === 'magic_orb';
+    const hasHatEffect = hatKind === 'diamond_crown';
+    const hasFaceEffect = faceKind === 'starlight_pin';
+
+    if (!hasBackEffect && !hasHatEffect && !hasFaceEffect) return;
+
+    this.backGlowContainer = this.scene.add.container(0, 0);
+    this.container.add(this.backGlowContainer);
+
+    if (this.hasWings) {
+      this.wingContainer = this.scene.add.container(0, 0);
+      this.backGlowContainer.add(this.wingContainer);
+    }
+
+    const reducedMotion = useUi.getState().reducedMotion;
+
+    // Helper: Add shimmering diamond sparkle star with cross flares and additive blending
+    const addSparkleStar = (
+      parent: Phaser.GameObjects.Container,
+      relX: number,
+      relY: number,
+      color: number,
+      size: number,
+      delayMs: number,
+      duration = 650,
+    ) => {
+      const spk = this.scene.add.graphics();
+      const initialX = this.dir === 1 ? -relX : relX;
+      spk.x = initialX;
+      spk.y = relY;
+      spk.setBlendMode(Phaser.BlendModes.ADD);
+
+      // Light ray flares
+      spk.lineStyle(1.6, color, 0.9);
+      spk.lineBetween(-size * 1.6, 0, size * 1.6, 0);
+      spk.lineBetween(0, -size * 1.6, 0, size * 1.6);
+
+      // Diamond core
+      spk.fillStyle(color, 1);
+      spk.beginPath();
+      spk.moveTo(0, -size);
+      spk.lineTo(size * 0.35, -size * 0.35);
+      spk.lineTo(size, 0);
+      spk.lineTo(size * 0.35, size * 0.35);
+      spk.lineTo(0, size);
+      spk.lineTo(-size * 0.35, size * 0.35);
+      spk.lineTo(-size, 0);
+      spk.lineTo(-size * 0.35, -size * 0.35);
+      spk.closePath();
+      spk.fillPath();
+
+      // White hot center
+      spk.fillStyle(0xffffff, 1);
+      spk.fillCircle(0, 0, Math.max(1, size * 0.32));
+
+      parent.add(spk);
+      this.facingDependentBackEffects.push({ obj: spk, baseRelX: relX });
+
+      if (!reducedMotion) {
+        spk.setScale(0.25);
+        spk.setAlpha(0.2);
+        const tw = this.scene.tweens.add({
+          targets: spk,
+          scaleX: 1.35,
+          scaleY: 1.35,
+          alpha: 1,
+          yoyo: true,
+          repeat: -1,
+          duration,
+          delay: delayMs,
+          ease: 'Sine.easeInOut',
+        });
+        this.backTweens.push(tw);
+      }
+      return spk;
+    };
+
+    // Helper: Rising ethereal energy motes / dust drifting upward into the sky
+    const addAscendingMotes = (
+      parent: Phaser.GameObjects.Container,
+      colors: number[],
+      count: number,
+      spreadX: number,
+      riseDist: number,
+    ) => {
+      for (let i = 0; i < count; i++) {
+        const p = this.scene.add.graphics();
+        p.setBlendMode(Phaser.BlendModes.ADD);
+        const c = colors[i % colors.length]!;
+        p.fillStyle(c, 0.9);
+        p.fillCircle(0, 0, 1.8);
+        p.fillStyle(0xffffff, 1);
+        p.fillCircle(0, 0, 0.9);
+
+        const startX = (i / (count - 1 || 1) - 0.5) * spreadX * 2;
+        const startY = 8 + (i % 3) * 4;
+        p.x = startX;
+        p.y = startY;
+        parent.add(p);
+
+        if (!reducedMotion) {
+          this.backTweens.push(
+            this.scene.tweens.add({
+              targets: p,
+              y: startY - riseDist,
+              x: startX * 1.35,
+              alpha: 0,
+              repeat: -1,
+              duration: 1100 + i * 160,
+              delay: i * 140,
+              ease: 'Sine.easeOut',
+            }),
+          );
+        }
+      }
+    };
+
+    if (backKind === 'wings_angel') {
+      // 🪽 Angel Wings: Pure sparkling celestial diamond flares & ascending gold dust motes
+      addAscendingMotes(this.backGlowContainer, [0xfde047, 0xffffff, 0xfef08a], 6, 24, 30);
+
+      addSparkleStar(this.backGlowContainer, -26, -14, 0xffffff, 4.8, 0);
+      addSparkleStar(this.backGlowContainer, 26, -14, 0xffffff, 4.8, 200);
+      addSparkleStar(this.backGlowContainer, -28, 4, 0xfde047, 4.2, 400);
+      addSparkleStar(this.backGlowContainer, 28, 4, 0xfde047, 4.2, 600);
+      addSparkleStar(this.backGlowContainer, -18, 18, 0xffffff, 3.5, 800);
+      addSparkleStar(this.backGlowContainer, 18, 18, 0xffffff, 3.5, 1000);
+    } else if (backKind === 'wings_fairy') {
+      // 🧚 Fairy Wings: Pure sparkling pastel stars & floating fairy dust motes
+      addAscendingMotes(this.backGlowContainer, [0x67e8f9, 0xf472b6, 0xfef08a, 0xa7f3d0], 8, 24, 28);
+
+      addSparkleStar(this.backGlowContainer, -24, -12, 0x67e8f9, 4.4, 0);
+      addSparkleStar(this.backGlowContainer, 24, -12, 0xf472b6, 4.4, 250);
+      addSparkleStar(this.backGlowContainer, -22, 14, 0xfef08a, 3.8, 500);
+      addSparkleStar(this.backGlowContainer, 22, 14, 0xa7f3d0, 3.8, 750);
+    } else if (backKind === 'wings_cyber') {
+      // ⚡ Cyber Wings: Crackling high-voltage digital arc sparks & neon cyber glints
+      const sparks = this.scene.add.graphics();
+      sparks.setBlendMode(Phaser.BlendModes.ADD);
+      sparks.lineStyle(1.6, 0xffffff, 0.95);
+      sparks.lineBetween(-24, -6, -34, -12);
+      sparks.lineBetween(24, -6, 34, -12);
+      sparks.lineStyle(1.6, 0x22d3ee, 0.95);
+      sparks.lineBetween(-20, 12, -28, 18);
+      sparks.lineBetween(20, 12, 28, 18);
+      this.backGlowContainer.add(sparks);
+
+      if (!reducedMotion) {
+        this.backTweens.push(
+          this.scene.tweens.add({
+            targets: sparks,
+            alpha: 0.1,
+            yoyo: true,
+            repeat: -1,
+            duration: 100,
+            ease: 'Stepped',
+          }),
+        );
+      }
+
+      addAscendingMotes(this.backGlowContainer, [0x22d3ee, 0xf97316, 0xffffff], 6, 22, 26);
+
+      addSparkleStar(this.backGlowContainer, -26, -10, 0x22d3ee, 4.5, 0, 350);
+      addSparkleStar(this.backGlowContainer, 26, -10, 0x22d3ee, 4.5, 150, 350);
+      addSparkleStar(this.backGlowContainer, -22, 16, 0xf97316, 4.0, 300, 350);
+      addSparkleStar(this.backGlowContainer, 22, 16, 0xf97316, 4.0, 450, 350);
+    } else if (backKind === 'wings_demon') {
+      // 🦇 Demon Wings: Pure hellfire rising embers & dark void diamond stars
+      addAscendingMotes(this.backGlowContainer, [0xfb923c, 0xef4444, 0xc084fc, 0xf43f5e], 8, 26, 32);
+
+      addSparkleStar(this.backGlowContainer, -26, -14, 0xc084fc, 4.6, 0);
+      addSparkleStar(this.backGlowContainer, 26, -14, 0xc084fc, 4.6, 200);
+      addSparkleStar(this.backGlowContainer, -28, 8, 0xef4444, 4.2, 400);
+      addSparkleStar(this.backGlowContainer, 28, 8, 0xef4444, 4.2, 600);
+    } else if (backKind === 'sparkle_aura') {
+      // ✨ Sparkle Aura: Pure twinkling stars cluster & drifting starlight dust
+      addAscendingMotes(this.backGlowContainer, [0xffffff, 0xfde047, 0x38bdf8], 6, 22, 28);
+
+      const starOffsets = [
+        { x: -16, y: -22, c: 0xffffff, s: 4.8, d: 0 },
+        { x: 18, y: -20, c: 0xfde047, s: 4.5, d: 220 },
+        { x: -22, y: -6, c: 0x38bdf8, s: 4.2, d: 440 },
+        { x: 22, y: -4, c: 0xf472b6, s: 4.2, d: 660 },
+        { x: -14, y: 14, c: 0xfef08a, s: 3.8, d: 880 },
+        { x: 14, y: 16, c: 0xffffff, s: 3.8, d: 1100 },
+      ];
+      for (const st of starOffsets) {
+        addSparkleStar(this.backGlowContainer, st.x, st.y, st.c, st.s, st.d, 650);
+      }
+    } else if (backKind === 'magic_orb') {
+      // 🔮 Magic Orb: Hovering luminescent crystal node & bioluminescent fireflies
+      const orbGroup = this.scene.add.container(-14, -14);
+      this.backGlowContainer.add(orbGroup);
+      this.facingDependentBackEffects.push({ obj: orbGroup, baseRelX: -14 });
+
+      addSparkleStar(orbGroup, 0, 0, 0xc084fc, 4.5, 0, 700);
+
+      if (!reducedMotion) {
+        this.backTweens.push(
+          this.scene.tweens.add({
+            targets: orbGroup,
+            y: -19,
+            duration: 1200,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut',
+          }),
+        );
+      }
+
+      // Bioluminescent fireflies
+      for (let i = 0; i < 4; i++) {
+        const ff = this.scene.add.graphics();
+        ff.setBlendMode(Phaser.BlendModes.ADD);
+        ff.fillStyle(0xbef264, 0.95);
+        ff.fillCircle(0, 0, 2.2);
+        ff.fillStyle(0xffffff, 1);
+        ff.fillCircle(0, 0, 1);
+        const ang = (i / 4) * Math.PI * 2;
+        const fx = Math.cos(ang) * 16;
+        const fy = Math.sin(ang) * 16;
+        ff.x = fx;
+        ff.y = fy;
+        orbGroup.add(ff);
+
+        if (!reducedMotion) {
+          this.backTweens.push(
+            this.scene.tweens.add({
+              targets: ff,
+              x: Math.cos(ang + Math.PI * 0.5) * 18,
+              y: Math.sin(ang + Math.PI * 0.5) * 18,
+              yoyo: true,
+              repeat: -1,
+              duration: 900 + i * 200,
+              ease: 'Sine.easeInOut',
+            }),
+          );
+        }
+      }
+    }
+
+    // --- HAT ACCESSORY: Diamond Crown Crown Flare ---
+    if (hasHatEffect) {
+      const crownY = -AVATAR_FEET_OFFSET + 2;
+      addSparkleStar(this.backGlowContainer, 0, crownY, 0x67e8f9, 5.2, 0, 800);
+      addSparkleStar(this.backGlowContainer, -8, crownY + 4, 0xffffff, 3.8, 300, 700);
+      addSparkleStar(this.backGlowContainer, 8, crownY + 4, 0xffffff, 3.8, 600, 700);
+    }
+
+    // --- FACE ACCESSORY: Starlight Pin Twinkle ---
+    if (hasFaceEffect) {
+      const pinX = 7;
+      const pinY = -AVATAR_FEET_OFFSET + 18;
+      addSparkleStar(this.backGlowContainer, pinX, pinY, 0xfde047, 3.6, 150, 750);
+    }
+
+    this.updateBackFacing();
+  }
+
   setAppearance(a: Appearance) {
     this.appearance = a;
     this.updateHeldFish();
     this.updateEquippedRodEffect();
     this.updateEquippedSwordEffect();
+    this.updateEquippedBackEffect();
     const key = ensureAvatarTexture(this.scene, a);
     this.updateHeldFishFacing();
+    this.updateBackFacing();
     if (key === this.texKey) return;
     this.texKey = key;
     this.sprite.setTexture(key, this.dir * 3);
@@ -668,6 +1121,7 @@ export class Avatar {
     this.sprite.stop();
     this.sprite.setFrame(d * 3);
     this.updateHeldFishFacing();
+    this.updateBackFacing();
   }
 
   setStatus(text: string) {
@@ -749,6 +1203,7 @@ export class Avatar {
       this.sprite.setFrame(this.dir * 3);
     }
     this.updateHeldFishFacing();
+    this.updateBackFacing();
   }
 
   updateBoat(time: number) {
@@ -804,11 +1259,13 @@ export class Avatar {
     if (riding !== this.ridingTwoWheeler) {
       this.ridingTwoWheeler = riding;
       this.sprite.setCrop();
+      this.updateBackFacing();
     }
     this.sprite.setVisible(!driving);
     this.heldFishContainer?.setVisible(!driving);
     this.rodGlowContainer?.setVisible(!driving);
     this.swordGlowContainer?.setVisible(!driving);
+    this.backGlowContainer?.setVisible(!driving || riding);
     if (driving) {
       const frame = this.moving && !useUi.getState().reducedMotion ? 1 + (Math.floor(time / 140) % 3) : 0;
       const key = riding
@@ -831,19 +1288,79 @@ export class Avatar {
           spawnWaterWake(this.scene, this.container.x, this.container.y, this.dir);
         }
       }
+      if (this.backGlowContainer) {
+        const isLeft = this.dir === 1;
+        const isRight = this.dir === 2;
+        const relX = isLeft ? 10 : isRight ? -10 : 0;
+        this.backGlowContainer.setPosition(this.sprite.x + relX, this.sprite.y + 4);
+        this.backGlowContainer.setRotation(this.sprite.rotation);
+      }
     } else if (this.moving) {
-      this.sprite.y = this.baseSpriteY;
-      if (!useUi.getState().reducedMotion) {
-        this.dustTimer += dtMs;
-        if (this.dustTimer >= 220) {
-          this.dustTimer = 0;
-          if (!driving) spawnFootstepDust(this.scene, this.container.x, this.container.y);
+      if (this.hasWings && !driving && !useUi.getState().reducedMotion) {
+        const flyBob = Math.sin(time * 0.008 + this.breathSeed) * 1.8;
+        const hoverY = -4.5 + flyBob;
+        this.sprite.y = this.baseSpriteY + hoverY;
+        const shadowScale = Math.max(0.65, 1 - -hoverY * 0.04);
+        this.shadow?.setScale?.(shadowScale, shadowScale);
+        this.shadow?.setAlpha?.(Math.max(0.12, 0.25 - -hoverY * 0.015));
+      } else {
+        this.sprite.y = this.baseSpriteY;
+        this.shadow?.setScale?.(1, 1);
+        this.shadow?.setAlpha?.(0.25);
+        if (!useUi.getState().reducedMotion) {
+          this.dustTimer += dtMs;
+          if (this.dustTimer >= 220) {
+            this.dustTimer = 0;
+            if (!driving) spawnFootstepDust(this.scene, this.container.x, this.container.y);
+          }
+        }
+      }
+      if (this.backGlowContainer) {
+        this.backGlowContainer.setRotation(0);
+        if (riding) {
+          const isLeft = this.dir === 1;
+          const isRight = this.dir === 2;
+          const bounce =
+            isLeft || isRight
+              ? [0, 1, 0, -1][
+                  (this.moving && !useUi.getState().reducedMotion ? 1 + (Math.floor(time / 140) % 3) : 0) % 4
+                ]!
+              : 0;
+          const relX = isLeft ? 9 : isRight ? -9 : 0;
+          this.backGlowContainer.setPosition(relX, -34 + bounce);
+        } else {
+          this.backGlowContainer.y = this.sprite.y + 4;
         }
       }
     } else {
       this.dustTimer = 0;
       if (!useUi.getState().reducedMotion) {
-        this.sprite.y = this.baseSpriteY + Math.sin(time * 0.0035 + this.breathSeed) * 0.75;
+        if (this.hasWings && !driving) {
+          const hoverBob = Math.sin(time * 0.0045 + this.breathSeed) * 2.2;
+          const hoverY = -3.5 + hoverBob;
+          this.sprite.y = this.baseSpriteY + hoverY;
+          const shadowScale = Math.max(0.7, 1 - -hoverY * 0.04);
+          this.shadow?.setScale?.(shadowScale, shadowScale);
+          this.shadow?.setAlpha?.(Math.max(0.14, 0.25 - -hoverY * 0.015));
+        } else {
+          this.sprite.y = this.baseSpriteY + Math.sin(time * 0.0035 + this.breathSeed) * 0.75;
+          this.shadow?.setScale?.(1, 1);
+          this.shadow?.setAlpha?.(0.25);
+        }
+      } else {
+        this.shadow?.setScale?.(1, 1);
+        this.shadow?.setAlpha?.(0.25);
+      }
+      if (this.backGlowContainer) {
+        this.backGlowContainer.setRotation(0);
+        if (riding) {
+          const isLeft = this.dir === 1;
+          const isRight = this.dir === 2;
+          const relX = isLeft ? 9 : isRight ? -9 : 0;
+          this.backGlowContainer.setPosition(relX, -34);
+        } else {
+          this.backGlowContainer.y = this.sprite.y + 4;
+        }
       }
     }
 
@@ -852,7 +1369,7 @@ export class Avatar {
     }
     if (this.heldFishContainer && !useUi.getState().reducedMotion) {
       const bob = Math.sin(time * 0.0035 + this.breathSeed) * 1.5;
-      this.heldFishContainer.setY(this.heldFishBaseY + bob);
+      this.heldFishContainer.setY(this.heldFishBaseY + (this.sprite.y - this.baseSpriteY) + bob);
     }
   }
 
@@ -862,9 +1379,11 @@ export class Avatar {
     this.clearHeldFishEffects();
     this.clearRodEffects();
     this.clearSwordEffects();
+    this.clearBackEffects();
     this.heldFishContainer?.destroy();
     this.rodGlowContainer?.destroy();
     this.swordGlowContainer?.destroy();
+    this.backGlowContainer?.destroy();
     this.boatSprite?.destroy();
     this.boatSprite = null;
     this.container.destroy();

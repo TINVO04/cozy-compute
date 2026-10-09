@@ -24,6 +24,7 @@ const FILTERS = {
     ['hat', 'Mũ nón'],
     ['top', 'Trang phục'],
     ['face', 'Phụ kiện mặt'],
+    ['back', 'Cánh & Lưng'],
   ],
   furniture: [
     ['all', 'Tất cả'],
@@ -175,7 +176,9 @@ export function ShopPanel({ kind, onClose }: { kind: 'clothing' | 'furniture'; o
                     {item.type === 'furniture'
                       ? `Đã có ×${item.owned}`
                       : item.equipped
-                        ? 'Đang mặc'
+                        ? item.slot === 'back'
+                          ? 'Đang đeo'
+                          : 'Đang mặc'
                         : 'Đã sở hữu'}
                   </span>
                 ) : null}
@@ -201,7 +204,7 @@ export function ShopPanel({ kind, onClose }: { kind: 'clothing' | 'furniture'; o
                   </span>
                   {clothingOwned ? (
                     <Button size="sm" onClick={() => setPanel('wardrobe')}>
-                      Mặc
+                      {item.slot === 'back' ? 'Đeo' : 'Mặc'}
                     </Button>
                   ) : (
                     <Button

@@ -507,6 +507,1202 @@ export function drawChibiSlungSword(
   ctx.restore();
 }
 
+/**
+ * 2026 Sparkling Celestial Star & Glint Helpers
+ */
+function drawSparkleStar(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  color = '#ffffff',
+  glowColor?: string,
+) {
+  ctx.save();
+  if (glowColor) {
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = size * 2.5;
+  }
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y - size);
+  ctx.quadraticCurveTo(x, y, x + size, y);
+  ctx.quadraticCurveTo(x, y, x, y + size);
+  ctx.quadraticCurveTo(x, y, x - size, y);
+  ctx.quadraticCurveTo(x, y, x, y - size);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(x, y, Math.max(0.8, size * 0.28), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawGlintCross(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  color = 'rgba(255, 255, 255, 0.85)',
+) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x - radius, y);
+  ctx.lineTo(x + radius, y);
+  ctx.moveTo(x, y - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.stroke();
+
+  const d = radius * 0.5;
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(x - d, y - d);
+  ctx.lineTo(x + d, y + d);
+  ctx.moveTo(x - d, y + d);
+  ctx.lineTo(x + d, y - d);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * 🪽 Cánh Thiên Thần Phát Sáng (Angel Wings):
+ * Lông vũ trắng muốt viền hào quang vàng kim lấp lánh, cấu trúc nhiều tầng lông vũ với tia sáng thần thánh.
+ */
+function drawChibiAngelWings(
+  ctx: CanvasRenderingContext2D,
+  isBack: boolean,
+  isSide: boolean,
+  torsoY: number,
+) {
+  ctx.save();
+  ctx.shadowColor = 'rgba(250, 204, 21, 0.75)';
+  ctx.shadowBlur = 18;
+
+  const drawOneWing = (sideSign: number) => {
+    ctx.save();
+    ctx.scale(sideSign, 1);
+
+    // Primary Wing Arc
+    const grad = ctx.createLinearGradient(0, torsoY - 26, -48, torsoY + 24);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.35, '#fffbeb');
+    grad.addColorStop(0.7, '#fef08a');
+    grad.addColorStop(1, '#facc15');
+
+    // 1. Base / Outer Primary Wing
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = '#eab308';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-6, torsoY + 6);
+    ctx.bezierCurveTo(-14, torsoY - 12, -26, torsoY - 26, -46, torsoY - 22);
+    ctx.quadraticCurveTo(-38, torsoY - 14, -44, torsoY - 8);
+    ctx.quadraticCurveTo(-36, torsoY - 2, -42, torsoY + 6);
+    ctx.quadraticCurveTo(-32, torsoY + 12, -36, torsoY + 18);
+    ctx.quadraticCurveTo(-26, torsoY + 18, -24, torsoY + 26);
+    ctx.quadraticCurveTo(-16, torsoY + 20, -6, torsoY + 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 2. Secondary Mid-Tier Feather Layer
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#fde047';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-8, torsoY + 4);
+    ctx.bezierCurveTo(-16, torsoY - 8, -24, torsoY - 18, -36, torsoY - 16);
+    ctx.quadraticCurveTo(-28, torsoY - 8, -34, torsoY - 2);
+    ctx.quadraticCurveTo(-26, torsoY + 4, -30, torsoY + 10);
+    ctx.quadraticCurveTo(-20, torsoY + 12, -18, torsoY + 18);
+    ctx.quadraticCurveTo(-12, torsoY + 14, -8, torsoY + 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 3. Fluffy Covert Feather Roots
+    ctx.fillStyle = '#fffdf5';
+    ctx.beginPath();
+    ctx.arc(-10, torsoY + 5, 5, 0, Math.PI * 2);
+    ctx.arc(-14, torsoY + 10, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4. Golden feather rib spines (quills)
+    ctx.strokeStyle = 'rgba(234, 179, 8, 0.7)';
+    ctx.lineWidth = 1;
+    [
+      { sx: -10, sy: torsoY + 4, ex: -44, ey: torsoY - 20 },
+      { sx: -10, sy: torsoY + 6, ex: -42, ey: torsoY - 7 },
+      { sx: -10, sy: torsoY + 8, ex: -40, ey: torsoY + 7 },
+      { sx: -10, sy: torsoY + 10, ex: -34, ey: torsoY + 19 },
+    ].forEach((rib) => {
+      ctx.beginPath();
+      ctx.moveTo(rib.sx, rib.sy);
+      ctx.quadraticCurveTo((rib.sx + rib.ex) / 2 + 2, (rib.sy + rib.ey) / 2 - 2, rib.ex, rib.ey);
+      ctx.stroke();
+    });
+
+    // 5. Divine halo rings and sparkles around wing tips
+    drawSparkleStar(ctx, -46, torsoY - 22, 5, '#ffffff', '#facc15');
+    drawGlintCross(ctx, -46, torsoY - 22, 7, 'rgba(254, 240, 138, 0.9)');
+    drawSparkleStar(ctx, -42, torsoY + 6, 3.5, '#fef08a', '#facc15');
+    drawSparkleStar(ctx, -24, torsoY + 26, 3, '#ffffff', '#fde047');
+
+    ctx.restore();
+  };
+
+  const drawProfileWings = () => {
+    const drawWingShape = (isFarWing: boolean) => {
+      ctx.save();
+      if (isFarWing) {
+        ctx.translate(4, -3);
+        ctx.scale(0.88, 0.88);
+        ctx.globalAlpha = 0.75;
+      }
+
+      // Gradient
+      const grad = ctx.createLinearGradient(4, torsoY - 24, 26, torsoY + 16);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.35, '#fffbeb');
+      grad.addColorStop(0.7, '#fef08a');
+      grad.addColorStop(1, '#facc15');
+
+      // 1. Primary Wing Feathers swept back
+      ctx.fillStyle = grad;
+      ctx.strokeStyle = '#eab308';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(4, torsoY + 6);
+      ctx.bezierCurveTo(7, torsoY - 8, 14, torsoY - 20, 24, torsoY - 22);
+      ctx.quadraticCurveTo(20, torsoY - 14, 26, torsoY - 8);
+      ctx.quadraticCurveTo(20, torsoY - 2, 24, torsoY + 4);
+      ctx.quadraticCurveTo(18, torsoY + 8, 20, torsoY + 16);
+      ctx.quadraticCurveTo(12, torsoY + 14, 4, torsoY + 9);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // 2. Secondary Mid Feather Layer
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#fde047';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(4, torsoY + 5);
+      ctx.bezierCurveTo(7, torsoY - 4, 12, torsoY - 13, 19, torsoY - 15);
+      ctx.quadraticCurveTo(15, torsoY - 8, 19, torsoY - 2);
+      ctx.quadraticCurveTo(14, torsoY + 4, 16, torsoY + 9);
+      ctx.quadraticCurveTo(10, torsoY + 10, 4, torsoY + 7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // 3. Fluffy Covert Base Roots
+      ctx.fillStyle = '#fffdf5';
+      ctx.beginPath();
+      ctx.arc(6, torsoY + 6, 4, 0, Math.PI * 2);
+      ctx.arc(8, torsoY + 9, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 4. Golden feather rib spines (quills)
+      ctx.strokeStyle = 'rgba(234, 179, 8, 0.75)';
+      ctx.lineWidth = 0.9;
+      [
+        { sx: 5, sy: torsoY + 5, ex: 23, ey: torsoY - 20 },
+        { sx: 5, sy: torsoY + 6, ex: 24, ey: torsoY - 7 },
+        { sx: 5, sy: torsoY + 7, ex: 22, ey: torsoY + 4 },
+        { sx: 5, sy: torsoY + 8, ex: 18, ey: torsoY + 15 },
+      ].forEach((rib) => {
+        ctx.beginPath();
+        ctx.moveTo(rib.sx, rib.sy);
+        ctx.quadraticCurveTo((rib.sx + rib.ex) / 2 - 1, (rib.sy + rib.ey) / 2 - 2, rib.ex, rib.ey);
+        ctx.stroke();
+      });
+
+      if (!isFarWing) {
+        // 5. Divine sparkles at apex and feather tips
+        drawSparkleStar(ctx, 24, torsoY - 22, 4.5, '#ffffff', '#facc15');
+        drawGlintCross(ctx, 24, torsoY - 22, 6, 'rgba(254, 240, 138, 0.95)');
+        drawSparkleStar(ctx, 24, torsoY + 4, 3.2, '#fef08a', '#facc15');
+        drawSparkleStar(ctx, 20, torsoY + 16, 2.5, '#ffffff', '#fde047');
+      }
+
+      ctx.restore();
+    };
+
+    drawWingShape(true);
+    drawWingShape(false);
+  };
+
+  if (isSide) {
+    drawProfileWings();
+  } else {
+    drawOneWing(1);
+    drawOneWing(-1);
+  }
+
+  // Golden filigree brooch mount on back of torso
+  if (isBack) {
+    ctx.fillStyle = '#facc15';
+    ctx.strokeStyle = '#ca8a04';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, torsoY + 8, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(0, torsoY + 8, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    drawSparkleStar(ctx, 0, torsoY + 8, 4, '#ffffff', '#fde047');
+  }
+
+  ctx.restore();
+}
+
+/**
+ * 🧚 Cánh Tiên Bướm Dạ Quang (Fairy / Butterfly Wings):
+ * Cánh mỏng trong suốt đổi màu pastel kèm bụi phấn phát sáng (sparkle dust).
+ */
+function drawChibiFairyWings(
+  ctx: CanvasRenderingContext2D,
+  isBack: boolean,
+  isSide: boolean,
+  torsoY: number,
+) {
+  ctx.save();
+  ctx.shadowColor = 'rgba(244, 114, 182, 0.65)';
+  ctx.shadowBlur = 15;
+
+  const drawOneFairyWing = (sideSign: number) => {
+    ctx.save();
+    ctx.scale(sideSign, 1);
+
+    // Prismatic pastel gradient
+    const gradUpper = ctx.createLinearGradient(-6, torsoY - 26, -46, torsoY + 12);
+    gradUpper.addColorStop(0, 'rgba(103, 232, 249, 0.88)');
+    gradUpper.addColorStop(0.35, 'rgba(192, 132, 252, 0.82)');
+    gradUpper.addColorStop(0.7, 'rgba(244, 114, 182, 0.88)');
+    gradUpper.addColorStop(1, 'rgba(254, 240, 138, 0.75)');
+
+    // Upper Wing (Forewing)
+    ctx.fillStyle = gradUpper;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-6, torsoY + 4);
+    ctx.bezierCurveTo(-14, torsoY - 14, -26, torsoY - 26, -44, torsoY - 22);
+    ctx.bezierCurveTo(-46, torsoY - 10, -40, torsoY + 2, -26, torsoY + 8);
+    ctx.quadraticCurveTo(-16, torsoY + 10, -6, torsoY + 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Lower Wing (Hindwing)
+    const gradLower = ctx.createLinearGradient(-8, torsoY + 8, -34, torsoY + 30);
+    gradLower.addColorStop(0, 'rgba(244, 114, 182, 0.85)');
+    gradLower.addColorStop(0.5, 'rgba(192, 132, 252, 0.82)');
+    gradLower.addColorStop(1, 'rgba(103, 232, 249, 0.85)');
+    ctx.fillStyle = gradLower;
+    ctx.beginPath();
+    ctx.moveTo(-6, torsoY + 8);
+    ctx.quadraticCurveTo(-24, torsoY + 12, -34, torsoY + 24);
+    ctx.quadraticCurveTo(-26, torsoY + 32, -18, torsoY + 26);
+    ctx.quadraticCurveTo(-10, torsoY + 20, -6, torsoY + 12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Delicate butterfly wing veins
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-10, torsoY + 2);
+    ctx.quadraticCurveTo(-24, torsoY - 10, -40, torsoY - 16);
+    ctx.moveTo(-18, torsoY - 6);
+    ctx.quadraticCurveTo(-28, torsoY - 4, -38, torsoY - 6);
+    ctx.moveTo(-16, torsoY - 2);
+    ctx.quadraticCurveTo(-26, torsoY + 4, -30, torsoY + 4);
+    ctx.moveTo(-8, torsoY + 10);
+    ctx.quadraticCurveTo(-20, torsoY + 18, -28, torsoY + 22);
+    ctx.stroke();
+
+    // Pearlescent spots
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.beginPath();
+    ctx.arc(-38, torsoY - 18, 2, 0, Math.PI * 2);
+    ctx.arc(-34, torsoY - 6, 1.8, 0, Math.PI * 2);
+    ctx.arc(-26, torsoY + 22, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Fairy sparkle dust particles drifting off edges
+    drawSparkleStar(ctx, -44, torsoY - 22, 4.5, '#ffffff', '#67e8f9');
+    drawSparkleStar(ctx, -38, torsoY + 4, 3.5, '#fef08a', '#f472b6');
+    drawSparkleStar(ctx, -34, torsoY + 24, 3, '#c084fc', '#67e8f9');
+    drawGlintCross(ctx, -44, torsoY - 22, 6, 'rgba(255, 255, 255, 0.85)');
+
+    // Floating magic pollen particles
+    const dusts = [
+      { x: -48, y: torsoY - 14, c: '#67e8f9', r: 1.5 },
+      { x: -42, y: torsoY - 28, c: '#f472b6', r: 1.2 },
+      { x: -46, y: torsoY + 10, c: '#fef08a', r: 1.5 },
+      { x: -38, y: torsoY + 30, c: '#a7f3d0', r: 1.2 },
+    ];
+    dusts.forEach((d) => {
+      ctx.fillStyle = d.c;
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    ctx.restore();
+  };
+
+  const drawProfileFairyWings = () => {
+    const drawFairyWingShape = (isFarWing: boolean) => {
+      ctx.save();
+      if (isFarWing) {
+        ctx.translate(4, -3);
+        ctx.scale(0.85, 0.85);
+        ctx.globalAlpha = 0.7;
+      }
+
+      // Upper forewing
+      const gradUpper = ctx.createLinearGradient(4, torsoY - 24, 26, torsoY + 10);
+      gradUpper.addColorStop(0, 'rgba(103, 232, 249, 0.9)');
+      gradUpper.addColorStop(0.35, 'rgba(192, 132, 252, 0.85)');
+      gradUpper.addColorStop(0.7, 'rgba(244, 114, 182, 0.9)');
+      gradUpper.addColorStop(1, 'rgba(254, 240, 138, 0.8)');
+
+      ctx.fillStyle = gradUpper;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(4, torsoY + 5);
+      ctx.bezierCurveTo(8, torsoY - 8, 14, torsoY - 20, 24, torsoY - 20);
+      ctx.bezierCurveTo(25, torsoY - 8, 20, torsoY + 1, 14, torsoY + 6);
+      ctx.quadraticCurveTo(8, torsoY + 7, 4, torsoY + 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Lower hindwing
+      const gradLower = ctx.createLinearGradient(4, torsoY + 7, 20, torsoY + 24);
+      gradLower.addColorStop(0, 'rgba(244, 114, 182, 0.88)');
+      gradLower.addColorStop(0.5, 'rgba(192, 132, 252, 0.85)');
+      gradLower.addColorStop(1, 'rgba(103, 232, 249, 0.88)');
+      ctx.fillStyle = gradLower;
+      ctx.beginPath();
+      ctx.moveTo(4, torsoY + 7);
+      ctx.quadraticCurveTo(12, torsoY + 9, 19, torsoY + 17);
+      ctx.quadraticCurveTo(15, torsoY + 23, 10, torsoY + 19);
+      ctx.quadraticCurveTo(6, torsoY + 15, 4, torsoY + 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Butterfly veins
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(6, torsoY + 5);
+      ctx.quadraticCurveTo(14, torsoY - 6, 22, torsoY - 16);
+      ctx.moveTo(10, torsoY + 2);
+      ctx.quadraticCurveTo(17, torsoY - 2, 21, torsoY - 6);
+      ctx.moveTo(6, torsoY + 8);
+      ctx.quadraticCurveTo(12, torsoY + 13, 16, torsoY + 16);
+      ctx.stroke();
+
+      // Pearlescent spots
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.beginPath();
+      ctx.arc(20, torsoY - 14, 1.8, 0, Math.PI * 2);
+      ctx.arc(18, torsoY - 4, 1.5, 0, Math.PI * 2);
+      ctx.arc(14, torsoY + 16, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (!isFarWing) {
+        drawSparkleStar(ctx, 24, torsoY - 20, 4, '#ffffff', '#67e8f9');
+        drawSparkleStar(ctx, 19, torsoY + 17, 3, '#c084fc', '#f472b6');
+        drawGlintCross(ctx, 24, torsoY - 20, 6, 'rgba(255, 255, 255, 0.9)');
+
+        // Floating dust behind
+        const dusts = [
+          { x: 26, y: torsoY - 12, c: '#67e8f9', r: 1.3 },
+          { x: 22, y: torsoY - 24, c: '#f472b6', r: 1.1 },
+          { x: 25, y: torsoY + 8, c: '#fef08a', r: 1.3 },
+          { x: 21, y: torsoY + 24, c: '#a7f3d0', r: 1.1 },
+        ];
+        dusts.forEach((d) => {
+          ctx.fillStyle = d.c;
+          ctx.beginPath();
+          ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      ctx.restore();
+    };
+
+    drawFairyWingShape(true);
+    drawFairyWingShape(false);
+  };
+
+  if (isSide) {
+    drawProfileFairyWings();
+  } else {
+    drawOneFairyWing(1);
+    drawOneFairyWing(-1);
+  }
+
+  if (isBack) {
+    ctx.fillStyle = '#e879f9';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(-3, torsoY + 6, 6, 8, 3);
+    ctx.fill();
+    ctx.stroke();
+    drawSparkleStar(ctx, 0, torsoY + 10, 3.5, '#ffffff', '#f472b6');
+  }
+
+  ctx.restore();
+}
+
+/**
+ * ⚡ Cánh Cơ Giáp Cyberpunk LED (Cyber Mecha Wings):
+ * Cánh năng lượng neon xanh cyan / cam hologram, hardpoint carbon siêu nhẹ và laser blades.
+ */
+function drawChibiCyberWings(
+  ctx: CanvasRenderingContext2D,
+  isBack: boolean,
+  isSide: boolean,
+  torsoY: number,
+) {
+  ctx.save();
+  ctx.shadowColor = '#06b6d4';
+  ctx.shadowBlur = 20;
+
+  const drawOneCyberWing = (sideSign: number) => {
+    ctx.save();
+    ctx.scale(sideSign, 1);
+
+    // 1. Carbon fiber mechanical pylon / hardpoint
+    ctx.fillStyle = '#0f172a';
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-6, torsoY + 4);
+    ctx.lineTo(-14, torsoY + 1);
+    ctx.lineTo(-18, torsoY + 8);
+    ctx.lineTo(-12, torsoY + 16);
+    ctx.lineTo(-6, torsoY + 12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Hazard neon orange LED warning stripe on pylon
+    ctx.fillStyle = '#f97316';
+    ctx.fillRect(-15, torsoY + 6, 4, 2);
+
+    // Glowing energy projector node
+    ctx.fillStyle = '#22d3ee';
+    ctx.beginPath();
+    ctx.arc(-15, torsoY + 11, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Hard-Light Laser Feathers (Upper, Mid, Lower)
+    const blade1 = ctx.createLinearGradient(-14, torsoY + 2, -48, torsoY - 20);
+    blade1.addColorStop(0, '#0284c7');
+    blade1.addColorStop(0.3, '#06b6d4');
+    blade1.addColorStop(0.7, '#67e8f9');
+    blade1.addColorStop(1, '#ffffff');
+
+    ctx.fillStyle = blade1;
+    ctx.strokeStyle = '#22d3ee';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-14, torsoY + 2);
+    ctx.lineTo(-48, torsoY - 18);
+    ctx.lineTo(-38, torsoY - 8);
+    ctx.lineTo(-16, torsoY + 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    const blade2 = ctx.createLinearGradient(-16, torsoY + 7, -46, torsoY + 4);
+    blade2.addColorStop(0, '#0891b2');
+    blade2.addColorStop(0.4, '#06b6d4');
+    blade2.addColorStop(0.8, '#a5f3fc');
+    blade2.addColorStop(1, '#ffffff');
+
+    ctx.fillStyle = blade2;
+    ctx.beginPath();
+    ctx.moveTo(-16, torsoY + 7);
+    ctx.lineTo(-48, torsoY + 4);
+    ctx.lineTo(-36, torsoY + 12);
+    ctx.lineTo(-14, torsoY + 12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    const blade3 = ctx.createLinearGradient(-12, torsoY + 13, -36, torsoY + 24);
+    blade3.addColorStop(0, '#0e7490');
+    blade3.addColorStop(0.5, '#22d3ee');
+    blade3.addColorStop(1, '#f97316');
+
+    ctx.fillStyle = blade3;
+    ctx.beginPath();
+    ctx.moveTo(-12, torsoY + 13);
+    ctx.lineTo(-36, torsoY + 22);
+    ctx.lineTo(-26, torsoY + 24);
+    ctx.lineTo(-8, torsoY + 15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Laser grid / circuit pulse lines on blades
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-20, torsoY);
+    ctx.lineTo(-40, torsoY - 14);
+    ctx.moveTo(-22, torsoY + 8);
+    ctx.lineTo(-42, torsoY + 6);
+    ctx.stroke();
+
+    // Hologram neon diamond glints & cyber spark nodes
+    drawSparkleStar(ctx, -48, torsoY - 18, 4.5, '#ffffff', '#22d3ee');
+    drawSparkleStar(ctx, -48, torsoY + 4, 4, '#a5f3fc', '#06b6d4');
+    drawSparkleStar(ctx, -36, torsoY + 22, 3.5, '#f97316', '#fb923c');
+    drawGlintCross(ctx, -48, torsoY - 18, 6, '#67e8f9');
+
+    // Floating digital energy data pixels
+    ctx.fillStyle = '#22d3ee';
+    ctx.fillRect(-44, torsoY - 8, 2, 2);
+    ctx.fillRect(-52, torsoY - 4, 2, 2);
+    ctx.fillStyle = '#f97316';
+    ctx.fillRect(-40, torsoY + 16, 2, 2);
+
+    ctx.restore();
+  };
+
+  const drawProfileCyberWings = () => {
+    const drawCyberWingShape = (isFarWing: boolean) => {
+      ctx.save();
+      if (isFarWing) {
+        ctx.translate(3, -3);
+        ctx.scale(0.86, 0.86);
+        ctx.globalAlpha = 0.72;
+      }
+
+      // 1. Carbon fiber mechanical pylon / hardpoint on back
+      ctx.fillStyle = '#0f172a';
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(4, torsoY + 3);
+      ctx.lineTo(8, torsoY + 1);
+      ctx.lineTo(11, torsoY + 7);
+      ctx.lineTo(8, torsoY + 14);
+      ctx.lineTo(4, torsoY + 11);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Hazard neon orange LED warning stripe on pylon
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(6, torsoY + 5, 3, 2);
+
+      // Glowing energy projector node
+      ctx.fillStyle = '#22d3ee';
+      ctx.beginPath();
+      ctx.arc(9, torsoY + 9, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Hard-Light Laser Feathers (Upper, Mid, Lower) swept back
+      const blade1 = ctx.createLinearGradient(9, torsoY + 2, 27, torsoY - 17);
+      blade1.addColorStop(0, '#0284c7');
+      blade1.addColorStop(0.3, '#06b6d4');
+      blade1.addColorStop(0.7, '#67e8f9');
+      blade1.addColorStop(1, '#ffffff');
+
+      ctx.fillStyle = blade1;
+      ctx.strokeStyle = '#22d3ee';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(9, torsoY + 2);
+      ctx.lineTo(27, torsoY - 17);
+      ctx.lineTo(21, torsoY - 8);
+      ctx.lineTo(10, torsoY + 5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      const blade2 = ctx.createLinearGradient(10, torsoY + 6, 28, torsoY + 3);
+      blade2.addColorStop(0, '#0891b2');
+      blade2.addColorStop(0.4, '#06b6d4');
+      blade2.addColorStop(0.8, '#a5f3fc');
+      blade2.addColorStop(1, '#ffffff');
+
+      ctx.fillStyle = blade2;
+      ctx.beginPath();
+      ctx.moveTo(10, torsoY + 6);
+      ctx.lineTo(28, torsoY + 3);
+      ctx.lineTo(21, torsoY + 10);
+      ctx.lineTo(9, torsoY + 10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      const blade3 = ctx.createLinearGradient(8, torsoY + 11, 21, torsoY + 19);
+      blade3.addColorStop(0, '#0e7490');
+      blade3.addColorStop(0.5, '#22d3ee');
+      blade3.addColorStop(1, '#f97316');
+
+      ctx.fillStyle = blade3;
+      ctx.beginPath();
+      ctx.moveTo(8, torsoY + 11);
+      ctx.lineTo(21, torsoY + 18);
+      ctx.lineTo(16, torsoY + 20);
+      ctx.lineTo(6, torsoY + 13);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Circuit grid pulse lines
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(12, torsoY);
+      ctx.lineTo(23, torsoY - 12);
+      ctx.moveTo(13, torsoY + 7);
+      ctx.lineTo(24, torsoY + 4);
+      ctx.stroke();
+
+      if (!isFarWing) {
+        drawSparkleStar(ctx, 27, torsoY - 17, 4, '#ffffff', '#22d3ee');
+        drawSparkleStar(ctx, 28, torsoY + 3, 3.5, '#a5f3fc', '#06b6d4');
+        drawSparkleStar(ctx, 21, torsoY + 18, 3, '#f97316', '#fb923c');
+        drawGlintCross(ctx, 27, torsoY - 17, 5.5, '#67e8f9');
+
+        // Floating digital energy data pixels
+        ctx.fillStyle = '#22d3ee';
+        ctx.fillRect(25, torsoY - 7, 2, 2);
+        ctx.fillRect(29, torsoY - 3, 2, 2);
+        ctx.fillStyle = '#f97316';
+        ctx.fillRect(23, torsoY + 14, 2, 2);
+      }
+
+      ctx.restore();
+    };
+
+    drawCyberWingShape(true);
+    drawCyberWingShape(false);
+  };
+
+  if (isSide) {
+    drawProfileCyberWings();
+  } else {
+    drawOneCyberWing(1);
+    drawOneCyberWing(-1);
+  }
+
+  if (isBack) {
+    ctx.fillStyle = '#0f172a';
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.roundRect(-8, torsoY + 4, 16, 12, 3);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#f97316';
+    ctx.beginPath();
+    ctx.arc(-4, torsoY + 14, 2, 0, Math.PI * 2);
+    ctx.arc(4, torsoY + 14, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+/**
+ * 🦇 Cánh Ác Ma / Rồng Bóng Đêm (Demon / Dragon Wings):
+ * Tông đen tím huyền bí có đốm lửa ma mị, khung xương rồng obsidian và vuốt sắc.
+ */
+function drawChibiDemonWings(
+  ctx: CanvasRenderingContext2D,
+  isBack: boolean,
+  isSide: boolean,
+  torsoY: number,
+) {
+  ctx.save();
+  ctx.shadowColor = '#9333ea';
+  ctx.shadowBlur = 18;
+
+  const drawOneDemonWing = (sideSign: number) => {
+    ctx.save();
+    ctx.scale(sideSign, 1);
+
+    // 1. Leathery bat wing membrane
+    const gradMembrane = ctx.createLinearGradient(-10, torsoY - 18, -48, torsoY + 24);
+    gradMembrane.addColorStop(0, '#180828');
+    gradMembrane.addColorStop(0.4, '#3b0764');
+    gradMembrane.addColorStop(0.8, '#581c87');
+    gradMembrane.addColorStop(1, '#831843');
+
+    ctx.fillStyle = gradMembrane;
+    ctx.strokeStyle = '#701a75';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-6, torsoY + 6);
+    ctx.lineTo(-24, torsoY - 18);
+    ctx.lineTo(-46, torsoY - 12);
+    ctx.quadraticCurveTo(-36, torsoY - 2, -48, torsoY + 6);
+    ctx.quadraticCurveTo(-34, torsoY + 14, -36, torsoY + 24);
+    ctx.quadraticCurveTo(-22, torsoY + 22, -6, torsoY + 12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 2. Demonic hellfire veins glowing inside the membrane
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.65)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-24, torsoY - 18);
+    ctx.quadraticCurveTo(-34, torsoY - 4, -40, torsoY + 2);
+    ctx.moveTo(-24, torsoY - 18);
+    ctx.quadraticCurveTo(-30, torsoY + 6, -32, torsoY + 18);
+    ctx.stroke();
+
+    // 3. Obsidian dragon bone arm & articulated fingers
+    ctx.strokeStyle = '#1e1b4b';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-6, torsoY + 6);
+    ctx.lineTo(-24, torsoY - 18);
+    ctx.stroke();
+
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(-24, torsoY - 18);
+    ctx.lineTo(-46, torsoY - 12);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-24, torsoY - 18);
+    ctx.lineTo(-48, torsoY + 6);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-24, torsoY - 18);
+    ctx.lineTo(-36, torsoY + 24);
+    ctx.stroke();
+
+    // Bone specular shine highlights
+    ctx.strokeStyle = '#7c3aed';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-6, torsoY + 5);
+    ctx.lineTo(-23, torsoY - 17);
+    ctx.stroke();
+
+    // 4. Sharp dragon claws at apex elbow & finger tips
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath();
+    ctx.moveTo(-24, torsoY - 18);
+    ctx.lineTo(-26, torsoY - 24);
+    ctx.lineTo(-22, torsoY - 20);
+    ctx.closePath();
+    ctx.fill();
+
+    [
+      { x: -46, y: torsoY - 12 },
+      { x: -48, y: torsoY + 6 },
+      { x: -36, y: torsoY + 24 },
+    ].forEach((pt) => {
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 2, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // 5. Demonic flames & floating embers
+    drawSparkleStar(ctx, -26, torsoY - 24, 4.5, '#c084fc', '#9333ea');
+    drawSparkleStar(ctx, -48, torsoY + 6, 3.5, '#f87171', '#dc2626');
+    drawSparkleStar(ctx, -36, torsoY + 24, 3, '#fb923c', '#ea580c');
+
+    const embers = [
+      { x: -50, y: torsoY - 4, c: '#c084fc', r: 1.5 },
+      { x: -44, y: torsoY + 14, c: '#ef4444', r: 1.2 },
+      { x: -38, y: torsoY - 20, c: '#fb923c', r: 1.4 },
+      { x: -30, y: torsoY + 28, c: '#f43f5e', r: 1.2 },
+    ];
+    embers.forEach((emb) => {
+      ctx.fillStyle = emb.c;
+      ctx.beginPath();
+      ctx.arc(emb.x, emb.y, emb.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    ctx.restore();
+  };
+
+  const drawProfileDemonWings = () => {
+    const drawDemonWingShape = (isFarWing: boolean) => {
+      ctx.save();
+      if (isFarWing) {
+        ctx.translate(3, -3);
+        ctx.scale(0.86, 0.86);
+        ctx.globalAlpha = 0.75;
+      }
+
+      // 1. Leathery bat membrane swept back
+      const gradMembrane = ctx.createLinearGradient(4, torsoY - 16, 28, torsoY + 18);
+      gradMembrane.addColorStop(0, '#180828');
+      gradMembrane.addColorStop(0.4, '#3b0764');
+      gradMembrane.addColorStop(0.8, '#581c87');
+      gradMembrane.addColorStop(1, '#831843');
+
+      ctx.fillStyle = gradMembrane;
+      ctx.strokeStyle = '#701a75';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(4, torsoY + 6);
+      ctx.lineTo(13, torsoY - 16);
+      ctx.lineTo(26, torsoY - 11);
+      ctx.quadraticCurveTo(20, torsoY - 2, 28, torsoY + 4);
+      ctx.quadraticCurveTo(20, torsoY + 11, 21, torsoY + 19);
+      ctx.quadraticCurveTo(12, torsoY + 17, 4, torsoY + 10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // 2. Demonic hellfire veins
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.65)';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(13, torsoY - 16);
+      ctx.quadraticCurveTo(18, torsoY - 4, 23, torsoY + 1);
+      ctx.moveTo(13, torsoY - 16);
+      ctx.quadraticCurveTo(16, torsoY + 5, 18, torsoY + 15);
+      ctx.stroke();
+
+      // 3. Obsidian dragon bone arm & articulated fingers
+      ctx.strokeStyle = '#1e1b4b';
+      ctx.lineWidth = 2.6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(4, torsoY + 6);
+      ctx.lineTo(13, torsoY - 16);
+      ctx.stroke();
+
+      ctx.lineWidth = 1.9;
+      ctx.beginPath();
+      ctx.moveTo(13, torsoY - 16);
+      ctx.lineTo(26, torsoY - 11);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(13, torsoY - 16);
+      ctx.lineTo(28, torsoY + 4);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(13, torsoY - 16);
+      ctx.lineTo(21, torsoY + 19);
+      ctx.stroke();
+
+      // Bone specular shine highlight
+      ctx.strokeStyle = '#7c3aed';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(4, torsoY + 5);
+      ctx.lineTo(12, torsoY - 15);
+      ctx.stroke();
+
+      // Sharp dragon claws at apex elbow & finger tips
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath();
+      ctx.moveTo(13, torsoY - 16);
+      ctx.lineTo(12, torsoY - 21);
+      ctx.lineTo(15, torsoY - 18);
+      ctx.closePath();
+      ctx.fill();
+
+      [
+        { x: 26, y: torsoY - 11 },
+        { x: 28, y: torsoY + 4 },
+        { x: 21, y: torsoY + 19 },
+      ].forEach((pt) => {
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      if (!isFarWing) {
+        drawSparkleStar(ctx, 12, torsoY - 21, 3.8, '#c084fc', '#9333ea');
+        drawSparkleStar(ctx, 28, torsoY + 4, 3, '#f87171', '#dc2626');
+        drawSparkleStar(ctx, 21, torsoY + 19, 2.5, '#fb923c', '#ea580c');
+
+        const embers = [
+          { x: 29, y: torsoY - 4, c: '#c084fc', r: 1.3 },
+          { x: 25, y: torsoY + 11, c: '#ef4444', r: 1.1 },
+          { x: 22, y: torsoY - 18, c: '#fb923c', r: 1.2 },
+          { x: 17, y: torsoY + 23, c: '#f43f5e', r: 1.1 },
+        ];
+        embers.forEach((emb) => {
+          ctx.fillStyle = emb.c;
+          ctx.beginPath();
+          ctx.arc(emb.x, emb.y, emb.r, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      ctx.restore();
+    };
+
+    drawDemonWingShape(true);
+    drawDemonWingShape(false);
+  };
+
+  if (isSide) {
+    drawProfileDemonWings();
+  } else {
+    drawOneDemonWing(1);
+    drawOneDemonWing(-1);
+  }
+
+  if (isBack) {
+    ctx.fillStyle = '#1e1b4b';
+    ctx.strokeStyle = '#a855f7';
+    ctx.lineWidth = 1;
+    [torsoY + 4, torsoY + 10, torsoY + 16].forEach((sy) => {
+      ctx.beginPath();
+      ctx.moveTo(-3, sy);
+      ctx.lineTo(0, sy - 3);
+      ctx.lineTo(3, sy);
+      ctx.lineTo(0, sy + 3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    });
+  }
+
+  ctx.restore();
+}
+
+/**
+ * ✨ Hào Quang Tinh Tú (Sparkle Aura / Starlight):
+ * Hạt lấp lánh bay quanh nhân vật, hào quang vũ trụ đa sắc và chòm sao lấp lánh.
+ */
+function drawChibiSparkleAura(
+  ctx: CanvasRenderingContext2D,
+  _isBack: boolean,
+  _isSide: boolean,
+  torsoY: number,
+  isForeground = false,
+) {
+  ctx.save();
+  if (!isForeground) {
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.4)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-28, torsoY - 18);
+    ctx.lineTo(0, torsoY - 32);
+    ctx.lineTo(28, torsoY - 18);
+    ctx.moveTo(-36, torsoY + 6);
+    ctx.lineTo(-24, torsoY + 28);
+    ctx.moveTo(36, torsoY + 6);
+    ctx.lineTo(24, torsoY + 28);
+    ctx.stroke();
+
+    const bgStars = [
+      { x: -28, y: torsoY - 18, s: 5, c: '#ffffff', g: '#fef08a' },
+      { x: 28, y: torsoY - 18, s: 5, c: '#ffffff', g: '#67e8f9' },
+      { x: 0, y: torsoY - 32, s: 6, c: '#fef08a', g: '#facc15' },
+      { x: -38, y: torsoY + 6, s: 4.5, c: '#67e8f9', g: '#38bdf8' },
+      { x: 38, y: torsoY + 6, s: 4.5, c: '#f472b6', g: '#ec4899' },
+      { x: -26, y: torsoY + 28, s: 4, c: '#c084fc', g: '#a855f7' },
+      { x: 26, y: torsoY + 28, s: 4, c: '#fef08a', g: '#eab308' },
+      { x: -16, y: torsoY - 4, s: 3, c: '#ffffff', g: '#67e8f9' },
+      { x: 18, y: torsoY + 12, s: 3.5, c: '#ffffff', g: '#f472b6' },
+      { x: 0, y: torsoY + 44, s: 3.5, c: '#67e8f9', g: '#38bdf8' },
+    ];
+    bgStars.forEach((st) => {
+      drawSparkleStar(ctx, st.x, st.y, st.s, st.c, st.g);
+      drawGlintCross(ctx, st.x, st.y, st.s + 2, 'rgba(255, 255, 255, 0.85)');
+    });
+  } else {
+    const fgStars = [
+      { x: -14, y: torsoY + 14, s: 3.8, c: '#ffffff', g: '#fde047' },
+      { x: 12, y: torsoY - 2, s: 4.2, c: '#ffffff', g: '#67e8f9' },
+      { x: -4, y: torsoY + 30, s: 3.5, c: '#fef08a', g: '#facc15' },
+    ];
+    fgStars.forEach((st) => {
+      drawSparkleStar(ctx, st.x, st.y, st.s, st.c, st.g);
+      drawGlintCross(ctx, st.x, st.y, st.s + 2, 'rgba(255, 255, 255, 0.9)');
+    });
+  }
+  ctx.restore();
+}
+
+/**
+ * 🔮 Quả Cầu Ma Thuật & Đom Đóm Vai (Magic Orb & Fireflies):
+ * Quả cầu ma thuật lơ lửng bên vai kèm đàn đom đóm dạ quang bay lượn.
+ */
+function drawChibiMagicOrb(ctx: CanvasRenderingContext2D, _isBack: boolean, isSide: boolean, torsoY: number) {
+  ctx.save();
+  const orbX = isSide ? -24 : -26;
+  const orbY = torsoY - 4;
+  const orbR = 8.5;
+
+  ctx.shadowColor = '#a855f7';
+  ctx.shadowBlur = 18;
+
+  const orbGrad = ctx.createRadialGradient(orbX - 2.5, orbY - 2.5, 1, orbX, orbY, orbR);
+  orbGrad.addColorStop(0, '#ffffff');
+  orbGrad.addColorStop(0.25, '#c084fc');
+  orbGrad.addColorStop(0.65, '#7c3aed');
+  orbGrad.addColorStop(0.9, '#4338ca');
+  orbGrad.addColorStop(1, '#1e1b4b');
+
+  ctx.fillStyle = orbGrad;
+  ctx.beginPath();
+  ctx.arc(orbX, orbY, orbR, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(orbX, orbY, orbR - 1.5, Math.PI * 1.1, Math.PI * 1.7);
+  ctx.stroke();
+
+  ctx.save();
+  ctx.translate(orbX, orbY);
+  ctx.rotate(0.55);
+  ctx.strokeStyle = 'rgba(103, 232, 249, 0.85)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 13, 4.5, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.fillStyle = '#67e8f9';
+  ctx.beginPath();
+  ctx.arc(13, 0, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  drawSparkleStar(ctx, orbX - 2.5, orbY - 2.5, 4, '#ffffff', '#c084fc');
+  drawGlintCross(ctx, orbX, orbY, 9, 'rgba(192, 132, 252, 0.85)');
+
+  // Đom đóm dạ quang bay lượn
+  const fireflies = [
+    { x: isSide ? 22 : 24, y: torsoY - 14, ang: 0.3 },
+    { x: isSide ? 14 : -12, y: torsoY - 24, ang: -0.4 },
+    { x: isSide ? 28 : 22, y: torsoY + 16, ang: 0.2 },
+    { x: isSide ? -16 : -34, y: torsoY + 18, ang: 0.5 },
+  ];
+
+  fireflies.forEach((ff) => {
+    ctx.save();
+    ctx.shadowColor = '#bef264';
+    ctx.shadowBlur = 12;
+
+    const ffGrad = ctx.createRadialGradient(ff.x, ff.y, 1, ff.x, ff.y, 6);
+    ffGrad.addColorStop(0, 'rgba(254, 240, 138, 0.95)');
+    ffGrad.addColorStop(0.5, 'rgba(190, 242, 100, 0.55)');
+    ffGrad.addColorStop(1, 'rgba(190, 242, 100, 0)');
+    ctx.fillStyle = ffGrad;
+    ctx.beginPath();
+    ctx.arc(ff.x, ff.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath();
+    ctx.arc(ff.x, ff.y, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.save();
+    ctx.translate(ff.x, ff.y);
+    ctx.rotate(ff.ang);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+    ctx.beginPath();
+    ctx.ellipse(-2, -3, 2.5, 1.2, 0.3, 0, Math.PI * 2);
+    ctx.ellipse(2, -3, 2.5, 1.2, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    drawSparkleStar(ctx, ff.x, ff.y, 2.2, '#ffffff', '#bef264');
+    ctx.restore();
+  });
+
+  ctx.restore();
+}
+
+function drawChibiBackUnderlay(
+  ctx: CanvasRenderingContext2D,
+  rawBack: string | null | undefined,
+  isBack: boolean,
+  isSide: boolean,
+  torsoY: number,
+  showWings = true,
+) {
+  if (!rawBack) return;
+  const back = parseSprite(rawBack);
+  if (!back) return;
+
+  const isWing =
+    back.kind === 'wings_angel' ||
+    back.kind === 'wings_fairy' ||
+    back.kind === 'wings_cyber' ||
+    back.kind === 'wings_demon';
+  if (isWing && !showWings) return;
+
+  if (isWing) {
+    ctx.save();
+    ctx.translate(0, torsoY + 4);
+    ctx.scale(1.12, 1.12);
+    ctx.translate(0, -(torsoY + 4));
+  }
+
+  if (back.kind === 'wings_angel') {
+    drawChibiAngelWings(ctx, isBack, isSide, torsoY);
+  } else if (back.kind === 'wings_fairy') {
+    drawChibiFairyWings(ctx, isBack, isSide, torsoY);
+  } else if (back.kind === 'wings_cyber') {
+    drawChibiCyberWings(ctx, isBack, isSide, torsoY);
+  } else if (back.kind === 'wings_demon') {
+    drawChibiDemonWings(ctx, isBack, isSide, torsoY);
+  } else if (back.kind === 'sparkle_aura') {
+    drawChibiSparkleAura(ctx, isBack, isSide, torsoY, false);
+  } else if (back.kind === 'magic_orb') {
+    drawChibiMagicOrb(ctx, isBack, isSide, torsoY);
+  }
+
+  if (isWing) {
+    ctx.restore();
+  }
+}
+
+function drawChibiBackForeground(
+  ctx: CanvasRenderingContext2D,
+  rawBack: string | null | undefined,
+  isBack: boolean,
+  isSide: boolean,
+  torsoY: number,
+) {
+  if (!rawBack) return;
+  const back = parseSprite(rawBack);
+  if (!back) return;
+
+  if (back.kind === 'sparkle_aura') {
+    drawChibiSparkleAura(ctx, isBack, isSide, torsoY, true);
+  }
+}
+
 export type RidingStyle = 'pedal' | 'scooter' | 'cruiser' | 'touring' | 'sport';
 
 /**
@@ -523,6 +1719,7 @@ export function drawChibiAvatar(
     dir?: 0 | 1 | 2 | 3;
     frame?: number;
     showFish?: boolean;
+    showWings?: boolean;
     ridingStyle?: RidingStyle;
     ridingLayer?: 'far' | 'near' | 'both';
     vehicleId?: string;
@@ -536,6 +1733,7 @@ export function drawChibiAvatar(
     dir = 0,
     frame = 0,
     showFish = true,
+    showWings = true,
     ridingStyle = 'sport',
     ridingLayer = 'both',
   } = options;
@@ -660,6 +1858,11 @@ export function drawChibiAvatar(
     ctx.ellipse(0, 48, 28, 9, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(15, 23, 42, 0.22)';
     ctx.fill();
+  }
+
+  // --- 1.5. BACK ACCESSORIES (WINGS, AURAS, ORBS UNDERLAY) ---
+  if (!isBack && a.back) {
+    drawChibiBackUnderlay(ctx, a.back, isBack, isSide, torsoY, showWings);
   }
 
   // --- 2. LOWER BODY (LEGS & SHOES) ---
@@ -1192,6 +2395,11 @@ export function drawChibiAvatar(
     }
   }
 
+  // --- 3.4. BACK ACCESSORIES (WINGS, AURAS, ORBS WHEN FACING BACK) ---
+  if (isBack && a.back) {
+    drawChibiBackUnderlay(ctx, a.back, isBack, isSide, torsoY, showWings);
+  }
+
   // --- 3.5. SLUNG SWORD (Vác chéo lưng kiếm hiệp) ---
   if (a.sword && !a.heldFish && !a.isFishing) {
     const swordHeadY = -44 + bodyBob;
@@ -1595,6 +2803,79 @@ export function drawChibiAvatar(
         ctx.arc(0, headY + 28, 2, 0, Math.PI * 2);
         ctx.fill();
       }
+    } else if (face.kind === 'starlight_pin') {
+      // Celestial Starlight Crystal Hairpin & Cheek Dust
+      ctx.save();
+      ctx.shadowColor = '#facc15';
+      ctx.shadowBlur = 14;
+
+      const pinX = isSide ? -16 : 15;
+      const pinY = headY + 15;
+
+      // 1. Golden hairpin wand setting
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(pinX + (isSide ? 4 : -4), pinY + 6);
+      ctx.lineTo(pinX, pinY);
+      ctx.stroke();
+
+      // 2. Faceted 5-point celestial crystal star
+      const starGrad = ctx.createRadialGradient(pinX, pinY, 1, pinX, pinY, 7);
+      starGrad.addColorStop(0, '#ffffff');
+      starGrad.addColorStop(0.4, '#fef08a');
+      starGrad.addColorStop(0.8, '#facc15');
+      starGrad.addColorStop(1, '#f59e0b');
+
+      ctx.fillStyle = starGrad;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const outerAng = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+        const innerAng = outerAng + (2 * Math.PI) / 10;
+        const ox = pinX + Math.cos(outerAng) * 6.5;
+        const oy = pinY + Math.sin(outerAng) * 6.5;
+        const ix = pinX + Math.cos(innerAng) * 2.8;
+        const iy = pinY + Math.sin(innerAng) * 2.8;
+        if (i === 0) ctx.moveTo(ox, oy);
+        else ctx.lineTo(ox, oy);
+        ctx.lineTo(ix, iy);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // 3. Dangling teardrop jewel
+      ctx.fillStyle = '#67e8f9';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.arc(pinX, pinY + 8, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // 4. Starlight gleam glint & cross
+      drawSparkleStar(ctx, pinX, pinY, 5, '#ffffff', '#facc15');
+      drawGlintCross(ctx, pinX, pinY, 8, 'rgba(255, 255, 255, 0.95)');
+
+      // 5. Starlight galaxy dust across cheek
+      if (!isSide) {
+        const freckles = [
+          { x: 10, y: headY + 23, c: '#fef08a' },
+          { x: 13, y: headY + 25, c: '#f472b6' },
+          { x: 7, y: headY + 24, c: '#67e8f9' },
+        ];
+        freckles.forEach((f) => {
+          ctx.fillStyle = f.c;
+          ctx.beginPath();
+          ctx.arc(f.x, f.y, 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      ctx.restore();
     }
   }
 
@@ -1801,6 +3082,93 @@ export function drawChibiAvatar(
       ctx.lineWidth = 2;
       ctx.stroke();
       ctx.shadowBlur = 0;
+    } else if (hat.kind === 'diamond_crown') {
+      // Sovereign Brilliant-Cut Diamond Crown
+      ctx.save();
+      ctx.shadowColor = '#67e8f9';
+      ctx.shadowBlur = 16;
+
+      const crownY = headY - 6;
+
+      // Platinum / White-Gold filigree crown base
+      const crownGrad = ctx.createLinearGradient(0, crownY - 18, 0, crownY + 2);
+      crownGrad.addColorStop(0, '#f8fafc');
+      crownGrad.addColorStop(0.5, '#e2e8f0');
+      crownGrad.addColorStop(1, '#94a3b8');
+
+      ctx.fillStyle = crownGrad;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.2;
+
+      // 5 crown peaks
+      ctx.beginPath();
+      ctx.moveTo(-18, crownY + 2);
+      ctx.lineTo(-20, crownY - 10);
+      ctx.lineTo(-14, crownY - 4);
+      ctx.lineTo(-10, crownY - 14);
+      ctx.lineTo(-5, crownY - 4);
+      ctx.lineTo(0, crownY - 20);
+      ctx.lineTo(5, crownY - 4);
+      ctx.lineTo(10, crownY - 14);
+      ctx.lineTo(14, crownY - 4);
+      ctx.lineTo(20, crownY - 10);
+      ctx.lineTo(18, crownY + 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Lower crown headband with inset gems
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(-16, crownY - 2, 32, 3);
+      ctx.fillStyle = '#38bdf8';
+      [-12, -6, 0, 6, 12].forEach((gx) => {
+        ctx.fillRect(gx - 1, crownY - 2, 2, 2);
+      });
+
+      // Central brilliant-cut diamond gem on central spire
+      const diaY = crownY - 15;
+      const diaGrad = ctx.createLinearGradient(0, diaY - 6, 0, diaY + 6);
+      diaGrad.addColorStop(0, '#ffffff');
+      diaGrad.addColorStop(0.35, '#e0f2fe');
+      diaGrad.addColorStop(0.7, '#67e8f9');
+      diaGrad.addColorStop(1, '#a855f7');
+
+      ctx.fillStyle = diaGrad;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, diaY - 6);
+      ctx.lineTo(5, diaY);
+      ctx.lineTo(0, diaY + 6);
+      ctx.lineTo(-5, diaY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(-5, diaY);
+      ctx.lineTo(5, diaY);
+      ctx.moveTo(0, diaY - 6);
+      ctx.lineTo(0, diaY + 6);
+      ctx.stroke();
+
+      // Satellite gems
+      [-10, 10].forEach((gx) => {
+        ctx.fillStyle = '#bae6fd';
+        ctx.beginPath();
+        ctx.arc(gx, crownY - 12, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+      });
+
+      // Brilliant diamond sparkle glints
+      drawSparkleStar(ctx, 0, diaY, 6, '#ffffff', '#38bdf8');
+      drawGlintCross(ctx, 0, diaY, 10, 'rgba(255, 255, 255, 0.95)');
+      drawSparkleStar(ctx, -10, crownY - 12, 3.5, '#ffffff', '#67e8f9');
+      drawSparkleStar(ctx, 10, crownY - 12, 3.5, '#ffffff', '#67e8f9');
+
+      ctx.restore();
     }
   }
 
@@ -2160,6 +3528,11 @@ export function drawChibiAvatar(
     }
   }
 
+  // --- 10. FOREGROUND SPARKLES & AURAS ---
+  if (a.back) {
+    drawChibiBackForeground(ctx, a.back, isBack, isSide, torsoY);
+  }
+
   ctx.restore();
 }
 
@@ -2172,7 +3545,7 @@ export function chibiAvatarPortrait(a: Appearance, size = 160): string {
   const heldKey = a.heldFish
     ? `${a.heldFish.speciesId}:${a.heldFish.sizeCm}:${fishArtRevision(a.heldFish.speciesId)}`
     : 'none';
-  const key = `chibi:${a.skin}:${a.hairStyle}:${a.hairColor}:${a.baseTop}:${a.hat}:${a.top}:${a.face}:${a.rod ?? ''}:${a.sword ?? ''}:${heldKey}:${size}`;
+  const key = `chibi:${a.skin}:${a.hairStyle}:${a.hairColor}:${a.baseTop}:${a.hat}:${a.top}:${a.face}:${a.back ?? ''}:${a.rod ?? ''}:${a.sword ?? ''}:${heldKey}:${size}`;
   const hit = chibiCache.get(key);
   if (hit) return hit;
 
@@ -2328,7 +3701,7 @@ const itemIconCache = new Map<string, string>();
 /**
  * Renders a crisp 2D Chibi fashion item icon (Hat on mannequin head, Top on tailor bust, Face on stylized face).
  */
-export function chibiItemIcon(sprite: string, slot: 'hat' | 'top' | 'face', size = 64): string {
+export function chibiItemIcon(sprite: string, slot: 'hat' | 'top' | 'face' | 'back', size = 64): string {
   const key = `chibi-item:${sprite}:${slot}:${size}`;
   const hit = itemIconCache.get(key);
   if (hit) return hit;
@@ -2370,6 +3743,22 @@ export function chibiItemIcon(sprite: string, slot: 'hat' | 'top' | 'face', size
       cy: size * 0.48,
       scale: (size / 100) * 1.25,
       showFish: false,
+    });
+  } else if (slot === 'back') {
+    // Mannequin showcase for wings and back accessories
+    const dummyAppearance: Appearance = {
+      skin: mannequinSkin,
+      hairStyle: 'short',
+      hairColor: 0,
+      baseTop,
+      back: sprite,
+    };
+    drawChibiAvatar(ctx, dummyAppearance, {
+      cx: size / 2,
+      cy: size * 0.54,
+      scale: (size / 100) * 0.88,
+      showFish: false,
+      dir: 0,
     });
   } else {
     // Face accessory
