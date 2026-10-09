@@ -15,13 +15,20 @@ import { spawnFootstepDust, spawnWaterWake } from './atmosphere';
 import { ensureVehicleTexture } from '../art/vehicle';
 import { ensureRiddenVehicleTexture } from '../art/rider';
 import type { Dir } from '../art/avatar';
-import { ensureBoatTexture } from '../art/boat';
+import {
+  BOAT_SPRITE_ORIGIN_Y,
+  BOAT_SPRITE_Y,
+  boatWorldScaleFor,
+  boatPassengerCenterY,
+  ensureBoatTexture,
+} from '../art/boat';
 import { useUi } from '../lib/store';
 import { fishRenderDimensions, getSpeciesData } from '../art/fish';
 import { ensureFishTexture } from './fish-texture';
 import { MovementPrediction, smoothMovement } from './movement-prediction';
 import { MovementInterpolation } from './movement-interpolation';
 import { boatPose } from './river-motion';
+import { SteamboatLights } from './boat-lights';
 import { VehicleLights } from './vehicle-lights';
 import { ensureWingTexture, WING_FLAP_CONFIG } from '../art/wing-textures';
 
@@ -98,6 +105,9 @@ export class Avatar {
   profileFarWingSprite: Phaser.GameObjects.Image | null = null;
   private currentWingDir = -1;
   boatSprite: Phaser.GameObjects.Image | null = null;
+  private baseLabelY = 0;
+  private boatSeatOffsetY = 0;
+  private steamboatLights: SteamboatLights | null = null;
   interpolation = new MovementInterpolation();
   private animationState = '';
   vehicle = '';
@@ -118,10 +128,11 @@ export class Avatar {
     this.shadow = scene.add.ellipse(0, 0, 22, 8, 0x2a2438, 0.25);
     this.texKey = ensureAvatarTexture(scene, appearance);
     this.baseSpriteY = -AVATAR_FEET_OFFSET / 2 - 3;
+    this.baseLabelY = -AVATAR_FEET_OFFSET - 8;
     this.breathSeed = Math.random() * 100;
     this.sprite = scene.add.sprite(0, this.baseSpriteY, this.texKey, 0);
     this.label = scene.add
-      .text(0, -AVATAR_FEET_OFFSET - 8, name, {
+      .text(0, this.baseLabelY, name, {
         fontFamily: 'Inter Variable, Inter, system-ui, sans-serif',
         fontSize: '11px',
         fontStyle: '600',
@@ -218,7 +229,8 @@ export class Avatar {
         this.heldFishContainer = null;
         this.heldFishSprite = null;
       }
-      this.label.setY(-AVATAR_FEET_OFFSET - 8);
+      this.baseLabelY = -AVATAR_FEET_OFFSET - 8;
+      this.label.setY(this.baseLabelY + this.boatSeatOffsetY);
       return;
     }
 
@@ -609,15 +621,17 @@ export class Avatar {
     if (isGiant) {
       // Hoisted proudly above the player's head
       this.heldFishBaseY = -AVATAR_FEET_OFFSET - Math.max(12, Math.round(targetH * 0.45)) - 4;
-      this.heldFishContainer.setY(this.heldFishBaseY);
+      this.heldFishContainer.setY(this.heldFishBaseY + this.boatSeatOffsetY);
       // Place player name neatly above hoisted fish
       const labelY = this.heldFishBaseY - targetH / 2 - 8;
-      this.label.setY(labelY);
+      this.baseLabelY = labelY;
+      this.label.setY(this.baseLabelY + this.boatSeatOffsetY);
     } else {
       // Held at chest level in front
       this.heldFishBaseY = -22;
-      this.heldFishContainer.setY(this.heldFishBaseY);
-      this.label.setY(-AVATAR_FEET_OFFSET - 8);
+      this.heldFishContainer.setY(this.heldFishBaseY + this.boatSeatOffsetY);
+      this.baseLabelY = -AVATAR_FEET_OFFSET - 8;
+      this.label.setY(this.baseLabelY + this.boatSeatOffsetY);
     }
 
     this.updateHeldFishFacing();
@@ -657,7 +671,7 @@ export class Avatar {
 
     if (glowColor === null) return;
 
-    this.rodGlowContainer = this.scene.add.container(0, 0);
+    this.rodGlowContainer = this.scene.add.container(0, this.boatSeatOffsetY);
     this.container.add(this.rodGlowContainer);
 
     // Rod tip sparkles on player's back
@@ -1129,7 +1143,7 @@ export class Avatar {
     this.status = null;
     if (!text) return;
     this.status = this.scene.add
-      .text(0, -AVATAR_FEET_OFFSET - 26, text, {
+      .text(0, -AVATAR_FEET_OFFSET - 26 + this.boatSeatOffsetY, text, {
         fontFamily: 'Inter Variable, Inter, system-ui, sans-serif',
         fontSize: '10px',
         color: '#2a2438',
@@ -1161,7 +1175,7 @@ export class Avatar {
     g.fillStyle(0xffffff, 1).fillRoundedRect(-w / 2, -h - 6, w, h, 7);
     g.fillStyle(0xffffff, 1).fillTriangle(-5, -7, 5, -7, 0, -1);
     t.setPosition(0, -11);
-    const offset = this.status ? -AVATAR_FEET_OFFSET - 44 : -AVATAR_FEET_OFFSET - 26;
+    const offset = (this.status ? -AVATAR_FEET_OFFSET - 44 : -AVATAR_FEET_OFFSET - 26) + this.boatSeatOffsetY;
     this.bubble = this.scene.add.container(0, offset, [g, t]);
     this.container.add(this.bubble);
     this.bubbleTimer = this.scene.time.delayedCall(Math.min(8000, 3000 + text.length * 60), () => {
@@ -1175,7 +1189,10 @@ export class Avatar {
     this.emote = null;
     if (!emote) return;
     this.emote = this.scene.add
-      .text(14, -AVATAR_FEET_OFFSET + 4, EMOTE_ICON[emote] ?? '', { fontSize: '20px', resolution: 2 })
+      .text(14, -AVATAR_FEET_OFFSET + 4 + this.boatSeatOffsetY, EMOTE_ICON[emote] ?? '', {
+        fontSize: '20px',
+        resolution: 2,
+      })
       .setOrigin(0.5);
     this.container.add(this.emote);
     if (!useUi.getState().reducedMotion) {
@@ -1206,8 +1223,23 @@ export class Avatar {
     this.updateBackFacing();
   }
 
+  private setBoatSeatOffset(offsetY: number) {
+    const delta = offsetY - this.boatSeatOffsetY;
+    if (delta === 0) return;
+    this.boatSeatOffsetY = offsetY;
+    this.label.setY(this.baseLabelY + offsetY);
+    this.status?.setY(this.status.y + delta);
+    this.bubble?.setY(this.bubble.y + delta);
+    this.emote?.setY(this.emote.y + delta);
+    this.heldFishContainer?.setY(this.heldFishContainer.y + delta);
+    this.rodGlowContainer?.setY(this.rodGlowContainer.y + delta);
+    this.swordGlowContainer?.setY(this.swordGlowContainer.y + delta);
+  }
+
   updateBoat(time: number) {
     if (this.scene.scene.key !== 'ocean') {
+      this.setBoatSeatOffset(0);
+      this.steamboatLights?.hide();
       if (this.boatSprite) {
         this.boatSprite.destroy();
         this.boatSprite = null;
@@ -1218,16 +1250,24 @@ export class Avatar {
 
     this.shadow.setVisible(false);
     const boatId = normalizeBoatId(this.appearance.boat) ?? 'boat_coracle';
-    const frame = this.moving ? Math.floor(time / 250) % 2 : 0;
     const dir = (this.dir >= 0 && this.dir <= 3 ? this.dir : 0) as 0 | 1 | 2 | 3;
-    const tex = ensureBoatTexture(this.scene, boatId, dir, frame);
+    const tex = ensureBoatTexture(this.scene, boatId, dir);
+    const boatScale = boatWorldScaleFor(boatId);
+    const seatY = boatPassengerCenterY(boatId);
+    this.setBoatSeatOffset(seatY - this.baseSpriteY);
 
     if (!this.boatSprite) {
-      this.boatSprite = this.scene.add.image(0, -4, tex).setOrigin(0.5, 0.7);
+      this.boatSprite = this.scene.add
+        .image(0, BOAT_SPRITE_Y, tex)
+        .setOrigin(0.5, BOAT_SPRITE_ORIGIN_Y)
+        .setScale(boatScale);
       this.container.add(this.boatSprite);
       this.container.sendToBack(this.boatSprite);
     } else if (this.boatSprite.texture.key !== tex) {
       this.boatSprite.setTexture(tex);
+    }
+    if (this.boatSprite.scaleX !== boatScale || this.boatSprite.scaleY !== boatScale) {
+      this.boatSprite.setScale(boatScale);
     }
 
     const ui = useUi.getState();
@@ -1241,9 +1281,23 @@ export class Avatar {
       ui.weather.windSpeedKmh,
       ui.reducedMotion,
     );
-    this.boatSprite.setY(-4 + pose.heave).setRotation(pose.roll);
-    // The passenger shares the hull's pivot, while name tags stay level.
-    const seatY = this.baseSpriteY - 2;
+    this.boatSprite.setY(BOAT_SPRITE_Y + pose.heave).setRotation(pose.roll);
+    if (boatId === 'boat_trawler') {
+      this.steamboatLights ??= new SteamboatLights(this.scene);
+      this.steamboatLights.update(
+        true,
+        this.container.x,
+        this.container.y,
+        dir,
+        seatY,
+        pose.heave,
+        pose.roll,
+        time,
+      );
+    } else {
+      this.steamboatLights?.hide();
+    }
+    // Center the passenger on the deck and rotate them with the hull; labels stay level.
     this.sprite.setPosition(-Math.sin(pose.roll) * seatY, Math.cos(pose.roll) * seatY + pose.heave);
     this.sprite.setRotation(pose.roll);
   }
@@ -1369,12 +1423,15 @@ export class Avatar {
     }
     if (this.heldFishContainer && !useUi.getState().reducedMotion) {
       const bob = Math.sin(time * 0.0035 + this.breathSeed) * 1.5;
-      this.heldFishContainer.setY(this.heldFishBaseY + (this.sprite.y - this.baseSpriteY) + bob);
+      const verticalShift =
+        this.boatSeatOffsetY !== 0 ? this.boatSeatOffsetY : this.sprite.y - this.baseSpriteY;
+      this.heldFishContainer.setY(this.heldFishBaseY + verticalShift + bob);
     }
   }
 
   destroy() {
     this.vehicleLights?.destroy();
+    this.steamboatLights?.destroy();
     this.bubbleTimer?.remove();
     this.clearHeldFishEffects();
     this.clearRodEffects();
