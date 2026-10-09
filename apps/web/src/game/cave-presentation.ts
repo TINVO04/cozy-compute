@@ -118,8 +118,8 @@ export class CavePresentation {
           shadow: this.scene.add.ellipse(
             enemy.x,
             enemy.y,
-            enemy.kind === 'golem' ? 56 : 44,
-            14,
+            enemy.kind === 'colossus' ? 80 : enemy.kind === 'golem' ? 56 : 44,
+            enemy.kind === 'colossus' ? 20 : 14,
             0x0a1420,
             0.4,
           ),
@@ -150,29 +150,99 @@ export class CavePresentation {
         .setDepth(a.y);
       if (Math.abs(dx) > 1) a.sprite.setFlipX(dx < 0);
       if (hit) a.sprite.setTintFill(0xe6fff1);
+      else if (enemy.enraged) a.sprite.setTint(Math.sin(time / 90) > 0 ? 0xff4444 : 0xc084fc);
       else if (wind) a.sprite.setTint(0xffb6a0);
       else a.sprite.clearTint();
-      const scale = enemy.kind === 'golem' ? 1.2 : enemy.kind === 'bat' ? 0.78 : 0.86;
+      const scale =
+        enemy.kind === 'colossus'
+          ? 1.65
+          : enemy.kind === 'golem'
+            ? 1.2
+            : enemy.kind === 'serpent'
+              ? 1.05
+              : enemy.kind === 'bat'
+                ? 0.78
+                : 0.88;
       a.sprite.setScale(scale * (wind && !reduced ? 1.07 : 1), scale * (wind && !reduced ? 0.91 : 1));
       a.shadow.setPosition(a.x, a.y + 2).setDepth(a.y - 1);
+      const hpOffsetY =
+        enemy.kind === 'colossus' ? 140 : enemy.kind === 'golem' ? 113 : enemy.kind === 'serpent' ? 86 : 75;
       a.hp
         .clear()
-        .setPosition(a.x, a.y - (enemy.kind === 'golem' ? 113 : 75))
+        .setPosition(a.x, a.y - hpOffsetY)
         .setDepth(a.y + 1);
-      if (enemy.hp < enemy.maxHp || wind || enemy.kind === 'golem') {
-        const width = enemy.kind === 'golem' ? 64 : 38;
-        a.hp.fillStyle(0x121d2a, 0.95).fillRoundedRect(-width / 2 - 2, -2, width + 4, 8, 2);
-        a.hp
-          .fillStyle(wind ? 0xf3ae88 : 0x9bc6ab)
-          .fillRect(-width / 2, 0, (width * enemy.hp) / enemy.maxHp, 3);
-        a.hp.fillStyle(0xe5efd4, 0.8).fillRect(-width / 2, 0, (width * enemy.hp) / enemy.maxHp, 1);
+      if (enemy.hp < enemy.maxHp || wind || enemy.kind === 'colossus' || enemy.kind === 'golem') {
+        const width = enemy.kind === 'colossus' ? 96 : enemy.kind === 'golem' ? 64 : 38;
+        if (enemy.kind === 'colossus') {
+          a.hp.fillStyle(0x0a0518, 0.95).fillRoundedRect(-width / 2 - 3, -3, width + 6, 11, 3);
+          a.hp.lineStyle(1, 0xf59e0b, 0.9).strokeRoundedRect(-width / 2 - 3, -3, width + 6, 11, 3);
+          const barWidth = Math.max(0, (width * enemy.hp) / enemy.maxHp);
+          a.hp.fillStyle(enemy.enraged ? 0xef4444 : 0xa855f7).fillRect(-width / 2, -1, barWidth, 7);
+          a.hp.fillStyle(0xffffff, 0.6).fillRect(-width / 2, -1, barWidth, 1);
+        } else {
+          a.hp.fillStyle(0x121d2a, 0.95).fillRoundedRect(-width / 2 - 2, -2, width + 4, 8, 2);
+          a.hp
+            .fillStyle(wind ? 0xf3ae88 : 0x9bc6ab)
+            .fillRect(-width / 2, 0, (width * enemy.hp) / enemy.maxHp, 3);
+          a.hp.fillStyle(0xe5efd4, 0.8).fillRect(-width / 2, 0, (width * enemy.hp) / enemy.maxHp, 1);
+        }
       }
       if (wind) {
-        const progress = 1 - Math.max(0, Math.min(650, enemy.windup - Date.now())) / 650;
-        this.warnings.lineStyle(1, 0xf0ab83, 0.8).strokeEllipse(a.x, a.y + 3, 112, 64);
-        this.warnings
-          .fillStyle(0xe77864, 0.08 + progress * 0.14)
-          .fillEllipse(a.x, a.y + 3, 112 * progress, 64 * progress);
+        const totalWindup = enemy.kind === 'colossus' ? 850 : enemy.kind === 'golem' ? 750 : 600;
+        const remaining = Math.max(0, enemy.windup - Date.now());
+        const progress = 1 - Math.min(totalWindup, remaining) / totalWindup;
+        const attackKind = enemy.attackKind ?? 'melee';
+        const p = this.player();
+        const playerX = p?.x ?? a.x + 50;
+        const playerY = p?.y ?? a.y;
+        const aimAngle = Math.atan2(playerY - a.y, playerX - a.x);
+
+        if (attackKind === 'radial_burst') {
+          this.warnings.lineStyle(2, 0x2dd4bf, 0.6 + progress * 0.4).strokeCircle(a.x, a.y + 3, 96);
+          this.warnings.fillStyle(0x2dd4bf, 0.04 + progress * 0.16).fillCircle(a.x, a.y + 3, 96 * progress);
+        } else if (attackKind === 'poison_spray') {
+          const coneLen = 140;
+          this.warnings.lineStyle(2, 0x84cc16, 0.6 + progress * 0.4);
+          this.warnings.fillStyle(0x84cc16, 0.05 + progress * 0.15);
+          this.warnings.beginPath();
+          this.warnings.moveTo(a.x, a.y);
+          this.warnings.arc(a.x, a.y, coneLen * progress, aimAngle - Math.PI / 4, aimAngle + Math.PI / 4);
+          this.warnings.closePath();
+          this.warnings.fillPath();
+          this.warnings.strokePath();
+        } else if (attackKind === 'cone_slam') {
+          const hitRadius = enemy.kind === 'colossus' ? 140 : 115;
+          const slamColor = enemy.kind === 'colossus' ? 0xc084fc : 0x38bdf8;
+          this.warnings.lineStyle(2, slamColor, 0.6 + progress * 0.4);
+          this.warnings.fillStyle(slamColor, 0.05 + progress * 0.18);
+          this.warnings.beginPath();
+          this.warnings.moveTo(a.x, a.y);
+          this.warnings.arc(a.x, a.y, hitRadius * progress, aimAngle - Math.PI / 3, aimAngle + Math.PI / 3);
+          this.warnings.closePath();
+          this.warnings.fillPath();
+          this.warnings.strokePath();
+        } else if (attackKind === 'meteor') {
+          const targetX = playerX;
+          const targetY = playerY;
+          this.warnings.lineStyle(2, 0xa855f7, 0.7 + progress * 0.3).strokeCircle(targetX, targetY, 80);
+          this.warnings
+            .fillStyle(0xa855f7, 0.06 + progress * 0.2)
+            .fillCircle(targetX, targetY, 80 * progress);
+          this.warnings.lineStyle(1, 0xf0abfc, 0.8);
+          this.warnings.lineBetween(targetX - 25, targetY, targetX + 25, targetY);
+          this.warnings.lineBetween(targetX, targetY - 25, targetX, targetY + 25);
+        } else if (attackKind === 'laser') {
+          const beamLen = 380;
+          const endX = a.x + Math.cos(aimAngle) * beamLen;
+          const endY = a.y + Math.sin(aimAngle) * beamLen;
+          this.warnings.lineStyle(1 + progress * 3, 0x06b6d4, 0.4 + progress * 0.6);
+          this.warnings.lineBetween(a.x, a.y, endX, endY);
+        } else {
+          this.warnings.lineStyle(1, 0xf0ab83, 0.8).strokeEllipse(a.x, a.y + 3, 112, 64);
+          this.warnings
+            .fillStyle(0xe77864, 0.08 + progress * 0.14)
+            .fillEllipse(a.x, a.y + 3, 112 * progress, 64 * progress);
+        }
       }
     }
     if (state.cleared) {
@@ -184,6 +254,223 @@ export class CavePresentation {
     const s = this.scene,
       reduced = useUi.getState().reducedMotion;
     const color = e.color ?? (e.kind === 'hurt' ? 0xf79791 : e.kind === 'loot' ? 0x9ee5c4 : 0xf5dfae);
+
+    if (e.kind === 'radial_burst') {
+      play('cave_swing');
+      const ring = s.add
+        .graphics()
+        .setPosition(e.x, e.y)
+        .setDepth(e.y + 98);
+      s.tweens.addCounter({
+        from: 10,
+        to: 96,
+        duration: 340,
+        ease: 'Quad.Out',
+        onUpdate: (tw) => {
+          const val = tw.getValue() ?? 0;
+          ring.clear();
+          ring.lineStyle(3, 0x2dd4bf, 1 - val / 96);
+          ring.strokeCircle(0, 0, val);
+        },
+        onComplete: () => ring.destroy(),
+      });
+      for (let i = 0; i < 8; i++) {
+        const ang = (i * Math.PI) / 4;
+        const needle = s.add
+          .graphics()
+          .setPosition(e.x, e.y)
+          .setDepth(e.y + 99);
+        needle.rotation = ang;
+        needle.fillStyle(0x34d399).fillPoints(
+          [
+            { x: -3, y: 0 },
+            { x: 0, y: -8 },
+            { x: 3, y: 0 },
+            { x: 0, y: 8 },
+          ],
+          true,
+        );
+        needle.lineStyle(1, 0xecfdf5).lineBetween(0, -6, 0, 6);
+        s.tweens.add({
+          targets: needle,
+          x: e.x + Math.cos(ang) * 92,
+          y: e.y + Math.sin(ang) * 92,
+          alpha: 0,
+          scale: 0.4,
+          duration: 320,
+          ease: 'Cubic.Out',
+          onComplete: () => needle.destroy(),
+        });
+      }
+      return;
+    }
+    if (e.kind === 'cone_slam') {
+      play('cave_hit');
+      if (!reduced) s.cameras.main.shake(140, 0.007);
+      const ang = e.angle ?? 0;
+      const slamColor = e.color ?? 0x38bdf8;
+      const fissure = s.add
+        .graphics()
+        .setPosition(e.x, e.y)
+        .setDepth(e.y - 1);
+      fissure.lineStyle(3, 0x090d16, 0.9);
+      for (let i = -2; i <= 2; i++) {
+        const fa = ang + (i * Math.PI) / 10;
+        const fDist = 110 + (Math.abs(i) === 2 ? -25 : 0);
+        fissure.beginPath();
+        fissure.moveTo(0, 0);
+        fissure.lineTo(Math.cos(fa) * fDist, Math.sin(fa) * fDist);
+        fissure.strokePath();
+      }
+      fissure.lineStyle(2, slamColor, 0.85);
+      for (let i = -2; i <= 2; i++) {
+        const fa = ang + (i * Math.PI) / 10;
+        fissure.lineBetween(0, 0, Math.cos(fa) * 95, Math.sin(fa) * 95);
+      }
+      s.tweens.add({
+        targets: fissure,
+        alpha: 0,
+        delay: 200,
+        duration: 400,
+        onComplete: () => fissure.destroy(),
+      });
+      for (let i = 0; i < 12; i++) {
+        const ra = ang - Math.PI / 3 + (Math.random() * (Math.PI * 2)) / 3;
+        const dist = 30 + Math.random() * 85;
+        const rock = s.add
+          .rectangle(e.x, e.y, 4 + Math.random() * 4, 4 + Math.random() * 4, slamColor)
+          .setDepth(e.y + 100);
+        s.tweens.add({
+          targets: rock,
+          x: e.x + Math.cos(ra) * dist,
+          y: e.y + Math.sin(ra) * dist - 15,
+          angle: 180,
+          scale: 0.2,
+          alpha: 0,
+          duration: 350 + Math.random() * 150,
+          ease: 'Quad.Out',
+          onComplete: () => rock.destroy(),
+        });
+      }
+      return;
+    }
+    if (e.kind === 'poison_spray') {
+      play('cave_swing');
+      const ang = e.angle ?? 0;
+      for (let i = 0; i < 14; i++) {
+        const spread = ang - Math.PI / 4 + (Math.random() * Math.PI) / 2;
+        const dist = 40 + Math.random() * 95;
+        const drop = s.add.ellipse(e.x, e.y, 6, 4, 0x84cc16).setDepth(e.y + 100);
+        drop.rotation = spread;
+        s.tweens.add({
+          targets: drop,
+          x: e.x + Math.cos(spread) * dist,
+          y: e.y + Math.sin(spread) * dist,
+          duration: 220 + Math.random() * 120,
+          ease: 'Quad.Out',
+          onComplete: () => {
+            drop.setFillStyle(0x22c55e, 0.7);
+            drop.setScale(1.5, 0.8);
+            s.tweens.add({
+              targets: drop,
+              alpha: 0,
+              scaleX: 2.2,
+              scaleY: 1.2,
+              duration: 380,
+              onComplete: () => drop.destroy(),
+            });
+          },
+        });
+      }
+      return;
+    }
+    if (e.kind === 'meteor') {
+      play('cave_defeat');
+      const startX = e.x - 30;
+      const startY = e.y - 280;
+      const meteor = s.add.graphics().setPosition(startX, startY).setDepth(1600);
+      meteor.fillStyle(0x7c3aed, 0.8).fillCircle(0, 0, 14);
+      meteor.fillStyle(0xc084fc, 0.9).fillCircle(-2, -2, 9);
+      meteor.fillStyle(0xffffff, 1).fillCircle(-3, -3, 4);
+
+      s.tweens.add({
+        targets: meteor,
+        x: e.x,
+        y: e.y,
+        duration: 240,
+        ease: 'Quad.In',
+        onComplete: () => {
+          meteor.destroy();
+          if (!reduced) s.cameras.main.shake(160, 0.009);
+          const crater = s.add
+            .graphics()
+            .setPosition(e.x, e.y)
+            .setDepth(e.y - 1);
+          crater.fillStyle(0x3b0764, 0.7).fillEllipse(0, 0, 70, 36);
+          crater.lineStyle(2, 0xa855f7, 0.9).strokeEllipse(0, 0, 70, 36);
+          s.tweens.add({
+            targets: crater,
+            alpha: 0,
+            delay: 300,
+            duration: 500,
+            onComplete: () => crater.destroy(),
+          });
+
+          const ring = s.add.graphics().setPosition(e.x, e.y).setDepth(1500);
+          s.tweens.addCounter({
+            from: 10,
+            to: 85,
+            duration: 280,
+            onUpdate: (tw) => {
+              const val = tw.getValue() ?? 0;
+              ring.clear();
+              ring.lineStyle(4, 0xd8b4fe, 1 - val / 85);
+              ring.strokeCircle(0, 0, val);
+            },
+            onComplete: () => ring.destroy(),
+          });
+          for (let i = 0; i < 16; i++) {
+            const pAng = (i * Math.PI * 2) / 16;
+            const pDist = 30 + Math.random() * 55;
+            const spark = s.add.rectangle(e.x, e.y, 4, 4, 0xe879f9).setDepth(1501);
+            s.tweens.add({
+              targets: spark,
+              x: e.x + Math.cos(pAng) * pDist,
+              y: e.y + Math.sin(pAng) * pDist,
+              scale: 0.1,
+              alpha: 0,
+              duration: 350 + Math.random() * 150,
+              ease: 'Cubic.Out',
+              onComplete: () => spark.destroy(),
+            });
+          }
+        },
+      });
+      return;
+    }
+    if (e.kind === 'laser') {
+      play('cave_swing');
+      const startX = e.x;
+      const startY = e.y;
+      const targetX = e.targetX ?? e.x + 350;
+      const targetY = e.targetY ?? e.y;
+      const beam = s.add.graphics().setDepth(1600);
+      beam.lineStyle(16, 0x06b6d4, 0.35).lineBetween(startX, startY, targetX, targetY);
+      beam.lineStyle(7, 0x38bdf8, 0.85).lineBetween(startX, startY, targetX, targetY);
+      beam.lineStyle(3, 0xffffff, 1.0).lineBetween(startX, startY, targetX, targetY);
+
+      if (!reduced) s.cameras.main.shake(80, 0.003);
+
+      s.tweens.add({
+        targets: beam,
+        alpha: 0,
+        scaleY: 0.2,
+        duration: 320,
+        ease: 'Sine.In',
+        onComplete: () => beam.destroy(),
+      });
+      return;
+    }
     if (e.kind === 'slash') {
       play('cave_swing');
       const reverse = ++this.swing % 2 ? 1 : -1,

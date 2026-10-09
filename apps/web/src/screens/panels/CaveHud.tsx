@@ -20,11 +20,21 @@ export function CaveHud() {
     <>
       <section className="cave-status" aria-label="Trạng thái thám hiểm">
         <span className="cave-eyebrow">
-          {state.floor ? 'THÁM HIỂM / TẦNG ' + state.floor + ' TRÊN 5' : 'TRẠM DỪNG / HANG NGỌC'}
+          {state.floor
+            ? state.floor === 18
+              ? 'ĐỈNH CAO HANG NGỌC / TẦNG 18 / 18 (BOSS)'
+              : 'THÁM HIỂM / TẦNG ' + state.floor + ' / 18'
+            : 'TRẠM DỪNG / HANG NGỌC (HÔM NAY: ' + (state.clearedFloorsToday?.length ?? 0) + '/18 TẦNG)'}
         </span>
         <div className="cave-health-label">
           <strong>
-            {state.floor ? (state.cleared ? 'Cổng đã mở!' : 'Còn ' + alive + ' quái') : 'Chuẩn bị lên đường'}
+            {state.floor
+              ? state.clearedToday
+                ? '✓ Đã xong hôm nay (Quái hồi sinh sau 00:00)'
+                : state.cleared
+                  ? 'Cổng đã mở!'
+                  : 'Còn ' + alive + ' quái'
+              : 'Chuẩn bị lên đường · 18 Tầng thử thách'}
           </strong>
           <span>♥ {state.hp}/100</span>
         </div>
