@@ -10,7 +10,13 @@ import { audit } from '../services/audit.js';
 import { scheduleNext, finishEvent } from '../services/events.js';
 import { getSetting, settingSchema, type SettingKey } from '../settings.js';
 import { getPresence } from '../redis.js';
-import { FISH, SHADOW_TIER_CONFIG, type FishShadowTier, type ShadowTierOverride } from '@cozy/game-data';
+import {
+  FISH,
+  SHADOW_TIER_CONFIG,
+  getFishShadowTier,
+  type FishShadowTier,
+  type ShadowTierOverride,
+} from '@cozy/game-data';
 
 const SECRET_REF = /^UPSTREAM_KEY_[A-Z0-9_]{1,40}$/;
 
@@ -394,19 +400,55 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext) {
       : {};
   }
 
+  function parseFishShadowOverrides(raw: unknown): Record<string, ShadowTierOverride> {
+    if (!raw) return {};
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        return typeof parsed === 'object' && parsed !== null ? parsed : {};
+      } catch {
+        return {};
+      }
+    }
+    return typeof raw === 'object' && raw !== null ? (raw as Record<string, ShadowTierOverride>) : {};
+  }
+
   app.get('/admin/fish', async (req) => {
     requireAdmin(req);
-    const r = await ctx.db.query<{ value: unknown }>(`SELECT value FROM settings WHERE key = 'fish_sizes'`);
-    const overrides = parseFishOverrides(r.rows[0]?.value);
+    const [sizeRes, shadowTiersRes, speciesShadowsRes] = await Promise.all([
+      ctx.db.query<{ value: unknown }>(`SELECT value FROM settings WHERE key = 'fish_sizes'`),
+      ctx.db.query<{ value: unknown }>(`SELECT value FROM settings WHERE key = 'fish_shadow_tiers'`),
+      ctx.db.query<{ value: unknown }>(`SELECT value FROM settings WHERE key = 'fish_species_shadows'`),
+    ]);
+    const overrides = parseFishOverrides(sizeRes.rows[0]?.value);
+    const tierOverrides = parseFishShadowOverrides(shadowTiersRes.rows[0]?.value);
+    const speciesShadowOverrides = parseFishShadowOverrides(speciesShadowsRes.rows[0]?.value);
+
     return FISH.map((f) => {
       const o = overrides[f.id];
+      const minSizeCm = o?.minSizeCm ?? f.minSizeCm;
+      const maxSizeCm = o?.maxSizeCm ?? f.maxSizeCm;
+      const avgSize = (minSizeCm + maxSizeCm) / 2;
+      const defaultShadowTier = getFishShadowTier(avgSize, f.rarity, f.habitat);
+      const baseTierCfg = tierOverrides[String(defaultShadowTier)] ?? SHADOW_TIER_CONFIG[defaultShadowTier];
+      const customShadow = speciesShadowOverrides[f.id] ?? null;
+
       return {
         ...f,
-        minSizeCm: o?.minSizeCm ?? f.minSizeCm,
-        maxSizeCm: o?.maxSizeCm ?? f.maxSizeCm,
+        minSizeCm,
+        maxSizeCm,
         defaultMinSizeCm: f.minSizeCm,
         defaultMaxSizeCm: f.maxSizeCm,
         isOverridden: Boolean(o),
+        defaultShadowTier,
+        customShadow,
+        isShadowOverridden: Boolean(customShadow),
+        shadowLengthPx: customShadow?.lengthPx ?? baseTierCfg.lengthPx,
+        shadowWidthPx: customShadow?.widthPx ?? baseTierCfg.widthPx,
+        shadowSwimSpeed: customShadow?.swimSpeed ?? baseTierCfg.swimSpeed,
+        shadowWiggleSpeed: customShadow?.wiggleSpeed ?? baseTierCfg.wiggleSpeed,
+        shadowHasCrown: customShadow?.hasCrown ?? baseTierCfg.hasCrown ?? false,
+        shadowHasGlow: customShadow?.hasGlow ?? baseTierCfg.hasGlow ?? false,
       };
     });
   });
@@ -603,19 +645,6 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     hasCrown: z.boolean().optional(),
     hasGlow: z.boolean().optional(),
   });
-
-  function parseFishShadowOverrides(raw: unknown): Record<string, ShadowTierOverride> {
-    if (!raw) return {};
-    if (typeof raw === 'string') {
-      try {
-        const parsed = JSON.parse(raw);
-        return typeof parsed === 'object' && parsed !== null ? parsed : {};
-      } catch {
-        return {};
-      }
-    }
-    return typeof raw === 'object' && raw !== null ? (raw as Record<string, ShadowTierOverride>) : {};
-  }
 
   app.get('/admin/fish/shadow-tiers', async (req) => {
     requireAdmin(req);
@@ -843,6 +872,112 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext) {
           isOverridden: false,
         };
       });
+    });
+  });
+
+  app.put('/admin/fish/:id/shadow', async (req) => {
+    const admin = requireAdmin(req);
+    const { id } = z.object({ id: z.string().max(60) }).parse(req.params);
+    const baseFish = FISH.find((f) => f.id === id);
+    if (!baseFish) throw notFound('Fish species not found.');
+
+    const b = shadowTierInput.parse(req.body);
+
+    return withTx(ctx.db, async (tx) => {
+      const r = await tx.query<{ value: unknown }>(
+        `SELECT value FROM settings WHERE key = 'fish_species_shadows' FOR UPDATE`,
+      );
+      const current = parseFishShadowOverrides(r.rows[0]?.value);
+      const prev = current[id] ?? null;
+      current[id] = {
+        lengthPx: b.lengthPx,
+        widthPx: b.widthPx,
+        swimSpeed: b.swimSpeed,
+        wiggleSpeed: b.wiggleSpeed,
+        hasCrown: b.hasCrown,
+        hasGlow: b.hasGlow,
+      };
+
+      await tx.query(
+        `INSERT INTO settings (key, value, updated_at)
+         VALUES ('fish_species_shadows', $1, now())
+         ON CONFLICT (key) DO UPDATE
+         SET value = EXCLUDED.value, updated_at = now()`,
+        [JSON.stringify(current)],
+      );
+
+      await audit(tx, admin.id, 'fish_shadow_species.update', 'fish_species_shadow', id, prev, current[id]);
+
+      const avgSize = (baseFish.minSizeCm + baseFish.maxSizeCm) / 2;
+      const defaultTier = getFishShadowTier(avgSize, baseFish.rarity, baseFish.habitat);
+      const defaultCfg = SHADOW_TIER_CONFIG[defaultTier];
+
+      return {
+        id,
+        fishName: baseFish.name,
+        defaultTier,
+        customShadow: current[id],
+        isShadowOverridden: true,
+        lengthPx: current[id].lengthPx ?? defaultCfg.lengthPx,
+        widthPx: current[id].widthPx ?? defaultCfg.widthPx,
+        swimSpeed: current[id].swimSpeed ?? defaultCfg.swimSpeed,
+        wiggleSpeed: current[id].wiggleSpeed ?? defaultCfg.wiggleSpeed,
+        hasCrown: current[id].hasCrown ?? defaultCfg.hasCrown ?? false,
+        hasGlow: current[id].hasGlow ?? defaultCfg.hasGlow ?? false,
+      };
+    });
+  });
+
+  app.delete('/admin/fish/:id/shadow', async (req) => {
+    const admin = requireAdmin(req);
+    const { id } = z.object({ id: z.string().max(60) }).parse(req.params);
+    const baseFish = FISH.find((f) => f.id === id);
+    if (!baseFish) throw notFound('Fish species not found.');
+
+    return withTx(ctx.db, async (tx) => {
+      const r = await tx.query<{ value: unknown }>(
+        `SELECT value FROM settings WHERE key = 'fish_species_shadows' FOR UPDATE`,
+      );
+      const current = parseFishShadowOverrides(r.rows[0]?.value);
+      const prev = current[id] ?? null;
+      if (prev) {
+        delete current[id];
+        await tx.query(
+          `INSERT INTO settings (key, value, updated_at)
+           VALUES ('fish_species_shadows', $1, now())
+           ON CONFLICT (key) DO UPDATE
+           SET value = EXCLUDED.value, updated_at = now()`,
+          [JSON.stringify(current)],
+        );
+        await audit(tx, admin.id, 'fish_shadow_species.reset', 'fish_species_shadow', id, prev, null);
+      }
+
+      const avgSize = (baseFish.minSizeCm + baseFish.maxSizeCm) / 2;
+      const defaultTier = getFishShadowTier(avgSize, baseFish.rarity, baseFish.habitat);
+      const defaultCfg = SHADOW_TIER_CONFIG[defaultTier];
+
+      return {
+        id,
+        fishName: baseFish.name,
+        defaultTier,
+        customShadow: null,
+        isShadowOverridden: false,
+        lengthPx: defaultCfg.lengthPx,
+        widthPx: defaultCfg.widthPx,
+        swimSpeed: defaultCfg.swimSpeed,
+        wiggleSpeed: defaultCfg.wiggleSpeed,
+        hasCrown: defaultCfg.hasCrown ?? false,
+        hasGlow: defaultCfg.hasGlow ?? false,
+      };
+    });
+  });
+
+  app.delete('/admin/fish/shadow-species', async (req) => {
+    const admin = requireAdmin(req);
+    return withTx(ctx.db, async (tx) => {
+      await tx.query(`DELETE FROM settings WHERE key = 'fish_species_shadows'`);
+      await audit(tx, admin.id, 'fish_shadow_species.reset_all', 'fish_species_shadow', 'all', null, null);
+      return { success: true };
     });
   });
 

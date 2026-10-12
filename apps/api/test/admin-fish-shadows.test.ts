@@ -7,19 +7,35 @@ import { playerRoutes } from '../src/routes/player.js';
 describe('Admin Fish Shadow Tiers Management (/admin/fish/shadow-tiers)', () => {
   function createTestApp() {
     const settingsStore: Record<string, string> = {};
-    const auditCalls: unknown[] = [];
+    const auditCalls: Array<{ sql: string; args: unknown[] }> = [];
 
     const query = vi.fn(async (sql: string, args: unknown[] = []) => {
       if (sql.includes(`FROM settings WHERE key = 'fish_shadow_tiers'`)) {
         const val = settingsStore['fish_shadow_tiers'];
         return { rows: val ? [{ value: val }] : [] };
       }
+      if (sql.includes(`FROM settings WHERE key = 'fish_species_shadows'`)) {
+        const val = settingsStore['fish_species_shadows'];
+        return { rows: val ? [{ value: val }] : [] };
+      }
+      if (sql.includes(`FROM settings WHERE key = 'fish_sizes'`)) {
+        const val = settingsStore['fish_sizes'];
+        return { rows: val ? [{ value: val }] : [] };
+      }
       if (sql.includes(`INSERT INTO settings (key, value, updated_at)`)) {
-        settingsStore['fish_shadow_tiers'] = String(args[0]);
+        if (sql.includes(`'fish_species_shadows'`)) {
+          settingsStore['fish_species_shadows'] = String(args[0]);
+        } else {
+          settingsStore['fish_shadow_tiers'] = String(args[0]);
+        }
         return { rows: [] };
       }
       if (sql.includes(`DELETE FROM settings WHERE key = 'fish_shadow_tiers'`)) {
         delete settingsStore['fish_shadow_tiers'];
+        return { rows: [] };
+      }
+      if (sql.includes(`DELETE FROM settings WHERE key = 'fish_species_shadows'`)) {
+        delete settingsStore['fish_species_shadows'];
         return { rows: [] };
       }
       if (sql.includes('INSERT INTO admin_audit_log')) {
@@ -163,5 +179,87 @@ describe('Admin Fish Shadow Tiers Management (/admin/fish/shadow-tiers)', () => 
     const reset = JSON.parse(delRes.body);
     expect(reset.isOverridden).toBe(false);
     expect(reset.lengthPx).toBe(reset.defaultLengthPx);
+  });
+
+  it('PUT /admin/fish/:id/shadow allows setting custom oversized shadow for a specific fish species', async () => {
+    const { app, auditCalls } = createTestApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/admin/fish/clownfish/shadow',
+      headers: { 'x-test-role': 'admin' },
+      payload: {
+        lengthPx: 4500, // To bất thường!
+        widthPx: 1200,
+        swimSpeed: 0.5,
+        wiggleSpeed: 0.8,
+        hasCrown: true,
+        hasGlow: true,
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.id).toBe('clownfish');
+    expect(body.isShadowOverridden).toBe(true);
+    expect(body.lengthPx).toBe(4500);
+    expect(body.widthPx).toBe(1200);
+    expect(body.hasCrown).toBe(true);
+    expect(body.hasGlow).toBe(true);
+    expect(auditCalls.some((c: { sql: string }) => c.sql.includes('admin_audit_log'))).toBe(true);
+
+    // Verify GET /admin/fish contains customShadow
+    const fishRes = await app.inject({
+      method: 'GET',
+      url: '/admin/fish',
+      headers: { 'x-test-role': 'admin' },
+    });
+    expect(fishRes.statusCode).toBe(200);
+    const allFish = JSON.parse(fishRes.body);
+    const clown = allFish.find((f: { id: string }) => f.id === 'clownfish');
+    expect(clown.isShadowOverridden).toBe(true);
+    expect(clown.shadowLengthPx).toBe(4500);
+    expect(clown.shadowWidthPx).toBe(1200);
+    expect(clown.shadowHasCrown).toBe(true);
+
+    // Verify public endpoint GET /activities/fishing/species-shadows
+    const pubRes = await app.inject({
+      method: 'GET',
+      url: '/activities/fishing/species-shadows',
+    });
+    expect(pubRes.statusCode).toBe(200);
+    const speciesOverrides = JSON.parse(pubRes.body);
+    expect(speciesOverrides.clownfish.lengthPx).toBe(4500);
+    expect(speciesOverrides.clownfish.hasCrown).toBe(true);
+  });
+
+  it('DELETE /admin/fish/:id/shadow resets species shadow to default tier config', async () => {
+    const { app } = createTestApp();
+    // First customize
+    await app.inject({
+      method: 'PUT',
+      url: '/admin/fish/clownfish/shadow',
+      headers: { 'x-test-role': 'admin' },
+      payload: { lengthPx: 2000, widthPx: 600 },
+    });
+
+    // Reset
+    const delRes = await app.inject({
+      method: 'DELETE',
+      url: '/admin/fish/clownfish/shadow',
+      headers: { 'x-test-role': 'admin' },
+    });
+    expect(delRes.statusCode).toBe(200);
+    const body = JSON.parse(delRes.body);
+    expect(body.id).toBe('clownfish');
+    expect(body.isShadowOverridden).toBe(false);
+    expect(body.customShadow).toBeNull();
+
+    // Verify public endpoint no longer has clownfish override
+    const pubRes = await app.inject({
+      method: 'GET',
+      url: '/activities/fishing/species-shadows',
+    });
+    expect(pubRes.statusCode).toBe(200);
+    const speciesOverrides = JSON.parse(pubRes.body);
+    expect(speciesOverrides.clownfish).toBeUndefined();
   });
 });

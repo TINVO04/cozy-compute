@@ -371,6 +371,15 @@ export function playerRoutes(app: FastifyInstance, ctx: AppContext) {
     }
     return result;
   });
+  app.get('/activities/fishing/species-shadows', async () => {
+    const r = await ctx.db.query<{ value: unknown }>(
+      `SELECT value FROM settings WHERE key = 'fish_species_shadows'`,
+    );
+    const raw = r.rows[0]?.value;
+    const overrides = (typeof raw === 'string' ? JSON.parse(raw) : raw) as
+      Record<string, ShadowTierOverride> | undefined;
+    return overrides ?? {};
+  });
 
   // ---------------------------------------------------------------- backpack
   app.get('/backpack/fish', async (req) => backpack.getBackpackFish(ctx.db, requireUser(req).id));

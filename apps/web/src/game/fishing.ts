@@ -4,6 +4,7 @@ import {
   SHADOW_TIER_CONFIG,
   type FishShadowTier,
   type RodConfig,
+  type ShadowTierOverride,
 } from '@cozy/game-data';
 import type Phaser from 'phaser';
 import { play } from '../lib/sound';
@@ -17,6 +18,7 @@ export interface FishingSessionParams {
   selfX: number;
   selfY: number;
   shadowTier: FishShadowTier;
+  customShadow?: ShadowTierOverride | null;
   nibbleCount: number;
   nibbleTimes: number[];
   nibbleOrbitTurns?: number[];
@@ -405,10 +407,11 @@ export class InWorldFishingController {
     const selfX = this.params.selfX + offset.x;
     const selfY = this.params.selfY + offset.y;
     const rod = this.params.equippedRod ?? FISHING_RODS['rod_twig']!;
-    const tierCfg =
+    const baseTierCfg =
       useUi.getState().shadowTierConfig?.[shadowTier] ??
       SHADOW_TIER_CONFIG[shadowTier] ??
       SHADOW_TIER_CONFIG[1];
+    const tierCfg = this.params.customShadow ? { ...baseTierCfg, ...this.params.customShadow } : baseTierCfg;
 
     // Compute Hand, Butt and Rod Coordinates based on character's facing direction
     let handX = selfX;

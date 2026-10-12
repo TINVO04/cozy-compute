@@ -29,6 +29,7 @@ import {
   type ActivityConfigMap,
   type FishShadowTier,
   type RodConfig,
+  type ShadowTierOverride,
   type ZoneId,
 } from '@cozy/game-data';
 import type { AppContext } from '../context.js';
@@ -260,19 +261,31 @@ export async function startFishing(ctx: AppContext, userId: string) {
     rod.shadowBonus + seaZoneBonus,
   );
 
-  // Read current size overrides from settings
-  const fishSizesRes = await ctx.db.query<{ value: unknown }>(
-    `SELECT value FROM settings WHERE key = 'fish_sizes'`,
+  // Read current size overrides and species shadow overrides from settings
+  const settingsRes = await ctx.db.query<{ key: string; value: unknown }>(
+    `SELECT key, value FROM settings WHERE key IN ('fish_sizes', 'fish_species_shadows')`,
   );
-  const rawSizes = fishSizesRes.rows[0]?.value;
-  const sizeOverrides = (typeof rawSizes === 'string' ? JSON.parse(rawSizes) : rawSizes) as
-    Record<string, { minSizeCm: number; maxSizeCm: number }> | undefined;
-  const fishOverride = sizeOverrides?.[pendingFish.id];
+  let sizeOverrides: Record<string, { minSizeCm: number; maxSizeCm: number }> = {};
+  let speciesShadowOverrides: Record<string, ShadowTierOverride> = {};
+  for (const row of settingsRes.rows) {
+    try {
+      const parsed = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+      if (row.key === 'fish_sizes' && parsed && typeof parsed === 'object') {
+        sizeOverrides = parsed as Record<string, { minSizeCm: number; maxSizeCm: number }>;
+      } else if (row.key === 'fish_species_shadows' && parsed && typeof parsed === 'object') {
+        speciesShadowOverrides = parsed as Record<string, ShadowTierOverride>;
+      }
+    } catch {
+      // ignore json parse error
+    }
+  }
+  const fishOverride = sizeOverrides[pendingFish.id];
   const effectiveFish = fishOverride
     ? { ...pendingFish, minSizeCm: fishOverride.minSizeCm, maxSizeCm: fishOverride.maxSizeCm }
     : pendingFish;
   const calculatedSize = calculateFishSize(ctx.rng, effectiveFish);
   const shadowTier = getFishShadowTier(calculatedSize.sizeCm, pendingFish.rarity, pendingFish.habitat);
+  const customShadow = speciesShadowOverrides[pendingFish.id] ?? null;
 
   // Play Together bite sequence: random 7-12s wait before shadow appears, then 4 to 8 nibbles before BITE!
   const nibbleCount = 4 + Math.floor(ctx.rng() * 5); // 4, 5, 6, 7, or 8 nibbles
@@ -294,6 +307,7 @@ export async function startFishing(ctx: AppContext, userId: string) {
     biteAt,
     pendingFishId: pendingFish.id,
     shadowTier,
+    customShadow,
     nibbleCount,
     nibbleOffsetsMs,
     nibbleOrbitTurns,
@@ -309,6 +323,7 @@ export async function startFishing(ctx: AppContext, userId: string) {
     biteInMs,
     reactionWindowMs,
     shadowTier,
+    customShadow,
     nibbleCount,
     shadowDelayMs,
     nibbleOffsetsMs,
@@ -463,6 +478,7 @@ export async function completeFishing(ctx: AppContext, userId: string, runId: st
     );
     const coin = applyMultiplier(fish.coin, mult);
     const fame = mult < 1 ? 0 : fish.fame;
+    const customShadow = (run.state.customShadow as ShadowTierOverride | null | undefined) ?? null;
     await finishRun(tx, run, now, {
       status: 'completed',
       result: {
@@ -476,6 +492,7 @@ export async function completeFishing(ctx: AppContext, userId: string, runId: st
         weightKg: size.weightKg,
         sizeCategory: size.sizeCategory,
         shadowTier,
+        customShadow,
         isFirstCatch,
         isRecord,
         backpackFishId,
@@ -495,6 +512,7 @@ export async function completeFishing(ctx: AppContext, userId: string, runId: st
       weightKg: size.weightKg,
       sizeCategory: size.sizeCategory,
       shadowTier,
+      customShadow,
       isFirstCatch,
       isRecord,
       backpackFishId,

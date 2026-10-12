@@ -1,4 +1,11 @@
-import { FISH, type Appearance, type FishHabitat, type FishSpecies } from '@cozy/game-data';
+import {
+  FISH,
+  type Appearance,
+  type FishHabitat,
+  type FishShadowTier,
+  type FishSpecies,
+  type ShadowTierOverride,
+} from '@cozy/game-data';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fish, Layers, RotateCcw, Save, Search, Sliders, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -11,11 +18,21 @@ import { useUi } from '../../lib/store';
 import { Button, toastError } from '../../ui/primitives';
 import { useFishArt } from '../../lib/use-fish-art';
 import { FishShadowAdmin } from './FishShadowAdmin';
+import { FishSpeciesShadowTuner } from './FishSpeciesShadowTuner';
 
 export interface AdminFishSpecies extends FishSpecies {
   defaultMinSizeCm: number;
   defaultMaxSizeCm: number;
   isOverridden: boolean;
+  defaultShadowTier?: FishShadowTier;
+  customShadow?: ShadowTierOverride | null;
+  isShadowOverridden?: boolean;
+  shadowLengthPx?: number;
+  shadowWidthPx?: number;
+  shadowSwimSpeed?: number;
+  shadowWiggleSpeed?: number;
+  shadowHasCrown?: boolean;
+  shadowHasGlow?: boolean;
 }
 
 const HABITAT_LABELS: Record<FishHabitat, string> = {
@@ -455,7 +472,22 @@ export function FishAdminPage() {
                               color: '#0f172a',
                             }}
                           >
-                            Đã sửa
+                            Đã sửa size
+                          </span>
+                        ) : null}
+                        {fish.isShadowOverridden ? (
+                          <span
+                            className="pill"
+                            style={{
+                              fontSize: 9,
+                              padding: '1px 4px',
+                              background: '#818cf8',
+                              color: '#ffffff',
+                              fontWeight: 700,
+                            }}
+                            title="Bóng cá tùy chỉnh riêng"
+                          >
+                            🌊 Bóng
                           </span>
                         ) : null}
                       </div>
@@ -781,7 +813,7 @@ function FishTunerWorkbench({
     setTestSize(Math.round((fish.minSizeCm + fish.maxSizeCm) / 2));
   }, [fish.id, fish.minSizeCm, fish.maxSizeCm]);
 
-  const [stageMode, setStageMode] = useState<'scale' | 'handheld' | 'chibi'>('chibi');
+  const [stageMode, setStageMode] = useState<'scale' | 'handheld' | 'chibi' | 'shadow'>('chibi');
   const [chibiPose, setChibiPose] = useState<'auto' | 'trophy' | 'holding'>('auto');
   const [modelType, setModelType] = useState<'chibi' | 'pixel'>('chibi');
   const [handheldStyle, setHandheldStyle] = useState<'chibi' | 'pixel'>('chibi');
@@ -1027,6 +1059,14 @@ function FishTunerWorkbench({
           >
             🎒 Cầm Trên Tay (Thực Tế Nhân Vật)
           </button>
+          <button
+            role="tab"
+            className="tab"
+            aria-selected={stageMode === 'shadow'}
+            onClick={() => setStageMode('shadow')}
+          >
+            🌊 Bóng Cá Dưới Nước (Water Shadow)
+          </button>
         </div>
 
         {testSize > 170 ? (
@@ -1047,7 +1087,9 @@ function FishTunerWorkbench({
       </div>
 
       {/* STAGE CONTAINER */}
-      {stageMode === 'chibi' ? (
+      {stageMode === 'shadow' ? (
+        <FishSpeciesShadowTuner fish={fish} onSaved={onSaved} />
+      ) : stageMode === 'chibi' ? (
         /* MODE 0: 2D HD CHIBI SHOWCASE */
         <div
           style={{
