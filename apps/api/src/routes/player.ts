@@ -1,5 +1,11 @@
 import { fameTitle } from '@cozy/economy';
-import { FISH, sanitizeAppearance } from '@cozy/game-data';
+import {
+  FISH,
+  sanitizeAppearance,
+  SHADOW_TIER_CONFIG,
+  type ShadowTierInfo,
+  type ShadowTierOverride,
+} from '@cozy/game-data';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { createSession, hashPassword, requireUser, verifyPassword } from '../auth.js';
@@ -341,6 +347,29 @@ export function playerRoutes(app: FastifyInstance, ctx: AppContext) {
         maxSizeCm: o?.maxSizeCm ?? f.maxSizeCm,
       };
     });
+  });
+  app.get('/activities/fishing/shadow-tiers', async () => {
+    const r = await ctx.db.query<{ value: unknown }>(
+      `SELECT value FROM settings WHERE key = 'fish_shadow_tiers'`,
+    );
+    const raw = r.rows[0]?.value;
+    const overrides = (typeof raw === 'string' ? JSON.parse(raw) : raw) as
+      Record<string, ShadowTierOverride> | undefined;
+    const result: Record<number, ShadowTierInfo> = {};
+    for (const tier of [1, 2, 3, 4, 5, 6] as const) {
+      const base = SHADOW_TIER_CONFIG[tier];
+      const o = overrides?.[String(tier)] ?? overrides?.[tier];
+      result[tier] = {
+        ...base,
+        lengthPx: o?.lengthPx ?? base.lengthPx,
+        widthPx: o?.widthPx ?? base.widthPx,
+        swimSpeed: o?.swimSpeed ?? base.swimSpeed,
+        wiggleSpeed: o?.wiggleSpeed ?? base.wiggleSpeed,
+        hasCrown: o?.hasCrown ?? base.hasCrown,
+        hasGlow: o?.hasGlow ?? base.hasGlow,
+      };
+    }
+    return result;
   });
 
   // ---------------------------------------------------------------- backpack

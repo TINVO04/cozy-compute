@@ -10,6 +10,7 @@ import { play } from '../../lib/sound';
 import { useUi } from '../../lib/store';
 import { Button, toastError } from '../../ui/primitives';
 import { useFishArt } from '../../lib/use-fish-art';
+import { FishShadowAdmin } from './FishShadowAdmin';
 
 export interface AdminFishSpecies extends FishSpecies {
   defaultMinSizeCm: number;
@@ -40,6 +41,7 @@ export function FishAdminPage() {
   const [rarityFilter, setRarityFilter] = useState<FishSpecies['rarity'] | 'all'>('all');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'overridden' | 'default'>('all');
+  const [adminTab, setAdminTab] = useState<'species' | 'shadows'>('species');
 
   // Fetch admin fish definitions
   const fishQuery = useQuery({
@@ -161,326 +163,357 @@ export function FishAdminPage() {
         ) : null}
       </div>
 
-      {/* Main split workbench */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(310px, 390px) 1fr',
-          gap: 20,
-          alignItems: 'start',
-        }}
-      >
-        {/* Left: Species List */}
+      {/* Subtab Navigation */}
+      <div className="tabs" role="tablist" style={{ fontSize: 13, gap: 4 }}>
+        <button
+          role="tab"
+          className="tab"
+          aria-selected={adminTab === 'species'}
+          onClick={() => setAdminTab('species')}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 18px', fontWeight: 600 }}
+        >
+          <Fish size={16} /> Từ Điển Loài & Kích Thước Cá ({allFish.length})
+        </button>
+        <button
+          role="tab"
+          className="tab"
+          aria-selected={adminTab === 'shadows'}
+          onClick={() => setAdminTab('shadows')}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 18px', fontWeight: 600 }}
+        >
+          <Sliders size={16} /> Kích Thước Bóng Cá Theo Bậc (Shadow Tiers Studio)
+        </button>
+      </div>
+
+      {adminTab === 'shadows' ? (
+        <FishShadowAdmin />
+      ) : (
+        /* Main split workbench */
         <div
           style={{
-            background: 'var(--surface-1)',
-            border: '1px solid var(--border)',
-            borderRadius: 14,
-            padding: 14,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-            maxHeight: '82vh',
+            display: 'grid',
+            gridTemplateColumns: 'minmax(310px, 390px) 1fr',
+            gap: 20,
+            alignItems: 'start',
           }}
         >
-          {/* Search & Status filter */}
-          <div className="row" style={{ gap: 8 }}>
-            <div style={{ position: 'relative', flex: 1 }}>
-              <input
-                type="text"
-                placeholder="Tìm theo tên hoặc ID…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+          {/* Left: Species List */}
+          <div
+            style={{
+              background: 'var(--surface-1)',
+              border: '1px solid var(--border)',
+              borderRadius: 14,
+              padding: 14,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+              maxHeight: '82vh',
+            }}
+          >
+            {/* Search & Status filter */}
+            <div className="row" style={{ gap: 8 }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <input
+                  type="text"
+                  placeholder="Tìm theo tên hoặc ID…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px 8px 32px',
+                    borderRadius: 8,
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text)',
+                    fontSize: 13,
+                  }}
+                />
+                <Search
+                  size={15}
+                  style={{ position: 'absolute', left: 10, top: 11, color: 'var(--text-muted)' }}
+                />
+              </div>
+
+              <select
+                aria-label="Lọc bậc cá"
+                value={rarityFilter}
+                onChange={(e) => setRarityFilter(e.target.value as FishSpecies['rarity'] | 'all')}
+                style={{ minHeight: 44, maxWidth: '100%' }}
+              >
+                <option value="all">Mọi bậc cá</option>
+                {Object.entries(RARITY_LABELS).map(([id, meta]) => (
+                  <option key={id} value={id}>
+                    {meta.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'overridden' | 'default')}
                 style={{
-                  width: '100%',
-                  padding: '8px 12px 8px 32px',
+                  padding: '6px 10px',
                   borderRadius: 8,
                   background: 'var(--surface-2)',
                   border: '1px solid var(--border)',
                   color: 'var(--text)',
-                  fontSize: 13,
+                  fontSize: 12,
                 }}
-              />
-              <Search
-                size={15}
-                style={{ position: 'absolute', left: 10, top: 11, color: 'var(--text-muted)' }}
-              />
+                title="Lọc theo trạng thái chỉnh sửa"
+              >
+                <option value="all">Mọi trạng thái</option>
+                <option value="overridden">Đã sửa ({overriddenCount})</option>
+                <option value="default">Mặc định</option>
+              </select>
             </div>
 
-            <select
-              aria-label="Lọc bậc cá"
-              value={rarityFilter}
-              onChange={(e) => setRarityFilter(e.target.value as FishSpecies['rarity'] | 'all')}
-              style={{ minHeight: 44, maxWidth: '100%' }}
-            >
-              <option value="all">Mọi bậc cá</option>
-              {Object.entries(RARITY_LABELS).map(([id, meta]) => (
-                <option key={id} value={id}>
-                  {meta.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as 'all' | 'overridden' | 'default')}
-              style={{
-                padding: '6px 10px',
-                borderRadius: 8,
-                background: 'var(--surface-2)',
-                border: '1px solid var(--border)',
-                color: 'var(--text)',
-                fontSize: 12,
-              }}
-              title="Lọc theo trạng thái chỉnh sửa"
-            >
-              <option value="all">Mọi trạng thái</option>
-              <option value="overridden">Đã sửa ({overriddenCount})</option>
-              <option value="default">Mặc định</option>
-            </select>
-          </div>
+            {/* Habitat tabs */}
+            <div className="tabs" role="tablist" style={{ fontSize: 12 }}>
+              <button
+                role="tab"
+                className="tab"
+                aria-selected={habitat === 'all'}
+                onClick={() => setHabitat('all')}
+              >
+                Tất cả ({allFish.length})
+              </button>
+              <button
+                role="tab"
+                className="tab"
+                aria-selected={habitat === 'ocean'}
+                onClick={() => setHabitat('ocean')}
+              >
+                Biển ({allFish.filter((f) => f.habitat === 'ocean').length})
+              </button>
+              <button
+                role="tab"
+                className="tab"
+                aria-selected={habitat === 'freshwater'}
+                onClick={() => setHabitat('freshwater')}
+              >
+                Nước ngọt ({allFish.filter((f) => f.habitat === 'freshwater').length})
+              </button>
+              <button
+                role="tab"
+                className="tab"
+                aria-selected={habitat === 'mythic'}
+                onClick={() => setHabitat('mythic')}
+              >
+                Huyền bí ({allFish.filter((f) => f.habitat === 'mythic').length})
+              </button>
+            </div>
 
-          {/* Habitat tabs */}
-          <div className="tabs" role="tablist" style={{ fontSize: 12 }}>
-            <button
-              role="tab"
-              className="tab"
-              aria-selected={habitat === 'all'}
-              onClick={() => setHabitat('all')}
-            >
-              Tất cả ({allFish.length})
-            </button>
-            <button
-              role="tab"
-              className="tab"
-              aria-selected={habitat === 'ocean'}
-              onClick={() => setHabitat('ocean')}
-            >
-              Biển ({allFish.filter((f) => f.habitat === 'ocean').length})
-            </button>
-            <button
-              role="tab"
-              className="tab"
-              aria-selected={habitat === 'freshwater'}
-              onClick={() => setHabitat('freshwater')}
-            >
-              Nước ngọt ({allFish.filter((f) => f.habitat === 'freshwater').length})
-            </button>
-            <button
-              role="tab"
-              className="tab"
-              aria-selected={habitat === 'mythic'}
-              onClick={() => setHabitat('mythic')}
-            >
-              Huyền bí ({allFish.filter((f) => f.habitat === 'mythic').length})
-            </button>
-          </div>
-
-          {/* Batch Selection Bar */}
-          <div
-            className="row"
-            style={{
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '6px 10px',
-              background: 'var(--surface-2)',
-              borderRadius: 8,
-              fontSize: 12,
-              border: '1px solid rgba(255, 255, 255, 0.05)',
-            }}
-          >
-            <label
+            {/* Batch Selection Bar */}
+            <div
+              className="row"
               style={{
-                display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
-                gap: 6,
-                cursor: 'pointer',
-                userSelect: 'none',
-                fontWeight: 600,
+                padding: '6px 10px',
+                background: 'var(--surface-2)',
+                borderRadius: 8,
+                fontSize: 12,
+                border: '1px solid rgba(255, 255, 255, 0.05)',
               }}
             >
-              <input
-                type="checkbox"
-                checked={isAllFilteredSelected}
-                onChange={() => {
-                  if (isAllFilteredSelected) deselectAllFiltered();
-                  else selectAllFiltered();
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  fontWeight: 600,
                 }}
-                style={{ width: 15, height: 15, accentColor: '#38bdf8', cursor: 'pointer' }}
-              />
-              {isAllFilteredSelected
-                ? `Bỏ chọn toàn bộ lọc (${filteredFish.length})`
-                : `Chọn tất cả (${filteredFish.length})`}
-            </label>
-
-            {selectedIds.size > 0 ? (
-              <div className="row" style={{ gap: 6, alignItems: 'center' }}>
-                <span className="pill pill-primary" style={{ fontSize: 10, padding: '1px 6px' }}>
-                  Đã chọn {selectedIds.size}
-                </span>
-                <button
-                  type="button"
-                  className="btn btn-xs btn-ghost"
-                  onClick={() => setSelectedIds(new Set())}
-                  style={{ fontSize: 11, padding: '1px 6px' }}
-                >
-                  Xóa
-                </button>
-              </div>
-            ) : null}
-          </div>
-
-          {/* List items */}
-          <div
-            style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, paddingRight: 4 }}
-          >
-            {filteredFish.map((fish) => {
-              const isChecked = selectedIds.has(fish.id);
-              const isOnlyActive = selectedIds.size === 1 && isChecked;
-              const rarityMeta = RARITY_LABELS[fish.rarity] ?? { label: fish.rarity, color: '#94a3b8' };
-              return (
-                <div
-                  key={fish.id}
-                  onClick={(e) => {
-                    play('click');
-                    if (e.shiftKey) {
-                      toggleSelect(fish.id);
-                    } else if (selectedIds.size > 1) {
-                      toggleSelect(fish.id);
-                    } else {
-                      setSelectedIds(new Set([fish.id]));
-                    }
+              >
+                <input
+                  type="checkbox"
+                  checked={isAllFilteredSelected}
+                  onChange={() => {
+                    if (isAllFilteredSelected) deselectAllFiltered();
+                    else selectAllFiltered();
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 10px',
-                    borderRadius: 10,
-                    background: isChecked
-                      ? isOnlyActive
-                        ? 'rgba(56, 189, 248, 0.16)'
-                        : 'rgba(56, 189, 248, 0.1)'
-                      : 'var(--surface-2)',
-                    border: isChecked ? '1px solid #38bdf8' : '1px solid transparent',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {/* Item Checkbox */}
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    aria-label={fish.name}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      toggleSelect(fish.id, e.target.checked);
-                    }}
-                    style={{ width: 16, height: 16, accentColor: '#38bdf8', cursor: 'pointer' }}
-                  />
+                  style={{ width: 15, height: 15, accentColor: '#38bdf8', cursor: 'pointer' }}
+                />
+                {isAllFilteredSelected
+                  ? `Bỏ chọn toàn bộ lọc (${filteredFish.length})`
+                  : `Chọn tất cả (${filteredFish.length})`}
+              </label>
 
-                  {/* Fish Sprite Thumbnail */}
+              {selectedIds.size > 0 ? (
+                <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+                  <span className="pill pill-primary" style={{ fontSize: 10, padding: '1px 6px' }}>
+                    Đã chọn {selectedIds.size}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-xs btn-ghost"
+                    onClick={() => setSelectedIds(new Set())}
+                    style={{ fontSize: 11, padding: '1px 6px' }}
+                  >
+                    Xóa
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            {/* List items */}
+            <div
+              style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, paddingRight: 4 }}
+            >
+              {filteredFish.map((fish) => {
+                const isChecked = selectedIds.has(fish.id);
+                const isOnlyActive = selectedIds.size === 1 && isChecked;
+                const rarityMeta = RARITY_LABELS[fish.rarity] ?? { label: fish.rarity, color: '#94a3b8' };
+                return (
                   <div
+                    key={fish.id}
+                    onClick={(e) => {
+                      play('click');
+                      if (e.shiftKey) {
+                        toggleSelect(fish.id);
+                      } else if (selectedIds.size > 1) {
+                        toggleSelect(fish.id);
+                      } else {
+                        setSelectedIds(new Set([fish.id]));
+                      }
+                    }}
                     style={{
-                      width: 44,
-                      height: 36,
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      background: 'rgba(0,0,0,0.25)',
-                      borderRadius: 6,
-                      flexShrink: 0,
+                      gap: 10,
+                      padding: '8px 10px',
+                      borderRadius: 10,
+                      background: isChecked
+                        ? isOnlyActive
+                          ? 'rgba(56, 189, 248, 0.16)'
+                          : 'rgba(56, 189, 248, 0.1)'
+                        : 'var(--surface-2)',
+                      border: isChecked ? '1px solid #38bdf8' : '1px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
                     }}
                   >
-                    <img
-                      src={fishIcon(fish.id, 2)}
-                      alt=""
-                      style={{ imageRendering: 'auto', maxWidth: '100%', maxHeight: '100%' }}
+                    {/* Item Checkbox */}
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      aria-label={fish.name}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        toggleSelect(fish.id, e.target.checked);
+                      }}
+                      style={{ width: 16, height: 16, accentColor: '#38bdf8', cursor: 'pointer' }}
                     />
-                  </div>
 
-                  {/* Fish Metadata */}
-                  <div className="stack" style={{ gap: 2, flex: 1, minWidth: 0 }}>
+                    {/* Fish Sprite Thumbnail */}
                     <div
                       style={{
-                        fontWeight: 600,
-                        fontSize: 13,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
+                        width: 44,
+                        height: 36,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'rgba(0,0,0,0.25)',
+                        borderRadius: 6,
+                        flexShrink: 0,
                       }}
                     >
-                      {fish.name}
+                      <img
+                        src={fishIcon(fish.id, 2)}
+                        alt=""
+                        style={{ imageRendering: 'auto', maxWidth: '100%', maxHeight: '100%' }}
+                      />
                     </div>
-                    <div className="row" style={{ gap: 6, fontSize: 11 }}>
-                      <span style={{ color: rarityMeta.color, fontWeight: 700 }}>{rarityMeta.label}</span>
-                      <span className="muted">·</span>
-                      <span className="muted">
-                        {fish.minSizeCm} - {fish.maxSizeCm} cm
-                      </span>
-                      {fish.isOverridden ? (
-                        <span
-                          className="pill"
-                          style={{ fontSize: 9, padding: '1px 4px', background: '#38bdf8', color: '#0f172a' }}
-                        >
-                          Đã sửa
+
+                    {/* Fish Metadata */}
+                    <div className="stack" style={{ gap: 2, flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          fontSize: 13,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {fish.name}
+                      </div>
+                      <div className="row" style={{ gap: 6, fontSize: 11 }}>
+                        <span style={{ color: rarityMeta.color, fontWeight: 700 }}>{rarityMeta.label}</span>
+                        <span className="muted">·</span>
+                        <span className="muted">
+                          {fish.minSizeCm} - {fish.maxSizeCm} cm
                         </span>
-                      ) : null}
+                        {fish.isOverridden ? (
+                          <span
+                            className="pill"
+                            style={{
+                              fontSize: 9,
+                              padding: '1px 4px',
+                              background: '#38bdf8',
+                              color: '#0f172a',
+                            }}
+                          >
+                            Đã sửa
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
 
-        {/* Right: Batch Workbench OR Single Fish Workbench */}
-        {selectedFishList.length > 1 ? (
-          <BatchFishTunerWorkbench
-            selectedFish={selectedFishList}
-            onDeselect={(id) => toggleSelect(id, false)}
-            onClearSelection={() => setSelectedIds(new Set())}
-            onSaved={() => qc.invalidateQueries({ queryKey: ['admin-fish'] })}
-          />
-        ) : selectedFishList[0] ? (
-          <FishTunerWorkbench
-            key={`${selectedFishList[0].id}:${selectedFishList[0].minSizeCm}:${selectedFishList[0].maxSizeCm}:${selectedFishList[0].isOverridden}`}
-            fish={selectedFishList[0]}
-            appearance={meQuery.data?.appearance}
-            onSaved={() => qc.invalidateQueries({ queryKey: ['admin-fish'] })}
-          />
-        ) : (
-          <div
-            style={{
-              background: 'var(--surface-1)',
-              border: '1px dashed var(--border)',
-              borderRadius: 14,
-              padding: 40,
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 12,
-            }}
-          >
-            <Fish size={40} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
-            <h3 style={{ margin: 0 }}>Chưa chọn loài cá nào</h3>
-            <p className="muted" style={{ margin: 0, fontSize: 13, maxWidth: 360 }}>
-              Hãy nhấp vào một loài cá từ danh sách bên trái để tinh chỉnh chi tiết, hoặc đánh dấu nhiều ô
-              vuông để chỉnh sửa kích thước hàng loạt cùng một lúc.
-            </p>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                if (allFish[0]) setSelectedIds(new Set([allFish[0].id]));
+          {/* Right: Batch Workbench OR Single Fish Workbench */}
+          {selectedFishList.length > 1 ? (
+            <BatchFishTunerWorkbench
+              selectedFish={selectedFishList}
+              onDeselect={(id) => toggleSelect(id, false)}
+              onClearSelection={() => setSelectedIds(new Set())}
+              onSaved={() => qc.invalidateQueries({ queryKey: ['admin-fish'] })}
+            />
+          ) : selectedFishList[0] ? (
+            <FishTunerWorkbench
+              key={`${selectedFishList[0].id}:${selectedFishList[0].minSizeCm}:${selectedFishList[0].maxSizeCm}:${selectedFishList[0].isOverridden}`}
+              fish={selectedFishList[0]}
+              appearance={meQuery.data?.appearance}
+              onSaved={() => qc.invalidateQueries({ queryKey: ['admin-fish'] })}
+            />
+          ) : (
+            <div
+              style={{
+                background: 'var(--surface-1)',
+                border: '1px dashed var(--border)',
+                borderRadius: 14,
+                padding: 40,
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 12,
               }}
             >
-              Chọn loài đầu tiên ({allFish[0]?.name ?? 'Cá'})
-            </Button>
-          </div>
-        )}
-      </div>
+              <Fish size={40} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
+              <h3 style={{ margin: 0 }}>Chưa chọn loài cá nào</h3>
+              <p className="muted" style={{ margin: 0, fontSize: 13, maxWidth: 360 }}>
+                Hãy nhấp vào một loài cá từ danh sách bên trái để tinh chỉnh chi tiết, hoặc đánh dấu nhiều ô
+                vuông để chỉnh sửa kích thước hàng loạt cùng một lúc.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  if (allFish[0]) setSelectedIds(new Set([allFish[0].id]));
+                }}
+              >
+                Chọn loài đầu tiên ({allFish[0]?.name ?? 'Cá'})
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

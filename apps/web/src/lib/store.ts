@@ -1,4 +1,4 @@
-import { SHOWROOM_PEDESTALS, type ZoneId } from '@cozy/game-data';
+import { SHOWROOM_PEDESTALS, type FishShadowTier, type ShadowTierInfo, type ZoneId } from '@cozy/game-data';
 import { create } from 'zustand';
 import {
   type AdminWeatherOverride,
@@ -126,11 +126,15 @@ interface UiState {
   resetWeatherOverride: () => void;
   triggerLightning: () => void;
   triggerWindGust: () => void;
+  shadowTierConfig: Record<FishShadowTier, ShadowTierInfo> | null;
+  setShadowTierConfig: (cfg: Record<FishShadowTier, ShadowTierInfo> | null) => void;
 }
 
 let nextId = 1;
 
 export const useUi = create<UiState>((set) => ({
+  shadowTierConfig: null,
+  setShadowTierConfig: (shadowTierConfig) => set({ shadowTierConfig }),
   panel: null,
   activity: null,
   zone: null,

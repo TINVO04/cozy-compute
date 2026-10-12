@@ -7,6 +7,7 @@ import {
   type FishShadowTier,
   type Rarity,
   type RodConfig,
+  type ShadowTierInfo,
 } from '@cozy/game-data';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BookOpen, CircleAlert, Coffee, Fish, Package, RotateCcw, Star, Waves, Zap } from 'lucide-react';
@@ -123,6 +124,16 @@ export function FishingActivity() {
     refetchInterval: 30_000,
     retry: false,
   });
+  const shadowTiersQuery = useQuery({
+    queryKey: ['fishing-shadow-tiers'],
+    queryFn: () => api<Record<FishShadowTier, ShadowTierInfo>>('/activities/fishing/shadow-tiers'),
+    staleTime: 60_000,
+  });
+  useEffect(() => {
+    if (shadowTiersQuery.data) {
+      useUi.getState().setShadowTierConfig(shadowTiersQuery.data);
+    }
+  }, [shadowTiersQuery.data]);
   const conditions = phase.kind === 'idle' ? forecast : castConditions;
   const qc = useQueryClient();
   const { data: me } = useQuery<Me>({ queryKey: qk.me, queryFn: () => api<Me>('/me') });
@@ -563,7 +574,12 @@ export function FishingActivity() {
     phase.kind === 'waiting' || phase.kind === 'bite' || phase.kind === 'reeling' || phase.kind === 'result'
       ? phase.shadowTier
       : undefined;
-  const shadowInfo = shadowTier ? SHADOW_TIER_CONFIG[shadowTier] : undefined;
+  const activeShadowTiers = useUi((s) => s.shadowTierConfig);
+  const shadowInfo = shadowTier
+    ? (activeShadowTiers?.[shadowTier] ??
+      shadowTiersQuery.data?.[shadowTier] ??
+      SHADOW_TIER_CONFIG[shadowTier])
+    : undefined;
 
   return (
     <div className="fishing-inworld-hud" role="region" aria-label="Giao diện câu cá ngoài thế giới">

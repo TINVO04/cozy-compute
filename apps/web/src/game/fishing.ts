@@ -7,6 +7,7 @@ import {
 } from '@cozy/game-data';
 import type Phaser from 'phaser';
 import { play } from '../lib/sound';
+import { useUi } from '../lib/store';
 import { fishNibblePose } from './fishing-motion';
 import { drawOrganicFishShadow } from './fish-shadow';
 import { ensureFishTexture } from './fish-texture';
@@ -404,7 +405,10 @@ export class InWorldFishingController {
     const selfX = this.params.selfX + offset.x;
     const selfY = this.params.selfY + offset.y;
     const rod = this.params.equippedRod ?? FISHING_RODS['rod_twig']!;
-    const tierCfg = SHADOW_TIER_CONFIG[shadowTier] ?? SHADOW_TIER_CONFIG[1];
+    const tierCfg =
+      useUi.getState().shadowTierConfig?.[shadowTier] ??
+      SHADOW_TIER_CONFIG[shadowTier] ??
+      SHADOW_TIER_CONFIG[1];
 
     // Compute Hand, Butt and Rod Coordinates based on character's facing direction
     let handX = selfX;
@@ -519,8 +523,8 @@ export class InWorldFishingController {
           this.spawnRipple(this.fishStartX, this.fishStartY, 1.4);
         }
 
-        // Base idle hover point ~22px from bobber along the approach line
-        const hoverDist = 22;
+        // Base idle hover point scaled naturally with fish shadow length
+        const hoverDist = Math.max(22, tierCfg.lengthPx * 0.32);
         const hoverTargetX = this.bobberBaseX + Math.cos(this.approachAngle) * hoverDist;
         const hoverTargetY = this.bobberBaseY + Math.sin(this.approachAngle) * hoverDist;
 
