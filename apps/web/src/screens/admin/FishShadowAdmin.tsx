@@ -21,6 +21,7 @@ import { useUi } from '../../lib/store';
 import { Button } from '../../ui/primitives';
 import { fishIcon } from '../../art/fish';
 import { FishSpeciesShadowTuner } from './FishSpeciesShadowTuner';
+import { FishSceneSimulator } from './FishSceneSimulator';
 import type { AdminFishSpecies } from './FishAdmin';
 
 export interface AdminShadowTier extends ShadowTierInfo {
@@ -33,7 +34,7 @@ export interface AdminShadowTier extends ShadowTierInfo {
 
 export function FishShadowAdmin() {
   const qc = useQueryClient();
-  const [subTab, setSubTab] = useState<'tiers' | 'species'>('tiers');
+  const [subTab, setSubTab] = useState<'scene' | 'tiers' | 'species'>('scene');
   const [selectedTier, setSelectedTier] = useState<FishShadowTier>(6);
   const [previewMode, setPreviewMode] = useState<'single' | 'all'>('single');
   const [zoom, setZoom] = useState<number>(0.8);
@@ -377,6 +378,15 @@ export function FishShadowAdmin() {
           type="button"
           role="tab"
           className="tab"
+          aria-selected={subTab === 'scene'}
+          onClick={() => setSubTab('scene')}
+        >
+          🎬 Mô Phỏng Thuyền & Nhịp Đớp (Scene Demo)
+        </button>
+        <button
+          type="button"
+          role="tab"
+          className="tab"
           aria-selected={subTab === 'tiers'}
           onClick={() => setSubTab('tiers')}
         >
@@ -393,7 +403,14 @@ export function FishShadowAdmin() {
         </button>
       </div>
 
-      {subTab === 'species' ? (
+      {subTab === 'scene' ? (
+        <FishSceneSimulator
+          selectedSpecies={activeSelectedFish}
+          selectedTier={selectedTier}
+          allSpecies={allFish}
+          onSelectSpecies={(id) => setSelectedFishId(id)}
+        />
+      ) : subTab === 'species' ? (
         <div className="stack" style={{ gap: 16 }}>
           {/* Species Banner */}
           <div
@@ -559,6 +576,7 @@ export function FishShadowAdmin() {
               onSaved={() => {
                 qc.invalidateQueries({ queryKey: ['admin-fish'] });
               }}
+              onOpenScene={() => setSubTab('scene')}
             />
           ) : (
             <div

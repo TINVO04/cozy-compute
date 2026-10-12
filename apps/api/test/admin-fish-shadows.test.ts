@@ -10,6 +10,18 @@ describe('Admin Fish Shadow Tiers Management (/admin/fish/shadow-tiers)', () => 
     const auditCalls: Array<{ sql: string; args: unknown[] }> = [];
 
     const query = vi.fn(async (sql: string, args: unknown[] = []) => {
+      if (sql.includes(`DELETE FROM settings WHERE key = 'fish_shadow_tiers'`)) {
+        delete settingsStore['fish_shadow_tiers'];
+        return { rows: [] };
+      }
+      if (sql.includes(`DELETE FROM settings WHERE key = 'fish_species_shadows'`)) {
+        delete settingsStore['fish_species_shadows'];
+        return { rows: [] };
+      }
+      if (sql.includes(`DELETE FROM settings WHERE key = 'fishing_behavior_config'`)) {
+        delete settingsStore['fishing_behavior_config'];
+        return { rows: [] };
+      }
       if (sql.includes(`FROM settings WHERE key = 'fish_shadow_tiers'`)) {
         const val = settingsStore['fish_shadow_tiers'];
         return { rows: val ? [{ value: val }] : [] };
@@ -22,20 +34,18 @@ describe('Admin Fish Shadow Tiers Management (/admin/fish/shadow-tiers)', () => 
         const val = settingsStore['fish_sizes'];
         return { rows: val ? [{ value: val }] : [] };
       }
+      if (sql.includes(`FROM settings WHERE key = 'fishing_behavior_config'`)) {
+        const val = settingsStore['fishing_behavior_config'];
+        return { rows: val ? [{ value: val }] : [] };
+      }
       if (sql.includes(`INSERT INTO settings (key, value, updated_at)`)) {
         if (sql.includes(`'fish_species_shadows'`)) {
           settingsStore['fish_species_shadows'] = String(args[0]);
+        } else if (sql.includes(`'fishing_behavior_config'`)) {
+          settingsStore['fishing_behavior_config'] = String(args[0]);
         } else {
           settingsStore['fish_shadow_tiers'] = String(args[0]);
         }
-        return { rows: [] };
-      }
-      if (sql.includes(`DELETE FROM settings WHERE key = 'fish_shadow_tiers'`)) {
-        delete settingsStore['fish_shadow_tiers'];
-        return { rows: [] };
-      }
-      if (sql.includes(`DELETE FROM settings WHERE key = 'fish_species_shadows'`)) {
-        delete settingsStore['fish_species_shadows'];
         return { rows: [] };
       }
       if (sql.includes('INSERT INTO admin_audit_log')) {
@@ -261,5 +271,99 @@ describe('Admin Fish Shadow Tiers Management (/admin/fish/shadow-tiers)', () => 
     expect(pubRes.statusCode).toBe(200);
     const speciesOverrides = JSON.parse(pubRes.body);
     expect(speciesOverrides.clownfish).toBeUndefined();
+  });
+
+  it('GET /admin/fishing/behavior returns defaults when unconfigured', async () => {
+    const { app } = createTestApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/fishing/behavior',
+      headers: { 'x-test-role': 'admin' },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.isOverridden).toBe(false);
+    expect(body.config.minNibbles).toBe(1);
+    expect(body.config.maxNibbles).toBe(4);
+    expect(body.config.retreatDistancePx).toBe(80);
+    expect(body.config.dashSpeedFactor).toBe(1.4);
+  });
+
+  it('PUT /admin/fishing/behavior updates behavior configuration, including 0 nibbles', async () => {
+    const { app, auditCalls } = createTestApp();
+    const payload = {
+      minNibbles: 0,
+      maxNibbles: 2,
+      nibbleIntervalMinMs: 800,
+      nibbleIntervalMaxMs: 1600,
+      shadowDelayMinMs: 2000,
+      shadowDelayMaxMs: 4000,
+      retreatDistancePx: 95,
+      dashSpeedFactor: 2.2,
+    };
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/admin/fishing/behavior',
+      headers: { 'x-test-role': 'admin' },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.isOverridden).toBe(true);
+    expect(body.config.minNibbles).toBe(0);
+    expect(body.config.retreatDistancePx).toBe(95);
+    expect(body.config.dashSpeedFactor).toBe(2.2);
+    expect(auditCalls.some((c: { sql: string }) => c.sql.includes('admin_audit_log'))).toBe(true);
+
+    // Verify public player endpoint
+    const pubRes = await app.inject({
+      method: 'GET',
+      url: '/activities/fishing/behavior',
+    });
+    expect(pubRes.statusCode).toBe(200);
+    const pubBody = JSON.parse(pubRes.body);
+    expect(pubBody.minNibbles).toBe(0);
+    expect(pubBody.dashSpeedFactor).toBe(2.2);
+  });
+
+  it('DELETE /admin/fishing/behavior resets behavior to default configuration', async () => {
+    const { app } = createTestApp();
+    // First customize
+    await app.inject({
+      method: 'PUT',
+      url: '/admin/fishing/behavior',
+      headers: { 'x-test-role': 'admin' },
+      payload: {
+        minNibbles: 0,
+        maxNibbles: 0,
+        nibbleIntervalMinMs: 500,
+        nibbleIntervalMaxMs: 1000,
+        shadowDelayMinMs: 1000,
+        shadowDelayMaxMs: 2000,
+        retreatDistancePx: 120,
+        dashSpeedFactor: 2.5,
+      },
+    });
+
+    // Reset
+    const delRes = await app.inject({
+      method: 'DELETE',
+      url: '/admin/fishing/behavior',
+      headers: { 'x-test-role': 'admin' },
+    });
+    expect(delRes.statusCode).toBe(200);
+    const body = JSON.parse(delRes.body);
+    expect(body.isOverridden).toBe(false);
+    expect(body.config.minNibbles).toBe(1);
+
+    // Verify public endpoint
+    const pubRes = await app.inject({
+      method: 'GET',
+      url: '/activities/fishing/behavior',
+    });
+    expect(pubRes.statusCode).toBe(200);
+    const pubBody = JSON.parse(pubRes.body);
+    expect(pubBody.minNibbles).toBe(1);
+    expect(pubBody.maxNibbles).toBe(4);
   });
 });

@@ -26,7 +26,9 @@ import {
   fishingGround,
   fishingConditions,
   fishForConditions,
+  DEFAULT_FISHING_BEHAVIOR_CONFIG,
   type ActivityConfigMap,
+  type FishingBehaviorConfig,
   type FishShadowTier,
   type RodConfig,
   type ShadowTierOverride,
@@ -261,12 +263,13 @@ export async function startFishing(ctx: AppContext, userId: string) {
     rod.shadowBonus + seaZoneBonus,
   );
 
-  // Read current size overrides and species shadow overrides from settings
+  // Read current size overrides, species shadow overrides, and behavior config from settings
   const settingsRes = await ctx.db.query<{ key: string; value: unknown }>(
-    `SELECT key, value FROM settings WHERE key IN ('fish_sizes', 'fish_species_shadows')`,
+    `SELECT key, value FROM settings WHERE key IN ('fish_sizes', 'fish_species_shadows', 'fishing_behavior_config')`,
   );
   let sizeOverrides: Record<string, { minSizeCm: number; maxSizeCm: number }> = {};
   let speciesShadowOverrides: Record<string, ShadowTierOverride> = {};
+  let behaviorConfig: FishingBehaviorConfig = { ...DEFAULT_FISHING_BEHAVIOR_CONFIG };
   for (const row of settingsRes.rows) {
     try {
       const parsed = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
@@ -274,6 +277,11 @@ export async function startFishing(ctx: AppContext, userId: string) {
         sizeOverrides = parsed as Record<string, { minSizeCm: number; maxSizeCm: number }>;
       } else if (row.key === 'fish_species_shadows' && parsed && typeof parsed === 'object') {
         speciesShadowOverrides = parsed as Record<string, ShadowTierOverride>;
+      } else if (row.key === 'fishing_behavior_config' && parsed && typeof parsed === 'object') {
+        behaviorConfig = {
+          ...DEFAULT_FISHING_BEHAVIOR_CONFIG,
+          ...(parsed as Partial<FishingBehaviorConfig>),
+        };
       }
     } catch {
       // ignore json parse error
@@ -287,15 +295,26 @@ export async function startFishing(ctx: AppContext, userId: string) {
   const shadowTier = getFishShadowTier(calculatedSize.sizeCm, pendingFish.rarity, pendingFish.habitat);
   const customShadow = speciesShadowOverrides[pendingFish.id] ?? null;
 
-  // Play Together bite sequence: random 7-12s wait before shadow appears, then 4 to 8 nibbles before BITE!
-  const nibbleCount = 4 + Math.floor(ctx.rng() * 5); // 4, 5, 6, 7, or 8 nibbles
-  const rawShadowDelayMs = 7000 + Math.floor(ctx.rng() * 5001); // 7000 to 12000 ms (7-12s)
+  // Authoritative bite sequence from behavior configuration (supports 0 nibbles = instant strike)
+  const minNibbles = Math.max(0, behaviorConfig.minNibbles);
+  const maxNibbles = Math.max(minNibbles, behaviorConfig.maxNibbles);
+  const nibbleCount =
+    minNibbles === maxNibbles
+      ? minNibbles
+      : minNibbles + Math.floor(ctx.rng() * (maxNibbles - minNibbles + 1));
+
+  const minDelay = Math.max(500, behaviorConfig.shadowDelayMinMs);
+  const maxDelay = Math.max(minDelay, behaviorConfig.shadowDelayMaxMs);
+  const rawShadowDelayMs =
+    minDelay === maxDelay ? minDelay : minDelay + Math.floor(ctx.rng() * (maxDelay - minDelay + 1));
+
   const speedFactor = 1 - (rod.biteSpeedBonus ?? 0);
   const shadowDelayMs = Math.round(rawShadowDelayMs * speedFactor * conditions.waitMultiplier);
   const { nibbleOffsetsMs, nibbleOrbitTurns, biteInMs } = rollFishingSequence(
     ctx.rng,
     shadowDelayMs,
     nibbleCount,
+    behaviorConfig,
   );
   const biteAt = ctx.now().getTime() + biteInMs;
 
@@ -311,6 +330,7 @@ export async function startFishing(ctx: AppContext, userId: string) {
     nibbleCount,
     nibbleOffsetsMs,
     nibbleOrbitTurns,
+    behaviorConfig,
     equippedRodId,
     reactionWindowMs,
     isOcean,
@@ -328,6 +348,7 @@ export async function startFishing(ctx: AppContext, userId: string) {
     shadowDelayMs,
     nibbleOffsetsMs,
     nibbleOrbitTurns,
+    behavior: behaviorConfig,
     equippedRod: rod,
     conditions,
   };

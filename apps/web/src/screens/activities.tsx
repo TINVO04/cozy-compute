@@ -4,6 +4,7 @@ import {
   RARITY_LABELS,
   SHADOW_TIER_CONFIG,
   type FishingConditions,
+  type FishingBehaviorConfig,
   type FishShadowTier,
   type Rarity,
   type RodConfig,
@@ -223,6 +224,7 @@ export function FishingActivity() {
         nibbleOffsetsMs: number[];
         nibbleOrbitTurns: number[];
         shadowDelayMs: number;
+        behavior?: Partial<FishingBehaviorConfig>;
         equippedRod?: RodConfig;
         conditions?: FishingConditions;
       }>('/activities/fishing/start', { body: {} });
@@ -266,6 +268,7 @@ export function FishingActivity() {
         nibbleOrbitTurns,
         biteInMs: r.biteInMs,
         shadowDelayMs,
+        behavior: r.behavior,
         equippedRod,
         onNibble: (idx) => {
           net.send('fishing:nibble', { nibbleIndex: idx });

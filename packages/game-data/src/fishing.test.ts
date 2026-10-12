@@ -24,4 +24,22 @@ describe('fishing sequence', () => {
     expect(sequence.nibbleOrbitTurns).toEqual([-1.25, 1.75, -1.1, 1.6]);
     expect(sequence.biteInMs).toBe(23980);
   });
+
+  it('supports 0 nibbles for immediate bite (đớp mồi luôn một phát)', () => {
+    const sequence = rollFishingSequence(() => 0.5, 4000, 0);
+    expect(sequence.nibbleOffsetsMs).toHaveLength(0);
+    expect(sequence.nibbleOrbitTurns).toHaveLength(0);
+    expect(sequence.biteInMs).toBe(6200); // 4000 + FISHING_APPROACH_MS (2200)
+  });
+
+  it('uses custom nibble interval bounds from behavior config', () => {
+    const sequence = rollFishingSequence(() => 0.5, 3000, 2, {
+      nibbleIntervalMinMs: 1000,
+      nibbleIntervalMaxMs: 1500,
+    });
+    expect(sequence.nibbleOffsetsMs).toHaveLength(2);
+    const pause0 = sequence.nibbleOffsetsMs[1]! - sequence.nibbleOffsetsMs[0]! - FISHING_NIBBLE_DURATION_MS;
+    expect(pause0).toBeGreaterThanOrEqual(1000);
+    expect(pause0).toBeLessThanOrEqual(1500);
+  });
 });

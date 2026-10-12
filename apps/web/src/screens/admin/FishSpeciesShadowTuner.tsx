@@ -10,7 +10,15 @@ import { Button, toastError } from '../../ui/primitives';
 import { fishIcon } from '../../art/fish';
 import type { AdminFishSpecies } from './FishAdmin';
 
-export function FishSpeciesShadowTuner({ fish, onSaved }: { fish: AdminFishSpecies; onSaved: () => void }) {
+export function FishSpeciesShadowTuner({
+  fish,
+  onSaved,
+  onOpenScene,
+}: {
+  fish: AdminFishSpecies;
+  onSaved: () => void;
+  onOpenScene?: () => void;
+}) {
   const qc = useQueryClient();
   const defaultTier: FishShadowTier = fish.defaultShadowTier ?? 1;
   const baseTierCfg = SHADOW_TIER_CONFIG[defaultTier];
@@ -758,14 +766,27 @@ export function FishSpeciesShadowTuner({ fish, onSaved }: { fish: AdminFishSpeci
               Hoàn tác chỉnh sửa
             </Button>
 
-            <Button
-              variant="primary"
-              size="sm"
-              loading={saveMutation.isPending}
-              onClick={() => saveMutation.mutate()}
-            >
-              <Save size={14} /> Lưu Bóng Cho {fish.name}
-            </Button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {onOpenScene && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={onOpenScene}
+                  style={{ fontSize: 12, color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.4)' }}
+                >
+                  🎬 Xem Thử Trên Thuyền
+                </Button>
+              )}
+
+              <Button
+                variant="primary"
+                size="sm"
+                loading={saveMutation.isPending}
+                onClick={() => saveMutation.mutate()}
+              >
+                <Save size={14} /> Lưu Bóng Cho {fish.name}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

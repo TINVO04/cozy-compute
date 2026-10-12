@@ -14,6 +14,8 @@ import {
   FISH,
   SHADOW_TIER_CONFIG,
   getFishShadowTier,
+  DEFAULT_FISHING_BEHAVIOR_CONFIG,
+  type FishingBehaviorConfig,
   type FishShadowTier,
   type ShadowTierOverride,
 } from '@cozy/game-data';
@@ -978,6 +980,81 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext) {
       await tx.query(`DELETE FROM settings WHERE key = 'fish_species_shadows'`);
       await audit(tx, admin.id, 'fish_shadow_species.reset_all', 'fish_species_shadow', 'all', null, null);
       return { success: true };
+    });
+  });
+
+  const fishingBehaviorInput = z
+    .object({
+      minNibbles: z.number().int().min(0).max(15),
+      maxNibbles: z.number().int().min(0).max(15),
+      nibbleIntervalMinMs: z.number().int().min(200).max(10000),
+      nibbleIntervalMaxMs: z.number().int().min(200).max(10000),
+      shadowDelayMinMs: z.number().int().min(500).max(60000),
+      shadowDelayMaxMs: z.number().int().min(500).max(60000),
+      retreatDistancePx: z.number().min(30).max(300),
+      dashSpeedFactor: z.number().min(0.2).max(5.0),
+    })
+    .refine((d) => d.minNibbles <= d.maxNibbles, {
+      message: 'minNibbles must be <= maxNibbles',
+      path: ['minNibbles'],
+    })
+    .refine((d) => d.nibbleIntervalMinMs <= d.nibbleIntervalMaxMs, {
+      message: 'nibbleIntervalMinMs must be <= nibbleIntervalMaxMs',
+      path: ['nibbleIntervalMinMs'],
+    })
+    .refine((d) => d.shadowDelayMinMs <= d.shadowDelayMaxMs, {
+      message: 'shadowDelayMinMs must be <= shadowDelayMaxMs',
+      path: ['shadowDelayMinMs'],
+    });
+
+  app.get('/admin/fishing/behavior', async (req) => {
+    requireAdmin(req);
+    const r = await ctx.db.query<{ value: unknown }>(
+      `SELECT value FROM settings WHERE key = 'fishing_behavior_config'`,
+    );
+    const raw = r.rows[0]?.value;
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const isOverridden = Boolean(parsed && typeof parsed === 'object');
+    const config: FishingBehaviorConfig = {
+      ...DEFAULT_FISHING_BEHAVIOR_CONFIG,
+      ...(isOverridden ? (parsed as Partial<FishingBehaviorConfig>) : {}),
+    };
+    return { config, isOverridden, defaults: DEFAULT_FISHING_BEHAVIOR_CONFIG };
+  });
+
+  app.put('/admin/fishing/behavior', async (req) => {
+    const admin = requireAdmin(req);
+    const b = fishingBehaviorInput.parse(req.body);
+    return withTx(ctx.db, async (tx) => {
+      const prevRes = await tx.query<{ value: unknown }>(
+        `SELECT value FROM settings WHERE key = 'fishing_behavior_config' FOR UPDATE`,
+      );
+      const prev = prevRes.rows[0]?.value ?? null;
+      await tx.query(
+        `INSERT INTO settings (key, value, updated_at)
+         VALUES ('fishing_behavior_config', $1, now())
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now()`,
+        [JSON.stringify(b)],
+      );
+      await audit(tx, admin.id, 'fishing_behavior.update', 'fishing_behavior', 'global', prev, b);
+      return { config: b, isOverridden: true, defaults: DEFAULT_FISHING_BEHAVIOR_CONFIG };
+    });
+  });
+
+  app.delete('/admin/fishing/behavior', async (req) => {
+    const admin = requireAdmin(req);
+    return withTx(ctx.db, async (tx) => {
+      const prevRes = await tx.query<{ value: unknown }>(
+        `SELECT value FROM settings WHERE key = 'fishing_behavior_config' FOR UPDATE`,
+      );
+      const prev = prevRes.rows[0]?.value ?? null;
+      await tx.query(`DELETE FROM settings WHERE key = 'fishing_behavior_config'`);
+      await audit(tx, admin.id, 'fishing_behavior.reset', 'fishing_behavior', 'global', prev, null);
+      return {
+        config: DEFAULT_FISHING_BEHAVIOR_CONFIG,
+        isOverridden: false,
+        defaults: DEFAULT_FISHING_BEHAVIOR_CONFIG,
+      };
     });
   });
 

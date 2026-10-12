@@ -3,6 +3,8 @@ import {
   FISH,
   sanitizeAppearance,
   SHADOW_TIER_CONFIG,
+  DEFAULT_FISHING_BEHAVIOR_CONFIG,
+  type FishingBehaviorConfig,
   type ShadowTierInfo,
   type ShadowTierOverride,
 } from '@cozy/game-data';
@@ -379,6 +381,19 @@ export function playerRoutes(app: FastifyInstance, ctx: AppContext) {
     const overrides = (typeof raw === 'string' ? JSON.parse(raw) : raw) as
       Record<string, ShadowTierOverride> | undefined;
     return overrides ?? {};
+  });
+  app.get('/activities/fishing/behavior', async () => {
+    const r = await ctx.db.query<{ value: unknown }>(
+      `SELECT value FROM settings WHERE key = 'fishing_behavior_config'`,
+    );
+    const raw = r.rows[0]?.value;
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const isOverridden = Boolean(parsed && typeof parsed === 'object');
+    const config: FishingBehaviorConfig = {
+      ...DEFAULT_FISHING_BEHAVIOR_CONFIG,
+      ...(isOverridden ? (parsed as Partial<FishingBehaviorConfig>) : {}),
+    };
+    return config;
   });
 
   // ---------------------------------------------------------------- backpack
