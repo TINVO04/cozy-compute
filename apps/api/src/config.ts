@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -34,7 +36,35 @@ const schema = z.object({
 export type Config = z.infer<typeof schema> & { corsOrigins: string[]; adminEmails: Set<string> };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const parsed = schema.parse(env);
+  const mergedEnv: Record<string, string | undefined> = { ...env };
+  for (const envCandidate of [
+    path.resolve(process.cwd(), '../../.env'),
+    path.resolve(process.cwd(), '.env'),
+  ]) {
+    if (fs.existsSync(envCandidate)) {
+      try {
+        const content = fs.readFileSync(envCandidate, 'utf8');
+        for (const line of content.split(/\r?\n/)) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('#')) continue;
+          const eqIdx = trimmed.indexOf('=');
+          if (eqIdx > 0) {
+            const key = trimmed.slice(0, eqIdx).trim();
+            let val = trimmed.slice(eqIdx + 1).trim();
+            if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+              val = val.slice(1, -1);
+            }
+            mergedEnv[key] = val;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      break;
+    }
+  }
+
+  const parsed = schema.parse(mergedEnv);
   if (parsed.NODE_ENV === 'production' && parsed.INTERNAL_SECRET.includes('change-me')) {
     throw new Error('INTERNAL_SECRET must be set to a real secret in production');
   }
