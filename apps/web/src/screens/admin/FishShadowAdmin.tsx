@@ -1,28 +1,39 @@
-import { SHADOW_TIER_CONFIG, type FishShadowTier, type ShadowTierInfo } from '@cozy/game-data';
+import {
+  DEFAULT_APPEARANCE,
+  SHADOW_TIER_CONFIG,
+  type Appearance,
+  type FishShadowTier,
+  type ShadowTierInfo,
+} from '@cozy/game-data';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  Clock,
   Crown,
-  Eye,
   Fish as FishIcon,
-  Maximize2,
+  Lock,
   RotateCcw,
+  Ruler,
   Save,
   Search,
   Sliders,
   Sparkles,
+  Unlock,
+  Volume2,
+  VolumeX,
   Waves,
   Zap,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { drawAvatar } from '../../art/avatar';
+import { fishIcon } from '../../art/fish';
 import { drawCanvasOrganicFishShadow } from '../../game/fish-shadow';
-import { api } from '../../lib/api';
+import { api, type Me } from '../../lib/api';
 import { play } from '../../lib/sound';
 import { useUi } from '../../lib/store';
 import { Button } from '../../ui/primitives';
-import { fishIcon } from '../../art/fish';
-import { FishSpeciesShadowTuner } from './FishSpeciesShadowTuner';
-import { FishSceneSimulator } from './FishSceneSimulator';
 import type { AdminFishSpecies } from './FishAdmin';
+import { FishSceneSimulator } from './FishSceneSimulator';
+import { FishSpeciesShadowTuner } from './FishSpeciesShadowTuner';
 
 export interface AdminShadowTier extends ShadowTierInfo {
   defaultLengthPx: number;
@@ -32,20 +43,74 @@ export interface AdminShadowTier extends ShadowTierInfo {
   isOverridden: boolean;
 }
 
+const TIER_METADATA: Record<
+  FishShadowTier,
+  { label: string; sampleFish: string; badgeColor: string; bgTint: string }
+> = {
+  1: {
+    label: 'Cá Siêu Nhỏ (Tép, Cá Bống)',
+    sampleFish: 'Tép riu, cá lòng tong, cá bảy màu',
+    badgeColor: '#94a3b8',
+    bgTint: 'rgba(148, 163, 184, 0.1)',
+  },
+  2: {
+    label: 'Cá Nhỏ (Cá Rô, Cá Diêu Hồng)',
+    sampleFish: 'Cá diêu hồng, cá rô đồng, cá chép nhỏ',
+    badgeColor: '#38bdf8',
+    bgTint: 'rgba(56, 189, 248, 0.1)',
+  },
+  3: {
+    label: 'Cá Vừa (Cá Chép, Cá Bass)',
+    sampleFish: 'Cá bass miệng rộng, cá chẽm, cá lăng',
+    badgeColor: '#818cf8',
+    bgTint: 'rgba(129, 140, 248, 0.1)',
+  },
+  4: {
+    label: 'Cá Lớn (Cá Hồi, Cá Tra Dầu)',
+    sampleFish: 'Cá hồi đại tây dương, cá tra dầu, cá ngừ',
+    badgeColor: '#c084fc',
+    bgTint: 'rgba(192, 132, 252, 0.1)',
+  },
+  5: {
+    label: 'Khổng Lồ (Cá Mập, Cá Kiếm)',
+    sampleFish: 'Cá mập trắng, cá kiếm đại dương, cá mập búa',
+    badgeColor: '#fbbf24',
+    bgTint: 'rgba(251, 191, 36, 0.1)',
+  },
+  6: {
+    label: 'Leviathan Thần Thoại 👑',
+    sampleFish: 'Cá voi xanh, thủy quái krakens, cá rồng thần',
+    badgeColor: '#f43f5e',
+    bgTint: 'rgba(244, 63, 94, 0.12)',
+  },
+};
+
 export function FishShadowAdmin() {
   const qc = useQueryClient();
-  const [subTab, setSubTab] = useState<'scene' | 'tiers' | 'species'>('scene');
+  const [activeTab, setActiveTab] = useState<'tiers' | 'species' | 'behavior'>('tiers');
   const [selectedTier, setSelectedTier] = useState<FishShadowTier>(6);
-  const [previewMode, setPreviewMode] = useState<'single' | 'all'>('single');
-  const [zoom, setZoom] = useState<number>(0.8);
+  const [viewMode, setViewMode] = useState<'scene' | 'matrix'>('scene');
+  const [zoom, setZoom] = useState<number>(0.85);
+  const [lockAspectRatio, setLockAspectRatio] = useState<boolean>(true);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [testAction, setTestAction] = useState<'normal' | 'nibble' | 'bite'>('normal');
-  const [megaMode, setMegaMode] = useState<boolean>(true); // Cho phép slider mở rộng tới 3000px
 
+  // Logged-in player appearance & username
+  const meQuery = useQuery<Me>({
+    queryKey: ['me'],
+    queryFn: () => api<Me>('/me'),
+  });
+
+  const playerAppearance: Appearance = meQuery.data?.appearance ?? DEFAULT_APPEARANCE;
+  const playerName: string = meQuery.data?.displayName ?? 'TinAdmin';
+
+  // Server shadow tier data
   const shadowQuery = useQuery({
     queryKey: ['admin-fish-shadow-tiers'],
     queryFn: () => api<AdminShadowTier[]>('/admin/fish/shadow-tiers'),
   });
 
+  // All fish definitions
   const fishQuery = useQuery({
     queryKey: ['admin-fish'],
     queryFn: () => api<AdminFishSpecies[]>('/admin/fish'),
@@ -72,6 +137,7 @@ export function FishShadowAdmin() {
     return allFish.find((f) => f.id === selectedFishId) ?? filteredSpecies[0] ?? allFish[0];
   }, [allFish, selectedFishId, filteredSpecies]);
 
+  // Local editable tiers map
   const [localTiers, setLocalTiers] = useState<Record<FishShadowTier, AdminShadowTier>>(() => {
     const init: Record<number, AdminShadowTier> = {};
     for (const t of [1, 2, 3, 4, 5, 6] as const) {
@@ -99,117 +165,341 @@ export function FishShadowAdmin() {
     }
   }, [shadowQuery.data]);
 
+  // Canvas Reference
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Animation Loop for live water canvas preview
+  // Simulation Timeline State for In-Scene Demo
+  const [simNonce, setSimNonce] = useState<number>(1);
+  const [biteTriggered, setBiteTriggered] = useState<boolean>(false);
+
+  const restartCast = () => {
+    setBiteTriggered(false);
+    setSimNonce((n) => n + 1);
+    if (soundEnabled) play('splash');
+  };
+
+  const triggerInstantBite = () => {
+    setBiteTriggered(true);
+    if (soundEnabled) {
+      play('bite');
+      play('splash');
+    }
+  };
+
+  // Live Canvas Rendering Loop (Dual Mode: Real Scene or 6-Tier Comparison Matrix)
   useEffect(() => {
     let animId: number;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
     const startTime = performance.now();
+    const ripples: Array<{ x: number; y: number; r: number; maxR: number; alpha: number }> = [];
+    const splashes: Array<{ x: number; y: number; vx: number; vy: number; alpha: number }> = [];
+
+    const spawnRipple = (x: number, y: number, maxRadius = 38) => {
+      ripples.push({ x, y, r: 4, maxR: maxRadius, alpha: 0.85 });
+    };
+
+    const spawnSplashes = (x: number, y: number, count = 10) => {
+      for (let i = 0; i < count; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 1.2 + Math.random() * 2.5;
+        splashes.push({
+          x,
+          y,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 1.5,
+          alpha: 1,
+        });
+      }
+    };
+
+    let lastAutoRipple = 0;
 
     const render = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
+      const cvs = canvasRef.current;
+      if (!cvs) return;
+      const ctx = cvs.getContext('2d');
       if (!ctx) return;
 
-      const width = canvas.width;
-      const height = canvas.height;
-      const time = performance.now() - startTime;
+      const width = cvs.width;
+      const height = cvs.height;
+      const now = performance.now();
+      const elapsed = now - startTime;
 
-      // Deep lake water background gradient
-      const grad = ctx.createRadialGradient(
-        width / 2,
-        height / 2,
-        50,
-        width / 2,
-        height / 2,
-        Math.max(width, height) * 0.7,
-      );
-      grad.addColorStop(0, '#0a2e3f');
-      grad.addColorStop(0.6, '#061d29');
-      grad.addColorStop(1, '#020d14');
+      // 1. Water Background Gradient (Deep Ocean Night)
+      const grad = ctx.createLinearGradient(0, 0, 0, height);
+      grad.addColorStop(0, '#071e2c');
+      grad.addColorStop(0.55, '#051622');
+      grad.addColorStop(1, '#020b12');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, width, height);
 
-      // Subtle water ripple grid & caustics
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.07)';
+      // Subtle water ripple scanlines
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
       ctx.lineWidth = 1;
-      const gridSize = 48;
-      for (let x = 0; x < width; x += gridSize) {
+      for (let y = 0; y < height; y += 18) {
+        const drift = Math.sin((y + elapsed * 0.03) * 0.05) * 4;
         ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-        ctx.stroke();
-      }
-      for (let y = 0; y < height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-      }
-
-      // Gentle animated water surface waves
-      ctx.strokeStyle = 'rgba(103, 232, 249, 0.12)';
-      for (let i = 0; i < 5; i++) {
-        const wy = ((time * 0.02 + i * 90) % (height + 60)) - 30;
-        ctx.beginPath();
-        for (let wx = 0; wx < width; wx += 20) {
-          const dy = Math.sin((wx + time * 0.05) * 0.02) * 5;
-          if (wx === 0) ctx.moveTo(wx, wy + dy);
-          else ctx.lineTo(wx, wy + dy);
-        }
+        ctx.moveTo(0, y + drift);
+        ctx.lineTo(width, y + drift);
         ctx.stroke();
       }
 
       ctx.save();
-      // Center canvas origin and apply zoom scale
-      ctx.translate(width / 2, height / 2);
-      ctx.scale(zoom, zoom);
 
-      const isBite = testAction === 'bite';
-      const isRecoil = testAction === 'nibble';
+      if (viewMode === 'scene') {
+        // ------------------ IN-GAME FISHING SCENE MODE ------------------
+        // Warm boat lantern glow radiating on dark water
+        const lanternGlow = ctx.createRadialGradient(
+          width * 0.28,
+          height * 0.52,
+          20,
+          width * 0.28,
+          height * 0.52,
+          320,
+        );
+        lanternGlow.addColorStop(0, 'rgba(253, 224, 71, 0.24)');
+        lanternGlow.addColorStop(0.35, 'rgba(245, 158, 11, 0.08)');
+        lanternGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = lanternGlow;
+        ctx.fillRect(0, 0, width, height);
 
-      if (previewMode === 'single') {
-        const cur = localTiers[selectedTier] ?? SHADOW_TIER_CONFIG[selectedTier];
-        // Center swim circle
-        const swimRadius = Math.max(30, cur.lengthPx * 0.25);
-        const swimAngle = time * 0.001 * cur.swimSpeed;
-        const fishX = Math.cos(swimAngle) * swimRadius;
-        const fishY = Math.sin(swimAngle * 1.5) * (swimRadius * 0.4);
-        const heading = swimAngle + Math.PI / 2;
+        ctx.translate(width / 2, height / 2);
+        ctx.scale(zoom, zoom);
+        ctx.translate(-width / 2, -height / 2);
 
-        drawCanvasOrganicFishShadow(ctx, fishX, fishY, heading, time, cur, 1, isBite, isRecoil);
+        // Boat & Character anchor
+        const boatX = width * 0.22;
+        const boatY = height * 0.56;
+        const charX = boatX + 16;
+        const charY = boatY - 14;
 
-        // Center crosshair / ruler reference
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        // Bobber anchor in open water
+        const bobberX = width * 0.62;
+        let bobberY = height * 0.54 + Math.sin(elapsed * 0.004) * 2;
+
+        const isBite = biteTriggered || testAction === 'bite';
+        const isNibble = testAction === 'nibble' || (elapsed % 3200 > 1800 && elapsed % 3200 < 2200);
+
+        if (isBite && splashes.length === 0) {
+          spawnSplashes(bobberX, bobberY, 14);
+        }
+
+        if (isNibble && !isBite) {
+          bobberY += Math.sin(elapsed * 0.02) * 2;
+        }
+
+        // Draw Authentic Wooden Boat
+        drawAuthenticFishingBoat(ctx, boatX, boatY, elapsed);
+
+        // Draw Authentic Player Character
+        drawAuthenticPlayerCharacter(ctx, charX, charY, elapsed, isBite, playerAppearance, playerName);
+
+        // Rod Tip Position
+        const rodTipX = charX + 46;
+        const rodTipY = charY + (isBite ? 6 : -4) + Math.sin(elapsed * 0.003) * 1.5;
+
+        // Spawn periodic ripples
+        if (elapsed - lastAutoRipple > 1600 && !isBite) {
+          lastAutoRipple = elapsed;
+          spawnRipple(bobberX, bobberY, 26);
+        }
+
+        // Update and draw ripples
+        for (let i = ripples.length - 1; i >= 0; i--) {
+          const rp = ripples[i]!;
+          rp.r += 0.35;
+          rp.alpha -= 0.007;
+          if (rp.alpha <= 0 || rp.r > rp.maxR) {
+            ripples.splice(i, 1);
+            continue;
+          }
+          ctx.strokeStyle = `rgba(147, 197, 253, ${rp.alpha * 0.7})`;
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.ellipse(rp.x, rp.y, rp.r, rp.r * 0.45, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Update and draw splashes
+        for (let i = splashes.length - 1; i >= 0; i--) {
+          const sp = splashes[i]!;
+          sp.x += sp.vx;
+          sp.y += sp.vy;
+          sp.vy += 0.15;
+          sp.alpha -= 0.025;
+          if (sp.alpha <= 0) {
+            splashes.splice(i, 1);
+            continue;
+          }
+          ctx.fillStyle = `rgba(255, 255, 255, ${sp.alpha})`;
+          ctx.beginPath();
+          ctx.arc(sp.x, sp.y, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Fishing Line
+        ctx.strokeStyle = isBite ? 'rgba(255, 255, 255, 0.95)' : 'rgba(241, 245, 249, 0.7)';
         ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
+        const sag = isBite ? -2 : 6 + Math.sin(elapsed * 0.003) * 2;
+        const midX = (rodTipX + bobberX) / 2;
+        const midY = (rodTipY + bobberY) / 2 + sag;
         ctx.beginPath();
-        ctx.moveTo(-cur.lengthPx / 2, 0);
-        ctx.lineTo(cur.lengthPx / 2, 0);
-        ctx.moveTo(0, -cur.widthPx / 2);
-        ctx.lineTo(0, cur.widthPx / 2);
+        ctx.moveTo(rodTipX, rodTipY);
+        ctx.quadraticCurveTo(midX, midY, bobberX, bobberY - 6);
         ctx.stroke();
-        ctx.setLineDash([]);
+
+        // Bobber (Red & White Hemisphere)
+        ctx.save();
+        ctx.translate(bobberX, bobberY);
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.45)';
+        ctx.beginPath();
+        ctx.ellipse(0, 4, 9, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(0, 0, 6, Math.PI, 0, false);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.arc(0, 0, 6, 0, Math.PI, false);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(0, 0, 6, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(-1, -11, 2, 6);
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(0, -11, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // BITE Exclamation Mark (!)
+        if (isBite) {
+          const bounce = Math.sin(elapsed * 0.02) * 5;
+          const exY = bobberY - 32 + bounce;
+
+          ctx.save();
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.35)';
+          ctx.beginPath();
+          ctx.arc(bobberX, exY, 16, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#dc2626';
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect(bobberX - 3.5, exY - 14, 7, 14, 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(bobberX, exY + 5, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Active Fish Shadow swimming around bobber
+        const curTierCfg = localTiers[selectedTier] ?? SHADOW_TIER_CONFIG[selectedTier];
+        const swimRadius = Math.max(35, curTierCfg.lengthPx * 0.32);
+        const swimSpeedVal = curTierCfg.swimSpeed ?? 1.0;
+
+        let fishX: number;
+        let fishY: number;
+        let fishAngle: number;
+
+        if (isBite) {
+          // Thrashing on bobber
+          const thrash = Math.sin(elapsed * 0.04 * curTierCfg.wiggleSpeed) * 8;
+          fishX = bobberX + Math.cos(elapsed * 0.02) * 6;
+          fishY = bobberY + 6 + thrash;
+          fishAngle = Math.atan2(bobberY - fishY, bobberX - fishX);
+        } else if (isNibble) {
+          // Darting forward to nibble then recoiling
+          const nibbleCycle = (elapsed % 1200) / 1200;
+          const dist = swimRadius * (0.4 + Math.sin(nibbleCycle * Math.PI) * 0.5);
+          fishX = bobberX + Math.cos(1.2) * dist;
+          fishY = bobberY + Math.sin(1.2) * dist;
+          fishAngle = Math.atan2(bobberY - fishY, bobberX - fishX);
+        } else {
+          // Calmly circling the float
+          const swimAngle = elapsed * 0.0009 * swimSpeedVal;
+          fishX = bobberX + Math.cos(swimAngle) * swimRadius;
+          fishY = bobberY + Math.sin(swimAngle * 1.4) * (swimRadius * 0.5);
+          fishAngle = swimAngle + Math.PI / 2;
+        }
+
+        drawCanvasOrganicFishShadow(ctx, fishX, fishY, fishAngle, elapsed, curTierCfg, 1, isBite, isNibble);
       } else {
-        // Parade mode: display all 6 tiers aligned
+        // ------------------ 6-TIER COMPARISON MATRIX MODE ------------------
+        ctx.translate(width / 2, height / 2);
+        ctx.scale(zoom, zoom);
+
         const allTiersList = ([1, 2, 3, 4, 5, 6] as const).map((t) => localTiers[t] ?? SHADOW_TIER_CONFIG[t]);
-        const spacingY = 110;
-        const startY = -((allTiersList.length - 1) * spacingY) / 2;
+        const rowHeight = 78;
+        const totalHeight = allTiersList.length * rowHeight;
+        const startY = -totalHeight / 2 + 36;
 
+        // Pixel Ruler Background Grid
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.15)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        for (let rx = -200; rx <= 350; rx += 50) {
+          ctx.beginPath();
+          ctx.moveTo(rx, -totalHeight / 2 - 10);
+          ctx.lineTo(rx, totalHeight / 2 + 20);
+          ctx.stroke();
+
+          // Ruler tick labels
+          ctx.fillStyle = 'rgba(148, 163, 184, 0.5)';
+          ctx.font = '10px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${rx + 200}px`, rx, -totalHeight / 2 - 14);
+        }
+        ctx.setLineDash([]);
+
+        // Render each tier aligned horizontally for side-by-side comparison
         allTiersList.forEach((tierCfg, idx) => {
-          const cy = startY + idx * spacingY;
-          const swimAngle = time * 0.001 * tierCfg.swimSpeed + idx;
-          const cx = Math.sin(swimAngle) * 40;
-          const heading = Math.PI + Math.cos(swimAngle) * 0.25;
+          const cy = startY + idx * rowHeight;
+          const isCurrentSelected = tierCfg.tier === selectedTier;
 
-          drawCanvasOrganicFishShadow(ctx, cx, cy, heading, time, tierCfg, 1, isBite, isRecoil);
+          // Row background highlight for selected tier
+          if (isCurrentSelected) {
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.08)';
+            ctx.fillRect(-380, cy - rowHeight / 2 + 4, 760, rowHeight - 8);
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(-380, cy - rowHeight / 2 + 4, 760, rowHeight - 8);
+          }
 
-          // Tier label
-          ctx.fillStyle = tierCfg.hasCrown ? '#fbbf24' : '#94a3b8';
-          ctx.font = 'bold 13px system-ui, sans-serif';
+          // Gentle swim motion
+          const swimAngle = elapsed * 0.001 * tierCfg.swimSpeed + idx * 0.5;
+          const cx = 40 + Math.sin(swimAngle) * 20;
+          const heading = Math.PI + Math.cos(swimAngle) * 0.12;
+
+          drawCanvasOrganicFishShadow(ctx, cx, cy, heading, elapsed, tierCfg, 1, false, false);
+
+          // Tier Label & Info on the left
+          ctx.fillStyle = isCurrentSelected ? '#38bdf8' : tierCfg.hasCrown ? '#fbbf24' : '#e2e8f0';
+          ctx.font = isCurrentSelected ? 'bold 13px system-ui, sans-serif' : '12px system-ui, sans-serif';
           ctx.textAlign = 'right';
-          ctx.fillText(`Cấp ${tierCfg.tier}: ${tierCfg.lengthPx}x${tierCfg.widthPx}px`, -220, cy + 4);
+          ctx.fillText(`Cấp ${tierCfg.tier}${tierCfg.hasCrown ? ' 👑' : ''}: ${tierCfg.name}`, -180, cy - 2);
+
+          // Dimension badge
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '11px monospace';
+          ctx.fillText(`${tierCfg.lengthPx} × ${tierCfg.widthPx} px`, -180, cy + 14);
         });
       }
 
@@ -219,7 +509,18 @@ export function FishShadowAdmin() {
 
     animId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animId);
-  }, [localTiers, selectedTier, previewMode, zoom, testAction]);
+  }, [
+    localTiers,
+    selectedTier,
+    viewMode,
+    zoom,
+    testAction,
+    biteTriggered,
+    simNonce,
+    soundEnabled,
+    playerAppearance,
+    playerName,
+  ]);
 
   // Mutations
   const saveAllMutation = useMutation({
@@ -251,7 +552,7 @@ export function FishShadowAdmin() {
       useUi.getState().toast({
         kind: 'success',
         title: 'Đã lưu kích thước bóng cá',
-        body: 'Toàn server đã cập nhật cấu hình bóng cá mới nhất!',
+        body: 'Cấu hình 6 bậc bóng cá đã được đồng bộ toàn server!',
       });
     },
   });
@@ -281,20 +582,35 @@ export function FishShadowAdmin() {
       useUi.getState().toast({
         kind: 'info',
         title: 'Đã khôi phục gốc',
-        body: 'Toàn bộ 6 cấp bóng cá đã được đưa về kích thước tiêu chuẩn.',
+        body: 'Toàn bộ 6 cấp bóng cá đã được đưa về kích thước tiêu chuẩn ban đầu.',
       });
     },
   });
 
-  // Local updates helper
+  // Local tier updates helper
   const updateTier = (tier: FishShadowTier, patch: Partial<AdminShadowTier>) => {
-    setLocalTiers((prev) => ({
-      ...prev,
-      [tier]: {
-        ...prev[tier],
-        ...patch,
-      },
-    }));
+    setLocalTiers((prev) => {
+      const cur = prev[tier];
+      const nextPatch = { ...patch };
+
+      // Maintain Aspect Ratio automatically if enabled
+      if (lockAspectRatio && patch.lengthPx !== undefined && patch.widthPx === undefined) {
+        const baseRatio = cur.defaultLengthPx / Math.max(1, cur.defaultWidthPx);
+        nextPatch.widthPx = Math.max(2, Math.round(patch.lengthPx / baseRatio));
+      } else if (lockAspectRatio && patch.widthPx !== undefined && patch.lengthPx === undefined) {
+        const baseRatio = cur.defaultLengthPx / Math.max(1, cur.defaultWidthPx);
+        nextPatch.lengthPx = Math.max(5, Math.round(patch.widthPx * baseRatio));
+      }
+
+      return {
+        ...prev,
+        [tier]: {
+          ...cur,
+          ...nextPatch,
+          isOverridden: true,
+        },
+      };
+    });
   };
 
   // Quick Multiplier for single tier
@@ -306,43 +622,28 @@ export function FishShadowAdmin() {
     });
   };
 
-  // Preset Presets
-  const applyPreset = (preset: 'default' | 'distinct' | 'giant2x' | 'kaiju') => {
+  // Preset Configurations
+  const applyPreset = (preset: 'default' | 'distinct' | 'giant2x') => {
     const next: Record<number, AdminShadowTier> = { ...localTiers };
     for (const t of [1, 2, 3, 4, 5, 6] as const) {
       const base = SHADOW_TIER_CONFIG[t];
       let lengthPx = base.lengthPx;
       let widthPx = base.widthPx;
-      let swimSpeed = base.swimSpeed;
-      let wiggleSpeed = base.wiggleSpeed;
-      let hasCrown = base.hasCrown ?? false;
-      let hasGlow = base.hasGlow ?? false;
+      const swimSpeed = base.swimSpeed;
+      const wiggleSpeed = base.wiggleSpeed;
+      const hasCrown = base.hasCrown ?? false;
+      const hasGlow = base.hasGlow ?? false;
 
       if (preset === 'default') {
         lengthPx = base.lengthPx;
         widthPx = base.widthPx;
       } else if (preset === 'distinct') {
-        // Tăng bậc rõ rệt
         const scaleMap = { 1: 1.0, 2: 1.25, 3: 1.5, 4: 1.8, 5: 2.2, 6: 2.8 };
         lengthPx = Math.round(base.lengthPx * scaleMap[t]);
         widthPx = Math.round(base.widthPx * scaleMap[t]);
       } else if (preset === 'giant2x') {
-        // Thế giới khổng lồ
         lengthPx = Math.round(base.lengthPx * 2.0);
         widthPx = Math.round(base.widthPx * 2.0);
-      } else if (preset === 'kaiju') {
-        // To bất thường / Siêu quái vật
-        const scaleMap = { 1: 1.2, 2: 1.6, 3: 2.4, 4: 3.5, 5: 5.5, 6: 9.0 };
-        lengthPx = Math.round(base.lengthPx * scaleMap[t]);
-        widthPx = Math.round(base.widthPx * scaleMap[t]);
-        if (t >= 5) {
-          hasGlow = true;
-          swimSpeed = 0.45;
-          wiggleSpeed = 0.5;
-        }
-        if (t === 6) {
-          hasCrown = true;
-        }
       }
 
       next[t] = {
@@ -367,135 +668,545 @@ export function FishShadowAdmin() {
   };
 
   const currentTierData = localTiers[selectedTier] ?? SHADOW_TIER_CONFIG[selectedTier];
-  const maxSliderLength = megaMode ? 3000 : 500;
-  const maxSliderWidth = megaMode ? 1200 : 250;
+  const currentMeta = TIER_METADATA[selectedTier];
 
   return (
-    <div className="stack" style={{ gap: 20 }}>
-      {/* Primary Subtab Switcher */}
-      <div className="tabs" role="tablist" style={{ margin: 0 }}>
+    <div className="flex flex-col gap-5">
+      {/* 1. Header & Primary Tab Switcher */}
+      <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl border border-sky-900/40 bg-gradient-to-r from-slate-950 via-slate-900 to-sky-950/40 shadow-xl">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-sky-500/10 border border-sky-400/30 text-sky-400">
+            <FishIcon className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
+              Studio Quản Trị Kích Thước Bóng Cá
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30">
+                Chuẩn 6 Bậc (Tier 1 - 6)
+              </span>
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Tinh chỉnh chiều dài, chiều rộng, vương miện và hiệu ứng bơi lội với khung xem trước thực tế
+              trong hồ nước.
+            </p>
+          </div>
+        </div>
+
+        {/* Global Save / Reset Action Buttons */}
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            loading={resetAllMutation.isPending}
+            onClick={() => resetAllMutation.mutate()}
+            className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 border border-rose-900/40 gap-1.5 text-xs"
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> Khôi Phục Gốc
+          </Button>
+
+          <Button
+            variant="primary"
+            size="sm"
+            loading={saveAllMutation.isPending}
+            onClick={() => saveAllMutation.mutate()}
+            className="bg-sky-600 hover:bg-sky-500 text-white font-bold gap-1.5 shadow-lg shadow-sky-950/50 text-xs px-3.5"
+          >
+            <Save className="w-3.5 h-3.5" /> Lưu Cấu Hình Toàn Server
+          </Button>
+        </div>
+      </div>
+
+      {/* 2. Primary Feature Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
         <button
           type="button"
-          role="tab"
-          className="tab"
-          aria-selected={subTab === 'scene'}
-          onClick={() => setSubTab('scene')}
+          onClick={() => setActiveTab('tiers')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+            activeTab === 'tiers'
+              ? 'bg-sky-500/20 border-sky-400 text-sky-200 shadow-md shadow-sky-950/40'
+              : 'bg-slate-900/40 border-transparent text-slate-400 hover:text-white hover:border-slate-800'
+          }`}
         >
-          🎬 Mô Phỏng Thuyền & Nhịp Đớp (Scene Demo)
+          <Sliders className="w-4 h-4 text-sky-400" />
+          🌟 Cấu Hình 6 Bậc Chuẩn (Tier 1 - Tier 6)
         </button>
+
         <button
           type="button"
-          role="tab"
-          className="tab"
-          aria-selected={subTab === 'tiers'}
-          onClick={() => setSubTab('tiers')}
+          onClick={() => setActiveTab('species')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+            activeTab === 'species'
+              ? 'bg-sky-500/20 border-sky-400 text-sky-200 shadow-md shadow-sky-950/40'
+              : 'bg-slate-900/40 border-transparent text-slate-400 hover:text-white hover:border-slate-800'
+          }`}
         >
-          🌟 Theo 6 Bậc Chuẩn (Tier 1 - Tier 6)
+          <FishIcon className="w-4 h-4 text-emerald-400" />
+          🐟 Tùy Chỉnh Theo Từng Loài Cá Cụ Thể ({allFish.length})
         </button>
+
         <button
           type="button"
-          role="tab"
-          className="tab"
-          aria-selected={subTab === 'species'}
-          onClick={() => setSubTab('species')}
+          onClick={() => setActiveTab('behavior')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+            activeTab === 'behavior'
+              ? 'bg-sky-500/20 border-sky-400 text-sky-200 shadow-md shadow-sky-950/40'
+              : 'bg-slate-900/40 border-transparent text-slate-400 hover:text-white hover:border-slate-800'
+          }`}
         >
-          🐟 Tùy Chỉnh Theo Từng Con Cá Cụ Thể (Per-Fish Species)
+          <Clock className="w-4 h-4 text-amber-400" />
+          ⏱️ Tinh Chỉnh Nhịp Đớp & Thời Gian Chờ (Bite Timing)
         </button>
       </div>
 
-      {subTab === 'scene' ? (
-        <FishSceneSimulator
-          selectedSpecies={activeSelectedFish}
-          selectedTier={selectedTier}
-          allSpecies={allFish}
-          onSelectSpecies={(id) => setSelectedFishId(id)}
-        />
-      ) : subTab === 'species' ? (
-        <div className="stack" style={{ gap: 16 }}>
-          {/* Species Banner */}
-          <div
-            style={{
-              background: 'linear-gradient(135deg, rgba(8, 47, 64, 0.6) 0%, rgba(15, 23, 42, 0.7) 100%)',
-              border: '1px solid #0284c7',
-              borderRadius: 12,
-              padding: '16px 20px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 16,
-            }}
-          >
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <FishIcon size={24} style={{ color: '#38bdf8' }} />
-                <h2 style={{ margin: 0, fontSize: 18, color: '#f0f9ff' }}>
-                  Tùy Chỉnh Bóng Theo Từng Loài Cá Cụ Thể (Per-Fish Species Studio)
-                </h2>
+      {/* 3. TAB 1: 6-TIER MASTER STUDIO */}
+      {activeTab === 'tiers' && (
+        <div className="flex flex-col xl:flex-row gap-5 items-start">
+          {/* LEFT: Tier Selector & Precision Slider Controls */}
+          <div className="w-full xl:w-[440px] flex flex-col gap-4 shrink-0">
+            {/* Tier Navigation Cards (1 to 6) */}
+            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-3.5 flex flex-col gap-2.5 shadow-lg backdrop-blur-md">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1">
+                Chọn Cấp Bóng Cá Để Tinh Chỉnh:
+              </span>
+
+              <div className="grid grid-cols-2 gap-2">
+                {([1, 2, 3, 4, 5, 6] as const).map((t) => {
+                  const data = localTiers[t] ?? SHADOW_TIER_CONFIG[t];
+                  const meta = TIER_METADATA[t];
+                  const isSel = selectedTier === t;
+
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => {
+                        play('click');
+                        setSelectedTier(t);
+                      }}
+                      className={`flex flex-col text-left p-2.5 rounded-xl border transition-all relative ${
+                        isSel
+                          ? 'bg-sky-950/50 border-sky-400 shadow-md shadow-sky-950/50'
+                          : 'bg-slate-950/50 border-slate-800/80 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span
+                          className="text-xs font-bold flex items-center gap-1"
+                          style={{ color: meta.badgeColor }}
+                        >
+                          Cấp {t} {data.hasCrown && '👑'}
+                        </span>
+                        <span className="text-[11px] font-mono text-slate-300 font-semibold">
+                          {data.lengthPx}×{data.widthPx}px
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 truncate mt-0.5">{data.name}</span>
+                      {data.isOverridden && (
+                        <span className="text-[9px] font-semibold text-amber-400 mt-1">● Đã chỉnh</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
-              <p style={{ margin: '6px 0 0', fontSize: 13, color: '#94a3b8', maxWidth: 760 }}>
-                Chọn trực tiếp bất kỳ loài cá nào để thiết lập bóng nước riêng biệt, vượt qua quy chuẩn bậc
-                chung. Hỗ trợ{' '}
-                <strong style={{ color: '#38bdf8' }}>kích thước to bất thường (lên đến 50,000px)</strong> cho
-                những sự kiện đặc biệt hoặc sinh vật huyền thoại cá biệt.
-              </p>
+            </div>
+
+            {/* Precision Controls for Selected Tier */}
+            <div className="bg-slate-900/80 border border-sky-900/40 rounded-2xl p-4 flex flex-col gap-4 shadow-xl backdrop-blur-md">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                    Cấp {selectedTier}: {currentTierData.name}
+                    {currentTierData.hasCrown && <Crown className="w-4 h-4 text-amber-400" />}
+                  </h3>
+                  <span className="text-[11px] text-slate-400">
+                    Gốc: {currentTierData.defaultLengthPx} × {currentTierData.defaultWidthPx} px
+                  </span>
+                </div>
+
+                {/* Aspect Ratio Lock Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setLockAspectRatio((l) => !l)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                    lockAspectRatio
+                      ? 'bg-sky-500/20 border-sky-400 text-sky-200'
+                      : 'bg-slate-800/60 border-slate-700 text-slate-400'
+                  }`}
+                  title={lockAspectRatio ? 'Đang khóa tỷ lệ dài/rộng' : 'Tự do kéo dài/rộng độc lập'}
+                >
+                  {lockAspectRatio ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                  <span>{lockAspectRatio ? 'Khóa Tỉ Lệ' : 'Tự Do'}</span>
+                </button>
+              </div>
+
+              {/* Quick Multipliers Bar */}
+              <div className="flex items-center justify-between gap-1 bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/60">
+                <span className="text-[10px] font-semibold text-slate-400 px-1">Nhân nhanh:</span>
+                {[1.0, 1.25, 1.5, 2.0, 3.0].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => applyMultiplier(selectedTier, m)}
+                    className="flex-1 py-1 rounded-lg text-[11px] font-bold text-slate-300 hover:text-sky-300 hover:bg-sky-950/40 transition-all border border-transparent hover:border-sky-800/40"
+                  >
+                    {m === 1.0 ? '1x' : `${m}x`}
+                  </button>
+                ))}
+              </div>
+
+              {/* Length Control */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="text-slate-300">Chiều Dài Bóng Cá (Length):</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={5}
+                      max={3000}
+                      value={currentTierData.lengthPx}
+                      onChange={(e) =>
+                        updateTier(selectedTier, { lengthPx: Math.max(5, Number(e.target.value) || 5) })
+                      }
+                      className="w-20 text-right font-mono font-bold text-sky-300 bg-slate-950 border border-slate-700 rounded-lg px-2 py-0.5 text-xs focus:outline-none focus:border-sky-400"
+                    />
+                    <span className="text-slate-400 text-[11px]">px</span>
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  min={10}
+                  max={Math.max(1200, currentTierData.lengthPx * 1.5)}
+                  value={currentTierData.lengthPx}
+                  onChange={(e) => updateTier(selectedTier, { lengthPx: Number(e.target.value) })}
+                  className="w-full accent-sky-400 cursor-pointer"
+                />
+              </div>
+
+              {/* Width Control */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="text-slate-300">Chiều Rộng Bóng Cá (Width):</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={2}
+                      max={1200}
+                      value={currentTierData.widthPx}
+                      onChange={(e) =>
+                        updateTier(selectedTier, { widthPx: Math.max(2, Number(e.target.value) || 2) })
+                      }
+                      className="w-20 text-right font-mono font-bold text-sky-300 bg-slate-950 border border-slate-700 rounded-lg px-2 py-0.5 text-xs focus:outline-none focus:border-sky-400"
+                    />
+                    <span className="text-slate-400 text-[11px]">px</span>
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  min={5}
+                  max={Math.max(500, currentTierData.widthPx * 1.5)}
+                  value={currentTierData.widthPx}
+                  onChange={(e) => updateTier(selectedTier, { widthPx: Number(e.target.value) })}
+                  className="w-full accent-sky-400 cursor-pointer"
+                />
+              </div>
+
+              {/* Visual Toggles: Crown & Glow */}
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
+                <label
+                  className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer select-none transition-all ${
+                    currentTierData.hasCrown
+                      ? 'bg-amber-950/30 border-amber-500/50 text-amber-200'
+                      : 'bg-slate-950/40 border-slate-800 text-slate-400'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={currentTierData.hasCrown ?? false}
+                    onChange={(e) => updateTier(selectedTier, { hasCrown: e.target.checked })}
+                    className="accent-amber-400"
+                  />
+                  <Crown className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-bold">Vương Miện Vàng</span>
+                </label>
+
+                <label
+                  className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer select-none transition-all ${
+                    currentTierData.hasGlow
+                      ? 'bg-sky-950/30 border-sky-500/50 text-sky-200'
+                      : 'bg-slate-950/40 border-slate-800 text-slate-400'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={currentTierData.hasGlow ?? false}
+                    onChange={(e) => updateTier(selectedTier, { hasGlow: e.target.checked })}
+                    className="accent-sky-400"
+                  />
+                  <Sparkles className="w-4 h-4 text-sky-400" />
+                  <span className="text-xs font-bold">Quầng Sáng Thần Bí</span>
+                </label>
+              </div>
+
+              {/* Swimming Physics: Swim Speed & Wiggle */}
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800 text-xs">
+                <div>
+                  <div className="flex items-center justify-between text-[11px] mb-1">
+                    <span className="text-slate-400">Tốc độ bơi:</span>
+                    <span className="font-bold text-sky-300 font-mono">
+                      {currentTierData.swimSpeed.toFixed(2)}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.2}
+                    max={2.5}
+                    step={0.05}
+                    value={currentTierData.swimSpeed}
+                    onChange={(e) => updateTier(selectedTier, { swimSpeed: Number(e.target.value) })}
+                    className="w-full accent-sky-400 cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between text-[11px] mb-1">
+                    <span className="text-slate-400">Quẫy đuôi:</span>
+                    <span className="font-bold text-sky-300 font-mono">
+                      {currentTierData.wiggleSpeed.toFixed(2)}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.2}
+                    max={3.0}
+                    step={0.05}
+                    value={currentTierData.wiggleSpeed}
+                    onChange={(e) => updateTier(selectedTier, { wiggleSpeed: Number(e.target.value) })}
+                    className="w-full accent-sky-400 cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Presets Toolbar */}
+              <div className="pt-2 border-t border-slate-800 flex items-center justify-between gap-2">
+                <span className="text-[11px] text-slate-400 font-semibold">Cài đặt mẫu:</span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('default')}
+                    className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-slate-800 text-slate-300 hover:text-white"
+                  >
+                    Chuẩn gốc
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('distinct')}
+                    className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-sky-900/60 text-sky-200 border border-sky-700/50 hover:bg-sky-900"
+                  >
+                    Bậc rõ rệt
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('giant2x')}
+                    className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-purple-900/60 text-purple-200 border border-purple-700/50 hover:bg-purple-900"
+                  >
+                    Khổng lồ 2x
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
+          {/* RIGHT: Live Master Viewport & Dual Mode Studio */}
+          <div className="flex-1 flex flex-col gap-3 min-w-0 w-full">
+            <div className="relative rounded-2xl overflow-hidden border border-sky-900/40 bg-slate-950 shadow-2xl">
+              {/* Top Viewport Toolbar */}
+              <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
+                {/* View Mode Switcher */}
+                <div className="flex items-center gap-1 p-1 bg-slate-950/85 backdrop-blur-md rounded-xl border border-sky-800/40 pointer-events-auto shadow-lg">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('scene')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      viewMode === 'scene'
+                        ? 'bg-sky-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Waves className="w-3.5 h-3.5" />
+                    Cảnh Hồ Nước Thực Tế
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('matrix')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      viewMode === 'matrix'
+                        ? 'bg-sky-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Ruler className="w-3.5 h-3.5" />
+                    So Sánh Cả 6 Bậc
+                  </button>
+                </div>
+
+                {/* Zoom & Audio Controls */}
+                <div className="flex items-center gap-2 pointer-events-auto">
+                  <button
+                    type="button"
+                    onClick={() => setSoundEnabled((v) => !v)}
+                    className={`p-2 rounded-xl border backdrop-blur-md transition-all ${
+                      soundEnabled
+                        ? 'bg-sky-900/60 border-sky-600/50 text-sky-200 shadow-md'
+                        : 'bg-slate-900/60 border-slate-700/50 text-slate-400'
+                    }`}
+                    title="Bật/Tắt âm thanh"
+                  >
+                    {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                  </button>
+
+                  {/* Zoom Pills */}
+                  <div className="flex items-center gap-1 bg-slate-950/85 backdrop-blur-md p-1 rounded-xl border border-sky-800/40">
+                    {[1.0, 0.85, 0.5, 0.25].map((z) => (
+                      <button
+                        key={z}
+                        type="button"
+                        onClick={() => setZoom(z)}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${
+                          zoom === z ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {Math.round(z * 100)}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Canvas Element */}
+              <canvas
+                ref={canvasRef}
+                width={860}
+                height={520}
+                className="w-full h-auto block max-h-[560px] object-contain bg-slate-950"
+              />
+
+              {/* Bottom Interactive Simulation Toolbar */}
+              <div className="absolute bottom-3 left-3 right-3 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+                {/* Active Tier Stats Badge */}
+                <div className="flex items-center gap-2 pointer-events-auto bg-slate-950/90 backdrop-blur-md px-3.5 py-2 rounded-xl border border-sky-800/40 text-xs shadow-lg">
+                  <span className="text-slate-400">Đang chiếu:</span>
+                  <span className="font-bold" style={{ color: currentMeta.badgeColor }}>
+                    Cấp {selectedTier} ({currentTierData.name})
+                  </span>
+                  <span className="text-sky-300 font-mono text-[11px] font-bold">
+                    {currentTierData.lengthPx} × {currentTierData.widthPx} px
+                  </span>
+                  {currentTierData.hasCrown && (
+                    <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold text-[10px]">
+                      👑 VƯƠNG MIỆN
+                    </span>
+                  )}
+                </div>
+
+                {/* Scene Interaction Buttons */}
+                {viewMode === 'scene' && (
+                  <div className="flex items-center gap-2 pointer-events-auto">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={restartCast}
+                      className="bg-slate-900/90 border-sky-700/50 text-sky-200 hover:bg-sky-900/60 gap-1.5 shadow-lg text-xs"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Thả Câu Lại
+                    </Button>
+
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setTestAction((a) => (a === 'nibble' ? 'normal' : 'nibble'))}
+                      className={`text-xs gap-1.5 shadow-lg ${
+                        testAction === 'nibble'
+                          ? 'bg-amber-500/20 border-amber-400 text-amber-200'
+                          : 'bg-slate-900/90 border-sky-700/50 text-sky-200 hover:bg-sky-900/60'
+                      }`}
+                    >
+                      {testAction === 'nibble' ? 'Đang Rỉa Mồi...' : 'Thử Rỉa Mồi'}
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      onClick={triggerInstantBite}
+                      className="bg-rose-600 hover:bg-rose-500 text-white font-bold gap-1.5 shadow-lg shadow-rose-900/40 text-xs"
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      Cắn Câu Ngay (Bite!)
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Hint Box */}
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-900/40 border border-slate-800 text-xs text-slate-400">
+              <span className="text-sky-400 font-bold">💡 Mẹo:</span>
+              <span>
+                Nhấp nút <strong>So Sánh Cả 6 Bậc</strong> ở góc trên bên trái khung nhìn để đối chiếu kích
+                thước cả 6 loại bóng cá trên cùng thước đo pixel chuẩn.
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. TAB 2: PER-FISH SPECIES STUDIO */}
+      {activeTab === 'species' && (
+        <div className="flex flex-col gap-4">
           {/* Species Search and Filter Bar */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 12,
-              background: 'var(--surface-1)',
-              border: '1px solid var(--border)',
-              borderRadius: 10,
-              padding: '10px 14px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 280px' }}>
-              <Search size={16} style={{ color: '#94a3b8' }} />
+          <div className="flex items-center justify-between flex-wrap gap-3 bg-slate-900/70 border border-slate-800 rounded-xl p-3">
+            <div className="flex items-center gap-2 flex-1 min-w-[280px]">
+              <Search className="w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Tìm tên hoặc mã loài cá (ví dụ: Cá Hề, Cá Voi Xanh, clownfish)..."
+                placeholder="Tìm loài cá (ví dụ: Cá Hề, Cá Voi Xanh, clownfish)..."
                 value={fishSearch}
                 onChange={(e) => setFishSearch(e.target.value)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  outline: 'none',
-                  color: '#f0f9ff',
-                  fontSize: 13,
-                  width: '100%',
-                }}
+                className="bg-transparent border-none outline-none text-xs text-white w-full placeholder:text-slate-500"
               />
             </div>
 
-            <div className="tabs" role="tablist" style={{ margin: 0 }}>
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                className={`tab ${fishStatusFilter === 'all' ? 'tab-active' : ''}`}
-                style={{ fontSize: 12, padding: '4px 10px' }}
                 onClick={() => setFishStatusFilter('all')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold ${
+                  fishStatusFilter === 'all'
+                    ? 'bg-sky-600 text-white'
+                    : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
               >
                 Tất cả ({allFish.length})
               </button>
               <button
                 type="button"
-                className={`tab ${fishStatusFilter === 'custom' ? 'tab-active' : ''}`}
-                style={{ fontSize: 12, padding: '4px 10px' }}
                 onClick={() => setFishStatusFilter('custom')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold ${
+                  fishStatusFilter === 'custom'
+                    ? 'bg-sky-600 text-white'
+                    : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
               >
-                🌊 Có bóng riêng ({allFish.filter((f) => f.isShadowOverridden).length})
+                Bóng riêng ({allFish.filter((f) => f.isShadowOverridden).length})
               </button>
               <button
                 type="button"
-                className={`tab ${fishStatusFilter === 'default' ? 'tab-active' : ''}`}
-                style={{ fontSize: 12, padding: '4px 10px' }}
                 onClick={() => setFishStatusFilter('default')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold ${
+                  fishStatusFilter === 'default'
+                    ? 'bg-sky-600 text-white'
+                    : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
               >
                 Chuẩn theo bậc ({allFish.filter((f) => !f.isShadowOverridden).length})
               </button>
@@ -503,14 +1214,7 @@ export function FishShadowAdmin() {
           </div>
 
           {/* Quick Species Selection Strip */}
-          <div
-            style={{
-              display: 'flex',
-              gap: 8,
-              overflowX: 'auto',
-              paddingBottom: 6,
-            }}
-          >
+          <div className="flex items-center gap-2 overflow-x-auto pb-2">
             {filteredSpecies.map((f) => {
               const isSelected = activeSelectedFish?.id === f.id;
               return (
@@ -521,46 +1225,21 @@ export function FishShadowAdmin() {
                     play('click');
                     setSelectedFishId(f.id);
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '6px 12px',
-                    borderRadius: 8,
-                    background: isSelected ? 'rgba(56, 189, 248, 0.2)' : 'var(--surface-2)',
-                    border: isSelected ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    transition: 'all 0.15s ease',
-                  }}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border whitespace-nowrap shrink-0 transition-all ${
+                    isSelected
+                      ? 'bg-sky-500/20 border-sky-400 text-sky-200 shadow-md'
+                      : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
+                  }`}
                 >
                   <img
                     src={fishIcon(f.id, 2)}
                     alt=""
                     style={{ width: 28, height: 22, objectFit: 'contain' }}
                   />
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: isSelected ? 700 : 500,
-                      color: isSelected ? '#38bdf8' : '#e2e8f0',
-                    }}
-                  >
-                    {f.name}
-                  </span>
+                  <span className="text-xs font-semibold">{f.name}</span>
                   {f.isShadowOverridden && (
-                    <span
-                      style={{
-                        background: '#818cf8',
-                        color: '#fff',
-                        fontSize: 9,
-                        fontWeight: 700,
-                        padding: '1px 5px',
-                        borderRadius: 4,
-                      }}
-                    >
-                      Bóng riêng
+                    <span className="bg-indigo-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                      Riêng
                     </span>
                   )}
                 </button>
@@ -568,7 +1247,7 @@ export function FishShadowAdmin() {
             })}
           </div>
 
-          {/* Tuner for the active fish */}
+          {/* Active Species Tuner */}
           {activeSelectedFish ? (
             <FishSpeciesShadowTuner
               key={activeSelectedFish.id}
@@ -576,621 +1255,220 @@ export function FishShadowAdmin() {
               onSaved={() => {
                 qc.invalidateQueries({ queryKey: ['admin-fish'] });
               }}
-              onOpenScene={() => setSubTab('scene')}
+              onOpenScene={() => setActiveTab('tiers')}
             />
           ) : (
-            <div
-              className="card"
-              style={{
-                textAlign: 'center',
-                padding: '40px 20px',
-                color: '#94a3b8',
-              }}
-            >
-              Không tìm thấy loài cá nào phù hợp với bộ lọc tìm kiếm.
+            <div className="text-center p-12 text-slate-500 text-sm">
+              Không tìm thấy loài cá nào phù hợp với từ khóa tìm kiếm.
             </div>
           )}
         </div>
-      ) : (
-        <div className="stack" style={{ gap: 20 }}>
-          {/* Top Banner / Description */}
-          <div
-            style={{
-              background: 'linear-gradient(135deg, rgba(8, 47, 64, 0.6) 0%, rgba(15, 23, 42, 0.7) 100%)',
-              border: '1px solid #0284c7',
-              borderRadius: 12,
-              padding: '16px 20px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 16,
-            }}
-          >
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Waves size={24} style={{ color: '#38bdf8' }} />
-                <h2 style={{ margin: 0, fontSize: 18, color: '#f0f9ff' }}>
-                  Studio Tinh Chỉnh Bóng Cá Dưới Nước (Fish Shadow Tiers)
-                </h2>
-              </div>
-              <p style={{ margin: '6px 0 0', fontSize: 13, color: '#94a3b8', maxWidth: 760 }}>
-                Điều chỉnh kích thước chiều dài & chiều rộng bóng cá cho 6 cấp độ. Hỗ trợ{' '}
-                <strong style={{ color: '#38bdf8' }}>kích thước to bất thường (không giới hạn trần)</strong>{' '}
-                để tạo bóng cá quái thú khổng lồ hoặc Leviathan thần thoại trong thế giới game.
-              </p>
-            </div>
+      )}
 
-            {/* Global Action Buttons */}
-            <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-              <Button
-                variant="ghost"
-                size="sm"
-                loading={resetAllMutation.isPending}
-                onClick={() => resetAllMutation.mutate()}
-                style={{ color: '#f87171' }}
-              >
-                <RotateCcw size={14} /> Khôi phục gốc
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                loading={saveAllMutation.isPending}
-                onClick={() => saveAllMutation.mutate()}
-                style={{ background: '#0284c7', borderColor: '#38bdf8' }}
-              >
-                <Save size={15} /> Lưu Cấu Hình Toàn Server
-              </Button>
-            </div>
-          </div>
-
-          {/* Quick Presets Bar */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              background: 'var(--surface-1)',
-              padding: '10px 16px',
-              borderRadius: 10,
-              border: '1px solid var(--border)',
-              flexWrap: 'wrap',
-            }}
-          >
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
-              Cài đặt mẫu nhanh (Presets):
-            </span>
-            <button type="button" className="btn btn-xs btn-ghost" onClick={() => applyPreset('default')}>
-              <RotateCcw size={12} /> Chuẩn mặc định
-            </button>
-            <button
-              type="button"
-              className="btn btn-xs btn-secondary"
-              onClick={() => applyPreset('distinct')}
-            >
-              <Sliders size={12} /> Tăng bậc rõ rệt (+25% - +180%)
-            </button>
-            <button type="button" className="btn btn-xs btn-secondary" onClick={() => applyPreset('giant2x')}>
-              <Maximize2 size={12} /> Thế giới khổng lồ (2.0x)
-            </button>
-            <button
-              type="button"
-              className="btn btn-xs btn-secondary"
-              onClick={() => applyPreset('kaiju')}
-              style={{
-                background: 'linear-gradient(90deg, #ca8a04 0%, #dc2626 100%)',
-                color: '#fff',
-                border: 'none',
-                fontWeight: 700,
-              }}
-            >
-              <Sparkles size={12} /> To Bất Thường / Siêu Quái Vật (Kaiju Extreme)
-            </button>
-
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <label
-                style={{
-                  fontSize: 12,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  cursor: 'pointer',
-                  color: megaMode ? '#38bdf8' : 'var(--text-muted)',
-                  fontWeight: megaMode ? 700 : 400,
-                }}
-              >
-                <input type="checkbox" checked={megaMode} onChange={(e) => setMegaMode(e.target.checked)} />
-                Mở rộng slider tới 3000px (Chế độ To Bất Thường)
-              </label>
-            </div>
-          </div>
-
-          {/* Main Studio Workbench Grid */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(380px, 480px) 1fr',
-              gap: 20,
-              alignItems: 'start',
-            }}
-          >
-            {/* LEFT: Tier Selection & Controls Panel */}
-            <div
-              style={{
-                background: 'var(--surface-1)',
-                border: '1px solid var(--border)',
-                borderRadius: 14,
-                padding: 16,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 16,
-              }}
-            >
-              {/* Tier Selector Chips (1 to 6) */}
-              <div>
-                <label
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: 'var(--text-muted)',
-                    marginBottom: 8,
-                    display: 'block',
-                  }}
-                >
-                  Chọn Cấp Bóng Cá (Tier 1 - 6):
-                </label>
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: 8,
-                  }}
-                >
-                  {([1, 2, 3, 4, 5, 6] as const).map((tier) => {
-                    const info = localTiers[tier];
-                    const isSel = selectedTier === tier;
-                    return (
-                      <button
-                        key={tier}
-                        type="button"
-                        onClick={() => setSelectedTier(tier)}
-                        style={{
-                          padding: '8px 10px',
-                          borderRadius: 8,
-                          border: isSel ? '2px solid #38bdf8' : '1px solid var(--border)',
-                          background: isSel ? 'rgba(56, 189, 248, 0.15)' : 'var(--surface-2)',
-                          color: isSel ? '#38bdf8' : 'var(--text)',
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 2,
-                        }}
-                      >
-                        <div
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                        >
-                          <span style={{ fontWeight: 700, fontSize: 13 }}>
-                            Cấp {tier} {info?.hasCrown ? '👑' : ''}
-                          </span>
-                          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{info?.lengthPx}px</span>
-                        </div>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            color: 'var(--text-muted)',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                        >
-                          {info?.name}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Current Tier Control Box */}
-              <div
-                style={{
-                  background: 'var(--surface-2)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 10,
-                  padding: 16,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 16,
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontSize: 16,
-                        color: '#f8fafc',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                      }}
-                    >
-                      Cấp {selectedTier}: {currentTierData.name}
-                      {currentTierData.hasCrown && <Crown size={16} style={{ color: '#fbbf24' }} />}
-                    </h3>
-                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                      Gốc: {currentTierData.defaultLengthPx} × {currentTierData.defaultWidthPx} px
-                    </span>
-                  </div>
-
-                  {/* Quick Multiplier Pill Buttons */}
-                  <div className="row" style={{ gap: 4 }}>
-                    {[1.0, 1.5, 2.0, 3.0, 5.0, 10.0].map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        className="btn btn-xs btn-ghost"
-                        style={{ fontSize: 10, padding: '2px 5px', color: m >= 5.0 ? '#f59e0b' : 'inherit' }}
-                        onClick={() => applyMultiplier(selectedTier, m)}
-                        title={`Nhân ${m}x kích thước gốc`}
-                      >
-                        {m === 1.0 ? '1x' : `${m}x`}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Length Control */}
-                <div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: 4,
-                    }}
-                  >
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>Chiều dài bóng (lengthPx):</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <input
-                        type="number"
-                        min={5}
-                        max={50000}
-                        value={currentTierData.lengthPx}
-                        onChange={(e) =>
-                          updateTier(selectedTier, { lengthPx: Math.max(5, Number(e.target.value) || 5) })
-                        }
-                        style={{
-                          width: 80,
-                          textAlign: 'right',
-                          padding: '4px 8px',
-                          borderRadius: 6,
-                          background: 'var(--surface-1)',
-                          border: '1px solid var(--border)',
-                          color: '#38bdf8',
-                          fontWeight: 700,
-                          fontSize: 13,
-                        }}
-                      />
-                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>px</span>
-                    </div>
-                  </div>
-                  <input
-                    type="range"
-                    min={10}
-                    max={maxSliderLength}
-                    value={Math.min(maxSliderLength, currentTierData.lengthPx)}
-                    onChange={(e) => updateTier(selectedTier, { lengthPx: Number(e.target.value) })}
-                    style={{ width: '100%', accentColor: '#38bdf8' }}
-                  />
-                </div>
-
-                {/* Width Control */}
-                <div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: 4,
-                    }}
-                  >
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>Chiều rộng bóng (widthPx):</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <input
-                        type="number"
-                        min={2}
-                        max={25000}
-                        value={currentTierData.widthPx}
-                        onChange={(e) =>
-                          updateTier(selectedTier, { widthPx: Math.max(2, Number(e.target.value) || 2) })
-                        }
-                        style={{
-                          width: 80,
-                          textAlign: 'right',
-                          padding: '4px 8px',
-                          borderRadius: 6,
-                          background: 'var(--surface-1)',
-                          border: '1px solid var(--border)',
-                          color: '#38bdf8',
-                          fontWeight: 700,
-                          fontSize: 13,
-                        }}
-                      />
-                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>px</span>
-                    </div>
-                  </div>
-                  <input
-                    type="range"
-                    min={5}
-                    max={maxSliderWidth}
-                    value={Math.min(maxSliderWidth, currentTierData.widthPx)}
-                    onChange={(e) => updateTier(selectedTier, { widthPx: Number(e.target.value) })}
-                    style={{ width: '100%', accentColor: '#38bdf8' }}
-                  />
-                </div>
-
-                {/* Swim & Wiggle Speed */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: 12,
-                        marginBottom: 2,
-                      }}
-                    >
-                      <span>Tốc độ bơi:</span>
-                      <strong>{currentTierData.swimSpeed.toFixed(2)}x</strong>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.2}
-                      max={2.5}
-                      step={0.05}
-                      value={currentTierData.swimSpeed}
-                      onChange={(e) => updateTier(selectedTier, { swimSpeed: Number(e.target.value) })}
-                      style={{ width: '100%', accentColor: '#38bdf8' }}
-                    />
-                  </div>
-
-                  <div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: 12,
-                        marginBottom: 2,
-                      }}
-                    >
-                      <span>Quẫy đuôi:</span>
-                      <strong>{currentTierData.wiggleSpeed.toFixed(2)}x</strong>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.2}
-                      max={3.0}
-                      step={0.05}
-                      value={currentTierData.wiggleSpeed}
-                      onChange={(e) => updateTier(selectedTier, { wiggleSpeed: Number(e.target.value) })}
-                      style={{ width: '100%', accentColor: '#38bdf8' }}
-                    />
-                  </div>
-                </div>
-
-                {/* Special Visual Toggles */}
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 16,
-                    paddingTop: 8,
-                    borderTop: '1px solid var(--border)',
-                  }}
-                >
-                  <label
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      userSelect: 'none',
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={currentTierData.hasCrown ?? false}
-                      onChange={(e) => updateTier(selectedTier, { hasCrown: e.target.checked })}
-                    />
-                    👑 Có Vương Miện Vàng
-                  </label>
-
-                  <label
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      userSelect: 'none',
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={currentTierData.hasGlow ?? false}
-                      onChange={(e) => updateTier(selectedTier, { hasGlow: e.target.checked })}
-                    />
-                    ✨ Quầng Sáng Thần Thoại
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* RIGHT: Live Interactive Canvas Preview */}
-            <div
-              style={{
-                background: 'var(--surface-1)',
-                border: '1px solid var(--border)',
-                borderRadius: 14,
-                padding: 16,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
-              }}
-            >
-              {/* Preview Toolbar */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: 10,
-                }}
-              >
-                <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-                  <Eye size={16} style={{ color: '#38bdf8' }} />
-                  <strong style={{ fontSize: 14 }}>Xem trước làn nước thời gian thực:</strong>
-
-                  {/* Mode Toggle */}
-                  <div className="tabs" role="tablist" style={{ fontSize: 11 }}>
-                    <button
-                      role="tab"
-                      className="tab"
-                      aria-selected={previewMode === 'single'}
-                      onClick={() => setPreviewMode('single')}
-                    >
-                      Cấp đang chọn ({selectedTier})
-                    </button>
-                    <button
-                      role="tab"
-                      className="tab"
-                      aria-selected={previewMode === 'all'}
-                      onClick={() => setPreviewMode('all')}
-                    >
-                      So sánh cả 6 cấp
-                    </button>
-                  </div>
-                </div>
-
-                {/* Zoom & Action Controls */}
-                <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Thu phóng:</span>
-                  {[1.0, 0.75, 0.5, 0.25, 0.15].map((z) => (
-                    <button
-                      key={z}
-                      type="button"
-                      className={`btn btn-xs ${zoom === z ? 'btn-primary' : 'btn-ghost'}`}
-                      style={{ fontSize: 10, padding: '2px 6px' }}
-                      onClick={() => setZoom(z)}
-                    >
-                      {Math.round(z * 100)}%
-                    </button>
-                  ))}
-
-                  <div style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 4px' }} />
-
-                  <button
-                    type="button"
-                    className={`btn btn-xs ${testAction === 'normal' ? 'btn-secondary' : 'btn-ghost'}`}
-                    onClick={() => setTestAction('normal')}
-                    title="Bơi lội thảnh thơi bình thường"
-                  >
-                    Bơi êm
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn btn-xs ${testAction === 'nibble' ? 'btn-secondary' : 'btn-ghost'}`}
-                    onClick={() => setTestAction('nibble')}
-                    title="Mô phỏng cá nhấp rỉa mồi giật lùi"
-                  >
-                    Rỉa mồi
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn btn-xs ${testAction === 'bite' ? 'btn-secondary' : 'btn-ghost'}`}
-                    onClick={() => setTestAction('bite')}
-                    style={{ color: testAction === 'bite' ? '#ef4444' : undefined }}
-                    title="Mô phỏng cá cắn câu quẫy mạnh"
-                  >
-                    <Zap size={12} /> Cắn câu!
-                  </button>
-                </div>
-              </div>
-
-              {/* Canvas Viewport */}
-              <div
-                style={{
-                  position: 'relative',
-                  width: '100%',
-                  height: 480,
-                  borderRadius: 10,
-                  overflow: 'hidden',
-                  boxShadow: 'inset 0 0 30px rgba(0, 0, 0, 0.6)',
-                  border: '1px solid rgba(56, 189, 248, 0.2)',
-                }}
-              >
-                <canvas
-                  ref={canvasRef}
-                  width={900}
-                  height={500}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    display: 'block',
-                  }}
-                />
-
-                {/* Overlay Water Info Badge */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: 12,
-                    left: 12,
-                    background: 'rgba(2, 13, 20, 0.75)',
-                    backdropFilter: 'blur(6px)',
-                    border: '1px solid rgba(56, 189, 248, 0.3)',
-                    borderRadius: 8,
-                    padding: '6px 12px',
-                    fontSize: 12,
-                    color: '#e0f2fe',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                  }}
-                >
-                  <span>
-                    Cấp {selectedTier} ({currentTierData.name}):{' '}
-                    <strong style={{ color: '#38bdf8' }}>{currentTierData.lengthPx}px</strong> dài ×{' '}
-                    <strong style={{ color: '#38bdf8' }}>{currentTierData.widthPx}px</strong> rộng
-                  </span>
-                  {currentTierData.lengthPx > 500 && (
-                    <span
-                      style={{
-                        background: '#ef4444',
-                        color: '#fff',
-                        padding: '1px 6px',
-                        borderRadius: 4,
-                        fontSize: 10,
-                        fontWeight: 700,
-                      }}
-                    >
-                      TO BẤT THƯỜNG
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="muted" style={{ fontSize: 12 }}>
-                💡 Mẹo: Khi kéo thanh trượt hoặc nhập số chiều dài lớn (ví dụ 1000px, 2000px), hãy chọn nút
-                thu nhỏ <strong>50%</strong> hoặc <strong>25%</strong> để quan sát trọn vẹn bóng cá khổng lồ.
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* 5. TAB 3: BITE TIMING & BEHAVIOR */}
+      {activeTab === 'behavior' && (
+        <FishSceneSimulator
+          selectedSpecies={activeSelectedFish}
+          selectedTier={selectedTier}
+          allSpecies={allFish}
+          onSelectSpecies={(id) => setSelectedFishId(id)}
+        />
       )}
     </div>
   );
+}
+
+// ---------------------------------------------------------------- Canvas Artists
+
+/** Draws Authentic Cozy Wooden Skiff Boat */
+function drawAuthenticFishingBoat(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  const bob = Math.sin(time * 0.003) * 2;
+  const roll = Math.sin(time * 0.0025) * 0.02;
+  ctx.translate(0, bob);
+  ctx.rotate(roll);
+
+  // Soft hull shadow in deep water
+  ctx.fillStyle = 'rgba(2, 8, 16, 0.65)';
+  ctx.beginPath();
+  ctx.ellipse(0, 16, 56, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Water wake rings around boat hull
+  ctx.strokeStyle = 'rgba(125, 211, 252, 0.2)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.ellipse(0, 16, 62 + Math.sin(time * 0.003) * 2, 16 + Math.sin(time * 0.003) * 1, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Outer Timber Hull (Warm Cedar / Mahogany)
+  ctx.fillStyle = '#78350f';
+  ctx.strokeStyle = '#451a03';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-52, -4);
+  ctx.quadraticCurveTo(-20, 2, 48, -4);
+  ctx.lineTo(54, 4);
+  ctx.quadraticCurveTo(40, 18, 0, 18);
+  ctx.quadraticCurveTo(-46, 18, -54, 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Inner Teak Deck Planking
+  ctx.fillStyle = '#b45309';
+  ctx.beginPath();
+  ctx.moveTo(-46, -2);
+  ctx.quadraticCurveTo(-15, 4, 44, -2);
+  ctx.lineTo(40, 8);
+  ctx.quadraticCurveTo(-15, 12, -42, 8);
+  ctx.closePath();
+  ctx.fill();
+
+  // Deck plank seams
+  ctx.strokeStyle = 'rgba(69, 26, 3, 0.4)';
+  ctx.lineWidth = 1;
+  for (let px = -35; px <= 35; px += 14) {
+    ctx.beginPath();
+    ctx.moveTo(px, 0);
+    ctx.lineTo(px - 4, 9);
+    ctx.stroke();
+  }
+
+  // Polished Oak Gunwale (Top Rim)
+  ctx.fillStyle = '#d97706';
+  ctx.strokeStyle = '#78350f';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.roundRect(-54, -6, 106, 4, 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Wooden Bench / Seat for the Fisher
+  ctx.fillStyle = '#92400e';
+  ctx.fillRect(-12, -2, 28, 6);
+  ctx.strokeStyle = '#451a03';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(-12, -2, 28, 6);
+
+  // Brass Lantern on Bow with Warm Golden Light
+  const lanternX = 48;
+  const lanternY = -10;
+
+  // Lantern Warm Glow Radiating in Water
+  const lanternGlow = ctx.createRadialGradient(lanternX, lanternY, 2, lanternX, lanternY, 40);
+  lanternGlow.addColorStop(0, 'rgba(253, 224, 71, 0.65)');
+  lanternGlow.addColorStop(0.4, 'rgba(245, 158, 11, 0.22)');
+  lanternGlow.addColorStop(1, 'rgba(245, 158, 11, 0)');
+  ctx.fillStyle = lanternGlow;
+  ctx.beginPath();
+  ctx.arc(lanternX, lanternY, 40, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Brass Post & Lantern Frame
+  ctx.strokeStyle = '#78350f';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(lanternX, -4);
+  ctx.lineTo(lanternX, lanternY);
+  ctx.stroke();
+
+  ctx.fillStyle = '#fef08a';
+  ctx.strokeStyle = '#92400e';
+  ctx.beginPath();
+  ctx.roundRect(lanternX - 3.5, lanternY - 7, 7, 8, 1.5);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/** Draws Authentic Player Character with drawAvatar, Rod and Crowned Nameplate */
+function drawAuthenticPlayerCharacter(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  time: number,
+  isBite: boolean,
+  appearance?: Appearance,
+  name: string = 'TinAdmin',
+) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  const breathe = Math.sin(time * 0.004) * 1;
+  ctx.translate(0, breathe);
+
+  // Render real game avatar using drawAvatar!
+  const app = appearance ?? DEFAULT_APPEARANCE;
+  const grid = drawAvatar(app, 2, 0); // direction 2 (facing right towards water)
+  grid.drawTo(ctx, -16, -34, 2);
+
+  // Authentic wooden fishing rod held in hands
+  ctx.save();
+  ctx.strokeStyle = '#b45309';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  const rodStartX = 4;
+  const rodStartY = -10;
+  const rodTipX = 46;
+  const rodTipY = isBite ? 6 : -4;
+  ctx.moveTo(rodStartX, rodStartY);
+  ctx.quadraticCurveTo(24, isBite ? 8 : -14, rodTipX, rodTipY);
+  ctx.stroke();
+
+  // Rod reel
+  ctx.fillStyle = '#f59e0b';
+  ctx.fillRect(8, -12, 4, 4);
+  ctx.strokeStyle = '#78350f';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(8, -12, 4, 4);
+  ctx.restore();
+
+  // Purple Tag Nameplate: [👑 TinAdmin]
+  ctx.save();
+  const tagH = 18;
+  ctx.font = 'bold 11px system-ui, sans-serif';
+  const textWidth = ctx.measureText(name).width;
+  const tagW = Math.max(76, textWidth + 30);
+  const tagX = -tagW / 2;
+  const tagY = -56;
+
+  // Modern Purple Gradient pill badge
+  const tagGrad = ctx.createLinearGradient(tagX, tagY, tagX + tagW, tagY + tagH);
+  tagGrad.addColorStop(0, '#6366f1');
+  tagGrad.addColorStop(1, '#8b5cf6');
+  ctx.fillStyle = tagGrad;
+  ctx.beginPath();
+  ctx.roundRect(tagX, tagY, tagW, tagH, 9);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Crown Icon
+  ctx.fillStyle = '#fde047';
+  ctx.beginPath();
+  ctx.moveTo(tagX + 8, tagY + 13);
+  ctx.lineTo(tagX + 6, tagY + 7);
+  ctx.lineTo(tagX + 10, tagY + 9);
+  ctx.lineTo(tagX + 12, tagY + 5);
+  ctx.lineTo(tagX + 14, tagY + 9);
+  ctx.lineTo(tagX + 18, tagY + 7);
+  ctx.lineTo(tagX + 16, tagY + 13);
+  ctx.closePath();
+  ctx.fill();
+
+  // Player Name Text
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(name, tagX + 22, tagY + 9.5);
+  ctx.restore();
+
+  ctx.restore();
 }

@@ -1,6 +1,8 @@
 import {
+  DEFAULT_APPEARANCE,
   DEFAULT_FISHING_BEHAVIOR_CONFIG,
   SHADOW_TIER_CONFIG,
+  type Appearance,
   type FishingBehaviorConfig,
   type FishShadowTier,
   type ShadowTierInfo,
@@ -8,9 +10,10 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RotateCcw, Save, Sliders, Sparkles, Volume2, Waves, Zap } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { drawAvatar } from '../../art/avatar';
 import { drawCanvasOrganicFishShadow } from '../../game/fish-shadow';
 import { fishNibblePose, fishStrikePose } from '../../game/fishing-motion';
-import { api } from '../../lib/api';
+import { api, type Me } from '../../lib/api';
 import { play } from '../../lib/sound';
 import { useUi } from '../../lib/store';
 import { Button } from '../../ui/primitives';
@@ -30,6 +33,12 @@ export function FishSceneSimulator({
   onSelectSpecies,
 }: FishSceneSimulatorProps) {
   const qc = useQueryClient();
+
+  // Current logged in user appearance and name
+  const meQuery = useQuery<Me>({
+    queryKey: ['me'],
+    queryFn: () => api<Me>('/me'),
+  });
 
   // Behavior configuration from server
   const behaviorQuery = useQuery({
@@ -203,11 +212,11 @@ export function FishSceneSimulator({
     const ripples: Array<{ x: number; y: number; r: number; maxR: number; alpha: number }> = [];
     const splashes: Array<{ x: number; y: number; vx: number; vy: number; alpha: number }> = [];
 
-    const spawnRipple = (x: number, y: number, maxRadius = 36) => {
+    const spawnRipple = (x: number, y: number, maxRadius = 38) => {
       ripples.push({ x, y, r: 4, maxR: maxRadius, alpha: 0.85 });
     };
 
-    const spawnSplashes = (x: number, y: number, count = 8) => {
+    const spawnSplashes = (x: number, y: number, count = 10) => {
       for (let i = 0; i < count; i++) {
         const ang = Math.random() * Math.PI * 2;
         const spd = 1.2 + Math.random() * 2.5;
@@ -241,15 +250,15 @@ export function FishSceneSimulator({
           play('bite');
           play('splash');
         }
-        spawnSplashes(width * 0.62, height * 0.54, 14);
-        spawnRipple(width * 0.62, height * 0.54, 48);
+        spawnSplashes(width * 0.62, height * 0.54, 16);
+        spawnRipple(width * 0.62, height * 0.54, 52);
       }
 
-      // 1. Water Background Gradient (Deep Ocean Night)
+      // 1. Water Background Gradient (Deep Ocean Night with atmospheric depth)
       const grad = ctx.createLinearGradient(0, 0, 0, height);
-      grad.addColorStop(0, '#0a1d33');
-      grad.addColorStop(0.5, '#071526');
-      grad.addColorStop(1, '#030a13');
+      grad.addColorStop(0, '#071d2b');
+      grad.addColorStop(0.5, '#051622');
+      grad.addColorStop(1, '#020b12');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, width, height);
 
@@ -260,10 +269,10 @@ export function FishSceneSimulator({
         20,
         width * 0.28,
         height * 0.52,
-        280,
+        300,
       );
-      lanternGlow.addColorStop(0, 'rgba(251, 191, 36, 0.22)');
-      lanternGlow.addColorStop(0.4, 'rgba(245, 158, 11, 0.08)');
+      lanternGlow.addColorStop(0, 'rgba(253, 224, 71, 0.24)');
+      lanternGlow.addColorStop(0.35, 'rgba(245, 158, 11, 0.08)');
       lanternGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = lanternGlow;
       ctx.fillRect(0, 0, width, height);
@@ -284,27 +293,28 @@ export function FishSceneSimulator({
       ctx.scale(zoom, zoom);
       ctx.translate(-width / 2, -height / 2);
 
-      // Scene Reference Points:
-      // Boat & Character anchor: Left side of screen
+      // Scene Reference Points
       const boatX = width * 0.22;
       const boatY = height * 0.56;
-      const charX = boatX + 38;
-      const charY = boatY - 26;
+      const charX = boatX + 16;
+      const charY = boatY - 14;
 
-      // Bobber anchor: In open water towards center-right
+      // Bobber anchor
       const bobberX = width * 0.62;
       let bobberY = height * 0.54 + Math.sin(now * 0.004) * 2;
       let isBobberNibble = false;
 
-      // 2. Draw 2D Pixel Boat
-      drawPixelSteamboat(ctx, boatX, boatY, now);
+      // 2. Draw Authentic Wooden Fishing Boat
+      drawAuthenticFishingBoat(ctx, boatX, boatY, now);
 
-      // 3. Draw Character "TinAdmin" with purple nameplate & crown
-      drawTinAdminCharacter(ctx, charX, charY, now, isBite);
+      // 3. Draw Authentic Player Character with drawAvatar
+      const playerAppearance = meQuery.data?.appearance ?? DEFAULT_APPEARANCE;
+      const playerName = meQuery.data?.displayName ?? 'TinAdmin';
+      drawAuthenticPlayerCharacter(ctx, charX, charY, now, isBite, playerAppearance, playerName);
 
       // Rod Tip Position
-      const rodTipX = charX + 54;
-      const rodTipY = charY - (isBite ? 6 : 14) + Math.sin(now * 0.003) * 1.5;
+      const rodTipX = charX + 46;
+      const rodTipY = charY + (isBite ? 6 : -4) + Math.sin(now * 0.003) * 1.5;
 
       // Check Nibble Strikes
       let activeNibbleIdx = -1;
@@ -317,8 +327,8 @@ export function FishSceneSimulator({
             tl.playedNibbles.add(i);
             isBobberNibble = true;
             if (soundEnabled) play('nibble');
-            spawnRipple(bobberX, bobberY, 28);
-            spawnSplashes(bobberX, bobberY, 5);
+            spawnRipple(bobberX, bobberY, 32);
+            spawnSplashes(bobberX, bobberY, 6);
           }
         } else {
           break;
@@ -330,9 +340,9 @@ export function FishSceneSimulator({
       }
 
       // Periodical idle water ripples under bobber
-      if (now - lastRippleTime > 1600 && !isBite) {
+      if (now - lastRippleTime > 1500 && !isBite) {
         lastRippleTime = now;
-        spawnRipple(bobberX, bobberY, 26);
+        spawnRipple(bobberX, bobberY, 28);
       }
 
       // 4. Update and Draw Water Ripples
@@ -424,9 +434,9 @@ export function FishSceneSimulator({
         const exY = bobberY - 32 + bounce;
 
         ctx.save();
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.35)';
         ctx.beginPath();
-        ctx.arc(bobberX, exY, 15, 0, Math.PI * 2);
+        ctx.arc(bobberX, exY, 16, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.fillStyle = '#dc2626';
@@ -449,7 +459,7 @@ export function FishSceneSimulator({
       const retreatDist = behavior.retreatDistancePx ?? 80;
       const dashSpeed = behavior.dashSpeedFactor ?? 1.4;
       const strikeLeadMs = Math.max(120, Math.round(200 / dashSpeed));
-      const approachAngle = 0.25; // Fish emerges from bottom-right water facing float
+      const approachAngle = 0.25;
 
       if (now >= shadowAppearAt || isBite) {
         const fadeProgress = Math.min(1, Math.max(0.1, (now - shadowAppearAt) / 600));
@@ -458,13 +468,11 @@ export function FishSceneSimulator({
         let fishAngle = approachAngle + Math.PI;
 
         if (isBite) {
-          // Thrashing on bobber
           const thrash = Math.sin(now * 0.04 * activeTierCfg.wiggleSpeed) * 8;
           fishX = bobberX + Math.cos(now * 0.02) * 6;
           fishY = bobberY + 6 + thrash;
           fishAngle = Math.atan2(bobberY - fishY, bobberX - fishX);
         } else if (tl.nibbleTimes.length === 0) {
-          // 0 nibbles: instant bite strike
           const timeUntilBite = tl.biteAt - now;
           if (timeUntilBite <= strikeLeadMs && timeUntilBite > 0) {
             const elapsedStrike = strikeLeadMs - timeUntilBite;
@@ -479,12 +487,10 @@ export function FishSceneSimulator({
             fishAngle = approachAngle + Math.PI;
           }
         } else {
-          // Nibbling cycle
           if (activeNibbleIdx >= 0) {
             const nibbleAt = tl.nibbleTimes[activeNibbleIdx]!;
             const nextStrikeAt = tl.nibbleTimes[activeNibbleIdx + 1] ?? tl.biteAt;
 
-            // Right before biteAt: direct strike
             if (activeNibbleIdx === tl.nibbleTimes.length - 1 && tl.biteAt - now <= strikeLeadMs) {
               const elapsedStrike = strikeLeadMs - (tl.biteAt - now);
               const pose = fishStrikePose(elapsedStrike, strikeLeadMs, approachAngle, retreatDist);
@@ -502,7 +508,6 @@ export function FishSceneSimulator({
               isRecoil = pose.isRecoil;
             }
           } else {
-            // Approaching and hovering at retreat position
             const approachDuration = Math.max(
               1,
               (tl.nibbleTimes[0] ?? shadowAppearAt + 1200) - shadowAppearAt,
@@ -540,7 +545,7 @@ export function FishSceneSimulator({
 
     animId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animId);
-  }, [sessionKey, forceBite, zoom, soundEnabled, behavior, activeTierCfg]);
+  }, [sessionKey, forceBite, zoom, soundEnabled, behavior, activeTierCfg, meQuery.data]);
 
   return (
     <div className="flex flex-col xl:flex-row gap-6 p-1">
@@ -797,7 +802,7 @@ export function FishSceneSimulator({
 
               <div>
                 <label className="text-[10px] text-slate-400 block mb-1">
-                  Tối đa: {(behavior.shadowDelayMinMs / 1000).toFixed(1)}s
+                  Tối đa: {(behavior.shadowDelayMaxMs / 1000).toFixed(1)}s
                 </label>
                 <input
                   type="range"
@@ -891,183 +896,197 @@ export function FishSceneSimulator({
 
 // ---------------------------------------------------------------- Canvas Artists
 
-/** Draws 2D Pixel Boat like in the reference screenshot */
-function drawPixelSteamboat(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
+/** Draws Authentic Cozy Wooden Skiff Boat */
+function drawAuthenticFishingBoat(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
   ctx.save();
   ctx.translate(x, y);
 
-  // Boat bobbing on water
-  const bob = Math.sin(time * 0.003) * 1.5;
+  // Gentle boat bobbing in water
+  const bob = Math.sin(time * 0.003) * 2;
+  const roll = Math.sin(time * 0.0025) * 0.02;
   ctx.translate(0, bob);
+  ctx.rotate(roll);
 
-  // Hull Shadow in Water
-  ctx.fillStyle = 'rgba(2, 6, 23, 0.55)';
+  // Soft hull shadow in deep water
+  ctx.fillStyle = 'rgba(2, 8, 16, 0.65)';
   ctx.beginPath();
-  ctx.ellipse(2, 14, 52, 12, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 16, 56, 14, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Boat Hull - White / Cream Steamboat Body
-  ctx.fillStyle = '#f8fafc';
-  ctx.strokeStyle = '#0f172a';
+  // Water wake rings around boat hull
+  ctx.strokeStyle = 'rgba(125, 211, 252, 0.2)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.ellipse(0, 16, 62 + Math.sin(time * 0.003) * 2, 16 + Math.sin(time * 0.003) * 1, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Outer Timber Hull (Warm Cedar / Mahogany)
+  ctx.fillStyle = '#78350f';
+  ctx.strokeStyle = '#451a03';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(-45, -2);
-  ctx.lineTo(40, -2);
-  ctx.lineTo(48, 4);
-  ctx.lineTo(36, 14);
-  ctx.lineTo(-40, 14);
-  ctx.lineTo(-48, 6);
+  ctx.moveTo(-52, -4);
+  ctx.quadraticCurveTo(-20, 2, 48, -4);
+  ctx.lineTo(54, 4);
+  ctx.quadraticCurveTo(40, 18, 0, 18);
+  ctx.quadraticCurveTo(-46, 18, -54, 4);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
-  // Red accent line on hull
-  ctx.fillStyle = '#ef4444';
-  ctx.fillRect(-44, 2, 88, 3);
+  // Inner Teak Deck Planking
+  ctx.fillStyle = '#b45309';
+  ctx.beginPath();
+  ctx.moveTo(-46, -2);
+  ctx.quadraticCurveTo(-15, 4, 44, -2);
+  ctx.lineTo(40, 8);
+  ctx.quadraticCurveTo(-15, 12, -42, 8);
+  ctx.closePath();
+  ctx.fill();
 
-  // Wooden deck planking
+  // Deck plank seams
+  ctx.strokeStyle = 'rgba(69, 26, 3, 0.4)';
+  ctx.lineWidth = 1;
+  for (let px = -35; px <= 35; px += 14) {
+    ctx.beginPath();
+    ctx.moveTo(px, 0);
+    ctx.lineTo(px - 4, 9);
+    ctx.stroke();
+  }
+
+  // Polished Oak Gunwale (Top Rim)
   ctx.fillStyle = '#d97706';
-  ctx.fillRect(-38, -6, 74, 4);
   ctx.strokeStyle = '#78350f';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(-38, -6, 74, 4);
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.roundRect(-54, -6, 106, 4, 2);
+  ctx.fill();
+  ctx.stroke();
 
-  // Cabin / Wheelhouse
-  ctx.fillStyle = '#f1f5f9';
-  ctx.strokeStyle = '#0f172a';
+  // Wooden Bench / Seat for the Fisher
+  ctx.fillStyle = '#92400e';
+  ctx.fillRect(-12, -2, 28, 6);
+  ctx.strokeStyle = '#451a03';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(-12, -2, 28, 6);
+
+  // Brass Lantern on Bow with Warm Golden Light
+  const lanternX = 48;
+  const lanternY = -10;
+
+  // Lantern Warm Glow Radiating in Water
+  const lanternGlow = ctx.createRadialGradient(lanternX, lanternY, 2, lanternX, lanternY, 40);
+  lanternGlow.addColorStop(0, 'rgba(253, 224, 71, 0.65)');
+  lanternGlow.addColorStop(0.4, 'rgba(245, 158, 11, 0.22)');
+  lanternGlow.addColorStop(1, 'rgba(245, 158, 11, 0)');
+  ctx.fillStyle = lanternGlow;
+  ctx.beginPath();
+  ctx.arc(lanternX, lanternY, 40, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Brass Post & Lantern Frame
+  ctx.strokeStyle = '#78350f';
   ctx.lineWidth = 1.5;
-  ctx.fillRect(-22, -26, 32, 20);
-  ctx.strokeRect(-22, -26, 32, 20);
-
-  // Cabin window (cyan tint glass)
-  ctx.fillStyle = '#38bdf8';
-  ctx.fillRect(-16, -22, 10, 8);
-  ctx.strokeRect(-16, -22, 10, 8);
-
-  // Smokestack / Chimney
-  ctx.fillStyle = '#475569';
-  ctx.fillRect(-4, -36, 8, 12);
-  ctx.fillStyle = '#ef4444';
-  ctx.fillRect(-4, -38, 8, 3);
-
-  // Little smoke puff
-  const smokePuff = Math.sin(time * 0.006) * 3;
-  ctx.fillStyle = 'rgba(241, 245, 249, 0.4)';
   ctx.beginPath();
-  ctx.arc(-2 + smokePuff, -44 - ((time * 0.02) % 16), 4, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(lanternX, -4);
+  ctx.lineTo(lanternX, lanternY);
+  ctx.stroke();
 
-  // Golden Lantern at prow
-  ctx.fillStyle = '#fbbf24';
+  ctx.fillStyle = '#fef08a';
+  ctx.strokeStyle = '#92400e';
   ctx.beginPath();
-  ctx.arc(44, -3, 3.5, 0, Math.PI * 2);
+  ctx.roundRect(lanternX - 3.5, lanternY - 7, 7, 8, 1.5);
   ctx.fill();
-  ctx.strokeStyle = '#78350f';
-  ctx.lineWidth = 1;
   ctx.stroke();
 
   ctx.restore();
 }
 
-/** Draws "TinAdmin" Character with Rod and Purple Nameplate */
-function drawTinAdminCharacter(
+/** Draws Authentic Player Character with drawAvatar, Rod and Crowned Nameplate */
+function drawAuthenticPlayerCharacter(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   time: number,
   isBite: boolean,
+  appearance?: Appearance,
+  name: string = 'TinAdmin',
 ) {
   ctx.save();
   ctx.translate(x, y);
 
-  // Character breathing
+  // Subtle breathing / bobbing
   const breathe = Math.sin(time * 0.004) * 1;
   ctx.translate(0, breathe);
 
-  // Character Body (cute cozy pixel avatar)
-  // Legs
-  ctx.fillStyle = '#1e293b';
-  ctx.fillRect(-5, 8, 4, 10);
-  ctx.fillRect(1, 8, 4, 10);
+  // Render real game avatar using drawAvatar!
+  const app = appearance ?? DEFAULT_APPEARANCE;
+  const grid = drawAvatar(app, 2, 0); // direction 2 (facing right towards water)
+  // draw avatar at scale 2 (AV_W=16, AV_H=28 -> 32x56px)
+  grid.drawTo(ctx, -16, -34, 2);
 
-  // Torso / Jacket
-  ctx.fillStyle = '#3b82f6';
-  ctx.fillRect(-8, -4, 16, 13);
-  ctx.strokeStyle = '#0f172a';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(-8, -4, 16, 13);
-
-  // Head / Face
-  ctx.fillStyle = '#fed7aa';
-  ctx.fillRect(-7, -19, 14, 15);
-  ctx.strokeRect(-7, -19, 14, 15);
-
-  // Dark hair / Cap
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(-8, -23, 16, 6);
-  ctx.fillRect(4, -20, 4, 4);
-
-  // Eyes facing right (towards water)
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(2, -14, 2, 3);
-
-  // Hands holding Fishing Rod forward
-  ctx.fillStyle = '#fed7aa';
-  ctx.fillRect(6, 2, 4, 4);
-
-  // Fishing Rod
+  // Authentic wooden fishing rod held in hands
   ctx.save();
   ctx.strokeStyle = '#b45309';
   ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(4, 4);
-  const rodCurve = isBite ? 16 : 8;
-  ctx.quadraticCurveTo(34, -4 + rodCurve * 0.35, 54, isBite ? 12 : 2);
+  const rodStartX = 4;
+  const rodStartY = -10;
+  const rodTipX = 46;
+  const rodTipY = isBite ? 6 : -4;
+  ctx.moveTo(rodStartX, rodStartY);
+  ctx.quadraticCurveTo(24, isBite ? 8 : -14, rodTipX, rodTipY);
   ctx.stroke();
 
-  // Rod reel
-  ctx.fillStyle = '#94a3b8';
-  ctx.fillRect(8, 2, 4, 4);
+  // Rod reel & gold accent
+  ctx.fillStyle = '#f59e0b';
+  ctx.fillRect(8, -12, 4, 4);
+  ctx.strokeStyle = '#78350f';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(8, -12, 4, 4);
   ctx.restore();
 
   // Purple Tag Nameplate: [👑 TinAdmin]
   ctx.save();
-  const nameY = -34;
-  const tagW = 74;
-  const tagH = 17;
+  const tagH = 18;
+  ctx.font = 'bold 11px system-ui, sans-serif';
+  const textWidth = ctx.measureText(name).width;
+  const tagW = Math.max(76, textWidth + 30);
   const tagX = -tagW / 2;
+  const tagY = -56;
 
-  // Background rounded rect with purple gradient
-  const tagGrad = ctx.createLinearGradient(tagX, nameY, tagX + tagW, nameY);
-  tagGrad.addColorStop(0, '#7e22ce');
-  tagGrad.addColorStop(1, '#a855f7');
+  // Modern Purple Gradient pill badge
+  const tagGrad = ctx.createLinearGradient(tagX, tagY, tagX + tagW, tagY + tagH);
+  tagGrad.addColorStop(0, '#6366f1');
+  tagGrad.addColorStop(1, '#8b5cf6');
   ctx.fillStyle = tagGrad;
   ctx.beginPath();
-  ctx.roundRect(tagX, nameY, tagW, tagH, 5);
+  ctx.roundRect(tagX, tagY, tagW, tagH, 9);
   ctx.fill();
 
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
   // Crown Icon
   ctx.fillStyle = '#fde047';
   ctx.beginPath();
-  ctx.moveTo(tagX + 7, nameY + 12);
-  ctx.lineTo(tagX + 5, nameY + 6);
-  ctx.lineTo(tagX + 9, nameY + 8);
-  ctx.lineTo(tagX + 11, nameY + 4);
-  ctx.lineTo(tagX + 13, nameY + 8);
-  ctx.lineTo(tagX + 17, nameY + 6);
-  ctx.lineTo(tagX + 15, nameY + 12);
+  ctx.moveTo(tagX + 8, tagY + 13);
+  ctx.lineTo(tagX + 6, tagY + 7);
+  ctx.lineTo(tagX + 10, tagY + 9);
+  ctx.lineTo(tagX + 12, tagY + 5);
+  ctx.lineTo(tagX + 14, tagY + 9);
+  ctx.lineTo(tagX + 18, tagY + 7);
+  ctx.lineTo(tagX + 16, tagY + 13);
   ctx.closePath();
   ctx.fill();
 
-  // Text "TinAdmin"
+  // Player Name Text
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 9.5px system-ui, sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('TinAdmin', tagX + 21, nameY + 12);
+  ctx.textBaseline = 'middle';
+  ctx.fillText(name, tagX + 22, tagY + 9.5);
   ctx.restore();
 
   ctx.restore();
