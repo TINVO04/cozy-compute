@@ -3411,3 +3411,380 @@ img.pixel,
   background: var(--surface-2);
   border-radius: 8px;
 }
+
+/* ------------------------------------------------------------- Fish Shadow Studio */
+.fstudio-root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.fstudio-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-cozy);
+}
+
+.fstudio-header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fstudio-header-title h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.fstudio-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--surface-3);
+  border: 1px solid var(--line-2);
+}
+
+.fstudio-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  user-select: none;
+}
+
+.fstudio-tab[aria-selected='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 2px 6px rgba(40, 33, 54, 0.08);
+  font-weight: 700;
+}
+
+.fstudio-workbench {
+  display: grid;
+  grid-template-columns: 410px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .fstudio-workbench {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fstudio-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fstudio-tier-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.fstudio-tier-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--line-2);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.14s ease;
+}
+
+.fstudio-tier-card:hover {
+  border-color: #c4b59c;
+  transform: translateY(-1px);
+}
+
+.fstudio-tier-card.active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+.fstudio-tier-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.fstudio-tier-badge {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.fstudio-tier-dim {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.fstudio-tier-name {
+  font-size: 12px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+.fstudio-panel {
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 16px;
+  box-shadow: var(--shadow-cozy);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fstudio-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fstudio-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fstudio-field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.fstudio-field-val {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.fstudio-input-num {
+  width: 68px;
+  height: 28px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1.5px solid var(--line-2);
+  background: var(--surface);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--ink);
+  text-align: right;
+}
+
+.fstudio-input-num:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+.fstudio-range {
+  width: 100%;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.fstudio-mult-bar {
+  display: flex;
+  gap: 4px;
+}
+
+.fstudio-mult-btn {
+  flex: 1;
+  padding: 5px 0;
+  border-radius: 6px;
+  border: 1px solid var(--line-2);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.12s;
+  text-align: center;
+}
+
+.fstudio-mult-btn:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+.fstudio-check-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.fstudio-check-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--line-2);
+  background: var(--surface-2);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  transition: all 0.12s;
+  user-select: none;
+}
+
+.fstudio-check-card input {
+  accent-color: var(--primary);
+  width: 15px;
+  height: 15px;
+  margin: 0;
+}
+
+.fstudio-check-card.checked {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.fstudio-preset-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.fstudio-preset-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line-2);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.fstudio-preset-btn:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+.fstudio-viewport-wrap {
+  position: relative;
+  background: #06111a;
+  border: 2px solid #162f47;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(6, 17, 26, 0.45);
+}
+
+.fstudio-viewport-topbar {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.fstudio-glass-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 8px;
+  background: rgba(6, 17, 26, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  pointer-events: auto;
+}
+
+.fstudio-glass-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.fstudio-glass-btn:hover {
+  color: #fff;
+}
+
+.fstudio-glass-btn.active {
+  background: #0284c7;
+  color: #fff;
+  font-weight: 700;
+}
+
+.fstudio-viewport-bottombar {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.fstudio-canvas-element {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 520px;
+  background: #05101a;
+  object-fit: contain;
+}

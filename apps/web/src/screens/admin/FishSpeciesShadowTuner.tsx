@@ -256,56 +256,41 @@ export function FishSpeciesShadowTuner({
   const maxSliderWidth = megaMode ? 2000 : 300;
 
   return (
-    <div className="stack" style={{ gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* Header Info & Status */}
       <div
+        className="card"
         style={{
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
           flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           gap: 12,
-          padding: '12px 16px',
-          background: 'rgba(8, 47, 64, 0.4)',
-          border: '1px solid rgba(56, 189, 248, 0.3)',
-          borderRadius: 10,
+          padding: '12px 18px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <img src={fishIcon(fish.id, 2)} alt="" style={{ width: 44, height: 36, objectFit: 'contain' }} />
+          <img src={fishIcon(fish.id, 2)} alt="" style={{ height: 36, width: 44, objectFit: 'contain' }} />
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <h3 style={{ margin: 0, fontSize: 16, color: '#f0f9ff' }}>{fish.name}</h3>
-              <span
-                className="pill"
-                style={{
-                  background: 'rgba(56, 189, 248, 0.15)',
-                  color: '#38bdf8',
-                  fontSize: 11,
-                  fontWeight: 700,
-                }}
-              >
+              <h3 style={{ margin: 0, fontSize: 16, color: 'var(--ink)' }}>{fish.name}</h3>
+              <span className="pill pill-primary" style={{ fontSize: 11, fontWeight: 700 }}>
                 Bậc chuẩn: Bậc {defaultTier} ({baseTierCfg.name})
               </span>
               {fish.isShadowOverridden ? (
                 <span
                   className="pill"
-                  style={{
-                    background: '#818cf8',
-                    color: '#ffffff',
-                    fontSize: 11,
-                    fontWeight: 700,
-                  }}
+                  style={{ background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700 }}
                 >
                   🌊 Đang Dùng Bóng Tùy Chỉnh Riêng
                 </span>
               ) : (
-                <span className="pill pill-muted" style={{ fontSize: 11 }}>
+                <span className="pill" style={{ fontSize: 11 }}>
                   Dùng bóng theo bậc
                 </span>
               )}
             </div>
-            <p style={{ margin: '3px 0 0', fontSize: 12, color: '#94a3b8' }}>
+            <p className="muted" style={{ margin: '4px 0 0', fontSize: 12 }}>
               Chuẩn Bậc {defaultTier}: {baseTierCfg.lengthPx}px × {baseTierCfg.widthPx}px | Tốc độ:{' '}
               {baseTierCfg.swimSpeed}x | Vẫy đuôi: {baseTierCfg.wiggleSpeed}x
             </p>
@@ -313,14 +298,14 @@ export function FishSpeciesShadowTuner({
         </div>
 
         {/* Action Buttons */}
-        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+        <div className="row" style={{ gap: 8 }}>
           {fish.isShadowOverridden ? (
             <Button
               variant="ghost"
               size="sm"
               loading={resetMutation.isPending}
               onClick={() => resetMutation.mutate()}
-              style={{ color: '#f87171' }}
+              style={{ color: 'var(--danger)' }}
             >
               <RotateCcw size={14} /> Khôi phục gốc
             </Button>
@@ -346,63 +331,27 @@ export function FishSpeciesShadowTuner({
         }}
       >
         {/* Left: Water Canvas Preview Stage */}
-        <div
-          className="card"
-          style={{
-            position: 'relative',
-            overflow: 'hidden',
-            padding: 0,
-            background: '#04131d',
-            border: '1px solid rgba(56, 189, 248, 0.25)',
-            borderRadius: 12,
-            minHeight: 460,
-          }}
-        >
+        <div className="fstudio-viewport-wrap">
           {/* Canvas Controls Bar */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 10,
-              left: 10,
-              right: 10,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              zIndex: 10,
-              pointerEvents: 'none',
-            }}
-          >
-            <div
-              className="row"
-              style={{
-                gap: 6,
-                background: 'rgba(15, 23, 42, 0.75)',
-                backdropFilter: 'blur(8px)',
-                padding: '4px 8px',
-                borderRadius: 8,
-                pointerEvents: 'auto',
-              }}
-            >
+          <div className="fstudio-viewport-topbar">
+            <div className="fstudio-glass-group">
               <button
                 type="button"
-                className={`tab ${testAction === 'normal' ? 'tab-active' : ''}`}
-                style={{ fontSize: 11, padding: '3px 8px', margin: 0 }}
+                className={`fstudio-glass-btn ${testAction === 'normal' ? 'active' : ''}`}
                 onClick={() => setTestAction('normal')}
               >
                 🌊 Bơi thường
               </button>
               <button
                 type="button"
-                className={`tab ${testAction === 'nibble' ? 'tab-active' : ''}`}
-                style={{ fontSize: 11, padding: '3px 8px', margin: 0 }}
+                className={`fstudio-glass-btn ${testAction === 'nibble' ? 'active' : ''}`}
                 onClick={() => setTestAction('nibble')}
               >
                 🎣 Rỉa mồi
               </button>
               <button
                 type="button"
-                className={`tab ${testAction === 'bite' ? 'tab-active' : ''}`}
-                style={{ fontSize: 11, padding: '3px 8px', margin: 0 }}
+                className={`fstudio-glass-btn ${testAction === 'bite' ? 'active' : ''}`}
                 onClick={() => setTestAction('bite')}
               >
                 ⚡ Đớp câu (!)
@@ -410,18 +359,7 @@ export function FishSpeciesShadowTuner({
             </div>
 
             {/* Zoom Slider */}
-            <div
-              className="row"
-              style={{
-                gap: 8,
-                background: 'rgba(15, 23, 42, 0.75)',
-                backdropFilter: 'blur(8px)',
-                padding: '4px 10px',
-                borderRadius: 8,
-                pointerEvents: 'auto',
-                alignItems: 'center',
-              }}
-            >
+            <div className="fstudio-glass-group" style={{ pointerEvents: 'auto' }}>
               <Eye size={13} style={{ color: '#94a3b8' }} />
               <input
                 type="range"
@@ -430,46 +368,20 @@ export function FishSpeciesShadowTuner({
                 step="0.05"
                 value={zoom}
                 onChange={(e) => setZoom(Number(e.target.value))}
-                style={{ width: 80, accentColor: '#38bdf8' }}
+                style={{ width: 80, accentColor: '#38bdf8', cursor: 'pointer' }}
               />
-              <span style={{ fontSize: 11, color: '#38bdf8', fontWeight: 700, minWidth: 32 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', minWidth: 32 }}>
                 {(zoom * 100).toFixed(0)}%
               </span>
             </div>
           </div>
 
           {/* Actual Canvas */}
-          <canvas
-            ref={canvasRef}
-            width={620}
-            height={460}
-            style={{ width: '100%', height: 460, display: 'block' }}
-          />
+          <canvas ref={canvasRef} width={620} height={460} className="fstudio-canvas-element" />
 
           {/* Floating Canvas Footer Badges */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 10,
-              left: 10,
-              right: 10,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              zIndex: 10,
-              pointerEvents: 'none',
-            }}
-          >
-            <div
-              style={{
-                background: 'rgba(15, 23, 42, 0.85)',
-                backdropFilter: 'blur(8px)',
-                padding: '4px 10px',
-                borderRadius: 6,
-                fontSize: 12,
-                color: '#e2e8f0',
-              }}
-            >
+          <div className="fstudio-viewport-bottombar">
+            <div className="fstudio-glass-group" style={{ fontSize: 12, color: '#e2e8f0', gap: 6 }}>
               Kích thước thực tế:{' '}
               <strong style={{ color: '#38bdf8' }}>
                 {lengthPx}px × {widthPx}px
@@ -478,23 +390,32 @@ export function FishSpeciesShadowTuner({
             </div>
 
             {hasCrown || hasGlow ? (
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 6,
-                  background: 'rgba(15, 23, 42, 0.85)',
-                  backdropFilter: 'blur(8px)',
-                  padding: '4px 10px',
-                  borderRadius: 6,
-                }}
-              >
+              <div className="fstudio-glass-group">
                 {hasCrown && (
-                  <span style={{ color: '#fbbf24', fontSize: 11, fontWeight: 700, display: 'flex', gap: 4 }}>
+                  <span
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: '#fbbf24',
+                    }}
+                  >
                     <Crown size={13} /> Vương miện
                   </span>
                 )}
                 {hasGlow && (
-                  <span style={{ color: '#38bdf8', fontSize: 11, fontWeight: 700, display: 'flex', gap: 4 }}>
+                  <span
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: '#38bdf8',
+                    }}
+                  >
                     <Sparkles size={13} /> Hào quang
                   </span>
                 )}
@@ -503,35 +424,23 @@ export function FishSpeciesShadowTuner({
           </div>
         </div>
 
-        {/* Right: Tuning Sliders & Unconstrained Oversized Inputs */}
-        <div
-          className="card"
-          style={{
-            background: 'var(--surface-1)',
-            border: '1px solid var(--border)',
-            borderRadius: 12,
-            padding: 16,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 16,
-          }}
-        >
+        {/* Right: Tuning Sliders & Controls */}
+        <div className="fstudio-panel">
           {/* Quick Multipliers: "To Bất Thường" Presets */}
-          <div className="stack" style={{ gap: 6 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>
-                ⚡ Phóng To Nhanh (Quick Multipliers)
-              </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="row between">
+              <label className="fstudio-field-label">⚡ Phóng To Nhanh (Quick Multipliers)</label>
               <label
-                style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 5 }}
+                className="row"
+                style={{ gap: 6, fontSize: 11, color: 'var(--muted)', cursor: 'pointer' }}
               >
                 <input
                   type="checkbox"
                   checked={megaMode}
                   onChange={(e) => setMegaMode(e.target.checked)}
-                  style={{ accentColor: '#38bdf8' }}
+                  style={{ accentColor: 'var(--primary)' }}
                 />
-                Cho phép tới 5000px
+                Tới 5000px
               </label>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -550,15 +459,14 @@ export function FishSpeciesShadowTuner({
                   type="button"
                   className="pill"
                   style={{
-                    background:
-                      lengthPx === Math.round(baseTierCfg.lengthPx * item.mult)
-                        ? '#0284c7'
-                        : 'rgba(56, 189, 248, 0.1)',
-                    color: lengthPx === Math.round(baseTierCfg.lengthPx * item.mult) ? '#ffffff' : '#38bdf8',
-                    border: '1px solid rgba(56, 189, 248, 0.3)',
                     cursor: 'pointer',
                     fontSize: 11,
-                    padding: '3px 8px',
+                    background:
+                      lengthPx === Math.round(baseTierCfg.lengthPx * item.mult)
+                        ? 'var(--primary)'
+                        : 'var(--surface-2)',
+                    color:
+                      lengthPx === Math.round(baseTierCfg.lengthPx * item.mult) ? '#fff' : 'var(--ink-2)',
                   }}
                   onClick={() => applyMultiplier(item.mult)}
                 >
@@ -569,31 +477,21 @@ export function FishSpeciesShadowTuner({
           </div>
 
           {/* Dimension: Length Px */}
-          <div className="stack" style={{ gap: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1' }}>
-                📏 Chiều Dài Bóng (Length Px)
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="fstudio-field">
+            <div className="fstudio-field-row">
+              <label className="fstudio-field-label">📏 Chiều Dài Bóng (Length Px)</label>
+              <div className="row" style={{ gap: 4 }}>
                 <input
                   type="number"
                   min="10"
                   max="50000"
                   value={lengthPx}
                   onChange={(e) => setLengthPx(Math.max(10, Math.min(50000, Number(e.target.value) || 10)))}
-                  style={{
-                    width: 80,
-                    padding: '3px 6px',
-                    fontSize: 12,
-                    textAlign: 'right',
-                    borderRadius: 6,
-                    border: '1px solid #0284c7',
-                    background: '#0f172a',
-                    color: '#38bdf8',
-                    fontWeight: 700,
-                  }}
+                  className="fstudio-input-num"
                 />
-                <span style={{ fontSize: 11, color: '#94a3b8' }}>px</span>
+                <span className="muted" style={{ fontSize: 11 }}>
+                  px
+                </span>
               </div>
             </div>
             <input
@@ -603,36 +501,26 @@ export function FishSpeciesShadowTuner({
               step="5"
               value={Math.min(lengthPx, maxSliderLength)}
               onChange={(e) => setLengthPx(Number(e.target.value))}
-              style={{ accentColor: '#38bdf8', width: '100%' }}
+              className="fstudio-range"
             />
           </div>
 
           {/* Dimension: Width Px */}
-          <div className="stack" style={{ gap: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1' }}>
-                ↔️ Chiều Rộng Bóng (Width Px)
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="fstudio-field">
+            <div className="fstudio-field-row">
+              <label className="fstudio-field-label">↔️ Chiều Rộng Bóng (Width Px)</label>
+              <div className="row" style={{ gap: 4 }}>
                 <input
                   type="number"
                   min="5"
                   max="25000"
                   value={widthPx}
                   onChange={(e) => setWidthPx(Math.max(5, Math.min(25000, Number(e.target.value) || 5)))}
-                  style={{
-                    width: 80,
-                    padding: '3px 6px',
-                    fontSize: 12,
-                    textAlign: 'right',
-                    borderRadius: 6,
-                    border: '1px solid #0284c7',
-                    background: '#0f172a',
-                    color: '#38bdf8',
-                    fontWeight: 700,
-                  }}
+                  className="fstudio-input-num"
                 />
-                <span style={{ fontSize: 11, color: '#94a3b8' }}>px</span>
+                <span className="muted" style={{ fontSize: 11 }}>
+                  px
+                </span>
               </div>
             </div>
             <input
@@ -642,17 +530,15 @@ export function FishSpeciesShadowTuner({
               step="2"
               value={Math.min(widthPx, maxSliderWidth)}
               onChange={(e) => setWidthPx(Number(e.target.value))}
-              style={{ accentColor: '#38bdf8', width: '100%' }}
+              className="fstudio-range"
             />
           </div>
 
           {/* Swim Speed */}
-          <div className="stack" style={{ gap: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1' }}>
-                🏊 Tốc Độ Bơi Lượn (Swim Speed)
-              </label>
-              <span style={{ fontSize: 12, color: '#38bdf8', fontWeight: 700 }}>{swimSpeed.toFixed(2)}x</span>
+          <div className="fstudio-field">
+            <div className="fstudio-field-row">
+              <label className="fstudio-field-label">🏊 Tốc Độ Bơi Lượn (Swim Speed)</label>
+              <span className="fstudio-field-val">{swimSpeed.toFixed(2)}x</span>
             </div>
             <input
               type="range"
@@ -661,19 +547,15 @@ export function FishSpeciesShadowTuner({
               step="0.05"
               value={swimSpeed}
               onChange={(e) => setSwimSpeed(Number(e.target.value))}
-              style={{ accentColor: '#38bdf8', width: '100%' }}
+              className="fstudio-range"
             />
           </div>
 
           {/* Wiggle Speed */}
-          <div className="stack" style={{ gap: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1' }}>
-                〰️ Tần Số Vẫy Đuôi (Wiggle Speed)
-              </label>
-              <span style={{ fontSize: 12, color: '#38bdf8', fontWeight: 700 }}>
-                {wiggleSpeed.toFixed(2)}x
-              </span>
+          <div className="fstudio-field">
+            <div className="fstudio-field-row">
+              <label className="fstudio-field-label">〰️ Tần Số Vẫy Đuôi (Wiggle Speed)</label>
+              <span className="fstudio-field-val">{wiggleSpeed.toFixed(2)}x</span>
             </div>
             <input
               type="range"
@@ -682,73 +564,27 @@ export function FishSpeciesShadowTuner({
               step="0.05"
               value={wiggleSpeed}
               onChange={(e) => setWiggleSpeed(Number(e.target.value))}
-              style={{ accentColor: '#38bdf8', width: '100%' }}
+              className="fstudio-range"
             />
           </div>
 
           {/* Special FX Toggles */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 10,
-              padding: '10px 12px',
-              background: 'rgba(15, 23, 42, 0.4)',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-            }}
-          >
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                fontSize: 12,
-                cursor: 'pointer',
-                color: hasCrown ? '#fbbf24' : '#94a3b8',
-                fontWeight: hasCrown ? 700 : 500,
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={hasCrown}
-                onChange={(e) => setHasCrown(e.target.checked)}
-                style={{ accentColor: '#fbbf24', width: 16, height: 16 }}
-              />
-              <Crown size={15} /> Vương Miện Vàng
+          <div className="fstudio-check-group">
+            <label className={`fstudio-check-card ${hasCrown ? 'checked' : ''}`}>
+              <input type="checkbox" checked={hasCrown} onChange={(e) => setHasCrown(e.target.checked)} />
+              <Crown size={15} color="#d97706" />
+              <span>Vương Miện Vàng</span>
             </label>
 
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                fontSize: 12,
-                cursor: 'pointer',
-                color: hasGlow ? '#38bdf8' : '#94a3b8',
-                fontWeight: hasGlow ? 700 : 500,
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={hasGlow}
-                onChange={(e) => setHasGlow(e.target.checked)}
-                style={{ accentColor: '#38bdf8', width: 16, height: 16 }}
-              />
-              <Sparkles size={15} /> Hào Quang Nước
+            <label className={`fstudio-check-card ${hasGlow ? 'checked' : ''}`}>
+              <input type="checkbox" checked={hasGlow} onChange={(e) => setHasGlow(e.target.checked)} />
+              <Sparkles size={15} color="#0284c7" />
+              <span>Hào Quang Nước</span>
             </label>
           </div>
 
           {/* Reset & Save Bar */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingTop: 8,
-              borderTop: '1px solid var(--border)',
-            }}
-          >
+          <div className="row between" style={{ borderTop: '1px solid var(--line)', paddingTop: 10 }}>
             <Button
               variant="ghost"
               size="sm"
@@ -763,17 +599,12 @@ export function FishSpeciesShadowTuner({
               }}
               style={{ fontSize: 12 }}
             >
-              Hoàn tác chỉnh sửa
+              Hoàn tác
             </Button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="row" style={{ gap: 8 }}>
               {onOpenScene && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={onOpenScene}
-                  style={{ fontSize: 12, color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.4)' }}
-                >
+                <Button variant="secondary" size="sm" onClick={onOpenScene} style={{ fontSize: 12 }}>
                   🎬 Xem Thử Trên Thuyền
                 </Button>
               )}

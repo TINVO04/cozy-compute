@@ -670,38 +670,34 @@ export function FishShadowAdmin() {
   const currentTierData = localTiers[selectedTier] ?? SHADOW_TIER_CONFIG[selectedTier];
   const currentMeta = TIER_METADATA[selectedTier];
 
+  // Tier badge color mapping to Tailwind classes
   return (
-    <div className="flex flex-col gap-5">
-      {/* 1. Header & Primary Tab Switcher */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl border border-sky-900/40 bg-gradient-to-r from-slate-950 via-slate-900 to-sky-950/40 shadow-xl">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-sky-500/10 border border-sky-400/30 text-sky-400">
-            <FishIcon className="w-6 h-6" />
-          </div>
+    <div className="fstudio-root">
+      {/* ── Header ── */}
+      <div className="fstudio-header">
+        <div className="fstudio-header-title">
+          <FishIcon size={22} style={{ color: 'var(--primary)', flexShrink: 0 }} />
           <div>
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              Studio Quản Trị Kích Thước Bóng Cá
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30">
-                Chuẩn 6 Bậc (Tier 1 - 6)
-              </span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <div className="row" style={{ gap: 8 }}>
+              <h2>Studio Quản Trị Kích Thước Bóng Cá</h2>
+              <span className="pill pill-primary">Chuẩn 6 Bậc (Tier 1 - 6)</span>
+            </div>
+            <p className="muted" style={{ fontSize: 12, marginTop: 2 }}>
               Tinh chỉnh chiều dài, chiều rộng, vương miện và hiệu ứng bơi lội với khung xem trước thực tế
               trong hồ nước.
             </p>
           </div>
         </div>
 
-        {/* Global Save / Reset Action Buttons */}
-        <div className="flex items-center gap-2.5">
+        <div className="row" style={{ gap: 8 }}>
           <Button
             variant="ghost"
             size="sm"
             loading={resetAllMutation.isPending}
             onClick={() => resetAllMutation.mutate()}
-            className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 border border-rose-900/40 gap-1.5 text-xs"
+            style={{ color: 'var(--danger)', fontSize: 12 }}
           >
-            <RotateCcw className="w-3.5 h-3.5" /> Khôi Phục Gốc
+            <RotateCcw size={14} /> Khôi Phục Gốc
           </Button>
 
           <Button
@@ -709,156 +705,130 @@ export function FishShadowAdmin() {
             size="sm"
             loading={saveAllMutation.isPending}
             onClick={() => saveAllMutation.mutate()}
-            className="bg-sky-600 hover:bg-sky-500 text-white font-bold gap-1.5 shadow-lg shadow-sky-950/50 text-xs px-3.5"
+            style={{ fontSize: 12, fontWeight: 700 }}
           >
-            <Save className="w-3.5 h-3.5" /> Lưu Cấu Hình Toàn Server
+            <Save size={14} /> Lưu Cấu Hình Toàn Server
           </Button>
         </div>
       </div>
 
-      {/* 2. Primary Feature Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+      {/* ── Subtab Navigation ── */}
+      <div className="fstudio-tabs" role="tablist">
         <button
           type="button"
+          role="tab"
+          className="fstudio-tab"
+          aria-selected={activeTab === 'tiers'}
           onClick={() => setActiveTab('tiers')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
-            activeTab === 'tiers'
-              ? 'bg-sky-500/20 border-sky-400 text-sky-200 shadow-md shadow-sky-950/40'
-              : 'bg-slate-900/40 border-transparent text-slate-400 hover:text-white hover:border-slate-800'
-          }`}
         >
-          <Sliders className="w-4 h-4 text-sky-400" />
-          🌟 Cấu Hình 6 Bậc Chuẩn (Tier 1 - Tier 6)
+          <Sliders size={15} /> Cấu Hình 6 Bậc Chuẩn (Tier 1 - Tier 6)
         </button>
-
         <button
           type="button"
+          role="tab"
+          className="fstudio-tab"
+          aria-selected={activeTab === 'species'}
           onClick={() => setActiveTab('species')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
-            activeTab === 'species'
-              ? 'bg-sky-500/20 border-sky-400 text-sky-200 shadow-md shadow-sky-950/40'
-              : 'bg-slate-900/40 border-transparent text-slate-400 hover:text-white hover:border-slate-800'
-          }`}
         >
-          <FishIcon className="w-4 h-4 text-emerald-400" />
-          🐟 Tùy Chỉnh Theo Từng Loài Cá Cụ Thể ({allFish.length})
+          <FishIcon size={15} /> Tùy Chỉnh Theo Từng Loài Cá Cụ Thể ({allFish.length})
         </button>
-
         <button
           type="button"
+          role="tab"
+          className="fstudio-tab"
+          aria-selected={activeTab === 'behavior'}
           onClick={() => setActiveTab('behavior')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
-            activeTab === 'behavior'
-              ? 'bg-sky-500/20 border-sky-400 text-sky-200 shadow-md shadow-sky-950/40'
-              : 'bg-slate-900/40 border-transparent text-slate-400 hover:text-white hover:border-slate-800'
-          }`}
         >
-          <Clock className="w-4 h-4 text-amber-400" />
-          ⏱️ Tinh Chỉnh Nhịp Đớp & Thời Gian Chờ (Bite Timing)
+          <Clock size={15} /> Tinh Chỉnh Nhịp Đớp & Thời Gian Chờ (Bite Timing)
         </button>
       </div>
 
-      {/* 3. TAB 1: 6-TIER MASTER STUDIO */}
+      {/* ── TAB 1: Cấu Hình 6 Bậc ── */}
       {activeTab === 'tiers' && (
-        <div className="flex flex-col xl:flex-row gap-5 items-start">
-          {/* LEFT: Tier Selector & Precision Slider Controls */}
-          <div className="w-full xl:w-[440px] flex flex-col gap-4 shrink-0">
-            {/* Tier Navigation Cards (1 to 6) */}
-            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-3.5 flex flex-col gap-2.5 shadow-lg backdrop-blur-md">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1">
-                Chọn Cấp Bóng Cá Để Tinh Chỉnh:
-              </span>
+        <div className="fstudio-workbench">
+          {/* Left Sidebar Controls */}
+          <div className="fstudio-sidebar">
+            {/* 6-Tier Grid Selector */}
+            <div className="fstudio-tier-grid">
+              {([1, 2, 3, 4, 5, 6] as const).map((t) => {
+                const data = localTiers[t] ?? SHADOW_TIER_CONFIG[t];
+                const isSel = selectedTier === t;
 
-              <div className="grid grid-cols-2 gap-2">
-                {([1, 2, 3, 4, 5, 6] as const).map((t) => {
-                  const data = localTiers[t] ?? SHADOW_TIER_CONFIG[t];
-                  const meta = TIER_METADATA[t];
-                  const isSel = selectedTier === t;
-
-                  return (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => {
-                        play('click');
-                        setSelectedTier(t);
-                      }}
-                      className={`flex flex-col text-left p-2.5 rounded-xl border transition-all relative ${
-                        isSel
-                          ? 'bg-sky-950/50 border-sky-400 shadow-md shadow-sky-950/50'
-                          : 'bg-slate-950/50 border-slate-800/80 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span
-                          className="text-xs font-bold flex items-center gap-1"
-                          style={{ color: meta.badgeColor }}
-                        >
-                          Cấp {t} {data.hasCrown && '👑'}
-                        </span>
-                        <span className="text-[11px] font-mono text-slate-300 font-semibold">
-                          {data.lengthPx}×{data.widthPx}px
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 truncate mt-0.5">{data.name}</span>
-                      {data.isOverridden && (
-                        <span className="text-[9px] font-semibold text-amber-400 mt-1">● Đã chỉnh</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => {
+                      play('click');
+                      setSelectedTier(t);
+                    }}
+                    className={`fstudio-tier-card ${isSel ? 'active' : ''}`}
+                  >
+                    <div className="fstudio-tier-card-top">
+                      <span className="fstudio-tier-badge" style={{ color: TIER_METADATA[t].badgeColor }}>
+                        Cấp {t}
+                      </span>
+                      <span className="fstudio-tier-dim">
+                        {data.lengthPx}×{data.widthPx}px
+                      </span>
+                    </div>
+                    <div className="fstudio-tier-name">{data.name}</div>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Precision Controls for Selected Tier */}
-            <div className="bg-slate-900/80 border border-sky-900/40 rounded-2xl p-4 flex flex-col gap-4 shadow-xl backdrop-blur-md">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            {/* Selected Tier Parameter Panel */}
+            <div className="fstudio-panel">
+              {/* Header with name and aspect ratio lock */}
+              <div className="row between">
                 <div>
-                  <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                    Cấp {selectedTier}: {currentTierData.name}
-                    {currentTierData.hasCrown && <Crown className="w-4 h-4 text-amber-400" />}
-                  </h3>
-                  <span className="text-[11px] text-slate-400">
+                  <div
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 13.5 }}
+                  >
+                    <span style={{ color: currentMeta.badgeColor }}>Cấp {selectedTier}:</span>{' '}
+                    {currentTierData.name}
+                    {currentTierData.hasCrown && <Crown size={15} color="#d97706" />}
+                  </div>
+                  <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>
                     Gốc: {currentTierData.defaultLengthPx} × {currentTierData.defaultWidthPx} px
-                  </span>
+                  </div>
                 </div>
 
-                {/* Aspect Ratio Lock Toggle */}
                 <button
                   type="button"
+                  className={`pill ${lockAspectRatio ? 'pill-primary' : ''}`}
                   onClick={() => setLockAspectRatio((l) => !l)}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
-                    lockAspectRatio
-                      ? 'bg-sky-500/20 border-sky-400 text-sky-200'
-                      : 'bg-slate-800/60 border-slate-700 text-slate-400'
-                  }`}
+                  style={{ cursor: 'pointer', height: 26 }}
                   title={lockAspectRatio ? 'Đang khóa tỷ lệ dài/rộng' : 'Tự do kéo dài/rộng độc lập'}
                 >
-                  {lockAspectRatio ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                  <span>{lockAspectRatio ? 'Khóa Tỉ Lệ' : 'Tự Do'}</span>
+                  {lockAspectRatio ? <Lock size={12} /> : <Unlock size={12} />}
+                  {lockAspectRatio ? 'Khóa Tỉ Lệ' : 'Tự Do'}
                 </button>
               </div>
 
-              {/* Quick Multipliers Bar */}
-              <div className="flex items-center justify-between gap-1 bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/60">
-                <span className="text-[10px] font-semibold text-slate-400 px-1">Nhân nhanh:</span>
-                {[1.0, 1.25, 1.5, 2.0, 3.0].map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => applyMultiplier(selectedTier, m)}
-                    className="flex-1 py-1 rounded-lg text-[11px] font-bold text-slate-300 hover:text-sky-300 hover:bg-sky-950/40 transition-all border border-transparent hover:border-sky-800/40"
-                  >
-                    {m === 1.0 ? '1x' : `${m}x`}
-                  </button>
-                ))}
+              {/* Quick Multipliers */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span className="fstudio-field-label">Nhân nhanh:</span>
+                <div className="fstudio-mult-bar">
+                  {[1.0, 1.25, 1.5, 2.0, 3.0].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      className="fstudio-mult-btn"
+                      onClick={() => applyMultiplier(selectedTier, m)}
+                    >
+                      {m === 1.0 ? '1x' : `${m}x`}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Length Control */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="text-slate-300">Chiều Dài Bóng Cá (Length):</span>
-                  <div className="flex items-center gap-1">
+              {/* Length Slider */}
+              <div className="fstudio-field">
+                <div className="fstudio-field-row">
+                  <span className="fstudio-field-label">Chiều Dài Bóng Cá (Length)</span>
+                  <div className="row" style={{ gap: 4 }}>
                     <input
                       type="number"
                       min={5}
@@ -867,9 +837,11 @@ export function FishShadowAdmin() {
                       onChange={(e) =>
                         updateTier(selectedTier, { lengthPx: Math.max(5, Number(e.target.value) || 5) })
                       }
-                      className="w-20 text-right font-mono font-bold text-sky-300 bg-slate-950 border border-slate-700 rounded-lg px-2 py-0.5 text-xs focus:outline-none focus:border-sky-400"
+                      className="fstudio-input-num"
                     />
-                    <span className="text-slate-400 text-[11px]">px</span>
+                    <span className="muted" style={{ fontSize: 11 }}>
+                      px
+                    </span>
                   </div>
                 </div>
                 <input
@@ -878,15 +850,15 @@ export function FishShadowAdmin() {
                   max={Math.max(1200, currentTierData.lengthPx * 1.5)}
                   value={currentTierData.lengthPx}
                   onChange={(e) => updateTier(selectedTier, { lengthPx: Number(e.target.value) })}
-                  className="w-full accent-sky-400 cursor-pointer"
+                  className="fstudio-range"
                 />
               </div>
 
-              {/* Width Control */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="text-slate-300">Chiều Rộng Bóng Cá (Width):</span>
-                  <div className="flex items-center gap-1">
+              {/* Width Slider */}
+              <div className="fstudio-field">
+                <div className="fstudio-field-row">
+                  <span className="fstudio-field-label">Chiều Rộng Bóng Cá (Width)</span>
+                  <div className="row" style={{ gap: 4 }}>
                     <input
                       type="number"
                       min={2}
@@ -895,9 +867,11 @@ export function FishShadowAdmin() {
                       onChange={(e) =>
                         updateTier(selectedTier, { widthPx: Math.max(2, Number(e.target.value) || 2) })
                       }
-                      className="w-20 text-right font-mono font-bold text-sky-300 bg-slate-950 border border-slate-700 rounded-lg px-2 py-0.5 text-xs focus:outline-none focus:border-sky-400"
+                      className="fstudio-input-num"
                     />
-                    <span className="text-slate-400 text-[11px]">px</span>
+                    <span className="muted" style={{ fontSize: 11 }}>
+                      px
+                    </span>
                   </div>
                 </div>
                 <input
@@ -906,109 +880,84 @@ export function FishShadowAdmin() {
                   max={Math.max(500, currentTierData.widthPx * 1.5)}
                   value={currentTierData.widthPx}
                   onChange={(e) => updateTier(selectedTier, { widthPx: Number(e.target.value) })}
-                  className="w-full accent-sky-400 cursor-pointer"
+                  className="fstudio-range"
                 />
               </div>
 
-              {/* Visual Toggles: Crown & Glow */}
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
-                <label
-                  className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer select-none transition-all ${
-                    currentTierData.hasCrown
-                      ? 'bg-amber-950/30 border-amber-500/50 text-amber-200'
-                      : 'bg-slate-950/40 border-slate-800 text-slate-400'
-                  }`}
-                >
+              {/* Swim speed slider */}
+              <div className="fstudio-field">
+                <div className="fstudio-field-row">
+                  <span className="fstudio-field-label">Tốc độ bơi lội</span>
+                  <span className="fstudio-field-val">{currentTierData.swimSpeed.toFixed(2)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min={0.2}
+                  max={2.5}
+                  step={0.05}
+                  value={currentTierData.swimSpeed}
+                  onChange={(e) => updateTier(selectedTier, { swimSpeed: Number(e.target.value) })}
+                  className="fstudio-range"
+                />
+              </div>
+
+              {/* Wiggle speed slider */}
+              <div className="fstudio-field">
+                <div className="fstudio-field-row">
+                  <span className="fstudio-field-label">Quẫy đuôi nước</span>
+                  <span className="fstudio-field-val">{currentTierData.wiggleSpeed.toFixed(2)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min={0.2}
+                  max={3.0}
+                  step={0.05}
+                  value={currentTierData.wiggleSpeed}
+                  onChange={(e) => updateTier(selectedTier, { wiggleSpeed: Number(e.target.value) })}
+                  className="fstudio-range"
+                />
+              </div>
+
+              {/* Crown & Glow Toggles */}
+              <div className="fstudio-check-group">
+                <label className={`fstudio-check-card ${currentTierData.hasCrown ? 'checked' : ''}`}>
                   <input
                     type="checkbox"
                     checked={currentTierData.hasCrown ?? false}
                     onChange={(e) => updateTier(selectedTier, { hasCrown: e.target.checked })}
-                    className="accent-amber-400"
                   />
-                  <Crown className="w-4 h-4 text-amber-400" />
-                  <span className="text-xs font-bold">Vương Miện Vàng</span>
+                  <Crown size={14} color="#d97706" />
+                  <span>Vương Miện Vàng</span>
                 </label>
 
-                <label
-                  className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer select-none transition-all ${
-                    currentTierData.hasGlow
-                      ? 'bg-sky-950/30 border-sky-500/50 text-sky-200'
-                      : 'bg-slate-950/40 border-slate-800 text-slate-400'
-                  }`}
-                >
+                <label className={`fstudio-check-card ${currentTierData.hasGlow ? 'checked' : ''}`}>
                   <input
                     type="checkbox"
                     checked={currentTierData.hasGlow ?? false}
                     onChange={(e) => updateTier(selectedTier, { hasGlow: e.target.checked })}
-                    className="accent-sky-400"
                   />
-                  <Sparkles className="w-4 h-4 text-sky-400" />
-                  <span className="text-xs font-bold">Quầng Sáng Thần Bí</span>
+                  <Sparkles size={14} color="#0284c7" />
+                  <span>Quầng Sáng Thần Bí</span>
                 </label>
               </div>
 
-              {/* Swimming Physics: Swim Speed & Wiggle */}
-              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800 text-xs">
-                <div>
-                  <div className="flex items-center justify-between text-[11px] mb-1">
-                    <span className="text-slate-400">Tốc độ bơi:</span>
-                    <span className="font-bold text-sky-300 font-mono">
-                      {currentTierData.swimSpeed.toFixed(2)}x
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0.2}
-                    max={2.5}
-                    step={0.05}
-                    value={currentTierData.swimSpeed}
-                    onChange={(e) => updateTier(selectedTier, { swimSpeed: Number(e.target.value) })}
-                    className="w-full accent-sky-400 cursor-pointer"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between text-[11px] mb-1">
-                    <span className="text-slate-400">Quẫy đuôi:</span>
-                    <span className="font-bold text-sky-300 font-mono">
-                      {currentTierData.wiggleSpeed.toFixed(2)}x
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0.2}
-                    max={3.0}
-                    step={0.05}
-                    value={currentTierData.wiggleSpeed}
-                    onChange={(e) => updateTier(selectedTier, { wiggleSpeed: Number(e.target.value) })}
-                    className="w-full accent-sky-400 cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              {/* Presets Toolbar */}
-              <div className="pt-2 border-t border-slate-800 flex items-center justify-between gap-2">
-                <span className="text-[11px] text-slate-400 font-semibold">Cài đặt mẫu:</span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => applyPreset('default')}
-                    className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-slate-800 text-slate-300 hover:text-white"
-                  >
+              {/* Presets Row */}
+              <div className="fstudio-preset-bar">
+                <span className="muted" style={{ fontSize: 11 }}>
+                  Cài đặt mẫu:
+                </span>
+                <div className="row" style={{ gap: 4 }}>
+                  <button type="button" className="fstudio-preset-btn" onClick={() => applyPreset('default')}>
                     Chuẩn gốc
                   </button>
                   <button
                     type="button"
+                    className="fstudio-preset-btn"
                     onClick={() => applyPreset('distinct')}
-                    className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-sky-900/60 text-sky-200 border border-sky-700/50 hover:bg-sky-900"
                   >
                     Bậc rõ rệt
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => applyPreset('giant2x')}
-                    className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-purple-900/60 text-purple-200 border border-purple-700/50 hover:bg-purple-900"
-                  >
+                  <button type="button" className="fstudio-preset-btn" onClick={() => applyPreset('giant2x')}>
                     Khổng lồ 2x
                   </button>
                 </div>
@@ -1016,65 +965,52 @@ export function FishShadowAdmin() {
             </div>
           </div>
 
-          {/* RIGHT: Live Master Viewport & Dual Mode Studio */}
-          <div className="flex-1 flex flex-col gap-3 min-w-0 w-full">
-            <div className="relative rounded-2xl overflow-hidden border border-sky-900/40 bg-slate-950 shadow-2xl">
-              {/* Top Viewport Toolbar */}
-              <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
-                {/* View Mode Switcher */}
-                <div className="flex items-center gap-1 p-1 bg-slate-950/85 backdrop-blur-md rounded-xl border border-sky-800/40 pointer-events-auto shadow-lg">
+          {/* Right Area — Live Interactive Pond Viewport */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+            <div className="fstudio-viewport-wrap">
+              {/* Top Overlay Toolbar */}
+              <div className="fstudio-viewport-topbar">
+                <div className="fstudio-glass-group">
                   <button
                     type="button"
                     onClick={() => setViewMode('scene')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      viewMode === 'scene'
-                        ? 'bg-sky-600 text-white shadow-sm'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
+                    className={`fstudio-glass-btn ${viewMode === 'scene' ? 'active' : ''}`}
                   >
-                    <Waves className="w-3.5 h-3.5" />
+                    <Waves size={13} />
                     Cảnh Hồ Nước Thực Tế
                   </button>
-
                   <button
                     type="button"
                     onClick={() => setViewMode('matrix')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      viewMode === 'matrix'
-                        ? 'bg-sky-600 text-white shadow-sm'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
+                    className={`fstudio-glass-btn ${viewMode === 'matrix' ? 'active' : ''}`}
                   >
-                    <Ruler className="w-3.5 h-3.5" />
+                    <Ruler size={13} />
                     So Sánh Cả 6 Bậc
                   </button>
                 </div>
 
-                {/* Zoom & Audio Controls */}
-                <div className="flex items-center gap-2 pointer-events-auto">
+                <div className="row" style={{ gap: 6, pointerEvents: 'auto' }}>
                   <button
                     type="button"
                     onClick={() => setSoundEnabled((v) => !v)}
-                    className={`p-2 rounded-xl border backdrop-blur-md transition-all ${
-                      soundEnabled
-                        ? 'bg-sky-900/60 border-sky-600/50 text-sky-200 shadow-md'
-                        : 'bg-slate-900/60 border-slate-700/50 text-slate-400'
-                    }`}
-                    title="Bật/Tắt âm thanh"
+                    className="fstudio-glass-group"
+                    style={{
+                      cursor: 'pointer',
+                      padding: '5px 8px',
+                      color: soundEnabled ? '#38bdf8' : '#64748b',
+                    }}
+                    title="Bật/Tắt âm thanh giật cần"
                   >
-                    {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                    {soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
                   </button>
 
-                  {/* Zoom Pills */}
-                  <div className="flex items-center gap-1 bg-slate-950/85 backdrop-blur-md p-1 rounded-xl border border-sky-800/40">
+                  <div className="fstudio-glass-group">
                     {[1.0, 0.85, 0.5, 0.25].map((z) => (
                       <button
                         key={z}
                         type="button"
                         onClick={() => setZoom(z)}
-                        className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${
-                          zoom === z ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
-                        }`}
+                        className={`fstudio-glass-btn ${zoom === z ? 'active' : ''}`}
                       >
                         {Math.round(z * 100)}%
                       </button>
@@ -1084,129 +1020,137 @@ export function FishShadowAdmin() {
               </div>
 
               {/* Live Canvas Element */}
-              <canvas
-                ref={canvasRef}
-                width={860}
-                height={520}
-                className="w-full h-auto block max-h-[560px] object-contain bg-slate-950"
-              />
+              <canvas ref={canvasRef} width={860} height={520} className="fstudio-canvas-element" />
 
-              {/* Bottom Interactive Simulation Toolbar */}
-              <div className="absolute bottom-3 left-3 right-3 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-                {/* Active Tier Stats Badge */}
-                <div className="flex items-center gap-2 pointer-events-auto bg-slate-950/90 backdrop-blur-md px-3.5 py-2 rounded-xl border border-sky-800/40 text-xs shadow-lg">
-                  <span className="text-slate-400">Đang chiếu:</span>
-                  <span className="font-bold" style={{ color: currentMeta.badgeColor }}>
+              {/* Bottom Overlay Toolbar */}
+              <div className="fstudio-viewport-bottombar">
+                <div
+                  className="fstudio-glass-group"
+                  style={{ fontSize: 12, color: '#e2e8f0', gap: 6, padding: '5px 12px' }}
+                >
+                  <span style={{ color: '#94a3b8' }}>Đang chiếu:</span>
+                  <strong style={{ color: currentMeta.badgeColor }}>
                     Cấp {selectedTier} ({currentTierData.name})
-                  </span>
-                  <span className="text-sky-300 font-mono text-[11px] font-bold">
+                  </strong>
+                  <span style={{ fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
                     {currentTierData.lengthPx} × {currentTierData.widthPx} px
                   </span>
-                  {currentTierData.hasCrown && (
-                    <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold text-[10px]">
-                      👑 VƯƠNG MIỆN
-                    </span>
-                  )}
+                  {currentTierData.hasCrown && <Crown size={13} color="#f59e0b" />}
                 </div>
 
-                {/* Scene Interaction Buttons */}
                 {viewMode === 'scene' && (
-                  <div className="flex items-center gap-2 pointer-events-auto">
-                    <Button
-                      variant="secondary"
-                      size="sm"
+                  <div className="row" style={{ gap: 6, pointerEvents: 'auto' }}>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-secondary"
                       onClick={restartCast}
-                      className="bg-slate-900/90 border-sky-700/50 text-sky-200 hover:bg-sky-900/60 gap-1.5 shadow-lg text-xs"
+                      style={{ fontSize: 11, height: 30 }}
                     >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      Thả Câu Lại
-                    </Button>
+                      <RotateCcw size={12} />
+                      Thả lại câu
+                    </button>
 
-                    <Button
-                      variant="secondary"
-                      size="sm"
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${testAction === 'nibble' ? 'btn-reward' : 'btn-secondary'}`}
                       onClick={() => setTestAction((a) => (a === 'nibble' ? 'normal' : 'nibble'))}
-                      className={`text-xs gap-1.5 shadow-lg ${
-                        testAction === 'nibble'
-                          ? 'bg-amber-500/20 border-amber-400 text-amber-200'
-                          : 'bg-slate-900/90 border-sky-700/50 text-sky-200 hover:bg-sky-900/60'
-                      }`}
+                      style={{ fontSize: 11, height: 30 }}
                     >
-                      {testAction === 'nibble' ? 'Đang Rỉa Mồi...' : 'Thử Rỉa Mồi'}
-                    </Button>
+                      {testAction === 'nibble' ? 'Đang rỉa...' : 'Rỉa mồi'}
+                    </button>
 
-                    <Button
-                      size="sm"
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger"
                       onClick={triggerInstantBite}
-                      className="bg-rose-600 hover:bg-rose-500 text-white font-bold gap-1.5 shadow-lg shadow-rose-900/40 text-xs"
+                      style={{ fontSize: 11, height: 30, fontWeight: 700 }}
                     >
-                      <Zap className="w-3.5 h-3.5" />
-                      Cắn Câu Ngay (Bite!)
-                    </Button>
+                      <Zap size={12} />
+                      Bite!
+                    </button>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Hint Box */}
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-900/40 border border-slate-800 text-xs text-slate-400">
-              <span className="text-sky-400 font-bold">💡 Mẹo:</span>
+            {/* Tip box below canvas */}
+            <div
+              className="card"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 14px',
+                fontSize: 12,
+                color: 'var(--ink-2)',
+              }}
+            >
+              <span style={{ color: 'var(--primary)', fontWeight: 700 }}>💡 Mẹo:</span>
               <span>
-                Nhấp nút <strong>So Sánh Cả 6 Bậc</strong> ở góc trên bên trái khung nhìn để đối chiếu kích
-                thước cả 6 loại bóng cá trên cùng thước đo pixel chuẩn.
+                Chuyển sang chế độ <strong>So Sánh Cả 6 Bậc</strong> để xem tương quan kích thước trực quan
+                của toàn bộ 6 cấp bóng cá cùng lúc.
               </span>
             </div>
           </div>
         </div>
       )}
 
-      {/* 4. TAB 2: PER-FISH SPECIES STUDIO */}
+      {/* ── TAB 2: Theo Loài Cá ── */}
       {activeTab === 'species' && (
-        <div className="flex flex-col gap-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Species Search and Filter Bar */}
-          <div className="flex items-center justify-between flex-wrap gap-3 bg-slate-900/70 border border-slate-800 rounded-xl p-3">
-            <div className="flex items-center gap-2 flex-1 min-w-[280px]">
-              <Search className="w-4 h-4 text-slate-400" />
+          <div
+            className="card"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 12,
+              padding: '12px 16px',
+            }}
+          >
+            <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
+              <Search size={15} style={{ position: 'absolute', left: 10, top: 11, color: 'var(--muted)' }} />
               <input
                 type="text"
                 placeholder="Tìm loài cá (ví dụ: Cá Hề, Cá Voi Xanh, clownfish)..."
                 value={fishSearch}
                 onChange={(e) => setFishSearch(e.target.value)}
-                className="bg-transparent border-none outline-none text-xs text-white w-full placeholder:text-slate-500"
+                style={{
+                  width: '100%',
+                  padding: '7px 12px 7px 32px',
+                  borderRadius: 8,
+                  background: 'var(--surface-2)',
+                  border: '1px solid var(--line-2)',
+                  fontSize: 13,
+                  color: 'var(--ink)',
+                }}
               />
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="row" style={{ gap: 6 }}>
               <button
                 type="button"
                 onClick={() => setFishStatusFilter('all')}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold ${
-                  fishStatusFilter === 'all'
-                    ? 'bg-sky-600 text-white'
-                    : 'bg-slate-800 text-slate-400 hover:text-white'
-                }`}
+                className={`pill ${fishStatusFilter === 'all' ? 'pill-primary' : ''}`}
+                style={{ cursor: 'pointer', height: 30, padding: '0 12px' }}
               >
                 Tất cả ({allFish.length})
               </button>
               <button
                 type="button"
                 onClick={() => setFishStatusFilter('custom')}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold ${
-                  fishStatusFilter === 'custom'
-                    ? 'bg-sky-600 text-white'
-                    : 'bg-slate-800 text-slate-400 hover:text-white'
-                }`}
+                className={`pill ${fishStatusFilter === 'custom' ? 'pill-primary' : ''}`}
+                style={{ cursor: 'pointer', height: 30, padding: '0 12px' }}
               >
                 Bóng riêng ({allFish.filter((f) => f.isShadowOverridden).length})
               </button>
               <button
                 type="button"
                 onClick={() => setFishStatusFilter('default')}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold ${
-                  fishStatusFilter === 'default'
-                    ? 'bg-sky-600 text-white'
-                    : 'bg-slate-800 text-slate-400 hover:text-white'
-                }`}
+                className={`pill ${fishStatusFilter === 'default' ? 'pill-primary' : ''}`}
+                style={{ cursor: 'pointer', height: 30, padding: '0 12px' }}
               >
                 Chuẩn theo bậc ({allFish.filter((f) => !f.isShadowOverridden).length})
               </button>
@@ -1214,7 +1158,15 @@ export function FishShadowAdmin() {
           </div>
 
           {/* Quick Species Selection Strip */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              overflowX: 'auto',
+              paddingBottom: 4,
+            }}
+          >
             {filteredSpecies.map((f) => {
               const isSelected = activeSelectedFish?.id === f.id;
               return (
@@ -1225,20 +1177,28 @@ export function FishShadowAdmin() {
                     play('click');
                     setSelectedFishId(f.id);
                   }}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border whitespace-nowrap shrink-0 transition-all ${
-                    isSelected
-                      ? 'bg-sky-500/20 border-sky-400 text-sky-200 shadow-md'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
-                  }`}
+                  className="card"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '6px 12px',
+                    whiteSpace: 'nowrap',
+                    cursor: 'pointer',
+                    borderColor: isSelected ? 'var(--primary)' : 'var(--line-2)',
+                    background: isSelected ? 'var(--primary-soft)' : 'var(--surface)',
+                    boxShadow: isSelected ? '0 0 0 2px var(--primary-glow)' : 'var(--shadow-1)',
+                    transition: 'all 0.12s',
+                  }}
                 >
                   <img
                     src={fishIcon(f.id, 2)}
                     alt=""
-                    style={{ width: 28, height: 22, objectFit: 'contain' }}
+                    style={{ width: 28, height: 20, objectFit: 'contain' }}
                   />
-                  <span className="text-xs font-semibold">{f.name}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>{f.name}</span>
                   {f.isShadowOverridden && (
-                    <span className="bg-indigo-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                    <span className="pill pill-primary" style={{ height: 18, fontSize: 9, padding: '0 5px' }}>
                       Riêng
                     </span>
                   )}
@@ -1258,14 +1218,17 @@ export function FishShadowAdmin() {
               onOpenScene={() => setActiveTab('tiers')}
             />
           ) : (
-            <div className="text-center p-12 text-slate-500 text-sm">
+            <div
+              className="card"
+              style={{ textAlign: 'center', padding: 48, color: 'var(--muted)', fontSize: 13 }}
+            >
               Không tìm thấy loài cá nào phù hợp với từ khóa tìm kiếm.
             </div>
           )}
         </div>
       )}
 
-      {/* 5. TAB 3: BITE TIMING & BEHAVIOR */}
+      {/* ── TAB 3: Nhịp Đớp Mồi ── */}
       {activeTab === 'behavior' && (
         <FishSceneSimulator
           selectedSpecies={activeSelectedFish}

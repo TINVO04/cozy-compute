@@ -548,35 +548,40 @@ export function FishSceneSimulator({
   }, [sessionKey, forceBite, zoom, soundEnabled, behavior, activeTierCfg, meQuery.data]);
 
   return (
-    <div className="flex flex-col xl:flex-row gap-6 p-1">
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(400px, 1.35fr) minmax(320px, 1fr)',
+        gap: 16,
+        alignItems: 'start',
+      }}
+    >
       {/* LEFT: Canvas Scene Simulator Window */}
-      <div className="flex-1 flex flex-col gap-3 min-w-0">
-        <div className="relative rounded-2xl overflow-hidden border border-sky-900/40 bg-slate-950 shadow-2xl">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+        <div className="fstudio-viewport-wrap">
           {/* Header Bar inside simulator */}
-          <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
-            <div className="flex items-center gap-2 pointer-events-auto bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-sky-800/40 shadow-lg text-xs font-semibold text-sky-200">
-              <Waves className="w-4 h-4 text-sky-400 animate-pulse" />
+          <div className="fstudio-viewport-topbar">
+            <div className="fstudio-glass-group" style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8' }}>
+              <Waves size={14} />
               <span>Mô Phỏng Thuyền & Phao (Play Together Scene)</span>
             </div>
 
-            <div className="flex items-center gap-2 pointer-events-auto">
+            <div className="row" style={{ gap: 6, pointerEvents: 'auto' }}>
               <button
                 type="button"
                 onClick={() => setSoundEnabled((v) => !v)}
-                className={`p-2 rounded-xl border backdrop-blur-md transition-all ${
-                  soundEnabled
-                    ? 'bg-sky-900/60 border-sky-600/50 text-sky-200 shadow-md'
-                    : 'bg-slate-900/60 border-slate-700/50 text-slate-400'
-                }`}
+                className="fstudio-glass-group"
+                style={{ cursor: 'pointer', padding: '5px 8px', color: soundEnabled ? '#38bdf8' : '#64748b' }}
                 title="Bật/Tắt âm thanh"
               >
-                <Volume2 className="w-4 h-4" />
+                <Volume2 size={14} />
               </button>
 
               <button
                 type="button"
                 onClick={() => setZoom((z) => Math.min(1.4, Math.max(0.6, z === 0.95 ? 1.15 : 0.95)))}
-                className="px-2.5 py-1.5 rounded-xl border border-sky-800/40 bg-slate-950/80 backdrop-blur-md text-xs font-medium text-sky-300 hover:text-white"
+                className="fstudio-glass-btn"
+                style={{ background: 'rgba(6, 17, 26, 0.85)', border: '1px solid rgba(255, 255, 255, 0.15)' }}
               >
                 Zoom: {Math.round(zoom * 100)}%
               </button>
@@ -584,38 +589,34 @@ export function FishSceneSimulator({
           </div>
 
           {/* Live Canvas Element */}
-          <canvas
-            ref={canvasRef}
-            width={860}
-            height={520}
-            className="w-full h-auto block max-h-[560px] object-contain bg-slate-950"
-          />
+          <canvas ref={canvasRef} width={860} height={520} className="fstudio-canvas-element" />
 
           {/* Quick Simulation Action Overlay */}
-          <div className="absolute bottom-3 left-3 right-3 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-            <div className="flex items-center gap-2 pointer-events-auto bg-slate-950/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-sky-800/40 text-xs">
-              <span className="text-slate-400">Đang chiếu:</span>
-              <span className="font-bold text-amber-300">
+          <div className="fstudio-viewport-bottombar">
+            <div className="fstudio-glass-group" style={{ fontSize: 12, color: '#e2e8f0', gap: 6 }}>
+              <span style={{ color: '#94a3b8' }}>Đang chiếu:</span>
+              <strong style={{ color: '#fbbf24' }}>
                 {selectedSpecies ? selectedSpecies.name : `Bóng Cấp ${selectedTier}`}
-              </span>
-              <span className="text-sky-300 font-mono text-[11px]">
-                ({activeTierCfg.lengthPx}x{activeTierCfg.widthPx}px)
+              </strong>
+              <span style={{ fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
+                ({activeTierCfg.lengthPx} × {activeTierCfg.widthPx} px)
               </span>
             </div>
 
-            <div className="flex items-center gap-2 pointer-events-auto">
-              <Button
-                variant="secondary"
-                size="sm"
+            <div className="row" style={{ gap: 6, pointerEvents: 'auto' }}>
+              <button
+                type="button"
+                className="btn btn-sm btn-secondary"
                 onClick={restartSimulation}
-                className="bg-slate-900/90 border-sky-700/50 text-sky-200 hover:bg-sky-900/60 gap-1.5 shadow-lg"
+                style={{ fontSize: 11, height: 30 }}
               >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Thả Câu Lại (Replay)
-              </Button>
+                <RotateCcw size={12} />
+                Thả Câu Lại
+              </button>
 
-              <Button
-                size="sm"
+              <button
+                type="button"
+                className="btn btn-sm btn-danger"
                 onClick={() => {
                   setForceBite(true);
                   if (soundEnabled) {
@@ -623,29 +624,45 @@ export function FishSceneSimulator({
                     play('splash');
                   }
                 }}
-                className="bg-rose-600 hover:bg-rose-500 text-white font-bold gap-1.5 shadow-lg shadow-rose-900/40"
+                style={{ fontSize: 11, height: 30, fontWeight: 700 }}
               >
-                <Zap className="w-3.5 h-3.5" />
+                <Zap size={12} />
                 Cắn Câu Ngay (Bite!)
-              </Button>
+              </button>
             </div>
           </div>
         </div>
 
         {/* Species Quick Selector Bar */}
         {allSpecies.length > 0 && onSelectSpecies && (
-          <div className="flex items-center gap-2 overflow-x-auto py-2 px-1 scrollbar-thin">
-            <span className="text-xs font-semibold text-slate-400 shrink-0">Chọn nhanh cá:</span>
+          <div
+            className="card"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              overflowX: 'auto',
+              padding: '8px 12px',
+            }}
+          >
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+              Chọn nhanh cá:
+            </span>
             {allSpecies.slice(0, 10).map((sp) => (
               <button
                 key={sp.id}
                 type="button"
                 onClick={() => onSelectSpecies(sp.id)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all border ${
-                  selectedSpecies?.id === sp.id
-                    ? 'bg-amber-500/20 border-amber-400 text-amber-200 shadow-sm'
-                    : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
-                }`}
+                className="pill"
+                style={{
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  whiteSpace: 'nowrap',
+                  background: selectedSpecies?.id === sp.id ? 'var(--primary)' : 'var(--surface-2)',
+                  color: selectedSpecies?.id === sp.id ? '#fff' : 'var(--ink-2)',
+                  fontWeight: selectedSpecies?.id === sp.id ? 700 : 500,
+                  transition: 'all 0.12s',
+                }}
               >
                 {sp.name}
               </button>
@@ -655,40 +672,50 @@ export function FishSceneSimulator({
       </div>
 
       {/* RIGHT: Admin Tuning Sliders & Configuration Controls */}
-      <div className="w-full xl:w-96 flex flex-col gap-4 bg-slate-900/80 border border-sky-900/40 p-4 rounded-2xl shadow-xl backdrop-blur-md">
-        <div className="flex items-center justify-between border-b border-sky-900/30 pb-3">
-          <div className="flex items-center gap-2">
-            <Sliders className="w-4 h-4 text-sky-400" />
-            <h3 className="font-bold text-sm text-sky-100">Bảng Điều Khiển Nhịp Đớp Mồi</h3>
+      <div className="fstudio-panel">
+        <div className="row between" style={{ borderBottom: '1px solid var(--line)', paddingBottom: 10 }}>
+          <div className="row" style={{ gap: 8 }}>
+            <Sliders size={16} style={{ color: 'var(--primary)' }} />
+            <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>
+              Bảng Điều Khiển Nhịp Đớp Mồi
+            </h3>
           </div>
           {behaviorQuery.data?.isOverridden && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            <span className="pill pill-warn" style={{ fontSize: 10 }}>
               Đã tùy biến
             </span>
           )}
         </div>
 
         {/* Behavior Form Controls */}
-        <div className="space-y-4 text-xs">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* 1. Nibbles Min & Max */}
-          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-sky-200 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <div className="card" style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="row between">
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: 'var(--ink)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <Sparkles size={14} color="#d97706" />
                 Số Lần Đớp Nhử (Nibble Count)
               </span>
-              <span className="text-amber-300 font-mono font-bold">
+              <span className="fstudio-field-val" style={{ color: '#d97706' }}>
                 {behavior.minNibbles} - {behavior.maxNibbles} lần
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Nếu đặt <strong>Min = 0</strong>, cá có xác suất{' '}
-              <span className="text-rose-400 font-medium">đớp mồi luôn một phát</span> mà không cần nhử!
+            <p className="muted" style={{ fontSize: 11, margin: 0 }}>
+              Nếu đặt <strong>Min = 0</strong>, cá có xác suất đớp mồi luôn mà không cần nhử!
             </p>
 
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, paddingTop: 4 }}>
               <div>
-                <label className="text-[10px] text-slate-400 block mb-1">
+                <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 2 }}>
                   Tối thiểu (Min): {behavior.minNibbles}
                 </label>
                 <input
@@ -698,12 +725,12 @@ export function FishSceneSimulator({
                   step={1}
                   value={behavior.minNibbles}
                   onChange={(e) => setBehavior((prev) => ({ ...prev, minNibbles: Number(e.target.value) }))}
-                  className="w-full accent-amber-400 cursor-pointer"
+                  className="fstudio-range"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] text-slate-400 block mb-1">
+                <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 2 }}>
                   Tối đa (Max): {behavior.maxNibbles}
                 </label>
                 <input
@@ -713,28 +740,37 @@ export function FishSceneSimulator({
                   step={1}
                   value={behavior.maxNibbles}
                   onChange={(e) => setBehavior((prev) => ({ ...prev, maxNibbles: Number(e.target.value) }))}
-                  className="w-full accent-amber-400 cursor-pointer"
+                  className="fstudio-range"
                 />
               </div>
             </div>
           </div>
 
           {/* 2. Nibble Interval (ms) */}
-          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-sky-200 flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-cyan-400" />
+          <div className="card" style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="row between">
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: 'var(--ink)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <Zap size={14} color="#0284c7" />
                 Khoảng Cách Thời Gian Giữa Các Lần Nhử
               </span>
-              <span className="text-cyan-300 font-mono font-bold">
+              <span className="fstudio-field-val">
                 {(behavior.nibbleIntervalMinMs / 1000).toFixed(1)}s -{' '}
                 {(behavior.nibbleIntervalMaxMs / 1000).toFixed(1)}s
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, paddingTop: 4 }}>
               <div>
-                <label className="text-[10px] text-slate-400 block mb-1">
+                <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 2 }}>
                   Nhanh nhất: {behavior.nibbleIntervalMinMs}ms
                 </label>
                 <input
@@ -746,12 +782,12 @@ export function FishSceneSimulator({
                   onChange={(e) =>
                     setBehavior((prev) => ({ ...prev, nibbleIntervalMinMs: Number(e.target.value) }))
                   }
-                  className="w-full accent-cyan-400 cursor-pointer"
+                  className="fstudio-range"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] text-slate-400 block mb-1">
+                <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 2 }}>
                   Chậm nhất: {behavior.nibbleIntervalMaxMs}ms
                 </label>
                 <input
@@ -763,28 +799,37 @@ export function FishSceneSimulator({
                   onChange={(e) =>
                     setBehavior((prev) => ({ ...prev, nibbleIntervalMaxMs: Number(e.target.value) }))
                   }
-                  className="w-full accent-cyan-400 cursor-pointer"
+                  className="fstudio-range"
                 />
               </div>
             </div>
           </div>
 
           {/* 3. Shadow Wait Delay */}
-          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-sky-200 flex items-center gap-1.5">
-                <Waves className="w-3.5 h-3.5 text-blue-400" />
+          <div className="card" style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="row between">
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: 'var(--ink)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <Waves size={14} color="#3b82f6" />
                 Thời Gian Chờ Bóng Cá Xuất Hiện
               </span>
-              <span className="text-blue-300 font-mono font-bold">
+              <span className="fstudio-field-val" style={{ color: '#3b82f6' }}>
                 {(behavior.shadowDelayMinMs / 1000).toFixed(1)}s -{' '}
                 {(behavior.shadowDelayMaxMs / 1000).toFixed(1)}s
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, paddingTop: 4 }}>
               <div>
-                <label className="text-[10px] text-slate-400 block mb-1">
+                <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 2 }}>
                   Tối thiểu: {(behavior.shadowDelayMinMs / 1000).toFixed(1)}s
                 </label>
                 <input
@@ -796,12 +841,12 @@ export function FishSceneSimulator({
                   onChange={(e) =>
                     setBehavior((prev) => ({ ...prev, shadowDelayMinMs: Number(e.target.value) }))
                   }
-                  className="w-full accent-blue-400 cursor-pointer"
+                  className="fstudio-range"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] text-slate-400 block mb-1">
+                <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 2 }}>
                   Tối đa: {(behavior.shadowDelayMaxMs / 1000).toFixed(1)}s
                 </label>
                 <input
@@ -813,18 +858,22 @@ export function FishSceneSimulator({
                   onChange={(e) =>
                     setBehavior((prev) => ({ ...prev, shadowDelayMaxMs: Number(e.target.value) }))
                   }
-                  className="w-full accent-blue-400 cursor-pointer"
+                  className="fstudio-range"
                 />
               </div>
             </div>
           </div>
 
           {/* 4. Distance & Dash Speed */}
-          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-3">
+          <div className="card" style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-semibold text-sky-200">Khoảng Cách Bơi Ra Xa Rình Phao:</span>
-                <span className="text-emerald-300 font-mono font-bold">{behavior.retreatDistancePx}px</span>
+              <div className="row between" style={{ marginBottom: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)' }}>
+                  Khoảng Cách Bơi Ra Rình Phao:
+                </span>
+                <span className="fstudio-field-val" style={{ color: '#059669' }}>
+                  {behavior.retreatDistancePx}px
+                </span>
               </div>
               <input
                 type="range"
@@ -835,17 +884,19 @@ export function FishSceneSimulator({
                 onChange={(e) =>
                   setBehavior((prev) => ({ ...prev, retreatDistancePx: Number(e.target.value) }))
                 }
-                className="w-full accent-emerald-400 cursor-pointer"
+                className="fstudio-range"
               />
-              <p className="text-[10px] text-slate-500 mt-0.5">
+              <p className="muted" style={{ fontSize: 10, margin: '2px 0 0' }}>
                 Cá sẽ bơi ra xa ở khoảng cách này rồi lao nhanh vào phao đớp, sau đó lùi lại.
               </p>
             </div>
 
-            <div className="pt-1 border-t border-slate-800/60">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-semibold text-sky-200">Tốc Độ Lao Tới Đớp Mồi:</span>
-                <span className="text-rose-300 font-mono font-bold">
+            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 8 }}>
+              <div className="row between" style={{ marginBottom: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)' }}>
+                  Tốc Độ Lao Tới Đớp Mồi:
+                </span>
+                <span className="fstudio-field-val" style={{ color: '#e11d48' }}>
                   {behavior.dashSpeedFactor.toFixed(1)}x
                 </span>
               </div>
@@ -858,9 +909,9 @@ export function FishSceneSimulator({
                 onChange={(e) =>
                   setBehavior((prev) => ({ ...prev, dashSpeedFactor: Number(e.target.value) }))
                 }
-                className="w-full accent-rose-400 cursor-pointer"
+                className="fstudio-range"
               />
-              <p className="text-[10px] text-slate-500 mt-0.5">
+              <p className="muted" style={{ fontSize: 10, margin: '2px 0 0' }}>
                 Càng cao, cá lao vụt tới phao càng nhanh và dứt khoát.
               </p>
             </div>
@@ -868,13 +919,14 @@ export function FishSceneSimulator({
         </div>
 
         {/* Action Buttons */}
-        <div className="pt-2 flex flex-col gap-2">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 6 }}>
           <Button
+            variant="primary"
             onClick={() => saveBehaviorMutation.mutate(behavior)}
             disabled={saveBehaviorMutation.isPending}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-emerald-950/50 gap-2"
+            block
           >
-            <Save className="w-4 h-4" />
+            <Save size={14} />
             Lưu Cấu Hình Vào Server
           </Button>
 
@@ -883,9 +935,9 @@ export function FishSceneSimulator({
             size="sm"
             onClick={() => resetBehaviorMutation.mutate()}
             disabled={resetBehaviorMutation.isPending}
-            className="w-full border-slate-700 bg-slate-900/60 text-slate-300 hover:bg-slate-800 gap-1.5"
+            block
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw size={14} />
             Khôi Phục Mặc Định Gốc
           </Button>
         </div>
