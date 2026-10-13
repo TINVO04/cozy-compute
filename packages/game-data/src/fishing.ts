@@ -13,12 +13,12 @@ export interface FishingBehaviorConfig {
 }
 
 export const DEFAULT_FISHING_BEHAVIOR_CONFIG: FishingBehaviorConfig = {
-  minNibbles: 1,
-  maxNibbles: 4,
-  nibbleIntervalMinMs: 1400,
-  nibbleIntervalMaxMs: 3200,
-  shadowDelayMinMs: 3500,
-  shadowDelayMaxMs: 7000,
+  minNibbles: 4,
+  maxNibbles: 8,
+  nibbleIntervalMinMs: 2000,
+  nibbleIntervalMaxMs: 5000,
+  shadowDelayMinMs: 7000,
+  shadowDelayMaxMs: 12000,
   retreatDistancePx: 80,
   dashSpeedFactor: 1.4,
 };

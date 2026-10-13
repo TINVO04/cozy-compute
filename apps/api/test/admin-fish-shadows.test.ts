@@ -283,8 +283,8 @@ describe('Admin Fish Shadow Tiers Management (/admin/fish/shadow-tiers)', () => 
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.isOverridden).toBe(false);
-    expect(body.config.minNibbles).toBe(1);
-    expect(body.config.maxNibbles).toBe(4);
+    expect(body.config.minNibbles).toBe(4);
+    expect(body.config.maxNibbles).toBe(8);
     expect(body.config.retreatDistancePx).toBe(80);
     expect(body.config.dashSpeedFactor).toBe(1.4);
   });
@@ -354,7 +354,8 @@ describe('Admin Fish Shadow Tiers Management (/admin/fish/shadow-tiers)', () => 
     expect(delRes.statusCode).toBe(200);
     const body = JSON.parse(delRes.body);
     expect(body.isOverridden).toBe(false);
-    expect(body.config.minNibbles).toBe(1);
+    expect(body.config.minNibbles).toBe(4);
+    expect(body.config.maxNibbles).toBe(8);
 
     // Verify public endpoint
     const pubRes = await app.inject({
@@ -363,7 +364,7 @@ describe('Admin Fish Shadow Tiers Management (/admin/fish/shadow-tiers)', () => 
     });
     expect(pubRes.statusCode).toBe(200);
     const pubBody = JSON.parse(pubRes.body);
-    expect(pubBody.minNibbles).toBe(1);
-    expect(pubBody.maxNibbles).toBe(4);
+    expect(pubBody.minNibbles).toBe(4);
+    expect(pubBody.maxNibbles).toBe(8);
   });
 });
