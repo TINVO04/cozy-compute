@@ -1,6 +1,6 @@
-import { CROPS, getPlotUnlockPrice, type CropId } from '@cozy/game-data';
+import { CROPS, getPlotUnlockPrice, isWeatherRainy, type CropId } from '@cozy/game-data';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Droplets, Lock, Sparkles, Sprout, Unlock, X } from 'lucide-react';
+import { CloudRain, Droplets, Lock, Sparkles, Sprout, Unlock, X } from 'lucide-react';
 import { useState } from 'react';
 import { api, ApiError, type Me } from '../../lib/api';
 import { play } from '../../lib/sound';
@@ -13,6 +13,7 @@ interface FarmPlotInfo {
   unlockPrice: number;
   isTilled: boolean;
   wateredAt: string | null;
+  isWatered?: boolean;
   cropId: string | null;
   plantedAt: string | null;
   growthStage: 'seed' | 'sprout' | 'blooming' | 'mature' | null;
@@ -28,6 +29,7 @@ interface WarehouseItem {
 
 interface FarmMeResponse {
   farm: { ownerId: string; isPublic: boolean; hasPassword: boolean };
+  isRaining?: boolean;
   plots: FarmPlotInfo[];
   warehouse: { capacity: number; items: WarehouseItem[] };
 }
@@ -36,6 +38,7 @@ export function FarmPlotModal({ me, onClose }: { me: Me; onClose: () => void }) 
   const plotIndex = useUi((s) => s.activePlotIndex);
   const qc = useQueryClient();
   const ownerId = useUi((s) => s.room.ownerId) ?? me.id;
+  const weather = useUi((s) => s.weather);
   const [selectedSeed, setSelectedSeed] = useState<string>('');
   const [useFertilizer, setUseFertilizer] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -53,6 +56,8 @@ export function FarmPlotModal({ me, onClose }: { me: Me; onClose: () => void }) 
   const isOwner = !data?.farm || data.farm.ownerId === me.id;
   const unlockCost = getPlotUnlockPrice(plotIndex);
   const isLocked = plot ? !plot.isUnlocked : plotIndex >= 4;
+  const isRaining = isWeatherRainy(weather) || Boolean(data?.isRaining);
+  const isMoist = Boolean(plot?.wateredAt) || Boolean(plot?.isWatered) || isRaining;
 
   const availableSeeds =
     data?.warehouse.items.filter((item) => item.itemId.startsWith('seed_') && item.quantity > 0) ?? [];
@@ -313,24 +318,38 @@ export function FarmPlotModal({ me, onClose }: { me: Me; onClose: () => void }) 
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Droplets size={18} color={plot?.wateredAt ? '#38bdf8' : '#a8a29e'} />
+                  {isRaining ? (
+                    <CloudRain size={18} color="#38bdf8" />
+                  ) : (
+                    <Droplets size={18} color={isMoist ? '#38bdf8' : '#a8a29e'} />
+                  )}
                   <span style={{ color: '#fef3c7', fontSize: 13 }}>
                     Độ ẩm đất:{' '}
-                    {plot?.wateredAt ? 'Đất ẩm (Đang nuôi dưỡng mầm)' : 'Đất khô cằn (Cần tưới nước)'}
+                    {isRaining
+                      ? 'Đất ẩm tự nhiên (Trời đang mưa · Không cần tưới)'
+                      : isMoist
+                        ? 'Đất ẩm (Đang nuôi dưỡng mầm)'
+                        : 'Đất khô cằn (Cần tưới nước)'}
                   </span>
                 </div>
                 <Button
                   variant="ghost"
                   onClick={() => void handleWater()}
-                  disabled={actionLoading || !!plot?.wateredAt || !plot?.cropId}
+                  disabled={actionLoading || isMoist || !plot?.cropId}
                   style={{
                     padding: '4px 10px',
                     fontSize: 12,
                     borderColor: '#38bdf8',
-                    color: plot?.wateredAt ? '#94a3b8' : '#38bdf8',
+                    color: isMoist ? '#94a3b8' : '#38bdf8',
                   }}
                 >
-                  {plot?.wateredAt ? 'Đã đủ ẩm' : isOwner ? 'Tưới nước' : 'Tưới nước hộ (+Fame)'}
+                  {isRaining
+                    ? 'Trời mưa tự ngấm'
+                    : isMoist
+                      ? 'Đã đủ ẩm'
+                      : isOwner
+                        ? 'Tưới nước'
+                        : 'Tưới nước hộ (+Fame)'}
                 </Button>
               </div>
 

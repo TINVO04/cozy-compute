@@ -1,10 +1,12 @@
+import { ANIMALS, BAC_SAU_SHOP_ITEMS, CROPS, POND_FISHES } from '@cozy/game-data';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowUpCircle, Box, Egg, Package, Sprout, Wheat, X } from 'lucide-react';
+import { ArrowUpCircle, Box, Egg, Sprout, Wheat } from 'lucide-react';
 import { useState } from 'react';
-import { api, ApiError, type Me } from '../../lib/api';
+import { farmItemIcon } from '../../art/farm-icons';
+import { api, ApiError, num, type Me } from '../../lib/api';
 import { play } from '../../lib/sound';
 import { useUi } from '../../lib/store';
-import { Button } from '../../ui/primitives';
+import { Button, CoinIcon, Panel } from '../../ui/primitives';
 
 type SiloTab = 'crops' | 'animal_products' | 'seeds_stocks' | 'supplies';
 
@@ -24,13 +26,14 @@ const TAB_CONFIG: Record<SiloTab, { label: string; icon: typeof Wheat }> = {
   crops: { label: 'Nông Sản', icon: Wheat },
   animal_products: { label: 'Chăn Nuôi', icon: Egg },
   seeds_stocks: { label: 'Hạt & Con Giống', icon: Sprout },
-  supplies: { label: 'Vật Tư', icon: Box },
+  supplies: { label: 'Vật Tư & Xe Cày', icon: Box },
 };
 
 export function FarmSiloPanel({ me, onClose }: { me: Me; onClose: () => void }) {
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<SiloTab>('crops');
   const [upgrading, setUpgrading] = useState(false);
+  const [sellingId, setSellingId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const { data, refetch, isLoading } = useQuery({
@@ -42,12 +45,17 @@ export function FarmSiloPanel({ me, onClose }: { me: Me; onClose: () => void }) 
   const items = data?.warehouse.items ?? [];
   const capacity = data?.warehouse.capacity ?? 100;
   const totalQuantity = items.reduce((acc, it) => acc + it.quantity, 0);
+  const capacityPct = Math.min(100, Math.round((totalQuantity / capacity) * 100));
 
   const filteredItems = items.filter((it) => {
-    if (activeTab === 'crops') return it.tab === 'crops';
-    if (activeTab === 'animal_products') return it.tab === 'animal_products';
-    if (activeTab === 'seeds_stocks') return it.tab === 'seeds_stocks';
-    if (activeTab === 'supplies') return it.tab === 'supplies';
+    if (activeTab === 'crops') return it.tab === 'crops' || it.itemId.startsWith('crop_');
+    if (activeTab === 'animal_products')
+      return (
+        it.tab === 'animal_products' || it.itemId.startsWith('yield_') || it.itemId.startsWith('harvest_')
+      );
+    if (activeTab === 'seeds_stocks')
+      return it.tab === 'seeds_stocks' || it.itemId.startsWith('seed_') || it.itemId.startsWith('stock_');
+    if (activeTab === 'supplies') return it.tab === 'supplies' || it.itemId.includes('tractor');
     return true;
   });
 
@@ -78,161 +86,224 @@ export function FarmSiloPanel({ me, onClose }: { me: Me; onClose: () => void }) 
     }
   };
 
+  const handleQuickSellOne = async (item: WarehouseItem) => {
+    setSellingId(item.id);
+    setErrorMsg(null);
+    try {
+      const res = await api<{ ok: boolean; coinEarned: number }>('/api/farm/shop/sell', {
+        method: 'POST',
+        idempotencyKey: crypto.randomUUID(),
+        body: { itemId: item.itemId, quantity: 1 },
+      });
+      play('coin');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: 'Bán 1 nông sản thành công!',
+        body: `Nhận được +${res.coinEarned.toLocaleString()} Xu vào ví!`,
+      });
+      await refetch();
+      await qc.invalidateQueries({ queryKey: ['me'] });
+    } catch (err) {
+      play('error');
+      setErrorMsg(err instanceof ApiError ? err.message : 'Giao dịch bán thất bại.');
+    } finally {
+      setSellingId(null);
+    }
+  };
+
+  const getItemDisplayName = (itemId: string) => {
+    const crop = Object.values(CROPS).find((c) => c.harvestItemId === itemId || c.id === itemId);
+    if (crop) return crop.name;
+    const animal = Object.values(ANIMALS).find((a) => a.yieldItemId === itemId || a.yieldItem === itemId);
+    if (animal) return animal.yieldName ?? animal.name;
+    const pondFish = Object.values(POND_FISHES).find((p) => p.harvestItemId === itemId);
+    if (pondFish) return pondFish.name;
+    const shopItem = BAC_SAU_SHOP_ITEMS.find((s) => s.id === itemId);
+    if (shopItem) return shopItem.name;
+    return itemId
+      .replace(/^(item_|seed_|fish_|crop_|yield_)/, '')
+      .replace(/_/g, ' ')
+      .toUpperCase();
+  };
+
+  const getItemUnitPrice = (itemId: string) => {
+    const crop = Object.values(CROPS).find((c) => c.harvestItemId === itemId || c.id === itemId);
+    if (crop) return crop.sellPrice;
+    const animal = Object.values(ANIMALS).find((a) => a.yieldItemId === itemId || a.yieldItem === itemId);
+    if (animal) return animal.yieldPrice;
+    const pondFish = Object.values(POND_FISHES).find((p) => p.harvestItemId === itemId);
+    if (pondFish) return Math.floor(pondFish.pricePerKg * pondFish.marketWeightMinKg);
+    return null;
+  };
+
   return (
-    <div className="backdrop" onClick={onClose} role="dialog" aria-modal="true">
-      <div
-        className="panel"
-        style={{
-          maxWidth: 580,
-          background: 'linear-gradient(180deg, #24160c 0%, #150c06 100%)',
-          borderColor: '#b45309',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="panel-header" style={{ borderBottomColor: '#78350f' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Box size={20} color="#f59e0b" />
-            <span style={{ color: '#fef3c7', fontWeight: 700, fontSize: 16 }}>Nhà Kho Silo Nông Sản</span>
-          </div>
-          <button className="panel-close" onClick={onClose} aria-label="Đóng (Esc)">
-            <X size={18} />
-          </button>
-        </div>
-
-        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {errorMsg ? (
-            <div
-              style={{
-                background: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid #ef4444',
-                color: '#fca5a5',
-                padding: '8px 12px',
-                borderRadius: 6,
-                fontSize: 13,
-              }}
-            >
-              {errorMsg}
-            </div>
-          ) : null}
-
-          {/* Capacity Progress Bar */}
+    <Panel
+      title="Nhà Kho Silo Nông Sản"
+      icon={<Box size={20} color="#f59e0b" />}
+      actions={
+        <span className="row" style={{ gap: 6, fontWeight: 700, color: 'var(--coin)' }}>
+          <CoinIcon size={16} /> {num(me.balances.coin)} Xu
+        </span>
+      }
+      onClose={onClose}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {errorMsg ? (
           <div
             style={{
-              background: '#1c1008',
-              borderRadius: 8,
-              padding: '12px 16px',
-              border: '1px solid #78350f',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid #ef4444',
+              color: '#fca5a5',
+              padding: '8px 12px',
+              borderRadius: 6,
+              fontSize: 13,
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#d4b996', fontSize: 13 }}>
-                Sức Chứa Kho Silo: <strong style={{ color: '#fef08a' }}>{totalQuantity}</strong> / {capacity}{' '}
-                Ngăn
-              </span>
-              {isOwner ? (
-                <Button
-                  variant="ghost"
-                  onClick={() => void handleUpgrade()}
-                  disabled={upgrading || me.balances.coin < 1000}
-                  style={{
-                    fontSize: 12,
-                    padding: '4px 10px',
-                    borderColor: '#f59e0b',
-                    color: '#fef08a',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}
-                >
-                  <ArrowUpCircle size={14} /> Nâng cấp (+50 ngăn, 1,000 Xu)
-                </Button>
-              ) : null}
-            </div>
-            <div
-              style={{ width: '100%', height: 8, background: '#0c0704', borderRadius: 4, overflow: 'hidden' }}
-            >
-              <div
+            {errorMsg}
+          </div>
+        ) : null}
+
+        {/* Capacity Progress Bar */}
+        <div
+          style={{
+            background: 'rgba(30, 41, 59, 0.45)',
+            borderRadius: 8,
+            padding: '12px 14px',
+            border: '1px solid rgba(148, 163, 184, 0.15)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: '#cbd5e1', fontSize: 13 }}>
+              Sức Chứa Kho Silo:{' '}
+              <strong style={{ color: totalQuantity >= capacity ? '#ef4444' : '#fef08a' }}>
+                {totalQuantity}
+              </strong>{' '}
+              / {capacity} Ngăn ({capacityPct}%)
+            </span>
+            {isOwner ? (
+              <Button
+                variant="ghost"
+                onClick={() => void handleUpgrade()}
+                disabled={upgrading || me.balances.coin < 1000}
                 style={{
-                  height: '100%',
-                  width: `${Math.min(100, (totalQuantity / capacity) * 100)}%`,
-                  background:
-                    totalQuantity >= capacity
-                      ? '#ef4444'
-                      : totalQuantity > capacity * 0.8
-                        ? '#f59e0b'
-                        : '#22c55e',
-                  transition: 'width 0.3s ease',
+                  fontSize: 12,
+                  padding: '4px 10px',
+                  borderColor: '#f59e0b',
+                  color: '#fef08a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
                 }}
-              />
-            </div>
+              >
+                <ArrowUpCircle size={14} /> Nâng cấp (+50 ngăn, 1,000 Xu)
+              </Button>
+            ) : null}
           </div>
-
-          {/* 4 Tabs */}
-          <div style={{ display: 'flex', gap: 6, borderBottom: '1px solid #78350f', paddingBottom: 6 }}>
-            {(Object.keys(TAB_CONFIG) as SiloTab[]).map((tabKey) => {
-              const cfg = TAB_CONFIG[tabKey];
-              const Icon = cfg.icon;
-              const isSelected = activeTab === tabKey;
-              return (
-                <button
-                  key={tabKey}
-                  type="button"
-                  onClick={() => {
-                    play('click');
-                    setActiveTab(tabKey);
-                  }}
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    padding: '8px 0',
-                    background: isSelected ? '#3f220d' : 'transparent',
-                    border: 'none',
-                    borderRadius: 6,
-                    color: isSelected ? '#fef08a' : '#a8a29e',
-                    fontSize: 13,
-                    fontWeight: isSelected ? 700 : 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <Icon size={16} />
-                  <span>{cfg.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Items Grid */}
-          {isLoading ? (
-            <div style={{ color: '#d4b996', textAlign: 'center', padding: 30 }}>
-              Đang kiểm tra kho Silo...
-            </div>
-          ) : filteredItems.length === 0 ? (
-            <div style={{ color: '#a8a29e', textAlign: 'center', padding: '36px 0', fontSize: 13 }}>
-              Danh mục này hiện chưa có vật phẩm trong kho Silo.
-            </div>
-          ) : (
+          <div
+            style={{
+              width: '100%',
+              height: 8,
+              background: 'rgba(15, 23, 42, 0.6)',
+              borderRadius: 4,
+              overflow: 'hidden',
+            }}
+          >
             <div
               style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
-                gap: 10,
-                maxHeight: 280,
-                overflowY: 'auto',
-                paddingRight: 4,
+                height: '100%',
+                width: `${capacityPct}%`,
+                background:
+                  totalQuantity >= capacity
+                    ? '#ef4444'
+                    : totalQuantity > capacity * 0.8
+                      ? '#f59e0b'
+                      : '#22c55e',
+                transition: 'width 0.3s ease',
               }}
-            >
-              {filteredItems.map((item) => (
+            />
+          </div>
+        </div>
+
+        {/* 4 Navigation Tabs */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 6,
+            background: 'rgba(15, 23, 42, 0.6)',
+            padding: 4,
+            borderRadius: 8,
+            border: '1px solid rgba(148, 163, 184, 0.15)',
+          }}
+        >
+          {(Object.keys(TAB_CONFIG) as SiloTab[]).map((tabKey) => {
+            const cfg = TAB_CONFIG[tabKey];
+            const Icon = cfg.icon;
+            const isSelected = activeTab === tabKey;
+            return (
+              <button
+                key={tabKey}
+                type="button"
+                onClick={() => {
+                  play('click');
+                  setActiveTab(tabKey);
+                }}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  padding: '8px 4px',
+                  background: isSelected ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
+                  border: isSelected ? '1px solid #f59e0b' : '1px solid transparent',
+                  borderRadius: 6,
+                  color: isSelected ? '#fef08a' : '#94a3b8',
+                  fontSize: 12,
+                  fontWeight: isSelected ? 700 : 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <Icon size={15} />
+                <span>{cfg.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Items Grid */}
+        {isLoading ? (
+          <div style={{ color: '#94a3b8', textAlign: 'center', padding: 36, fontSize: 13 }}>
+            Đang kiểm tra kho Silo...
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div style={{ color: '#94a3b8', textAlign: 'center', padding: '42px 0', fontSize: 13 }}>
+            Danh mục này hiện chưa có vật phẩm trong kho Silo.
+          </div>
+        ) : (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))',
+              gap: 10,
+              maxHeight: 340,
+              overflowY: 'auto',
+              paddingRight: 4,
+            }}
+          >
+            {filteredItems.map((item) => {
+              const displayName = getItemDisplayName(item.itemId);
+              const unitPrice = getItemUnitPrice(item.itemId);
+
+              return (
                 <div
                   key={item.id}
                   style={{
-                    background: '#1c1008',
-                    border: '1px solid #78350f',
+                    background: 'rgba(30, 41, 59, 0.45)',
+                    border: '1px solid rgba(148, 163, 184, 0.15)',
                     borderRadius: 8,
                     padding: '10px 8px',
                     display: 'flex',
@@ -242,20 +313,45 @@ export function FarmSiloPanel({ me, onClose }: { me: Me; onClose: () => void }) 
                     position: 'relative',
                   }}
                 >
+                  {/* Quantity badge */}
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 6,
+                      right: 6,
+                      background: '#b45309',
+                      color: '#ffffff',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      borderRadius: 10,
+                      padding: '1px 6px',
+                    }}
+                  >
+                    x{item.quantity}
+                  </span>
+
+                  {/* Icon */}
                   <div
                     style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 6,
-                      background: '#0c0704',
+                      width: 48,
+                      height: 48,
+                      borderRadius: 8,
+                      background: 'rgba(15, 23, 42, 0.6)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      border: '1px solid #5c3a21',
+                      border: '1px solid rgba(148, 163, 184, 0.15)',
+                      marginTop: 4,
                     }}
                   >
-                    <Package size={22} color="#f59e0b" />
+                    <img
+                      src={farmItemIcon(item.itemId, 44)}
+                      alt={displayName}
+                      style={{ width: 40, height: 40, imageRendering: 'pixelated' }}
+                    />
                   </div>
+
+                  {/* Name */}
                   <span
                     style={{
                       color: '#fef3c7',
@@ -266,32 +362,69 @@ export function FarmSiloPanel({ me, onClose }: { me: Me; onClose: () => void }) 
                       lineHeight: 1.2,
                     }}
                   >
-                    {item.itemId
-                      .replace(/^(item_|seed_|fish_)/, '')
-                      .replace(/_/g, ' ')
-                      .toUpperCase()}
+                    {displayName}
                   </span>
-                  <span
-                    style={{
-                      position: 'absolute',
-                      top: 4,
-                      right: 4,
-                      background: '#b45309',
-                      color: '#ffffff',
-                      fontSize: 10,
-                      fontWeight: 700,
-                      borderRadius: 10,
-                      padding: '1px 5px',
-                    }}
-                  >
-                    x{item.quantity}
-                  </span>
+
+                  {/* Action or status */}
+                  {unitPrice !== null ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleQuickSellOne(item)}
+                      disabled={sellingId === item.id}
+                      style={{
+                        marginTop: 'auto',
+                        width: '100%',
+                        padding: '4px 0',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        background: 'rgba(245, 158, 11, 0.15)',
+                        border: '1px solid rgba(245, 158, 11, 0.3)',
+                        borderRadius: 4,
+                        color: 'var(--coin)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <CoinIcon size={11} /> Bán 1 (+{unitPrice}c)
+                    </button>
+                  ) : item.itemId.startsWith('seed_') ? (
+                    <span
+                      style={{
+                        marginTop: 'auto',
+                        fontSize: 11,
+                        color: '#4ade80',
+                        padding: '2px 6px',
+                        background: 'rgba(34, 197, 94, 0.1)',
+                        borderRadius: 4,
+                      }}
+                    >
+                      🌱 Sẵn sàng gieo
+                    </span>
+                  ) : item.itemId.includes('tractor') ? (
+                    <span
+                      style={{
+                        marginTop: 'auto',
+                        fontSize: 11,
+                        color: '#fde047',
+                        padding: '2px 6px',
+                        background: 'rgba(234, 179, 8, 0.1)',
+                        borderRadius: 4,
+                      }}
+                    >
+                      🚜 Máy cày nông vụ
+                    </span>
+                  ) : (
+                    <span style={{ marginTop: 'auto', fontSize: 11, color: '#94a3b8' }}>Vật tư kho</span>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
-    </div>
+    </Panel>
   );
 }

@@ -8,7 +8,18 @@
 // 1. CROPS & SOIL TYPES & CATALOG
 // ==========================================
 
-export type CropId = 'crop_rice' | 'crop_corn' | 'crop_watermelon' | 'crop_tomato' | 'crop_chili';
+export type CropId =
+  | 'crop_rice'
+  | 'crop_corn'
+  | 'crop_watermelon'
+  | 'crop_tomato'
+  | 'crop_chili'
+  | 'crop_strawberry'
+  | 'crop_pumpkin'
+  | 'crop_eggplant'
+  | 'crop_carrot'
+  | 'crop_sunflower'
+  | 'crop_grape';
 
 export type CropGrowthStage = 'empty' | 'seed' | 'sprout' | 'blooming' | 'mature' | 'withered';
 
@@ -136,6 +147,114 @@ export const CROPS: Record<CropId, CropDef> = {
       matureAtSec: 300,
     },
     sprite: 'farm:crop_chili',
+  },
+  crop_strawberry: {
+    id: 'crop_strawberry',
+    name: 'Dâu Tây Đỏ Đà Lạt',
+    description: 'Trái dâu tây đỏ mọng căng tròn, hương thơm dịu mát đặc sản cao nguyên Đà Lạt.',
+    seedItemId: 'seed_strawberry',
+    harvestItemId: 'crop_strawberry_harvest',
+    seedPrice: 80,
+    sellPrice: 48,
+    growthDurationSec: 180, // 3 minutes base (90s fertilized)
+    baseYieldMin: 3,
+    baseYieldMax: 5,
+    stages: {
+      sproutAtSec: 45,
+      bloomingAtSec: 108,
+      matureAtSec: 180,
+    },
+    sprite: 'farm:crop_strawberry',
+  },
+  crop_pumpkin: {
+    id: 'crop_pumpkin',
+    name: 'Bí Ngô Khổng Lồ',
+    description: 'Bí ngô vỏ cam vàng dày dặn no tròn, vị béo bùi thơm lừng mùa vụ.',
+    seedItemId: 'seed_pumpkin',
+    harvestItemId: 'crop_pumpkin_harvest',
+    seedPrice: 150,
+    sellPrice: 105,
+    growthDurationSec: 420, // 7 minutes base (210s fertilized)
+    baseYieldMin: 2,
+    baseYieldMax: 3,
+    stages: {
+      sproutAtSec: 105,
+      bloomingAtSec: 252,
+      matureAtSec: 420,
+    },
+    sprite: 'farm:crop_pumpkin',
+  },
+  crop_eggplant: {
+    id: 'crop_eggplant',
+    name: 'Cà Tím Dài Nam Bộ',
+    description: 'Cà tím thon dài vỏ tím bóng mượt, nướng mỡ hành thơm nức mũi.',
+    seedItemId: 'seed_eggplant',
+    harvestItemId: 'crop_eggplant_harvest',
+    seedPrice: 55,
+    sellPrice: 26,
+    growthDurationSec: 240, // 4 minutes base (120s fertilized)
+    baseYieldMin: 3,
+    baseYieldMax: 6,
+    stages: {
+      sproutAtSec: 60,
+      bloomingAtSec: 144,
+      matureAtSec: 240,
+    },
+    sprite: 'farm:crop_eggplant',
+  },
+  crop_carrot: {
+    id: 'crop_carrot',
+    name: 'Cà Rốt Củ Cam Giòn',
+    description: 'Cà rốt củ cam tươi giòn ngọt đậm, giàu dưỡng chất mát lành.',
+    seedItemId: 'seed_carrot',
+    harvestItemId: 'crop_carrot_harvest',
+    seedPrice: 40,
+    sellPrice: 22,
+    growthDurationSec: 120, // 2 minutes base (60s fertilized)
+    baseYieldMin: 4,
+    baseYieldMax: 7,
+    stages: {
+      sproutAtSec: 30,
+      bloomingAtSec: 72,
+      matureAtSec: 120,
+    },
+    sprite: 'farm:crop_carrot',
+  },
+  crop_sunflower: {
+    id: 'crop_sunflower',
+    name: 'Hoa Hướng Dương Rực Rỡ',
+    description: 'Bông hướng dương vàng rực quay về phía mặt trời, hạt hướng dương béo ngậy.',
+    seedItemId: 'seed_sunflower',
+    harvestItemId: 'crop_sunflower_harvest',
+    seedPrice: 90,
+    sellPrice: 58,
+    growthDurationSec: 300, // 5 minutes base (150s fertilized)
+    baseYieldMin: 2,
+    baseYieldMax: 4,
+    stages: {
+      sproutAtSec: 75,
+      bloomingAtSec: 180,
+      matureAtSec: 300,
+    },
+    sprite: 'farm:crop_sunflower',
+  },
+  crop_grape: {
+    id: 'crop_grape',
+    name: 'Nho Tím Ninh Thuận',
+    description: 'Chùm nho tím mọng giòn ngọt trĩu giàn, đặc sản miền nắng gió Ninh Thuận.',
+    seedItemId: 'seed_grape',
+    harvestItemId: 'crop_grape_harvest',
+    seedPrice: 160,
+    sellPrice: 115,
+    growthDurationSec: 600, // 10 minutes base (300s fertilized)
+    baseYieldMin: 3,
+    baseYieldMax: 5,
+    stages: {
+      sproutAtSec: 150,
+      bloomingAtSec: 360,
+      matureAtSec: 600,
+    },
+    sprite: 'farm:crop_grape',
   },
 };
 
@@ -545,6 +664,60 @@ export const BAC_SAU_SHOP_ITEMS: FarmShopItemDef[] = [
     description: 'Ớt hiểm cay nồng đặc sản sông nước Nam Bộ.',
     sprite: 'farm:seed_chili',
   },
+  {
+    id: 'seed_strawberry',
+    name: 'Hạt Giống Dâu Tây Đà Lạt',
+    category: 'seeds',
+    coinPrice: 80,
+    unit: 'túi giống',
+    description: 'Dâu tây đỏ mọng căng tròn ngọt thanh, giống trứ danh xứ sở ngàn hoa.',
+    sprite: 'farm:seed_strawberry',
+  },
+  {
+    id: 'seed_pumpkin',
+    name: 'Hạt Giống Bí Ngô Khổng Lồ',
+    category: 'seeds',
+    coinPrice: 150,
+    unit: 'túi giống',
+    description: 'Bí ngô vỏ cam vàng dày dặn no tròn, béo bùi thơm lừng vụ mùa thu hoạch.',
+    sprite: 'farm:seed_pumpkin',
+  },
+  {
+    id: 'seed_eggplant',
+    name: 'Hạt Giống Cà Tím Dài',
+    category: 'seeds',
+    coinPrice: 55,
+    unit: 'túi giống',
+    description: 'Cà tím thon dài vỏ tím bóng mượt, nướng mỡ hành thơm phức.',
+    sprite: 'farm:seed_eggplant',
+  },
+  {
+    id: 'seed_carrot',
+    name: 'Hạt Giống Cà Rốt Củ Cam',
+    category: 'seeds',
+    coinPrice: 40,
+    unit: 'túi giống',
+    description: 'Cà rốt củ cam tươi giòn ngọt đậm vị, sinh trưởng nhanh chóng.',
+    sprite: 'farm:seed_carrot',
+  },
+  {
+    id: 'seed_sunflower',
+    name: 'Hạt Giống Hoa Hướng Dương',
+    category: 'seeds',
+    coinPrice: 90,
+    unit: 'túi giống',
+    description: 'Hoa hướng dương bông to vàng rực rỡ, thu hoạch hạt thơm bùi.',
+    sprite: 'farm:seed_sunflower',
+  },
+  {
+    id: 'seed_grape',
+    name: 'Cành Giống Nho Tím Ninh Thuận',
+    category: 'seeds',
+    coinPrice: 160,
+    unit: 'cành giống',
+    description: 'Nho tím trĩu giàn ngọt thanh mọng nước, giống nho cao cấp.',
+    sprite: 'farm:seed_grape',
+  },
 
   // LIVESTOCK CON GIỐNG
   {
@@ -733,6 +906,16 @@ export const BAC_SAU_SHOP_ITEMS: FarmShopItemDef[] = [
     description: 'Guồng quay sủi bọt trắng xóa tăng dưỡng khí oxy, giảm 15% thời gian nuôi cá ao.',
     sprite: 'farm:waterwheel_aerator',
   },
+  {
+    id: 'tractor_farm',
+    name: 'Máy Cày Nông Nghiệp Farm Trac',
+    category: 'supplies',
+    coinPrice: 1500,
+    unit: 'chiếc xe',
+    description:
+      'Xe máy cày chuyên dụng cho nhà nông. Lái qua các ô đất để tự động thu hoạch vụ mùa và gieo hạt giống cực kỳ nhanh chóng!',
+    sprite: 'vehicle:tractor_farm',
+  },
 ];
 
 export const DAILY_MARKET_CONTRACTS: MarketContractDef[] = [
@@ -745,6 +928,39 @@ export const DAILY_MARKET_CONTRACTS: MarketContractDef[] = [
     requiredQuantity: 50,
     rewardCoin: 1375, // 50 * 22c = 1100c base + 25% bonus (275c)
     rewardFame: 30,
+    bonusPercent: 25,
+  },
+  {
+    id: 'contract_strawberry_30',
+    title: 'Đơn Đặt Dâu Tây Làm Mứt Tết',
+    clientName: 'Tiệm Bánh Mứt Cao Nguyên',
+    description: 'Cần 30 quả dâu tây Đà Lạt mọng nước làm mứt dâu thượng hạng.',
+    requiredItemId: 'crop_strawberry_harvest',
+    requiredQuantity: 30,
+    rewardCoin: 1800, // 30 * 48c = 1440c + 25% (360c)
+    rewardFame: 40,
+    bonusPercent: 25,
+  },
+  {
+    id: 'contract_pumpkin_20',
+    title: 'Hợp Đồng Bí Ngô Lễ Hội Đêm Rằm',
+    clientName: 'Nhà Hàng Chay Thanh Lương',
+    description: 'Giao 20 trái bí ngô khổng lồ nấu súp bí đỏ hạt sen.',
+    requiredItemId: 'crop_pumpkin_harvest',
+    requiredQuantity: 20,
+    rewardCoin: 2625, // 20 * 105c = 2100c + 25% (525c)
+    rewardFame: 45,
+    bonusPercent: 25,
+  },
+  {
+    id: 'contract_grape_25',
+    title: 'Hợp Đồng Cung Ứng Nho Ninh Thuận',
+    clientName: 'Hầm Rượu Vang Sông Dinh',
+    description: 'Cung cấp 25 chùm nho tím mọng nước chuẩn bị ủ mẻ vang mới.',
+    requiredItemId: 'crop_grape_harvest',
+    requiredQuantity: 25,
+    rewardCoin: 3590, // 25 * 115c = 2875c + 25% (718c)
+    rewardFame: 50,
     bonusPercent: 25,
   },
   {
@@ -831,9 +1047,24 @@ export function getCropGrowthStage(
 }
 
 /**
- * Checks if soil is currently moist based on last watered timestamp.
+ * Checks if current weather condition is rainy (rain, heavy_rain, thunderstorm, drizzle).
  */
-export function isPlotMoist(wateredAt: Date | string | number | null, now = Date.now()): boolean {
+export function isWeatherRainy(weatherOrCondition?: string | { condition?: string } | null): boolean {
+  if (!weatherOrCondition) return false;
+  const cond = typeof weatherOrCondition === 'string' ? weatherOrCondition : weatherOrCondition.condition;
+  return cond === 'rain' || cond === 'heavy_rain' || cond === 'thunderstorm' || cond === 'drizzle';
+}
+
+/**
+ * Checks if soil is currently moist based on last watered timestamp or active rainfall.
+ * When it rains, crops receive natural moisture and do not need manual watering!
+ */
+export function isPlotMoist(
+  wateredAt: Date | string | number | null,
+  now = Date.now(),
+  isRaining = false,
+): boolean {
+  if (isRaining) return true;
   if (!wateredAt) return false;
   const timeMs = typeof wateredAt === 'number' ? wateredAt : new Date(wateredAt).getTime();
   return now - timeMs < SOIL_MOISTURE_DURATION_SEC * 1000;

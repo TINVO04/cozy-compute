@@ -26,6 +26,7 @@ import {
   FARM_PLOT_TOTAL,
   getFarmPlotRect,
   getPlotUnlockPrice,
+  isWeatherRainy,
   FARM_POIS,
   FARM_GARDEN,
   OCEAN_BLOCKERS,
@@ -57,6 +58,7 @@ import {
   paintGoatPen,
   paintCattlePasture,
   paintPlotTile,
+  paintWelcomeMat,
 } from '../art/farm-props';
 import { api } from '../lib/api';
 import { APT_ART_SIDE, APT_ART_TOP } from '../art/apartment';
@@ -2016,6 +2018,8 @@ export class FarmScene extends WorldScene {
   private precipSystem: PrecipitationSystem | null = null;
   private ambientOverlay: Phaser.GameObjects.Rectangle | null = null;
   private farmLanternGlows: Phaser.GameObjects.Image[] = [];
+  private tractorCooldowns = new Map<number, number>();
+  private tractorBusy = false;
 
   constructor() {
     super('farm');
@@ -2154,7 +2158,7 @@ export class FarmScene extends WorldScene {
         !best || Math.hypot(action.x - x, action.y - y) < Math.hypot(best.x - x, best.y - y) ? action : best,
       undefined,
     );
-    return nearest && Math.hypot(nearest.x - x, nearest.y - y) <= 2.5 * TILE ? nearest : undefined;
+    return nearest && Math.hypot(nearest.x - x, nearest.y - y) <= 48 ? nearest : undefined;
   }
 
   protected buildWorld() {
@@ -2174,12 +2178,17 @@ export class FarmScene extends WorldScene {
     this.livingProps.init(FARM_POIS.aquaculture_pond);
     for (const tree of decorateFarm(this)) this.livingProps.registerTree(tree);
 
+    // Welcome Mat texture for building doorways
+    if (!this.textures.exists('farm:welcome_mat')) {
+      this.textures.addCanvas('farm:welcome_mat', paintWelcomeMat());
+    }
+
     // 4. Props & Buildings
     if (!this.textures.exists('farm:shop_bac_sau')) {
       this.textures.addCanvas('farm:shop_bac_sau', paintShopBacSau());
     }
     const shopP = FARM_POIS.shop_bac_sau;
-    const shopSprite = this.add
+    this.add
       .image(shopP.x + shopP.w / 2, shopP.y + shopP.h - 8, 'farm:shop_bac_sau')
       .setOrigin(0.5, 1.0)
       .setDepth(shopP.y + shopP.h);
@@ -2187,24 +2196,30 @@ export class FarmScene extends WorldScene {
       play('pop');
       useUi.getState().setPanel('farm-shop');
     };
-    shopSprite.setInteractive({ useHandCursor: true }).on('pointerdown', openShop);
-    this.interactAt(shopP.x + shopP.w / 2, shopP.y + shopP.h + 6, 'Tiệm Bác Sáu', openShop);
-    const greenhouse = this.children.getByName('farm:estate:greenhouse') as Phaser.GameObjects.Image;
-    greenhouse.setInteractive({ useHandCursor: true }).on('pointerdown', openShop);
+    // Doorway welcome mat with click and 48px proximity [E]
+    this.add
+      .image(shopP.x + shopP.w / 2, shopP.y + shopP.h + 2, 'farm:welcome_mat')
+      .setOrigin(0.5, 0.5)
+      .setDepth(-4)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', openShop);
+    this.interactAt(shopP.x + shopP.w / 2, shopP.y + shopP.h + 2, 'Mở Tiệm Bác Sáu', openShop);
+
     const nursery = FARM_GARDEN.greenhouse;
-    this.interactAt(
-      nursery.x + nursery.w / 2,
-      nursery.y + nursery.h + 10,
-      'Mua hạt giống ở vườn ươm',
-      openShop,
-    );
+    this.add
+      .image(nursery.x + nursery.w / 2, nursery.y + nursery.h + 2, 'farm:welcome_mat')
+      .setOrigin(0.5, 0.5)
+      .setDepth(-4)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', openShop);
+    this.interactAt(nursery.x + nursery.w / 2, nursery.y + nursery.h + 2, 'Vườn ươm giống', openShop);
 
     // Silo Warehouse
     if (!this.textures.exists('farm:silo_warehouse')) {
       this.textures.addCanvas('farm:silo_warehouse', paintSiloWarehouse());
     }
     const siloP = FARM_POIS.silo_warehouse;
-    const siloSprite = this.add
+    this.add
       .image(siloP.x + siloP.w / 2, siloP.y + siloP.h, 'farm:silo_warehouse')
       .setOrigin(0.5, 1.0)
       .setDepth(siloP.y + siloP.h);
@@ -2212,8 +2227,13 @@ export class FarmScene extends WorldScene {
       play('pop');
       useUi.getState().setPanel('farm-silo');
     };
-    siloSprite.setInteractive({ useHandCursor: true }).on('pointerdown', openSilo);
-    this.interactAt(siloP.x + siloP.w / 2, siloP.y + siloP.h + 10, 'Nhà kho Silo', openSilo);
+    this.add
+      .image(siloP.x + siloP.w / 2, siloP.y + siloP.h + 2, 'farm:welcome_mat')
+      .setOrigin(0.5, 0.5)
+      .setDepth(-4)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', openSilo);
+    this.interactAt(siloP.x + siloP.w / 2, siloP.y + siloP.h + 2, 'Mở Kho Silo', openSilo);
 
     // All pens share terrain depth (-6), allowing animals and players to stand inside without being obscured.
     for (const [id, painter] of [
@@ -2383,10 +2403,11 @@ export class FarmScene extends WorldScene {
   }
 
   private updatePlotsVisuals() {
+    const isRaining = isWeatherRainy(useUi.getState().weather);
     for (const p of this.plotsData) {
       const sprite = this.plotSprites.get(p.plotIndex);
       if (!sprite) continue;
-      const isWatered = !!p.wateredAt;
+      const isWatered = !!p.wateredAt || isRaining;
       const texKey = `farm:plot_dyn:${p.plotIndex}:${p.isUnlocked}:${isWatered}:${p.cropId ?? 'none'}:${p.growthStage ?? 'none'}`;
       if (!this.textures.exists(texKey)) {
         this.textures.addCanvas(
@@ -2512,8 +2533,92 @@ export class FarmScene extends WorldScene {
       self && !typing() && !useUi.getState().panel ? this.nearestInteraction(self.x, self.y) : undefined;
     this.interactionHint?.setVisible(!!action);
     if (action && self && this.interactionHint) {
-      this.interactionHint.setText('E · ' + action.label);
+      this.interactionHint.setText('[E] · ' + action.label);
       this.interactionHint.setPosition(self.x, self.y - 42);
+    }
+
+    // Tractor mechanics: Drive over plots to auto-harvest mature crops or auto-plant seeds
+    const currentVehicle = this.layer?.self?.vehicle;
+    const isTractor =
+      currentVehicle &&
+      (currentVehicle.includes('tractor') ||
+        currentVehicle === 'tractor_farm' ||
+        currentVehicle === 'cars/tractor-farm');
+    if (isTractor && self && !this.tractorBusy) {
+      const now = Date.now();
+      for (let i = 0; i < FARM_PLOT_TOTAL; i++) {
+        const r = getFarmPlotRect(i);
+        const cx = r.x + r.w / 2;
+        const cy = r.y + r.h / 2;
+        const dist = Math.hypot(self.x - cx, self.y - cy);
+        if (dist <= 26) {
+          const cd = this.tractorCooldowns.get(i) ?? 0;
+          if (now < cd) continue;
+
+          const plot = this.plotsData.find((p) => p.plotIndex === i);
+          if (!plot || !plot.isUnlocked) continue;
+
+          // Auto-harvest mature crops
+          if (plot.cropId && plot.growthStage === 'mature') {
+            this.tractorCooldowns.set(i, now + 3000);
+            this.tractorBusy = true;
+            void (async () => {
+              try {
+                await api('/api/farm/plots/harvest', {
+                  method: 'POST',
+                  body: { plotIndex: i },
+                });
+                play('farm_harvest');
+                useUi.getState().toast({
+                  kind: 'reward',
+                  title: '🚜 Máy Cày Thu Hoạch Tự Động!',
+                  body: `Đã thu hoạch nông sản ô đất #${i + 1} vào kho Silo.`,
+                });
+                await this.fetchFarmState();
+              } catch {
+                // Ignore transient errors
+              } finally {
+                this.tractorBusy = false;
+              }
+            })();
+            break;
+          }
+
+          // Auto-plant empty plots if user has seeds
+          if (!plot.cropId) {
+            this.tractorCooldowns.set(i, now + 3000);
+            this.tractorBusy = true;
+            void (async () => {
+              try {
+                const meRes = await api<{
+                  warehouse?: { items?: Array<{ itemId: string; quantity: number }> };
+                }>('/api/farm/me');
+                const seed = meRes?.warehouse?.items?.find(
+                  (it) => it.itemId.startsWith('seed_') && it.quantity > 0,
+                );
+                if (seed) {
+                  await api('/api/farm/plots/plant', {
+                    method: 'POST',
+                    body: { plotIndex: i, seedItemId: seed.itemId },
+                  });
+                  play('farm_water');
+                  useUi.getState().toast({
+                    kind: 'info',
+                    title: '🚜 Máy Cày Tự Động Gieo Hạt!',
+                    body: `Đã gieo ${seed.itemId.replace('seed_', '').toUpperCase()} vào ô đất #${i + 1}.`,
+                  });
+                  await this.fetchFarmState();
+                }
+              } catch {
+                // Ignore transient errors
+              } finally {
+                this.tractorBusy = false;
+              }
+            })();
+            break;
+          }
+        }
+      }
     }
   }
 }

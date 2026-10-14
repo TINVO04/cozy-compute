@@ -8,9 +8,11 @@ import {
   POND_FISHES,
   TOTAL_FARM_PLOTS,
   WAREHOUSE_UPGRADE_TIERS,
+  isWeatherRainy,
   type CropId,
   type CropGrowthStage,
 } from '@cozy/game-data';
+import { worldWeather } from './weather.js';
 import { hashPassword, verifyPassword } from '../auth.js';
 import type { AppContext } from '../context.js';
 import { withTx, type Queryable, type Tx } from '../db.js';
@@ -178,6 +180,8 @@ export async function getOrCreateFarm(q: Queryable, userId: string): Promise<Far
 export async function getFarmFullState(ctx: AppContext, userId: string) {
   const farm = await getOrCreateFarm(ctx.db, userId);
   const now = ctx.now().getTime();
+  const weather = await worldWeather(ctx);
+  const isRaining = isWeatherRainy(weather);
 
   const plotsRes = await ctx.db.query<FarmPlotRow>(
     'SELECT * FROM farm_plots WHERE farm_id = $1 ORDER BY plot_index ASC',
@@ -186,6 +190,7 @@ export async function getFarmFullState(ctx: AppContext, userId: string) {
 
   const plots = plotsRes.rows.map((p) => {
     const stage = p.crop_id ? computeCropStage(p.crop_id, p.planted_at, p.is_fertilized, now) : 'empty';
+    const isWatered = Boolean(p.watered_at) || isRaining;
     return {
       id: p.id,
       plotIndex: p.plot_index,
@@ -194,8 +199,9 @@ export async function getFarmFullState(ctx: AppContext, userId: string) {
       cropId: p.crop_id,
       plantedAt: p.planted_at,
       wateredAt: p.watered_at,
+      isWatered,
       isFertilized: p.is_fertilized,
-      isTilled: p.is_tilled,
+      isTilled: p.is_tilled || isRaining,
       stage,
       growthStage: stage,
     };
@@ -256,6 +262,7 @@ export async function getFarmFullState(ctx: AppContext, userId: string) {
       isPublic: farm.is_public,
       hasPassword: Boolean(farm.password_hash),
     },
+    isRaining,
     plots,
     animals,
     warehouse: {
@@ -463,6 +470,13 @@ async function waterPlotLocked(
 
   if (!plot.crop_id || plot.watered_at)
     throw badRequest('water_not_needed', 'Ô đất chưa có cây hoặc đã được tưới.');
+  const weather = await worldWeather(ctx);
+  if (isWeatherRainy(weather)) {
+    throw badRequest(
+      'raining_no_water_needed',
+      'Trời đang mưa tự nhiên, ô đất đã đủ ẩm không cần tưới thêm.',
+    );
+  }
   if (isGuest) await requireFarmAccess(ctx, visitorId, targetOwnerId);
   const now = ctx.now();
   await tx.query(
@@ -788,6 +802,66 @@ async function sellShopProduceLocked(
   });
 }
 
+async function sellAllProduceLocked(ctx: AppContext, tx: Tx, userId: string, idempotencyKey?: string) {
+  const farm = await getOrCreateFarm(tx, userId);
+  return inFarmTransaction(tx, async (tx) => {
+    const actionKey = idempotencyKey ? `farm:sellall:${idempotencyKey}` : null;
+    if (actionKey) {
+      const prior = await tx.query<{
+        result: {
+          ok: boolean;
+          totalCoinEarned: number;
+          totalItemsSold: number;
+          coinBalance: number;
+        };
+      }>('SELECT result FROM gameplay_actions WHERE user_id=$1 AND action_key=$2', [userId, actionKey]);
+      if (prior.rows[0]) return prior.rows[0].result;
+    }
+
+    const rows = await tx.query<FarmWarehouseItemRow>(
+      "SELECT * FROM farm_warehouse_items WHERE farm_id = $1 AND (category = 'crop' OR item_id LIKE 'crop_%')",
+      [farm.id],
+    );
+    if (rows.rows.length === 0) {
+      throw badRequest('no_crops_to_sell', 'Không có nông sản nào trong kho Silo để bán.');
+    }
+    let totalCoin = 0;
+    let totalItems = 0;
+    for (const item of rows.rows) {
+      const crop = Object.values(CROPS).find(
+        (c) => c.harvestItemId === item.item_id || c.id === item.item_id,
+      );
+      const unitPrice = crop?.sellPrice ?? 20;
+      totalCoin += unitPrice * item.quantity;
+      totalItems += item.quantity;
+    }
+    await tx.query(
+      "DELETE FROM farm_warehouse_items WHERE farm_id = $1 AND (category = 'crop' OR item_id LIKE 'crop_%')",
+      [farm.id],
+    );
+    const ledger = await postLedger(tx, {
+      userId,
+      currency: 'coin',
+      amount: totalCoin,
+      reason: 'farm_produce_sell_all',
+      metadata: { totalItems, totalCoin },
+    });
+    const result = {
+      ok: true,
+      totalCoinEarned: totalCoin,
+      totalItemsSold: totalItems,
+      coinBalance: ledger.balanceAfter,
+    };
+    if (actionKey) {
+      await tx.query(
+        'INSERT INTO gameplay_actions(user_id,action_key,fingerprint,result) VALUES($1,$2,$3,$4)',
+        [userId, actionKey, 'sell_all', JSON.stringify(result)],
+      );
+    }
+    return result;
+  });
+}
+
 async function feedAnimalLocked(
   ctx: AppContext,
   tx: Tx,
@@ -1021,6 +1095,8 @@ export const sellShopProduce = (
   userId: string,
   ...args: [string, number, string?, string?]
 ) => farmMutation(ctx, userId, (tx) => sellShopProduceLocked(ctx, tx, userId, ...args));
+export const sellAllProduce = (ctx: AppContext, userId: string, key?: string) =>
+  farmMutation(ctx, userId, (tx) => sellAllProduceLocked(ctx, tx, userId, key));
 export const feedAnimal = (ctx: AppContext, userId: string, ...args: [string, string]) =>
   farmMutation(ctx, userId, (tx) => feedAnimalLocked(ctx, tx, userId, ...args));
 export const stockPondFish = (ctx: AppContext, userId: string, species: string) =>

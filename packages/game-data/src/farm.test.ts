@@ -43,10 +43,22 @@ import {
 
 describe('Cozy Farm System Game Data', () => {
   describe('Crops Catalog', () => {
-    const cropIds: CropId[] = ['crop_rice', 'crop_corn', 'crop_watermelon', 'crop_tomato', 'crop_chili'];
+    const cropIds: CropId[] = [
+      'crop_rice',
+      'crop_corn',
+      'crop_watermelon',
+      'crop_tomato',
+      'crop_chili',
+      'crop_strawberry',
+      'crop_pumpkin',
+      'crop_eggplant',
+      'crop_carrot',
+      'crop_sunflower',
+      'crop_grape',
+    ];
 
-    it('defines all 5 authoritative crop definitions', () => {
-      expect(Object.keys(CROPS)).toHaveLength(5);
+    it('defines all 11 authoritative crop definitions', () => {
+      expect(Object.keys(CROPS)).toHaveLength(11);
       for (const id of cropIds) {
         const crop = CROPS[id];
         expect(crop).toBeDefined();
@@ -210,7 +222,7 @@ describe('Cozy Farm System Game Data', () => {
     });
 
     it('defines daily market contracts with +25% bonus math', () => {
-      expect(DAILY_MARKET_CONTRACTS).toHaveLength(6);
+      expect(DAILY_MARKET_CONTRACTS).toHaveLength(9);
       for (const contract of DAILY_MARKET_CONTRACTS) {
         expect(contract.requiredQuantity).toBeGreaterThan(0);
         expect(contract.rewardCoin).toBeGreaterThan(0);

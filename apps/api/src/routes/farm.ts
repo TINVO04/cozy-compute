@@ -119,6 +119,13 @@ export function farmRoutes(app: FastifyInstance, ctx: AppContext) {
     return farmService.sellShopProduce(ctx, user.id, body.itemId, body.quantity, body.contractId, key);
   });
 
+  // 9b. Shop Sell All Wholesale Produce
+  app.post('/api/farm/shop/sell-all', async (req) => {
+    const user = requireUser(req);
+    const key = req.headers['idempotency-key'] ? idem(req.headers as Record<string, unknown>) : undefined;
+    return farmService.sellAllProduce(ctx, user.id, key);
+  });
+
   // 10. Animal Feed
   app.post('/api/farm/animals/feed', async (req) => {
     const user = requireUser(req);
