@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Clock,
   Crown,
-  Fish as FishIcon,
+  Fish,
   Lock,
   RotateCcw,
   Ruler,
@@ -676,7 +676,7 @@ export function FishShadowAdmin() {
       {/* ── Header ── */}
       <div className="fstudio-header">
         <div className="fstudio-header-title">
-          <FishIcon size={22} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+          <Fish size={22} style={{ color: 'var(--primary)', flexShrink: 0 }} />
           <div>
             <div className="row" style={{ gap: 8 }}>
               <h2>Studio Quản Trị Kích Thước Bóng Cá</h2>
@@ -713,31 +713,58 @@ export function FishShadowAdmin() {
       </div>
 
       {/* ── Subtab Navigation ── */}
-      <div className="fstudio-tabs" role="tablist">
+      <div className="tabs" role="tablist" style={{ width: '100%', padding: 4 }}>
         <button
           type="button"
           role="tab"
-          className="fstudio-tab"
+          className="tab"
           aria-selected={activeTab === 'tiers'}
           onClick={() => setActiveTab('tiers')}
+          style={{
+            flex: 1,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            height: 38,
+            fontWeight: activeTab === 'tiers' ? 700 : 600,
+          }}
         >
           <Sliders size={15} /> Cấu Hình 6 Bậc Chuẩn (Tier 1 - Tier 6)
         </button>
         <button
           type="button"
           role="tab"
-          className="fstudio-tab"
+          className="tab"
           aria-selected={activeTab === 'species'}
           onClick={() => setActiveTab('species')}
+          style={{
+            flex: 1,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            height: 38,
+            fontWeight: activeTab === 'species' ? 700 : 600,
+          }}
         >
-          <FishIcon size={15} /> Tùy Chỉnh Theo Từng Loài Cá Cụ Thể ({allFish.length})
+          <Fish size={15} /> Tùy Chỉnh Theo Từng Loài Cá Cụ Thể ({allFish.length})
         </button>
         <button
           type="button"
           role="tab"
-          className="fstudio-tab"
+          className="tab"
           aria-selected={activeTab === 'behavior'}
           onClick={() => setActiveTab('behavior')}
+          style={{
+            flex: 1,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            height: 38,
+            fontWeight: activeTab === 'behavior' ? 700 : 600,
+          }}
         >
           <Clock size={15} /> Tinh Chỉnh Nhịp Đớp & Thời Gian Chờ (Bite Timing)
         </button>

@@ -3481,9 +3481,10 @@ img.pixel,
 
 .fstudio-workbench {
   display: grid;
-  grid-template-columns: 410px 1fr;
+  grid-template-columns: 420px minmax(0, 1fr);
   gap: 18px;
   align-items: start;
+  width: 100%;
 }
 
 @media (max-width: 1100px) {
@@ -3496,6 +3497,8 @@ img.pixel,
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-width: 0;
+  width: 100%;
 }
 
 .fstudio-tier-grid {
@@ -3566,6 +3569,8 @@ img.pixel,
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-width: 0;
+  width: 100%;
 }
 
 .fstudio-field {
@@ -3715,6 +3720,8 @@ img.pixel,
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 12px 32px rgba(6, 17, 26, 0.45);
+  min-width: 0;
+  width: 100%;
 }
 
 .fstudio-viewport-topbar {
