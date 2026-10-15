@@ -19,7 +19,11 @@ export type CropId =
   | 'crop_eggplant'
   | 'crop_carrot'
   | 'crop_sunflower'
-  | 'crop_grape';
+  | 'crop_grape'
+  | 'crop_cabbage'
+  | 'crop_pineapple'
+  | 'crop_dragonfruit'
+  | 'crop_sugarcane';
 
 export type CropGrowthStage = 'empty' | 'seed' | 'sprout' | 'blooming' | 'mature' | 'withered';
 
@@ -256,6 +260,78 @@ export const CROPS: Record<CropId, CropDef> = {
     },
     sprite: 'farm:crop_grape',
   },
+  crop_cabbage: {
+    id: 'crop_cabbage',
+    name: 'Bắp Cải Trắng Đà Lạt',
+    description: 'Búp bắp cải cuộn chặt tròn xoe, giòn ngọt thanh mát đặc sản nông trại xứ ngàn hoa.',
+    seedItemId: 'seed_cabbage',
+    harvestItemId: 'crop_cabbage_harvest',
+    seedPrice: 45,
+    sellPrice: 26,
+    growthDurationSec: 160, // ~2.6 minutes base (80s fertilized)
+    baseYieldMin: 3,
+    baseYieldMax: 6,
+    stages: {
+      sproutAtSec: 40,
+      bloomingAtSec: 96,
+      matureAtSec: 160,
+    },
+    sprite: 'farm:crop_cabbage',
+  },
+  crop_pineapple: {
+    id: 'crop_pineapple',
+    name: 'Khóm Mật Bến Lức',
+    description: 'Khóm mật chín vàng óng ả thơm lừng, vị ngọt sắc đậm đà miền sông nước Tiền Giang.',
+    seedItemId: 'seed_pineapple',
+    harvestItemId: 'crop_pineapple_harvest',
+    seedPrice: 110,
+    sellPrice: 75,
+    growthDurationSec: 360, // 6 minutes base (180s fertilized)
+    baseYieldMin: 2,
+    baseYieldMax: 4,
+    stages: {
+      sproutAtSec: 90,
+      bloomingAtSec: 216,
+      matureAtSec: 360,
+    },
+    sprite: 'farm:crop_pineapple',
+  },
+  crop_dragonfruit: {
+    id: 'crop_dragonfruit',
+    name: 'Thanh Long Ruột Đỏ Chợ Gạo',
+    description: 'Trái thanh long vỏ hồng tai xanh biếc, ruột đỏ thẩm mọng nước thanh mát giải nhiệt.',
+    seedItemId: 'seed_dragonfruit',
+    harvestItemId: 'crop_dragonfruit_harvest',
+    seedPrice: 140,
+    sellPrice: 95,
+    growthDurationSec: 480, // 8 minutes base (240s fertilized)
+    baseYieldMin: 2,
+    baseYieldMax: 5,
+    stages: {
+      sproutAtSec: 120,
+      bloomingAtSec: 288,
+      matureAtSec: 480,
+    },
+    sprite: 'farm:crop_dragonfruit',
+  },
+  crop_sugarcane: {
+    id: 'crop_sugarcane',
+    name: 'Mía Tím Hòa Bình',
+    description: 'Cây mía tím gióng dài vỏ mỏng, thân mọng nước ngọt lịm thơm ngon nức tiếng.',
+    seedItemId: 'seed_sugarcane',
+    harvestItemId: 'crop_sugarcane_harvest',
+    seedPrice: 70,
+    sellPrice: 42,
+    growthDurationSec: 240, // 4 minutes base (120s fertilized)
+    baseYieldMin: 3,
+    baseYieldMax: 6,
+    stages: {
+      sproutAtSec: 60,
+      bloomingAtSec: 144,
+      matureAtSec: 240,
+    },
+    sprite: 'farm:crop_sugarcane',
+  },
 };
 
 /** Authoritative plot unlock pricing matching database migration */
@@ -286,10 +362,13 @@ export type AnimalType = 'chicken' | 'duck' | 'cow' | 'pig' | 'goat' | 'sheep';
 export interface AnimalDef {
   type: AnimalType;
   name: string;
+  babyName: string;
   facility: 'poultry_coop' | 'cattle_pasture' | 'pig_pen' | 'goat_pen';
   description: string;
   stockItemId: string;
   stockPrice: number;
+  growthDurationSec: number;
+  matureSellPrice: number;
   yieldItemId: string;
   yieldItem: string; // Interface contract compatibility
   yieldName: string;
@@ -307,10 +386,13 @@ export const ANIMALS: Record<AnimalType, AnimalDef> = {
   chicken: {
     type: 'chicken',
     name: 'Gà Ri Thả Vườn',
+    babyName: 'Gà Con Lông Vàng',
     facility: 'poultry_coop',
     description: 'Gà ri lông vàng óng, mổ thóc lắt nhắt quanh ổ rơm, đẻ trứng rất đều.',
     stockItemId: 'stock_chicken',
     stockPrice: 200,
+    growthDurationSec: 180, // 3 minutes
+    matureSellPrice: 500,
     yieldItemId: 'yield_egg',
     yieldItem: 'yield_egg',
     yieldName: 'Trứng Gà Ta Tươi',
@@ -326,10 +408,13 @@ export const ANIMALS: Record<AnimalType, AnimalDef> = {
   duck: {
     type: 'duck',
     name: 'Vịt Xiêm Bờ Ao',
+    babyName: 'Vịt Con Lạch Bạch',
     facility: 'poultry_coop',
     description: 'Vịt xiêm lông xám trắng, thích lạch bạch bơi lội và tắm mát dưới mương.',
     stockItemId: 'stock_duck',
     stockPrice: 220,
+    growthDurationSec: 240, // 4 minutes
+    matureSellPrice: 580,
     yieldItemId: 'yield_duck_egg',
     yieldItem: 'yield_duck_egg',
     yieldName: 'Trứng Vịt Xiêm',
@@ -345,10 +430,13 @@ export const ANIMALS: Record<AnimalType, AnimalDef> = {
   cow: {
     type: 'cow',
     name: 'Bò Sữa Đồng Nai',
+    babyName: 'Bê Sữa Đáng Yêu',
     facility: 'cattle_pasture',
     description: 'Bò sữa Hà Lan thuần hóa, nhai cỏ chậm rãi bên máng gỗ, cho dòng sữa thơm béo.',
     stockItemId: 'stock_cow',
     stockPrice: 1800,
+    growthDurationSec: 600, // 10 minutes
+    matureSellPrice: 4200,
     yieldItemId: 'yield_milk',
     yieldItem: 'yield_milk',
     yieldName: 'Bình Sữa Bò Tươi',
@@ -364,10 +452,13 @@ export const ANIMALS: Record<AnimalType, AnimalDef> = {
   pig: {
     type: 'pig',
     name: 'Heo Mọi Sọc Dưa',
+    babyName: 'Heo Con Sọc Dưa',
     facility: 'pig_pen',
     description: 'Heo sọc dưa háu ăn, thích đầm mình trong bãi sình ẩm ướt và ủi tìm nấm quý.',
     stockItemId: 'stock_pig',
     stockPrice: 800,
+    growthDurationSec: 360, // 6 minutes
+    matureSellPrice: 1850,
     yieldItemId: 'yield_truffle',
     yieldItem: 'yield_truffle',
     yieldName: 'Nấm Tràm Đầm Lầy',
@@ -383,10 +474,13 @@ export const ANIMALS: Record<AnimalType, AnimalDef> = {
   goat: {
     type: 'goat',
     name: 'Dê Núi Bách Thảo',
+    babyName: 'Dê Con Tinh Nghịch',
     facility: 'goat_pen',
     description: 'Dê Bách Thảo tinh nghịch, thích leo bục gỗ dốc đứng và gặm rơm trên cao.',
     stockItemId: 'stock_goat',
     stockPrice: 1200,
+    growthDurationSec: 420, // 7 minutes
+    matureSellPrice: 2700,
     yieldItemId: 'yield_goat_milk',
     yieldItem: 'yield_goat_milk',
     yieldName: 'Bình Sữa Dê Thanh Mát',
@@ -402,10 +496,13 @@ export const ANIMALS: Record<AnimalType, AnimalDef> = {
   sheep: {
     type: 'sheep',
     name: 'Cừu Phan Rang',
+    babyName: 'Cừu Con Lông Xù',
     facility: 'goat_pen',
     description: 'Cừu Phan Rang chịu nắng gió tốt, cho lông cừu ấm áp mềm mại.',
     stockItemId: 'stock_sheep',
     stockPrice: 1400,
+    growthDurationSec: 480, // 8 minutes
+    matureSellPrice: 3200,
     yieldItemId: 'yield_wool',
     yieldItem: 'yield_wool',
     yieldName: 'Cuộn Len Cừu Trắng',
@@ -419,6 +516,172 @@ export const ANIMALS: Record<AnimalType, AnimalDef> = {
     sprite: 'farm:animal_sheep',
   },
 };
+
+export type AnimalGrowthStage = 'baby' | 'growing' | 'adult' | 'dead';
+
+export interface AnimalGrowthInfo {
+  stage: AnimalGrowthStage;
+  progressPercent: number;
+  remainingSec: number;
+  canSell: boolean;
+  sellPrice: number;
+  displayName: string;
+  isDead: boolean;
+  deathReason?: string;
+}
+
+export interface AnimalHungerInfo {
+  isHungry: boolean;
+  hungerRemainingSec: number;
+  canYield: boolean;
+  feedIntervalSec: number;
+  isDead: boolean;
+  starvationRemainingSec: number;
+}
+
+export function computeAnimalHunger(
+  animalType: string,
+  fedAt: Date | string | null,
+  lastYieldAt: Date | string | null,
+  currentTimeMs: number,
+  isAdult = false,
+  createdAt?: Date | string | null,
+): AnimalHungerInfo {
+  const def = Object.values(ANIMALS).find((a) => a.type === animalType);
+  const feedIntervalSec = def?.feedIntervalSec ?? 300;
+  const hungerDecaySec = def?.hungerDecaySec ?? 600;
+
+  if (!fedAt) {
+    // Never fed since birth (or creation)
+    const birthMs = createdAt ? new Date(createdAt).getTime() : currentTimeMs;
+    const elapsedSec = Math.max(0, (currentTimeMs - birthMs) / 1000);
+    const starvationRemainingSec = Math.max(0, Math.round(hungerDecaySec - elapsedSec));
+    const isDead = starvationRemainingSec <= 0;
+
+    return {
+      isHungry: !isDead,
+      hungerRemainingSec: 0,
+      canYield: false,
+      feedIntervalSec,
+      isDead,
+      starvationRemainingSec,
+    };
+  }
+
+  const fedMs = new Date(fedAt).getTime();
+  const elapsedSec = Math.max(0, (currentTimeMs - fedMs) / 1000);
+  const hungerRemainingSec = Math.max(0, Math.round(feedIntervalSec - elapsedSec));
+  const isHungry = hungerRemainingSec <= 0;
+
+  let isDead = false;
+  let starvationRemainingSec = hungerDecaySec;
+
+  if (isHungry) {
+    const starvedSec = elapsedSec - feedIntervalSec;
+    starvationRemainingSec = Math.max(0, Math.round(hungerDecaySec - starvedSec));
+    if (starvationRemainingSec <= 0) {
+      isDead = true;
+    }
+  }
+
+  const yieldMs = lastYieldAt ? new Date(lastYieldAt).getTime() : 0;
+  const canYield = !isDead && isAdult && fedMs > 0 && yieldMs < fedMs && elapsedSec >= feedIntervalSec;
+
+  return {
+    isHungry: !isDead && isHungry,
+    hungerRemainingSec,
+    canYield,
+    feedIntervalSec,
+    isDead,
+    starvationRemainingSec,
+  };
+}
+
+export function computeAnimalGrowthStage(
+  animalType: string,
+  createdAt: Date | string | null,
+  currentTimeMs: number,
+  fedAt?: Date | string | null,
+  growthAccumSec = 0,
+): AnimalGrowthInfo {
+  const def = Object.values(ANIMALS).find((a) => a.type === animalType);
+  if (!def || !createdAt) {
+    return {
+      stage: 'adult',
+      progressPercent: 100,
+      remainingSec: 0,
+      canSell: true,
+      sellPrice: def?.matureSellPrice ?? 300,
+      displayName: def?.name ?? animalType,
+      isDead: false,
+    };
+  }
+
+  // 1. Check if animal has starved to death
+  const hunger = computeAnimalHunger(animalType, fedAt ?? null, null, currentTimeMs, false, createdAt);
+
+  if (hunger.isDead) {
+    return {
+      stage: 'dead',
+      progressPercent: 0,
+      remainingSec: 0,
+      canSell: true,
+      sellPrice: 0,
+      displayName: `${def.babyName || def.name} (Đã chết vì đói)`,
+      isDead: true,
+      deathReason: 'starvation',
+    };
+  }
+
+  // 2. Growth calculation: Animals ONLY grow when fed!
+  // If the animal has never been fed and has no accumulated growth, growth is 0%.
+  const hasEaten = !!fedAt || growthAccumSec > 0;
+  if (!hasEaten) {
+    return {
+      stage: 'baby',
+      progressPercent: 0,
+      remainingSec: def.growthDurationSec,
+      canSell: true,
+      sellPrice: Math.floor(def.stockPrice * 0.7),
+      displayName: def.babyName,
+      isDead: false,
+    };
+  }
+
+  // Calculate elapsed digesting time from the current feeding
+  const currentFedElapsedSec = fedAt ? Math.max(0, (currentTimeMs - new Date(fedAt).getTime()) / 1000) : 0;
+  // Food only promotes growth during its active digestion window (up to feedIntervalSec)
+  const currentDigestSec = Math.min(def.feedIntervalSec, currentFedElapsedSec);
+  const totalGrowthSec = Math.min(def.growthDurationSec, (growthAccumSec || 0) + currentDigestSec);
+
+  const totalSec = def.growthDurationSec;
+  const progressPercent = Math.min(100, Math.round((totalGrowthSec / totalSec) * 100));
+  const remainingSec = Math.max(0, Math.round(totalSec - totalGrowthSec));
+
+  let stage: AnimalGrowthStage = 'baby';
+  let displayName = def.babyName;
+  let sellPrice = Math.floor(def.stockPrice * 0.7);
+
+  if (totalGrowthSec >= totalSec) {
+    stage = 'adult';
+    displayName = def.name;
+    sellPrice = def.matureSellPrice;
+  } else if (totalGrowthSec >= totalSec * 0.4) {
+    stage = 'growing';
+    displayName = `${def.name} (Đang Lớn)`;
+    sellPrice = Math.floor(def.stockPrice + (def.matureSellPrice - def.stockPrice) * (progressPercent / 100));
+  }
+
+  return {
+    stage,
+    progressPercent,
+    remainingSec,
+    canSell: true,
+    sellPrice,
+    displayName,
+    isDead: false,
+  };
+}
 
 // ==========================================
 // 3. AQUACULTURE POND FISH TYPES & CATALOG
@@ -717,6 +980,42 @@ export const BAC_SAU_SHOP_ITEMS: FarmShopItemDef[] = [
     unit: 'cành giống',
     description: 'Nho tím trĩu giàn ngọt thanh mọng nước, giống nho cao cấp.',
     sprite: 'farm:seed_grape',
+  },
+  {
+    id: 'seed_cabbage',
+    name: 'Hạt Giống Bắp Cải Trắng Đà Lạt',
+    category: 'seeds',
+    coinPrice: 45,
+    unit: 'túi giống',
+    description: 'Bắp cải tròn búp cuộn chặt giòn ngọt thanh mát, dễ chăm sóc.',
+    sprite: 'farm:seed_cabbage',
+  },
+  {
+    id: 'seed_pineapple',
+    name: 'Chồi Giống Khóm Mật Bến Lức',
+    category: 'seeds',
+    coinPrice: 110,
+    unit: 'chồi giống',
+    description: 'Khóm mật ruột vàng óng thơm lừng ngọt sắc đặc sản Tiền Giang.',
+    sprite: 'farm:seed_pineapple',
+  },
+  {
+    id: 'seed_dragonfruit',
+    name: 'Cành Giống Thanh Long Ruột Đỏ',
+    category: 'seeds',
+    coinPrice: 140,
+    unit: 'cành giống',
+    description: 'Thanh long ruột đỏ vỏ hồng tai xanh mọng nước ngọt mát.',
+    sprite: 'farm:seed_dragonfruit',
+  },
+  {
+    id: 'seed_sugarcane',
+    name: 'Hom Giống Mía Tím Hòa Bình',
+    category: 'seeds',
+    coinPrice: 70,
+    unit: 'hom giống',
+    description: 'Mía tím gióng dài vỏ mỏng ngọt lịm thơm ngon nức tiếng.',
+    sprite: 'farm:seed_sugarcane',
   },
 
   // LIVESTOCK CON GIỐNG
@@ -1103,6 +1402,7 @@ export function getPondFishStage(weightKg: number, speciesDef: PondFishDef): Pon
 
 /**
  * Determines composite UI display state of a farm plot.
+ * When it rains, the plot is naturally moist and tilled.
  */
 export function getPlotState(
   plot: {
@@ -1114,10 +1414,11 @@ export function getPlotState(
     isFertilized?: boolean;
   },
   now = Date.now(),
+  isRaining = false,
 ): PlotState {
   if (!plot.isUnlocked) return 'locked';
-  if (!plot.isTilled) return 'untilled';
-  const moist = isPlotMoist(plot.wateredAt, now);
+  if (!plot.isTilled && !isRaining) return 'untilled';
+  const moist = isPlotMoist(plot.wateredAt, now, isRaining);
   if (!plot.cropId || !plot.plantedAt) {
     return moist ? 'tilled_wet' : 'tilled_dry';
   }

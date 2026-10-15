@@ -257,63 +257,372 @@ export function paintPlotTile(
     const cx = w / 2;
     const cy = h / 2 + 2;
 
+    // ------------------------------------------------------------------------
+    // STAGE 1: SEED & GERMINATING SEEDLINGS (Species-specific seedbeds)
+    // ------------------------------------------------------------------------
     if (stage === 'seed') {
-      // High-detail sprouted seedling with dew drops & leaf cotyledons
-      rect(ctx, '#3e2723', cx - 4, cy + 1, 8, 2); // earth mound
-      rect(ctx, '#4d7c0f', cx - 1, cy - 3, 2, 5); // tender stem
-      oval(ctx, '#84cc16', cx - 4, cy - 4, 4, 2); // left leaf
-      oval(ctx, '#a3e635', cx + 4, cy - 4, 4, 2); // right leaf
-      rect(ctx, '#bef264', cx - 1, cy - 5, 2, 2); // tip shoot
-      rect(ctx, '#ffffff', cx - 3, cy - 5, 1, 1); // dew drop sparkle
-      rect(ctx, '#ffffff', cx + 3, cy - 5, 1, 1);
-    } else if (stage === 'sprout') {
-      // Multi-branching lush stalk with structured foliage
-      rect(ctx, '#365314', cx - 2, cy - 11, 4, 12); // main stem
-      rect(ctx, '#4d7c0f', cx - 1, cy - 10, 2, 11); // stem highlight
-      // Left foliage tiers
-      oval(ctx, '#4d7c0f', cx - 7, cy - 7, 6, 3);
-      oval(ctx, '#84cc16', cx - 6, cy - 8, 5, 2);
-      // Right foliage tiers
-      oval(ctx, '#3f6212', cx + 7, cy - 6, 6, 3);
-      oval(ctx, '#65a30d', cx + 6, cy - 7, 5, 2);
-      // Top central shoot
-      oval(ctx, '#a3e635', cx, cy - 13, 5, 3);
-      rect(ctx, '#bef264', cx - 1, cy - 14, 2, 2);
-    } else if (stage === 'blooming') {
-      // Lush bushy foliage with species-authentic blossoms
-      oval(ctx, '#365314', cx, cy - 7, 16, 11);
-      oval(ctx, '#4d7c0f', cx, cy - 8, 14, 9);
-      oval(ctx, '#65a30d', cx - 3, cy - 10, 10, 7);
+      if (cropId.includes('rice') || cropId.includes('lua')) {
+        // Wet paddy flooded furrow with submerged seed and tender lime-green coleoptile
+        rect(ctx, '#365314', cx - 5, cy + 2, 10, 2);
+        for (let i = -1; i <= 1; i++) {
+          const px = cx + i * 4;
+          rect(ctx, '#14532d', px, cy - 2, 1, 4);
+          rect(ctx, '#84cc16', px, cy - 4, 1, 3);
+          rect(ctx, '#bef264', px - (i === 1 ? -1 : 1), cy - 5, 2, 1);
+          rect(ctx, '#ffffff', px, cy - 5, 1, 1); // water drop sparkle
+        }
+      } else if (cropId.includes('watermelon') || cropId.includes('pumpkin')) {
+        // Raised round mound with fat dual cotyledon leaves spread open
+        oval(ctx, '#3e2723', cx, cy + 2, 10, 4);
+        rect(ctx, '#4d7c0f', cx - 1, cy - 2, 2, 4);
+        oval(ctx, '#65a30d', cx - 5, cy - 3, 5, 3); // wide left cotyledon
+        oval(ctx, '#84cc16', cx + 5, cy - 3, 5, 3); // wide right cotyledon
+        rect(ctx, '#a3e635', cx - 1, cy - 5, 2, 2); // tiny emerging true leaf
+        rect(ctx, '#ffffff', cx - 3, cy - 4, 1, 1);
+      } else if (cropId.includes('corn') || cropId.includes('sugarcane')) {
+        // Sturdy upright spear shoot emerging from soil mound
+        rect(ctx, '#3e2723', cx - 4, cy + 1, 8, 2);
+        rect(ctx, '#166534', cx - 1, cy - 6, 2, 8);
+        rect(ctx, '#4ade80', cx, cy - 7, 1, 6);
+        rect(ctx, '#bef264', cx - 1, cy - 8, 2, 2);
+        rect(ctx, '#ffffff', cx + 1, cy - 7, 1, 1);
+      } else if (cropId.includes('carrot')) {
+        // Fine delicate twin feathery thread sprouts in furrow
+        rect(ctx, '#3e2723', cx - 3, cy + 1, 6, 2);
+        rect(ctx, '#15803d', cx - 2, cy - 3, 1, 4);
+        rect(ctx, '#15803d', cx + 2, cy - 4, 1, 5);
+        rect(ctx, '#4ade80', cx - 3, cy - 4, 2, 1);
+        rect(ctx, '#4ade80', cx + 2, cy - 5, 2, 1);
+      } else if (cropId.includes('grape')) {
+        // Wooden marker peg with delicate climber sprout
+        rect(ctx, '#78350f', cx - 3, cy - 5, 2, 8);
+        rect(ctx, '#15803d', cx - 1, cy - 3, 2, 4);
+        oval(ctx, '#84cc16', cx + 3, cy - 4, 3, 2);
+        rect(ctx, '#bef264', cx, cy - 5, 1, 2);
+      } else if (cropId.includes('dragonfruit') || cropId.includes('pineapple')) {
+        // Spiky succulent seedling rosette
+        rect(ctx, '#3e2723', cx - 3, cy + 1, 6, 2);
+        rect(ctx, '#166534', cx - 1, cy - 4, 2, 5);
+        rect(ctx, '#22c55e', cx - 3, cy - 3, 2, 2);
+        rect(ctx, '#4ade80', cx + 2, cy - 3, 2, 2);
+        rect(ctx, '#86efac', cx, cy - 6, 1, 2);
+      } else {
+        // Standard Solanaceae / Flora / Rosette cotyledon seedling
+        rect(ctx, '#3e2723', cx - 4, cy + 1, 8, 2);
+        rect(ctx, '#4d7c0f', cx - 1, cy - 3, 2, 5);
+        oval(ctx, '#84cc16', cx - 4, cy - 4, 4, 2);
+        oval(ctx, '#a3e635', cx + 4, cy - 4, 4, 2);
+        rect(ctx, '#bef264', cx - 1, cy - 5, 2, 2);
+        rect(ctx, '#ffffff', cx - 3, cy - 5, 1, 1);
+      }
+    }
 
-      if (cropId.includes('strawberry')) {
-        // Delicate white strawberry blossoms with sunny yellow centers
+    // ------------------------------------------------------------------------
+    // STAGE 2: SPROUT & VEGETATIVE GROWTH (Species-specific plant shapes)
+    // ------------------------------------------------------------------------
+    else if (stage === 'sprout') {
+      if (cropId.includes('rice') || cropId.includes('lua')) {
+        // Dense emerald rice tiller clump (5 arched blades with water sheen)
+        rect(ctx, '#365314', cx - 6, cy + 1, 12, 2);
+        for (let b = -2; b <= 2; b++) {
+          const bx = cx + b * 3;
+          ctx.beginPath();
+          ctx.moveTo(bx, cy + 2);
+          ctx.quadraticCurveTo(bx + b * 2, cy - 8, bx + b * 4, cy - 11);
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = '#22c55e';
+          ctx.stroke();
+          oval(ctx, '#4ade80', bx + b * 4, cy - 11, 2, 1);
+        }
+      } else if (cropId.includes('corn')) {
+        // Thick segmented stalk with alternating broad arching leaves
+        rect(ctx, '#14532d', cx - 2, cy - 12, 4, 14);
+        rect(ctx, '#22c55e', cx - 1, cy - 11, 2, 13);
+        // Left arching broad leaf
+        oval(ctx, '#15803d', cx - 8, cy - 6, 7, 3);
+        oval(ctx, '#4ade80', cx - 8, cy - 7, 6, 2);
+        // Right arching broad leaf
+        oval(ctx, '#16a34a', cx + 8, cy - 9, 7, 3);
+        oval(ctx, '#86efac', cx + 7, cy - 10, 6, 2);
+        // Central shoot
+        oval(ctx, '#a3e635', cx, cy - 13, 4, 3);
+      } else if (cropId.includes('sugarcane')) {
+        // Clump of 3 jointed canes with upright arching leaves
+        for (const so of [-4, 0, 4]) {
+          rect(ctx, '#581c87', cx + so - 1, cy - 12, 3, 14);
+          rect(ctx, '#a855f7', cx + so, cy - 11, 1, 13);
+          rect(ctx, '#fef08a', cx + so - 1, cy - 6, 3, 1); // early joint ring
+        }
+        oval(ctx, '#15803d', cx - 6, cy - 13, 6, 2);
+        oval(ctx, '#22c55e', cx + 6, cy - 14, 6, 2);
+      } else if (cropId.includes('watermelon') || cropId.includes('pumpkin')) {
+        // Sprawling vine runners creeping across the furrow with curly tendrils
+        oval(ctx, '#14532d', cx, cy - 3, 14, 6);
+        oval(ctx, '#16a34a', cx - 8, cy - 4, 6, 4);
+        oval(ctx, '#22c55e', cx + 8, cy - 3, 6, 4);
+        oval(ctx, '#4ade80', cx, cy - 6, 7, 4);
+        // Curly green runner tendrils
+        rect(ctx, '#15803d', cx - 12, cy - 2, 3, 1);
+        rect(ctx, '#22c55e', cx - 13, cy - 4, 2, 2);
+        rect(ctx, '#15803d', cx + 11, cy - 1, 3, 1);
+        rect(ctx, '#22c55e', cx + 13, cy - 3, 2, 2);
+      } else if (cropId.includes('strawberry')) {
+        // Low bushy rosette of serrated trifoliate leaves
+        oval(ctx, '#14532d', cx, cy - 3, 12, 6);
+        oval(ctx, '#15803d', cx - 6, cy - 5, 5, 4);
+        oval(ctx, '#16a34a', cx + 6, cy - 5, 5, 4);
+        oval(ctx, '#22c55e', cx, cy - 7, 6, 4);
+        rect(ctx, '#4ade80', cx - 1, cy - 8, 2, 2);
+      } else if (cropId.includes('carrot')) {
+        // Dense cluster of feathery fern-like fronds
+        rect(ctx, '#14532d', cx - 1, cy - 5, 3, 7);
+        for (const fo of [-6, -2, 2, 6]) {
+          rect(ctx, '#15803d', cx + fo, cy - 10, 1, 8);
+          rect(ctx, '#22c55e', cx + fo - 1, cy - 11, 3, 2);
+          rect(ctx, '#4ade80', cx + fo, cy - 13, 2, 2);
+        }
+      } else if (cropId.includes('sunflower')) {
+        // Sturdy thick stalk with large cordate (heart-shaped) leaves
+        rect(ctx, '#14532d', cx - 2, cy - 13, 4, 15);
+        rect(ctx, '#22c55e', cx - 1, cy - 12, 2, 14);
+        oval(ctx, '#15803d', cx - 7, cy - 6, 6, 4);
+        oval(ctx, '#4ade80', cx - 6, cy - 7, 5, 3);
+        oval(ctx, '#16a34a', cx + 7, cy - 8, 6, 4);
+        oval(ctx, '#86efac', cx + 6, cy - 9, 5, 3);
+        oval(ctx, '#a3e635', cx, cy - 14, 5, 4);
+      } else if (cropId.includes('grape')) {
+        // Wooden trellis post with wrapping young vine and lobed leaves
+        rect(ctx, '#78350f', cx - 1, cy - 14, 3, 16);
+        rect(ctx, '#92400e', cx, cy - 13, 1, 14);
+        oval(ctx, '#15803d', cx - 5, cy - 8, 5, 4);
+        oval(ctx, '#22c55e', cx + 5, cy - 10, 5, 4);
+        rect(ctx, '#4ade80', cx + 6, cy - 12, 2, 2); // tendril
+      } else if (cropId.includes('cabbage')) {
+        // Expanding rosette of crinkly jade leaves forming a miniature cup
+        oval(ctx, '#14532d', cx, cy - 4, 14, 8);
+        oval(ctx, '#16a34a', cx, cy - 4, 12, 7);
+        oval(ctx, '#22c55e', cx, cy - 5, 9, 5);
+        rect(ctx, '#86efac', cx - 1, cy - 5, 3, 2);
+      } else if (cropId.includes('pineapple')) {
+        // Radiating sword-shaped spiky leaves with red-tinted edges
+        rect(ctx, '#14532d', cx - 1, cy - 4, 3, 6);
+        oval(ctx, '#15803d', cx - 7, cy - 5, 6, 2);
+        oval(ctx, '#16a34a', cx + 7, cy - 5, 6, 2);
+        oval(ctx, '#22c55e', cx - 4, cy - 9, 4, 2);
+        oval(ctx, '#4ade80', cx + 4, cy - 9, 4, 2);
+        rect(ctx, '#b91c1c', cx - 8, cy - 6, 2, 1); // red spine tip
+        rect(ctx, '#b91c1c', cx + 7, cy - 6, 2, 1);
+        rect(ctx, '#86efac', cx, cy - 11, 2, 3);
+      } else if (cropId.includes('dragonfruit')) {
+        // Fleshy 3-winged cactus joint climbing on short post
+        rect(ctx, '#78350f', cx - 2, cy - 10, 4, 12);
+        rect(ctx, '#15803d', cx - 3, cy - 9, 6, 8);
+        rect(ctx, '#22c55e', cx - 2, cy - 8, 4, 7);
+        rect(ctx, '#4ade80', cx - 1, cy - 11, 3, 3);
+        rect(ctx, '#ffffff', cx - 3, cy - 6, 1, 1); // spine dots
+        rect(ctx, '#ffffff', cx + 3, cy - 7, 1, 1);
+      } else {
+        // General bushy Solanaceae sprout (Tomato, Chili, Eggplant)
+        rect(ctx, '#14532d', cx - 2, cy - 10, 4, 12);
+        rect(ctx, '#22c55e', cx - 1, cy - 9, 2, 10);
+        oval(ctx, '#15803d', cx - 6, cy - 6, 6, 3);
+        oval(ctx, '#4ade80', cx - 5, cy - 7, 5, 2);
+        oval(ctx, '#16a34a', cx + 6, cy - 5, 6, 3);
+        oval(ctx, '#86efac', cx + 5, cy - 6, 5, 2);
+        oval(ctx, '#a3e635', cx, cy - 12, 5, 3);
+      }
+    }
+
+    // ------------------------------------------------------------------------
+    // STAGE 3: BLOOMING & EARLY FRUIT SET (Species-authentic blossoms)
+    // ------------------------------------------------------------------------
+    else if (stage === 'blooming') {
+      if (cropId.includes('rice') || cropId.includes('lua')) {
+        // Pale green flowering panicles with lime-white spikelets & pollen glints
+        rect(ctx, '#365314', cx - 7, cy + 2, 14, 2);
+        for (let p = -2; p <= 2; p++) {
+          const px = cx + p * 5;
+          ctx.beginPath();
+          ctx.moveTo(px, cy + 2);
+          ctx.quadraticCurveTo(px + p * 2, cy - 10, px + p * 3, cy - 14);
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = '#65a30d';
+          ctx.stroke();
+          // Flowering spikelets
+          for (let k = 0; k < 3; k++) {
+            oval(ctx, '#fef08a', px + p * 2 + k * 1.5, cy - 12 + k * 2, 1.5, 2);
+            rect(ctx, '#ffffff', px + p * 2 + k * 1.5, cy - 12 + k * 2, 1, 1);
+          }
+        }
+      } else if (cropId.includes('corn')) {
+        // Tall corn stalk with top silk tassel & swelling ear shoots
+        rect(ctx, '#14532d', cx - 2, cy - 16, 4, 18);
+        rect(ctx, '#22c55e', cx - 1, cy - 15, 2, 17);
+        oval(ctx, '#15803d', cx - 9, cy - 8, 8, 3);
+        oval(ctx, '#16a34a', cx + 9, cy - 10, 8, 3);
+        // Developing ear shoot at leaf axil
+        oval(ctx, '#15803d', cx + 4, cy - 6, 4, 7);
+        rect(ctx, '#d97706', cx + 4, cy - 10, 2, 3); // silk threads
+        rect(ctx, '#fef08a', cx + 5, cy - 11, 1, 2);
+        // Top tassel
+        rect(ctx, '#ca8a04', cx - 2, cy - 18, 4, 3);
+        rect(ctx, '#fef08a', cx - 3, cy - 20, 6, 2);
+      } else if (cropId.includes('sugarcane')) {
+        // Sturdy purple canes with emerging arrow plume bud
+        for (const so of [-5, 0, 5]) {
+          rect(ctx, '#4a044e', cx + so - 1, cy - 16, 3, 18);
+          rect(ctx, '#9333ea', cx + so, cy - 15, 1, 17);
+          rect(ctx, '#fef08a', cx + so - 1, cy - 10, 3, 1);
+          rect(ctx, '#fef08a', cx + so - 1, cy - 4, 3, 1);
+        }
+        oval(ctx, '#e9d5ff', cx, cy - 18, 5, 3); // arrow plume bud
+      } else if (cropId.includes('watermelon')) {
+        // Creeping vine with golden yellow star blossoms & miniature green melon bead
+        oval(ctx, '#14532d', cx, cy - 4, 16, 8);
+        oval(ctx, '#22c55e', cx, cy - 5, 14, 6);
+        // Miniature green watermelon bead
+        oval(ctx, '#166534', cx - 6, cy - 2, 4, 3);
+        oval(ctx, '#22c55e', cx - 6, cy - 2, 3, 2);
+        // Bright yellow blossoms
         const blossoms: [number, number][] = [
-          [cx - 6, cy - 9],
-          [cx + 5, cy - 8],
-          [cx - 1, cy - 12],
+          [cx - 5, cy - 8],
+          [cx + 5, cy - 6],
         ];
         for (const [bx, by] of blossoms) {
-          oval(ctx, '#ffffff', bx, by, 3, 3);
-          rect(ctx, '#facc15', bx, by, 1, 1);
+          oval(ctx, '#eab308', bx, by, 4, 4);
+          rect(ctx, '#fef08a', bx, by, 2, 2);
+          rect(ctx, '#b45309', bx, by, 1, 1);
         }
       } else if (cropId.includes('pumpkin')) {
-        // Broad lush leaves and star-shaped golden-orange pumpkin blossom
+        // Large vine with huge golden-orange trumpet blossom & tiny ribbed green baby pumpkin
+        oval(ctx, '#14532d', cx, cy - 4, 16, 8);
+        oval(ctx, '#16a34a', cx, cy - 5, 14, 6);
+        // Tiny baby green pumpkin
+        oval(ctx, '#166534', cx - 5, cy - 3, 5, 4);
+        rect(ctx, '#22c55e', cx - 5, cy - 3, 2, 2);
+        // Big trumpet blossom
+        oval(ctx, '#ea580c', cx + 4, cy - 8, 6, 5);
         oval(ctx, '#f59e0b', cx + 4, cy - 8, 5, 4);
-        rect(ctx, '#ea580c', cx + 4, cy - 8, 2, 2);
+        rect(ctx, '#fef08a', cx + 4, cy - 8, 2, 2);
+      } else if (cropId.includes('strawberry')) {
+        // Dainty white 5-petal blossoms with golden centers & miniature green unripe berries
+        oval(ctx, '#14532d', cx, cy - 4, 15, 8);
+        oval(ctx, '#16a34a', cx, cy - 5, 13, 6);
+        // Tiny green immature berries
+        oval(ctx, '#4ade80', cx - 7, cy - 2, 3, 3);
+        oval(ctx, '#4ade80', cx + 7, cy - 2, 3, 3);
+        // White flowers with golden pistil
+        const flowers: [number, number][] = [
+          [cx - 4, cy - 9],
+          [cx + 3, cy - 8],
+          [cx, cy - 11],
+        ];
+        for (const [fx, fy] of flowers) {
+          oval(ctx, '#ffffff', fx, fy, 4, 4);
+          rect(ctx, '#facc15', fx, fy, 2, 2);
+        }
+      } else if (cropId.includes('tomato')) {
+        // Yellow star blossoms in drooping clusters & tiny green cherry tomato beads
+        oval(ctx, '#14532d', cx, cy - 7, 14, 10);
+        oval(ctx, '#16a34a', cx, cy - 8, 12, 8);
+        // Baby green tomatoes
+        oval(ctx, '#4ade80', cx - 6, cy - 3, 3, 3);
+        oval(ctx, '#4ade80', cx + 6, cy - 4, 3, 3);
+        // Yellow star blossoms
+        const flowers: [number, number][] = [
+          [cx - 4, cy - 10],
+          [cx + 3, cy - 11],
+          [cx, cy - 7],
+        ];
+        for (const [fx, fy] of flowers) {
+          oval(ctx, '#eab308', fx, fy, 3, 3);
+          rect(ctx, '#fef08a', fx, fy, 1, 1);
+        }
+      } else if (cropId.includes('chili')) {
+        // Dainty white star flowers & tiny upright green peppers
+        oval(ctx, '#14532d', cx, cy - 6, 14, 9);
+        oval(ctx, '#16a34a', cx, cy - 7, 12, 7);
+        // Tiny upright green chilies
+        rect(ctx, '#166534', cx - 5, cy - 5, 2, 4);
+        rect(ctx, '#22c55e', cx + 5, cy - 6, 2, 4);
+        // White star blossoms
+        oval(ctx, '#ffffff', cx - 2, cy - 10, 3, 3);
+        rect(ctx, '#fef08a', cx - 2, cy - 10, 1, 1);
+        oval(ctx, '#ffffff', cx + 4, cy - 9, 3, 3);
+        rect(ctx, '#fef08a', cx + 4, cy - 9, 1, 1);
       } else if (cropId.includes('eggplant')) {
-        // Violet bell blossoms with yellow pistil
+        // Violet star blossoms with bright yellow anthers
+        oval(ctx, '#14532d', cx, cy - 7, 15, 10);
+        oval(ctx, '#16a34a', cx, cy - 8, 13, 8);
+        // Violet bell blossoms
+        oval(ctx, '#7e22ce', cx - 5, cy - 9, 5, 4);
         oval(ctx, '#c084fc', cx - 5, cy - 9, 4, 3);
-        rect(ctx, '#fef08a', cx - 5, cy - 9, 1, 1);
+        rect(ctx, '#fef08a', cx - 5, cy - 9, 2, 2);
+        oval(ctx, '#7e22ce', cx + 4, cy - 7, 5, 4);
+        oval(ctx, '#c084fc', cx + 4, cy - 7, 4, 3);
+        rect(ctx, '#fef08a', cx + 4, cy - 7, 2, 2);
+      } else if (cropId.includes('carrot')) {
+        // Lush feathery tops with white lacy umbrella umbel blossoms
+        for (const co of [-7, -2, 3, 8]) {
+          rect(ctx, '#15803d', cx + co, cy - 11, 1, 10);
+          rect(ctx, '#22c55e', cx + co - 1, cy - 12, 3, 2);
+        }
+        // White lacy umbrella umbels
+        oval(ctx, '#ffffff', cx - 4, cy - 14, 5, 3);
+        rect(ctx, '#fef08a', cx - 4, cy - 14, 1, 1);
+        oval(ctx, '#ffffff', cx + 4, cy - 15, 5, 3);
+        rect(ctx, '#fef08a', cx + 4, cy - 15, 1, 1);
       } else if (cropId.includes('sunflower')) {
-        // Developing round flower head
-        oval(ctx, '#eab308', cx, cy - 10, 6, 6);
-        oval(ctx, '#713f12', cx, cy - 10, 3, 3);
+        // Upright tall stalk with large swelling disk bud bursting with golden petals
+        rect(ctx, '#15803d', cx - 2, cy - 8, 4, 13);
+        oval(ctx, '#166534', cx - 7, cy - 2, 6, 3);
+        oval(ctx, '#16a34a', cx + 7, cy - 2, 6, 3);
+        // Large flower bud with green bracts opening
+        oval(ctx, '#15803d', cx, cy - 11, 9, 9);
+        oval(ctx, '#ca8a04', cx, cy - 11, 7, 7);
+        oval(ctx, '#eab308', cx, cy - 11, 5, 5);
+        rect(ctx, '#fef08a', cx - 1, cy - 12, 2, 2);
       } else if (cropId.includes('grape')) {
-        // Tiny green grape flower clusters
-        oval(ctx, '#bef264', cx - 5, cy - 7, 3, 3);
-        oval(ctx, '#bef264', cx + 4, cy - 9, 3, 3);
+        // Vine trellis with tiny green grape flower clusters & bead berries
+        rect(ctx, '#78350f', cx - 1, cy - 15, 3, 17);
+        oval(ctx, '#166534', cx, cy - 12, 14, 7);
+        oval(ctx, '#22c55e', cx - 4, cy - 10, 6, 4);
+        oval(ctx, '#22c55e', cx + 4, cy - 10, 6, 4);
+        // Chartreuse flower clusters & tiny beads
+        oval(ctx, '#bef264', cx - 4, cy - 7, 4, 4);
+        oval(ctx, '#bef264', cx + 4, cy - 6, 4, 4);
+        rect(ctx, '#ffffff', cx - 4, cy - 7, 1, 1);
+        rect(ctx, '#ffffff', cx + 4, cy - 6, 1, 1);
+      } else if (cropId.includes('cabbage')) {
+        // Thick ruffled outer leaves wrapping around a swelling pale green heart
+        oval(ctx, '#14532d', cx, cy - 4, 16, 10);
+        oval(ctx, '#16a34a', cx, cy - 4, 14, 9);
+        oval(ctx, '#22c55e', cx, cy - 5, 11, 7);
+        oval(ctx, '#86efac', cx, cy - 5, 7, 5);
+        rect(ctx, '#dcfce7', cx - 1, cy - 5, 3, 2);
+      } else if (cropId.includes('pineapple')) {
+        // Central crimson cone bud with miniature purple florets
+        oval(ctx, '#14532d', cx, cy - 4, 16, 8);
+        oval(ctx, '#16a34a', cx, cy - 5, 14, 6);
+        // Red flower cone
+        oval(ctx, '#991b1b', cx, cy - 7, 7, 10);
+        oval(ctx, '#dc2626', cx, cy - 7, 6, 9);
+        rect(ctx, '#c084fc', cx - 2, cy - 8, 2, 2); // purple floret tips
+        rect(ctx, '#c084fc', cx + 1, cy - 6, 2, 2);
+        rect(ctx, '#4ade80', cx - 1, cy - 14, 3, 3);
+      } else if (cropId.includes('dragonfruit')) {
+        // Large creamy white night-blooming flower bud on fleshy cactus limb
+        rect(ctx, '#78350f', cx - 2, cy - 11, 4, 13);
+        rect(ctx, '#15803d', cx - 4, cy - 8, 8, 9);
+        rect(ctx, '#22c55e', cx - 3, cy - 7, 6, 8);
+        // Creamy flower bud
+        oval(ctx, '#fef08a', cx + 3, cy - 9, 6, 5);
+        oval(ctx, '#ffffff', cx + 3, cy - 9, 5, 4);
+        rect(ctx, '#ca8a04', cx + 3, cy - 9, 2, 2);
       } else {
-        // Cheerful standard flowers
+        // Generic cheerful flowers
+        oval(ctx, '#14532d', cx, cy - 7, 16, 11);
+        oval(ctx, '#16a34a', cx, cy - 8, 14, 9);
         oval(ctx, '#fef08a', cx - 5, cy - 10, 3, 3);
         rect(ctx, '#f59e0b', cx - 5, cy - 10, 1, 1);
         oval(ctx, '#fbcfe8', cx + 5, cy - 8, 3, 3);
@@ -510,6 +819,52 @@ export function paintPlotTile(
           oval(ctx, '#7e22ce', gx, gy, 2, 2);
           rect(ctx, '#d8b4fe', gx - 1, gy - 1, 1, 1); // frosty bloom
         }
+      } else if (cropId.includes('cabbage')) {
+        // BẮP CẢI TRẮNG ĐÀ LẠT: Large round leafy head with layered curled leaves
+        oval(ctx, '#14532d', cx, cy - 4, 16, 12);
+        oval(ctx, '#16a34a', cx, cy - 4, 14, 11);
+        oval(ctx, '#22c55e', cx, cy - 5, 11, 9);
+        oval(ctx, '#86efac', cx, cy - 6, 8, 7);
+        rect(ctx, '#dcfce7', cx - 2, cy - 7, 4, 3);
+      } else if (cropId.includes('pineapple')) {
+        // KHÓM MẬT BẾN LỨC: Golden pineapples with diamond eyes & spiky crown
+        oval(ctx, '#713f12', cx, cy - 4, 9, 13);
+        oval(ctx, '#ca8a04', cx, cy - 4, 8, 12);
+        oval(ctx, '#eab308', cx, cy - 5, 7, 10);
+        for (let ix = -4; ix <= 4; ix += 3) {
+          for (let iy = -8; iy <= 0; iy += 3) {
+            rect(ctx, '#713f12', cx + ix, cy + iy, 1, 1);
+            rect(ctx, '#fef08a', cx + ix, cy + iy - 1, 1, 1);
+          }
+        }
+        // Spiky green top crown
+        rect(ctx, '#15803d', cx - 5, cy - 16, 10, 5);
+        rect(ctx, '#22c55e', cx - 3, cy - 18, 6, 4);
+        rect(ctx, '#4ade80', cx - 1, cy - 20, 2, 3);
+      } else if (cropId.includes('dragonfruit')) {
+        // THANH LONG RUỘT ĐỎ: Magenta fruit with lime scale tips on cactus limb
+        rect(ctx, '#15803d', cx - 2, cy - 2, 4, 8); // cactus stalk
+        oval(ctx, '#831843', cx, cy - 6, 11, 13);
+        oval(ctx, '#be185d', cx, cy - 6, 10, 12);
+        oval(ctx, '#db2777', cx, cy - 6, 8, 10);
+        rect(ctx, '#f472b6', cx - 2, cy - 9, 3, 4);
+        // Scale fins
+        rect(ctx, '#16a34a', cx - 8, cy - 9, 3, 3);
+        rect(ctx, '#22c55e', cx - 7, cy - 8, 2, 2);
+        rect(ctx, '#16a34a', cx + 6, cy - 9, 3, 3);
+        rect(ctx, '#22c55e', cx + 6, cy - 8, 2, 2);
+        rect(ctx, '#4ade80', cx - 1, cy - 17, 3, 3);
+      } else if (cropId.includes('sugarcane')) {
+        // MÍA TÍM HÒA BÌNH: Tall purple jointed stalks with fan of blade leaves
+        for (const so of [-5, 0, 5]) {
+          rect(ctx, '#3b0764', cx + so - 2, cy - 18, 4, 22);
+          rect(ctx, '#7e22ce', cx + so - 1, cy - 17, 2, 20);
+          rect(ctx, '#fef08a', cx + so - 2, cy - 12, 4, 1); // joint node
+          rect(ctx, '#fef08a', cx + so - 2, cy - 6, 4, 1);
+        }
+        // Fan blades on top
+        rect(ctx, '#15803d', cx - 9, cy - 21, 18, 3);
+        rect(ctx, '#22c55e', cx - 7, cy - 23, 14, 2);
       } else {
         // Default harvest
         oval(ctx, '#166534', cx, cy - 8, 14, 10);

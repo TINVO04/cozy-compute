@@ -30,7 +30,7 @@ export class FarmLivingPropsSystem {
   private sparkleTimer: Phaser.Time.TimerEvent | null = null;
   private swimmingFish: Phaser.GameObjects.Graphics | null = null;
   private fishProgress = 0;
-  private trees: Phaser.GameObjects.Sprite[] = [];
+  private livingTrees: { sprite: Phaser.GameObjects.Sprite; phase: number; flexibility: number }[] = [];
   private lanterns: Phaser.GameObjects.Arc[] = [];
   private hangingSigns: Phaser.GameObjects.GameObject[] = [];
   private pond: WaterPondConfig = FARM_POIS.aquaculture_pond;
@@ -155,15 +155,32 @@ export class FarmLivingPropsSystem {
   private spawnDriftingLeaf() {
     if (!this.scene.sys.isActive() || useUi.getState().reducedMotion) return;
 
-    // Spawn near ancient oak tree or orchard
-    const tree = FARM_GARDEN.trees[Math.floor(Math.random() * FARM_GARDEN.trees.length)]!;
-    const startX = tree[0] * TILE;
-    const startY = tree[1] * TILE - 60;
+    let startX: number;
+    let startY: number;
+    let leafColors = [0x84cc16, 0x65a30d, 0xfacc15, 0xca8a04];
+
+    if (this.livingTrees.length > 0) {
+      const target = this.livingTrees[Math.floor(Math.random() * this.livingTrees.length)]!;
+      startX = target.sprite.x + (Math.random() - 0.5) * 24;
+      startY = target.sprite.y - 70 + Math.random() * 20;
+
+      const key = target.sprite.texture.key;
+      if (key === 'farm:blossom') {
+        leafColors = [0xfef08a, 0xfde047, 0xfacc15, 0xffffff];
+      } else if (key === 'farm:bamboo') {
+        leafColors = [0x22c55e, 0x86efac, 0xd97706, 0xb45309];
+      } else if (key === 'farm:coconut') {
+        leafColors = [0x16a34a, 0x4ade80, 0xca8a04];
+      }
+    } else {
+      const tree = FARM_GARDEN.trees[Math.floor(Math.random() * FARM_GARDEN.trees.length)]!;
+      startX = tree[0] * TILE;
+      startY = tree[1] * TILE - 60;
+    }
 
     const weather = useUi.getState().weather;
     const windKmh = weather?.windSpeedKmh ?? 14;
-    const leafColors = [0x84cc16, 0x65a30d, 0xfacc15, 0xca8a04];
-    const color = leafColors[Math.floor(Math.random() * leafColors.length)];
+    const color = leafColors[Math.floor(Math.random() * leafColors.length)]!;
 
     const leaf = this.scene.add.ellipse(startX, startY, 4, 2, color, 0.85);
     leaf.setDepth(startY + 30);
@@ -181,19 +198,21 @@ export class FarmLivingPropsSystem {
   }
 
   registerTree(treeSprite: Phaser.GameObjects.Sprite) {
-    this.trees.push(treeSprite);
-    if (useUi.getState().reducedMotion) return;
+    const key = treeSprite.texture.key;
+    const flexibility =
+      key === 'farm:coconut'
+        ? 1.5
+        : key === 'farm:bamboo'
+          ? 1.6
+          : key === 'farm:blossom'
+            ? 1.15
+            : key === 'farm:orchard'
+              ? 1.05
+              : 0.85;
 
-    // Subtle sinusoidal canopy sway tween
+    const phase = (treeSprite.x * 0.04 + treeSprite.y * 0.02) % (Math.PI * 2);
     treeSprite.setOrigin(0.5, 1.0); // bottom-anchored
-    this.scene.tweens.add({
-      targets: treeSprite,
-      angle: { from: -1.2, to: 1.2 },
-      duration: 2600 + Math.random() * 600,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
+    this.livingTrees.push({ sprite: treeSprite, phase, flexibility });
   }
 
   // =========================================================================
@@ -226,10 +245,28 @@ export class FarmLivingPropsSystem {
   }
 
   // =========================================================================
-  // FRAME UPDATE LOOP (Water sine waves & fish patrol)
+  // FRAME UPDATE LOOP (Water sine waves, fish patrol & tree wind sway)
   // =========================================================================
   update(time: number, delta: number) {
-    if (!this.waterGraphics || !this.scene.sys.isActive() || useUi.getState().reducedMotion) return;
+    if (!this.scene.sys.isActive() || useUi.getState().reducedMotion) return;
+
+    // 1. Dynamic species-specific tree canopy wind sway
+    if (this.livingTrees.length > 0) {
+      const weather = useUi.getState().weather;
+      const windKmh = weather?.windSpeedKmh ?? 14;
+      const isRain =
+        weather?.condition === 'rain' ||
+        weather?.condition === 'heavy_rain' ||
+        weather?.condition === 'thunderstorm';
+      const maxAngle = isRain || windKmh > 26 ? Math.min(2.4, 0.45 + (windKmh / 22) * 0.95) : 0.4;
+
+      for (const t of this.livingTrees) {
+        if (!t.sprite.active) continue;
+        t.sprite.angle = Math.sin(time * 0.0018 + t.phase) * maxAngle * t.flexibility;
+      }
+    }
+
+    if (!this.waterGraphics) return;
 
     this.waterGraphics.clear();
 
@@ -290,5 +327,6 @@ export class FarmLivingPropsSystem {
     this.sparkleTimer = null;
     this.lanterns.forEach((l) => l.destroy());
     this.lanterns = [];
+    this.livingTrees = [];
   }
 }

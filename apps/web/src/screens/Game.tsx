@@ -1,5 +1,6 @@
 import { VehicleShopPanel } from './panels/VehicleShopPanel';
 import { VehicleControls } from './panels/VehicleControls';
+import { TractorControlHud } from './panels/TractorControlHud';
 import { ShowroomHud } from './panels/ShowroomHud';
 import { ResidentPanel } from './panels/ResidentPanel';
 import { FISH, FISHING_RODS, OCEAN_ZONES, ZONES, type ZoneId } from '@cozy/game-data';
@@ -55,6 +56,7 @@ import { FarmPasswordModal } from './panels/FarmPasswordModal';
 import { FarmPlotModal } from './panels/FarmPlotModal';
 import { FarmSiloPanel } from './panels/FarmSiloPanel';
 import { FarmShopPanel } from './panels/FarmShopPanel';
+import { FarmLivestockPanel } from './panels/FarmLivestockPanel';
 import { AdminWeatherModal } from './admin/AdminWeatherModal';
 import { Sidebar } from './Sidebar';
 import { Brand } from './Brand';
@@ -261,22 +263,18 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
           {panel === 'wardrobe' ? (
             <BackpackPanel me={me} initialTab="wardrobe" onClose={() => setPanel(null)} />
           ) : null}
+          {panel === 'vehicles' ? (
+            <BackpackPanel me={me} initialTab="vehicles" onClose={() => setPanel(null)} />
+          ) : null}
           {panel === 'profile' ? (
             <BackpackPanel me={me} initialTab="profile" onClose={() => setPanel(null)} />
           ) : null}
-          {(['resident', 'farm-care', 'kitchen', 'aquarium'] as const).some((p) => p === panel) ? (
+          {panel === 'farm-care' ? <FarmLivestockPanel me={me} onClose={() => setPanel(null)} /> : null}
+          {(['resident', 'kitchen', 'aquarium'] as const).some((p) => p === panel) ? (
             <ResidentPanel
               key={panel}
               me={me}
-              initialTab={
-                panel === 'farm-care'
-                  ? 'farm'
-                  : panel === 'kitchen'
-                    ? 'kitchen'
-                    : panel === 'aquarium'
-                      ? 'aquarium'
-                      : 'quests'
-              }
+              initialTab={panel === 'kitchen' ? 'kitchen' : panel === 'aquarium' ? 'aquarium' : 'quests'}
               onClose={() => setPanel(null)}
             />
           ) : null}
@@ -830,6 +828,7 @@ function WorldHud({
 
       <div className="hud-tools">
         <VehicleControls me={me} />
+        <TractorControlHud me={me} />
         <div style={{ position: 'relative' }}>
           <button
             className="hud-tool"

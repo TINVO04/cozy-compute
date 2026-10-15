@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpCircle, Box, Egg, Sprout, Wheat } from 'lucide-react';
 import { useState } from 'react';
 import { farmItemIcon } from '../../art/farm-icons';
+import { net } from '../../game/net';
 import { api, ApiError, num, type Me } from '../../lib/api';
 import { play } from '../../lib/sound';
 import { useUi } from '../../lib/store';
@@ -404,18 +405,44 @@ export function FarmSiloPanel({ me, onClose }: { me: Me; onClose: () => void }) 
                       🌱 Sẵn sàng gieo
                     </span>
                   ) : item.itemId.includes('tractor') ? (
-                    <span
-                      style={{
-                        marginTop: 'auto',
-                        fontSize: 11,
-                        color: '#fde047',
-                        padding: '2px 6px',
-                        background: 'rgba(234, 179, 8, 0.1)',
-                        borderRadius: 4,
-                      }}
-                    >
-                      🚜 Máy cày nông vụ
-                    </span>
+                    <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: '#fde047',
+                          padding: '2px 6px',
+                          background: 'rgba(234, 179, 8, 0.1)',
+                          borderRadius: 4,
+                          textAlign: 'center',
+                        }}
+                      >
+                        🚜 Máy cày nông vụ
+                      </span>
+                      <Button
+                        style={{
+                          padding: '3px 8px',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          background: '#16a34a',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => {
+                          play('pop');
+                          net.send('vehicle:toggle', { vehicle: 'tractor_farm' });
+                          useUi.getState().setPanel(null);
+                          useUi.getState().toast({
+                            kind: 'reward',
+                            title: '🚜 Đã lên xe máy cày!',
+                            body: 'Lái qua các luống đất để tự động cày cấy và thu hoạch vụ mùa!',
+                          });
+                        }}
+                      >
+                        Lên Lái Xe
+                      </Button>
+                    </div>
                   ) : (
                     <span style={{ marginTop: 'auto', fontSize: 11, color: '#94a3b8' }}>Vật tư kho</span>
                   )}

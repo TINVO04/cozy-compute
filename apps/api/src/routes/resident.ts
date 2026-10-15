@@ -66,7 +66,7 @@ export function residentRoutes(app: FastifyInstance, ctx: AppContext) {
   app.post('/api/farm/care', (req) => {
     const { kind, id } = z
       .object({
-        kind: z.enum(['raise', 'collect', 'pond-feed', 'pond-harvest']),
+        kind: z.enum(['raise', 'collect', 'pond-feed', 'pond-harvest', 'sell']),
         id: z.string().min(1).max(60),
       })
       .parse(req.body);

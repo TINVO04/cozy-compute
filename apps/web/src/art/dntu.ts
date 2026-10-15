@@ -2439,70 +2439,135 @@ export function drawDntuTree(
   const by = canvas.height - 4 * scale;
   const rng = mulberry(Math.floor(scale * 100));
 
-  oval(ctx, 'rgba(40, 56, 32, 0.28)', cx + 2, by - 1, 20 * scale, 6 * scale);
+  // 1. Soft multi-toned ground contact shadow
+  oval(ctx, 'rgba(20, 35, 20, 0.18)', cx + 2 * scale, by - 1 * scale, 24 * scale, 7 * scale);
+  oval(ctx, 'rgba(20, 35, 20, 0.32)', cx + 1 * scale, by - 2 * scale, 15 * scale, 4 * scale);
 
   if (kind === 'palm') {
-    r(ctx, '#78563d', cx - 2 * scale, by - 36 * scale, 4 * scale, 36 * scale);
-    r(ctx, '#a67d58', cx - 1 * scale, by - 34 * scale, 2 * scale, 32 * scale);
-    for (let py = by - 32 * scale; py < by - 4 * scale; py += 6 * scale) {
-      r(ctx, '#543b28', cx - 2 * scale, py, 4 * scale, 1);
+    // Cau vua / Dừa cảnh: swollen trunk base characteristic of royal palms
+    r(ctx, '#452b1b', cx - 3 * scale, by - 6 * scale, 6 * scale, 6 * scale);
+    r(ctx, '#68432a', cx - 2 * scale, by - 5 * scale, 4 * scale, 4 * scale);
+
+    // Tapered column trunk
+    r(ctx, '#543b28', cx - 2 * scale, by - 36 * scale, 4 * scale, 32 * scale);
+    r(ctx, '#78563d', cx - 1.5 * scale, by - 35 * scale, 2.5 * scale, 30 * scale);
+    r(ctx, '#a67d58', cx - 1 * scale, by - 34 * scale, 1.5 * scale, 28 * scale);
+
+    // Ring segments on trunk
+    for (let py = by - 32 * scale; py < by - 6 * scale; py += 5 * scale) {
+      r(ctx, '#382417', cx - 2.5 * scale, py, 5 * scale, 1 * scale);
+      r(ctx, '#b88d64', cx - 1.5 * scale, py - 1 * scale, 2 * scale, 1 * scale);
     }
+
+    // Palm crown shaft (green crown sheath)
+    r(ctx, '#22542a', cx - 2 * scale, by - 42 * scale, 4 * scale, 7 * scale);
+    r(ctx, '#3f7c46', cx - 1 * scale, by - 41 * scale, 2 * scale, 5 * scale);
+
+    // Arching feather palm fronds
     const fronds = [
-      [-18, -44, 20, 6, -0.3],
-      [18, -44, 20, 6, 0.3],
-      [-14, -52, 16, 6, -0.6],
-      [14, -52, 16, 6, 0.6],
-      [0, -58, 8, 20, 0],
+      [-19, -46, 22, 6, -0.35],
+      [19, -46, 22, 6, 0.35],
+      [-15, -54, 18, 6, -0.65],
+      [15, -54, 18, 6, 0.65],
+      [-7, -60, 14, 5, -1.0],
+      [7, -60, 14, 5, 1.0],
+      [0, -62, 8, 20, 0],
     ];
     for (const [fdx, fdy, frx, fry, rot] of fronds) {
       ctx.save();
       ctx.translate(cx + fdx! * scale, by + fdy! * scale);
       ctx.rotate(rot!);
-      oval(ctx, '#1e5f38', 0, 0, frx! * scale, fry! * scale);
-      oval(ctx, '#2e8b4e', -1 * scale, -1 * scale, (frx! - 2) * scale, (fry! - 1) * scale);
+
+      // Frond spine & body
+      oval(ctx, '#144625', 0, 1 * scale, frx! * scale, fry! * scale);
+      oval(ctx, '#1e5f38', 0, 0, (frx! - 1) * scale, (fry! - 0.5) * scale);
+      oval(ctx, '#2e8b4e', -1 * scale, -1 * scale, (frx! - 3) * scale, (fry! - 1.5) * scale);
+      oval(ctx, '#4ade80', -2 * scale, -1.5 * scale, frx! * 0.5 * scale, 1.5 * scale);
+
       ctx.restore();
     }
     return canvas;
   }
 
-  r(ctx, '#5b4432', cx - 4 * scale, by - 26 * scale, 8 * scale, 26 * scale);
-  r(ctx, '#8b6947', cx - 3 * scale, by - 24 * scale, 3 * scale, 22 * scale);
-  r(ctx, '#3f2e22', cx - 6 * scale, by - 3 * scale, 12 * scale, 4 * scale);
+  // 2. Buttress roots
+  r(ctx, '#332015', cx - 7 * scale, by - 3 * scale, 4 * scale, 3 * scale);
+  r(ctx, '#4f3422', cx - 6 * scale, by - 2 * scale, 3 * scale, 2 * scale);
+  r(ctx, '#332015', cx + 3 * scale, by - 3 * scale, 4 * scale, 3 * scale);
+  r(ctx, '#4f3422', cx + 3 * scale, by - 2 * scale, 3 * scale, 2 * scale);
 
+  // 3. Sturdy Campus Trunk
+  r(ctx, '#332015', cx - 4 * scale, by - 26 * scale, 8 * scale, 24 * scale);
+  r(ctx, '#4f3422', cx - 3.5 * scale, by - 25 * scale, 6.5 * scale, 22 * scale);
+  r(ctx, '#704c32', cx - 3 * scale, by - 24 * scale, 4.5 * scale, 20 * scale);
+  r(ctx, '#9c6f4b', cx - 2.5 * scale, by - 23 * scale, 2 * scale, 18 * scale); // sunlit bark
+
+  // Trunk bark fissures
+  r(ctx, '#24160d', cx - 1 * scale, by - 19 * scale, 1 * scale, 12 * scale);
+  r(ctx, '#24160d', cx + 1.5 * scale, by - 14 * scale, 1 * scale, 8 * scale);
+
+  // Branch boughs
+  r(ctx, '#332015', cx - 8 * scale, by - 32 * scale, 5 * scale, 8 * scale);
+  r(ctx, '#4f3422', cx - 7 * scale, by - 31 * scale, 3.5 * scale, 6 * scale);
+  r(ctx, '#332015', cx + 3 * scale, by - 31 * scale, 5 * scale, 7 * scale);
+  r(ctx, '#4f3422', cx + 3.5 * scale, by - 30 * scale, 3.5 * scale, 5 * scale);
+
+  // 4. Volumetric Foliage Clusters
   const clusters = [
-    [-12, -32, 16, 14],
-    [12, -32, 16, 14],
-    [-8, -46, 17, 15],
-    [9, -46, 16, 14],
-    [0, -58, 15, 13],
+    [-13, -34, 17, 14],
+    [13, -33, 17, 14],
+    [-9, -48, 18, 15],
+    [10, -47, 17, 14],
+    [0, -59, 16, 14],
   ];
 
-  const baseColor = kind === 'flamboyant' ? '#275231' : kind === 'yellow' ? '#3c5a2c' : '#2b4d34';
-  const midColor = kind === 'flamboyant' ? '#3a7346' : kind === 'yellow' ? '#527c39' : '#3e6d49';
-  const highColor = kind === 'flamboyant' ? '#599c68' : kind === 'yellow' ? '#7ca94c' : '#5da16b';
+  const baseColor = kind === 'flamboyant' ? '#1c4021' : kind === 'yellow' ? '#2d441f' : '#1e3c23';
+  const midColor = kind === 'flamboyant' ? '#2e6335' : kind === 'yellow' ? '#44682c' : '#2e5c36';
+  const highColor = kind === 'flamboyant' ? '#4c8a55' : kind === 'yellow' ? '#69943f' : '#4a8756';
+  const rimColor = kind === 'flamboyant' ? '#78bf80' : kind === 'yellow' ? '#9ec45f' : '#72b880';
 
   for (const [dx, dy, rx, ry] of clusters) {
     const x = cx + dx! * scale;
     const y = by + dy! * scale;
-    oval(ctx, baseColor, x, y, rx! * scale + 1, ry! * scale + 1);
-    oval(ctx, midColor, x, y - 1 * scale, rx! * scale, ry! * scale - 1);
-    oval(ctx, highColor, x - 2 * scale, y - 3 * scale, rx! * scale * 0.78, ry! * scale * 0.65);
+    const rxs = rx! * scale;
+    const rys = ry! * scale;
 
-    for (let i = 0; i < 9; i++) {
-      let fleckColor = highColor;
-      if (kind === 'flamboyant' && rng() > 0.35) {
-        fleckColor = rng() > 0.5 ? '#dc2626' : '#ef4444';
-      } else if (kind === 'yellow' && rng() > 0.35) {
-        fleckColor = rng() > 0.5 ? '#facc15' : '#fde047';
+    oval(ctx, baseColor, x + 1, y + 1.5 * scale, rxs + 1, rys + 1);
+    oval(ctx, midColor, x, y + 0.5 * scale, rxs, rys);
+    oval(ctx, highColor, x - 1.5 * scale, y - 1 * scale, rxs * 0.88, rys * 0.85);
+    oval(ctx, rimColor, x - 3 * scale, y - 2.5 * scale, rxs * 0.6, rys * 0.55);
+
+    // Natural pixel leaf dither fringe
+    for (let f = 0; f < 12; f++) {
+      const fx = x - rxs + rng() * (rxs * 2);
+      const fy = y - rys + rng() * (rys * 2);
+      const dist = Math.hypot((fx - x) / rxs, (fy - y) / rys);
+      if (dist < 1.12) {
+        let leafColor = fy < y - 1 * scale ? rimColor : fy < y + 2 * scale ? highColor : midColor;
+
+        // Flower blooms (Phượng Vĩ đỏ rực rỡ hoặc Hoàng Yến vàng)
+        if (kind === 'flamboyant' && rng() > 0.3) {
+          leafColor = rng() > 0.5 ? '#dc2626' : rng() > 0.25 ? '#ef4444' : '#f97316';
+        } else if (kind === 'yellow' && rng() > 0.3) {
+          leafColor = rng() > 0.5 ? '#facc15' : rng() > 0.25 ? '#fde047' : '#eab308';
+        }
+
+        r(ctx, leafColor, fx, fy, 2 * scale, 1.8 * scale);
       }
-      r(
-        ctx,
-        fleckColor,
-        x - 9 * scale + rng() * 18 * scale,
-        y - 8 * scale + rng() * 14 * scale,
-        2 * scale,
-        1.5 * scale,
-      );
+    }
+  }
+
+  // Fallen petals under Phượng Vĩ / Hoàng Yến
+  if (kind === 'flamboyant') {
+    for (let p = 0; p < 8; p++) {
+      const px = cx - 16 * scale + rng() * 32 * scale;
+      const py = by - 3 * scale + rng() * 4 * scale;
+      r(ctx, p % 2 ? '#dc2626' : '#ef4444', px, py, 2 * scale, 1 * scale);
+    }
+  } else if (kind === 'yellow') {
+    for (let p = 0; p < 8; p++) {
+      const px = cx - 16 * scale + rng() * 32 * scale;
+      const py = by - 3 * scale + rng() * 4 * scale;
+      r(ctx, p % 2 ? '#facc15' : '#fde047', px, py, 2 * scale, 1 * scale);
     }
   }
 

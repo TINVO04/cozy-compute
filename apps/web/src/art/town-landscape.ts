@@ -711,42 +711,99 @@ export function drawTree(
   by: number,
   s = 1,
   canopy: readonly [string, string, string, string, string, string] = [
-    '#2d5a2b',
-    '#4a9347',
-    '#6eaa55',
-    '#96bd6c',
-    '#a7c180',
-    '#557e4b',
+    '#1e3d1c',
+    '#2e5c2a',
+    '#48853e',
+    '#70aa55',
+    '#9ece70',
+    '#396b32',
   ],
 ) {
-  const rng = mulberry(Math.floor(cx + by * 7));
-  oval(ctx, 'rgba(48,64,43,0.2)', cx + 2, by - 1, 18 * s, 5 * s);
-  rect(ctx, '#694c38', cx - 4 * s, by - 18 * s, 8 * s, 18 * s);
-  rect(ctx, '#a18054', cx - 3 * s, by - 16 * s, 3 * s, 14 * s);
-  rect(ctx, '#5b4432', cx - 6 * s, by - 2 * s, 12 * s, 3 * s);
-  const clusters = [
-    [-9, -24, 12, 11],
-    [9, -24, 12, 11],
-    [-6, -34, 13, 12],
-    [7, -34, 12, 11],
-    [0, -42, 11, 10],
+  const rng = mulberry(Math.floor(cx * 13 + by * 7));
+
+  // 1. Soft multi-tone ground contact shadow
+  oval(ctx, 'rgba(15, 23, 42, 0.16)', cx + 2 * s, by - 1 * s, 20 * s, 6 * s);
+  oval(ctx, 'rgba(15, 23, 42, 0.28)', cx + 1 * s, by - 2 * s, 13 * s, 4 * s);
+
+  // 2. Buttress roots anchoring into the earth
+  const roots: [number, number, number, number][] = [
+    [cx - 8 * s, by - 2 * s, 5 * s, 3 * s],
+    [cx - 4 * s, by - 4 * s, 5 * s, 4 * s],
+    [cx + 1 * s, by - 4 * s, 5 * s, 4 * s],
+    [cx + 4 * s, by - 2 * s, 5 * s, 3 * s],
   ];
+  for (const [rx, ry, rw, rh] of roots) {
+    rect(ctx, '#332015', rx, ry, rw, rh);
+    rect(ctx, '#503522', rx + s, ry, rw - s, rh - s);
+  }
+  // Moss on roots
+  rect(ctx, '#2d4d1e', cx - 6 * s, by - 3 * s, 3 * s, 2 * s);
+  rect(ctx, '#4d7c0f', cx + 2 * s, by - 3 * s, 2 * s, 1.5 * s);
+
+  // 3. Natural tapered trunk with organic bark texture
+  // Shadow side (right) & base
+  rect(ctx, '#332015', cx - 4 * s, by - 22 * s, 8 * s, 20 * s);
+  // Main bark core
+  rect(ctx, '#503522', cx - 3.5 * s, by - 21 * s, 6.5 * s, 18 * s);
+  // Midtone bark
+  rect(ctx, '#6e4b32', cx - 3 * s, by - 20 * s, 4.5 * s, 16 * s);
+  // Sunlit bark highlight (left side)
+  rect(ctx, '#8d6342', cx - 2.5 * s, by - 19 * s, 2 * s, 14 * s);
+
+  // Vertical bark fissures & crevices
+  rect(ctx, '#332015', cx - 1 * s, by - 16 * s, s, 10 * s);
+  rect(ctx, '#332015', cx + 1.5 * s, by - 12 * s, s, 7 * s);
+
+  // Branching main boughs under canopy
+  rect(ctx, '#332015', cx - 8 * s, by - 28 * s, 5 * s, 8 * s);
+  rect(ctx, '#503522', cx - 7 * s, by - 27 * s, 3.5 * s, 6 * s);
+  rect(ctx, '#332015', cx + 3 * s, by - 27 * s, 5 * s, 7 * s);
+  rect(ctx, '#503522', cx + 3.5 * s, by - 26 * s, 3.5 * s, 5 * s);
+
+  // 4. Volumetric Foliage Clusters with ambient occlusion and leaf silhouette
+  const clusters: [number, number, number, number][] = [
+    [-10, -26, 13, 11], // lower left
+    [10, -25, 13, 11], // lower right
+    [-8, -37, 14, 12], // mid left
+    [8, -36, 13, 12], // mid right
+    [0, -45, 13, 11], // upper crown
+  ];
+
   for (const [dx, dy, rx, ry] of clusters) {
-    const x = cx + dx! * s,
-      y = by + dy! * s;
-    oval(ctx, canopy[0], x, y, rx! * s + 1, ry! * s + 1);
-    oval(ctx, canopy[1], x, y - 1, rx! * s, ry! * s - 1);
-    oval(ctx, canopy[2], x - 2 * s, y - 3 * s, rx! * s * 0.78, ry! * s * 0.65);
-    oval(ctx, canopy[3], x - 3 * s, y - 5 * s, rx! * s * 0.5, ry! * s * 0.35);
-    for (let i = 0; i < 7; i++) {
-      rect(
-        ctx,
-        i % 2 ? canopy[4] : canopy[5],
-        x - 7 * s + rng() * 14 * s,
-        y - 6 * s + rng() * 10 * s,
-        2 * s,
-        s,
-      );
+    const x = cx + dx * s;
+    const y = by + dy * s;
+    const rxs = rx * s;
+    const rys = ry * s;
+
+    // Deep under-canopy occlusion shadow
+    oval(ctx, canopy[0], x + 1, y + 1.5 * s, rxs + 1, rys + 1);
+    // Dark core foliage shadow
+    oval(ctx, canopy[1], x, y + 0.5 * s, rxs, rys);
+    // Midtone lush canopy
+    oval(ctx, canopy[2], x - 1 * s, y - 1 * s, rxs * 0.88, rys * 0.84);
+    // Sunlit foliage highlight
+    oval(ctx, canopy[3], x - 2 * s, y - 2.5 * s, rxs * 0.68, rys * 0.62);
+    // Bright sunlight rim
+    oval(ctx, canopy[4], x - 3 * s, y - 4 * s, rxs * 0.42, rys * 0.38);
+
+    // Organic pixel leaf dither fringe along perimeter
+    for (let f = 0; f < 10; f++) {
+      const fx = x - rxs + rng() * (rxs * 2);
+      const fy = y - rys + rng() * (rys * 2);
+      const dist = Math.hypot((fx - x) / rxs, (fy - y) / rys);
+      if (dist < 1.15) {
+        const color =
+          fy < y - 1 * s
+            ? rng() > 0.4
+              ? canopy[4]
+              : canopy[3]
+            : fy < y + 2 * s
+              ? rng() > 0.5
+                ? canopy[2]
+                : canopy[5]
+              : canopy[1];
+        rect(ctx, color, fx, fy, 1.8 * s, 1.8 * s);
+      }
     }
   }
 }

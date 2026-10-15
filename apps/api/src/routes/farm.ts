@@ -137,6 +137,27 @@ export function farmRoutes(app: FastifyInstance, ctx: AppContext) {
     return farmService.feedAnimal(ctx, user.id, body.animalId, body.feedItemId);
   });
 
+  // 10b. Animal Raise (Place into pen)
+  app.post('/api/farm/animals/raise', async (req) => {
+    const user = requireUser(req);
+    const schema = z.object({
+      stockItemId: z.string().min(1),
+    });
+    const body = schema.parse(req.body);
+    return farmService.raiseAnimal(ctx, user.id, body.stockItemId);
+  });
+
+  // 10c. Animal Sell (Sell animal for coins)
+  app.post('/api/farm/animals/sell', async (req) => {
+    const user = requireUser(req);
+    const schema = z.object({
+      animalId: z.string().uuid(),
+    });
+    const body = schema.parse(req.body);
+    const key = req.headers['idempotency-key'] ? idem(req.headers as Record<string, unknown>) : undefined;
+    return farmService.sellAnimal(ctx, user.id, body.animalId, key);
+  });
+
   // 11. Pond Stock Fingerling
   app.post('/api/farm/pond/stock', async (req) => {
     const user = requireUser(req);

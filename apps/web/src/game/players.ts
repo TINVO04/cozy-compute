@@ -1276,8 +1276,25 @@ export class Avatar {
         this.container.addAt(this.vehicleSprite, 1);
       }
       this.vehicleSprite.setTexture(key).setVisible(true);
-      // contactY=37 (61 in the composite) is aligned with the player ground point.
-      this.vehicleSprite.y = riding ? -29 : -17;
+      const isTractor = this.vehicle === 'tractor_farm' || this.vehicle?.includes('tractor');
+      if (isTractor) {
+        if (typeof this.vehicleSprite.setScale === 'function') {
+          this.vehicleSprite.setScale(1.5);
+        } else {
+          this.vehicleSprite.scaleX = 1.5;
+          this.vehicleSprite.scaleY = 1.5;
+        }
+        this.vehicleSprite.y = -22;
+      } else {
+        if (typeof this.vehicleSprite.setScale === 'function') {
+          this.vehicleSprite.setScale(1);
+        } else {
+          this.vehicleSprite.scaleX = 1;
+          this.vehicleSprite.scaleY = 1;
+        }
+        // contactY=37 (61 in the composite) is aligned with the player ground point.
+        this.vehicleSprite.y = riding ? -29 : -17;
+      }
     } else this.vehicleSprite?.setVisible(false);
     if (this.scene.scene.key === 'ocean') {
       this.updateBoat(time);

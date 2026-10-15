@@ -679,31 +679,97 @@ function paintTempleWall(w: number, h: number) {
   }
   return c;
 }
-function paintPalm() {
+export function paintPalm() {
   const c = canvas(96, 128),
     ctx = c.getContext('2d')!;
-  oval(ctx, 'rgba(38,65,35,0.19)', 48, 124, 28, 4);
-  for (let y = 47; y < 124; y++) {
-    const x = 47 + Math.floor((y - 47) / 20);
-    box(ctx, y % 7 < 2 ? '#675b37' : '#a5975c', x, y, 7, 1);
-    box(ctx, '#c3b779', x, y, 2, 1);
+  ctx.imageSmoothingEnabled = false;
+
+  // 1. Soft ground contact shadow
+  oval(ctx, 'rgba(15, 23, 42, 0.18)', 50, 124, 28, 7);
+  oval(ctx, 'rgba(15, 23, 42, 0.32)', 49, 123, 16, 4);
+
+  // 2. Leaning organic coconut / palm trunk with realistic ring notches
+  const trunkBaseX = 48;
+  const trunkBaseY = 124;
+  const trunkTopX = 44;
+  const trunkTopY = 46;
+
+  for (let y = trunkTopY; y < trunkBaseY; y++) {
+    const t = (y - trunkTopY) / (trunkBaseY - trunkTopY);
+    // Slight organic gentle lean
+    const x = trunkTopX + (trunkBaseX - trunkTopX) * t + Math.sin(t * Math.PI) * 3;
+    const trunkWidth = 6 + t * 4; // tapers from 10px at base to 6px near crown
+
+    // Dark shadow side (right)
+    box(ctx, '#3a2617', x - trunkWidth / 2, y, trunkWidth, 1);
+    // Main bark body
+    box(ctx, '#5c3e27', x - trunkWidth / 2 + 1, y, trunkWidth - 1, 1);
+    // Sunlit edge (left)
+    box(ctx, '#8b613e', x - trunkWidth / 2 + 1, y, trunkWidth * 0.45, 1);
+    box(ctx, '#b58457', x - trunkWidth / 2 + 2, y, 1.5, 1);
+
+    // Realistic horizontal ring fissures characteristic of palm trunks
+    if (y % 6 === 0) {
+      box(ctx, '#26180e', x - trunkWidth / 2 - 0.5, y, trunkWidth + 1, 1);
+      box(ctx, '#d4a274', x - trunkWidth / 2 + 1, y - 1, trunkWidth * 0.5, 1);
+    }
   }
-  for (let branch = 0; branch < 9; branch++) {
-    const angle = (branch * Math.PI * 2) / 9;
-    for (let i = 0; i < 36; i++) {
-      const x = 48 + Math.cos(angle) * i,
-        y = 42 + Math.sin(angle) * i * 0.55 + (i * i) / 65;
-      box(ctx, '#2d633b', x - 2, y - 2, 5, 5);
-      box(ctx, '#56924d', x - 2, y - 2, 3, 3);
-      if (i > 9 && i % 3 === 0) {
-        const dx = -Math.sin(angle) * 6,
-          dy = Math.cos(angle) * 5;
-        box(ctx, '#3c7c40', x + dx, y + dy, 5, 3);
-        box(ctx, '#6aa44e', x - dx, y - dy, 5, 2);
+
+  // 3. Green crown shaft sheath
+  for (let y = trunkTopY - 4; y <= trunkTopY; y++) {
+    box(ctx, '#1e4822', trunkTopX - 3, y, 6, 1);
+    box(ctx, '#34783b', trunkTopX - 2, y, 3, 1);
+  }
+
+  // 4. Cluster of Coconuts (Dừa quả xanh & chín vàng) nestled at top of trunk
+  const coconuts: [number, number, string][] = [
+    [trunkTopX - 4, trunkTopY + 2, '#15803d'],
+    [trunkTopX, trunkTopY + 4, '#16a34a'],
+    [trunkTopX + 5, trunkTopY + 2, '#ca8a04'],
+    [trunkTopX - 2, trunkTopY + 6, '#15803d'],
+    [trunkTopX + 3, trunkTopY + 7, '#eab308'],
+  ];
+  for (const [cx, cy, color] of coconuts) {
+    oval(ctx, '#0f291e', cx, cy + 1, 3.5, 3.5);
+    oval(ctx, color, cx, cy, 3, 3);
+    oval(ctx, '#86efac', cx - 1, cy - 1, 1.5, 1.5);
+  }
+
+  // 5. Sweeping arching fronds with detailed cascading leaflets
+  const frondConfigs = [
+    { angle: -2.3, length: 36, droop: 14 },
+    { angle: -1.8, length: 42, droop: 12 },
+    { angle: -1.3, length: 38, droop: 10 },
+    { angle: -0.8, length: 34, droop: 12 },
+    { angle: -0.2, length: 38, droop: 16 },
+    { angle: 0.3, length: 42, droop: 18 },
+    { angle: 0.9, length: 38, droop: 16 },
+    { angle: 2.2, length: 34, droop: 14 },
+    { angle: 2.8, length: 36, droop: 16 },
+  ];
+
+  for (const { angle, length, droop } of frondConfigs) {
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+
+    for (let step = 0; step < length; step += 2) {
+      const progress = step / length;
+      const fx = trunkTopX + cos * step;
+      const fy = trunkTopY - 4 + sin * step * 0.6 + progress * progress * droop;
+
+      // Frond spine
+      box(ctx, '#14532d', fx - 1, fy - 1, 2, 2);
+
+      // Drooping leaflets along both sides of spine
+      if (step > 4) {
+        const leafLen = Math.sin(progress * Math.PI) * 7;
+        box(ctx, '#16a34a', fx, fy, 1.5, leafLen);
+        box(ctx, '#22c55e', fx - 0.5, fy, 1, Math.max(1, leafLen - 1));
+        box(ctx, '#86efac', fx, fy, 1, 1.5); // highlight on top leaflet
       }
     }
   }
-  for (const x of [43, 49, 54]) oval(ctx, '#746a39', x, 47, 3, 4);
+
   return c;
 }
 

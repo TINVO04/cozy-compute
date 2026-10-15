@@ -5,6 +5,8 @@ import {
   BAC_SAU_SHOP_ITEMS,
   BASE_WAREHOUSE_CAPACITY,
   calculatePondFishWeight,
+  computeAnimalGrowthStage,
+  computeAnimalHunger,
   CROPS,
   DAILY_MARKET_CONTRACTS,
   FARM_BLOCKERS,
@@ -29,6 +31,7 @@ import {
   getPondFishStage,
   getWarehouseTabForItem,
   isPlotMoist,
+  isWeatherRainy,
   MAX_WAREHOUSE_CAPACITY,
   PATHS,
   POND_FISHES,
@@ -55,10 +58,14 @@ describe('Cozy Farm System Game Data', () => {
       'crop_carrot',
       'crop_sunflower',
       'crop_grape',
+      'crop_cabbage',
+      'crop_pineapple',
+      'crop_dragonfruit',
+      'crop_sugarcane',
     ];
 
-    it('defines all 11 authoritative crop definitions', () => {
-      expect(Object.keys(CROPS)).toHaveLength(11);
+    it('defines all 15 authoritative crop definitions', () => {
+      expect(Object.keys(CROPS)).toHaveLength(15);
       for (const id of cropIds) {
         const crop = CROPS[id];
         expect(crop).toBeDefined();
@@ -113,7 +120,119 @@ describe('Cozy Farm System Game Data', () => {
         expect(animal.happinessBoost).toBeGreaterThan(0);
         expect(['poultry_coop', 'cattle_pasture', 'pig_pen', 'goat_pen']).toContain(animal.facility);
         expect(animal.sprite.startsWith('farm:animal_')).toBe(true);
+        expect(animal.growthDurationSec).toBeGreaterThan(0);
+        expect(animal.matureSellPrice).toBeGreaterThan(animal.stockPrice);
+        expect(animal.babyName.length).toBeGreaterThan(0);
       }
+    });
+
+    it('requires food to grow and progresses through growth stages when fed', () => {
+      const now = 1_000_000;
+      // 1. Newly born chicken, unfed -> baby stage, 0%
+      const baby = computeAnimalGrowthStage('chicken', new Date(now), now);
+      expect(baby.stage).toBe('baby');
+      expect(baby.progressPercent).toBe(0);
+      expect(baby.remainingSec).toBe(ANIMALS.chicken.growthDurationSec);
+      expect(baby.displayName).toBe(ANIMALS.chicken.babyName);
+      expect(baby.sellPrice).toBeLessThan(ANIMALS.chicken.matureSellPrice);
+      expect(baby.isDead).toBe(false);
+
+      // 2. Unfed chicken after some time has passed -> still 0% progress! (cannot grow without food)
+      const unfedLater = computeAnimalGrowthStage('chicken', new Date(now - 120_000), now, null);
+      expect(unfedLater.stage).toBe('baby');
+      expect(unfedLater.progressPercent).toBe(0);
+      expect(unfedLater.remainingSec).toBe(ANIMALS.chicken.growthDurationSec);
+
+      // 3. Fed chicken: halfway through growth duration -> growing stage
+      const fedHalfwayMs = now - ANIMALS.chicken.growthDurationSec * 0.5 * 1000;
+      const growing = computeAnimalGrowthStage(
+        'chicken',
+        new Date(fedHalfwayMs),
+        now,
+        new Date(fedHalfwayMs),
+      );
+      expect(growing.stage).toBe('growing');
+      expect(growing.progressPercent).toBe(50);
+      expect(growing.sellPrice).toBeGreaterThan(baby.sellPrice);
+      expect(growing.isDead).toBe(false);
+
+      // 4. Fed chicken: fully reached mature growth duration -> adult stage
+      const fedMatureMs = now - (ANIMALS.chicken.growthDurationSec + 10) * 1000;
+      const adult = computeAnimalGrowthStage('chicken', new Date(fedMatureMs), now, new Date(fedMatureMs));
+      expect(adult.stage).toBe('adult');
+      expect(adult.progressPercent).toBe(100);
+      expect(adult.remainingSec).toBe(0);
+      expect(adult.displayName).toBe(ANIMALS.chicken.name);
+      expect(adult.sellPrice).toBe(ANIMALS.chicken.matureSellPrice);
+      expect(adult.isDead).toBe(false);
+    });
+
+    it('causes animals to die of starvation if hungry for too long', () => {
+      const now = 2_000_000;
+      const chicken = ANIMALS.chicken;
+
+      // Newborn unfed past hungerDecaySec dies
+      const starvedFromBirth = now - (chicken.hungerDecaySec + 5) * 1000;
+      const deadNewborn = computeAnimalGrowthStage('chicken', new Date(starvedFromBirth), now, null);
+      expect(deadNewborn.isDead).toBe(true);
+      expect(deadNewborn.stage).toBe('dead');
+      expect(deadNewborn.sellPrice).toBe(0);
+      expect(deadNewborn.displayName).toContain('Đã chết vì đói');
+
+      // Fed once, but starved past feedIntervalSec + hungerDecaySec dies
+      const starvedFedMs = now - (chicken.feedIntervalSec + chicken.hungerDecaySec + 10) * 1000;
+      const deadFed = computeAnimalGrowthStage(
+        'chicken',
+        new Date(starvedFedMs),
+        now,
+        new Date(starvedFedMs),
+      );
+      expect(deadFed.isDead).toBe(true);
+      expect(deadFed.stage).toBe('dead');
+      expect(deadFed.sellPrice).toBe(0);
+    });
+
+    it('computes hunger status, starvation countdown, and death accurately', () => {
+      const now = 2_000_000;
+      const chicken = ANIMALS.chicken;
+
+      // 1. Never fed -> isHungry: true, starvation timer counting down
+      const birthMs = now - 100_000; // 100s ago
+      const unfed = computeAnimalHunger('chicken', null, null, now, false, new Date(birthMs));
+      expect(unfed.isHungry).toBe(true);
+      expect(unfed.hungerRemainingSec).toBe(0);
+      expect(unfed.isDead).toBe(false);
+      expect(unfed.starvationRemainingSec).toBe(chicken.hungerDecaySec - 100);
+
+      // 2. Just fed -> isHungry: false, full feed interval timer
+      const justFed = computeAnimalHunger('chicken', new Date(now), null, now);
+      expect(justFed.isHungry).toBe(false);
+      expect(justFed.hungerRemainingSec).toBe(chicken.feedIntervalSec);
+      expect(justFed.isDead).toBe(false);
+      expect(justFed.starvationRemainingSec).toBe(chicken.hungerDecaySec);
+
+      // 3. Halfway through feed interval
+      const halfFedMs = now - (chicken.feedIntervalSec / 2) * 1000;
+      const halfFed = computeAnimalHunger('chicken', new Date(halfFedMs), null, now);
+      expect(halfFed.isHungry).toBe(false);
+      expect(halfFed.hungerRemainingSec).toBe(Math.round(chicken.feedIntervalSec / 2));
+      expect(halfFed.isDead).toBe(false);
+
+      // 4. Elapsed feed interval -> isHungry: true, canYield: true (if adult)
+      const starvedMs = now - (chicken.feedIntervalSec + 10) * 1000;
+      const hungry = computeAnimalHunger('chicken', new Date(starvedMs), null, now, true);
+      expect(hungry.isHungry).toBe(true);
+      expect(hungry.hungerRemainingSec).toBe(0);
+      expect(hungry.canYield).toBe(true);
+      expect(hungry.isDead).toBe(false);
+      expect(hungry.starvationRemainingSec).toBe(chicken.hungerDecaySec - 10);
+
+      // 5. Starvation countdown reaches 0 -> animal dies
+      const fatalMs = now - (chicken.feedIntervalSec + chicken.hungerDecaySec + 1) * 1000;
+      const deadHunger = computeAnimalHunger('chicken', new Date(fatalMs), null, now, true);
+      expect(deadHunger.isDead).toBe(true);
+      expect(deadHunger.starvationRemainingSec).toBe(0);
+      expect(deadHunger.canYield).toBe(false);
     });
   });
 
@@ -270,6 +389,16 @@ describe('Cozy Farm System Game Data', () => {
       expect(isPlotMoist(now - 1860 * 1000, now)).toBe(false);
       // Null wateredAt -> dry
       expect(isPlotMoist(null, now)).toBe(false);
+
+      // Rain naturally keeps crops moist without manual watering
+      expect(isPlotMoist(null, now, true)).toBe(true);
+      expect(isPlotMoist(now - 3600 * 1000, now, true)).toBe(true);
+      expect(isWeatherRainy('rain')).toBe(true);
+      expect(isWeatherRainy('heavy_rain')).toBe(true);
+      expect(isWeatherRainy('thunderstorm')).toBe(true);
+      expect(isWeatherRainy('drizzle')).toBe(true);
+      expect(isWeatherRainy('sunny')).toBe(false);
+      expect(isWeatherRainy({ condition: 'rain' })).toBe(true);
     });
 
     it('calculates pond fish weight and stage progression', () => {
@@ -381,6 +510,21 @@ describe('Cozy Farm System Game Data', () => {
           now,
         ),
       ).toBe('mature');
+
+      // Rainy weather: tilled dry becomes tilled wet even without manual watering
+      expect(
+        getPlotState(
+          {
+            isUnlocked: true,
+            isTilled: true,
+            wateredAt: null,
+            cropId: null,
+            plantedAt: null,
+          },
+          now,
+          true,
+        ),
+      ).toBe('tilled_wet');
     });
   });
 

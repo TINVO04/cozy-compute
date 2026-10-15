@@ -32,6 +32,13 @@ export function farmItemIcon(itemId: string, size = 48): string {
   const cx = size / 2;
   const cy = size / 2;
 
+  let resolvedId = itemId;
+  if (['chicken', 'duck', 'cow', 'pig', 'goat', 'sheep'].includes(itemId)) {
+    resolvedId = `stock_${itemId}`;
+  } else if (itemId.startsWith('animal_')) {
+    resolvedId = `stock_${itemId.replace('animal_', '')}`;
+  }
+
   // Background subtle glow
   const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, size * 0.46);
   grad.addColorStop(0, 'rgba(254, 240, 138, 0.12)');
@@ -40,7 +47,7 @@ export function farmItemIcon(itemId: string, size = 48): string {
   ctx.fillRect(0, 0, size, size);
 
   // 1. SEED POUCHES (seed_*)
-  if (itemId.startsWith('seed_')) {
+  if (resolvedId.startsWith('seed_')) {
     // Burlap seed pouch
     rect(ctx, '#78350f', cx - 11, cy - 8, 22, 20); // main sack
     rect(ctx, '#92400e', cx - 10, cy - 7, 20, 18);
@@ -56,47 +63,59 @@ export function farmItemIcon(itemId: string, size = 48): string {
     rect(ctx, '#fef3c7', cx - 7, cy - 3, 14, 12);
     rect(ctx, '#ffffff', cx - 6, cy - 2, 12, 10);
 
-    if (itemId.includes('rice')) {
+    if (resolvedId.includes('rice')) {
       oval(ctx, '#eab308', cx, cy + 3, 3, 4);
-    } else if (itemId.includes('corn')) {
+    } else if (resolvedId.includes('corn')) {
       oval(ctx, '#eab308', cx, cy + 3, 4, 3);
       rect(ctx, '#16a34a', cx - 4, cy + 4, 3, 2);
-    } else if (itemId.includes('watermelon')) {
+    } else if (resolvedId.includes('watermelon')) {
       oval(ctx, '#16a34a', cx, cy + 3, 4, 3);
       rect(ctx, '#ef4444', cx - 2, cy + 2, 4, 2);
-    } else if (itemId.includes('tomato')) {
+    } else if (resolvedId.includes('tomato')) {
       oval(ctx, '#dc2626', cx, cy + 3, 4, 4);
       rect(ctx, '#15803d', cx - 1, cy - 1, 2, 2);
-    } else if (itemId.includes('chili')) {
+    } else if (resolvedId.includes('chili')) {
       rect(ctx, '#dc2626', cx - 1, cy, 3, 6);
       rect(ctx, '#15803d', cx - 1, cy - 2, 2, 2);
-    } else if (itemId.includes('strawberry')) {
+    } else if (resolvedId.includes('strawberry')) {
       oval(ctx, '#e11d48', cx, cy + 3, 4, 4);
       rect(ctx, '#15803d', cx - 2, cy - 1, 4, 2);
-    } else if (itemId.includes('pumpkin')) {
+    } else if (resolvedId.includes('pumpkin')) {
       oval(ctx, '#ea580c', cx, cy + 3, 5, 4);
       rect(ctx, '#78350f', cx - 1, cy - 1, 2, 2);
-    } else if (itemId.includes('eggplant')) {
+    } else if (resolvedId.includes('eggplant')) {
       oval(ctx, '#7e22ce', cx, cy + 3, 3, 5);
       rect(ctx, '#15803d', cx - 2, cy - 1, 4, 2);
-    } else if (itemId.includes('carrot')) {
+    } else if (resolvedId.includes('carrot')) {
       rect(ctx, '#ea580c', cx - 2, cy + 1, 4, 5);
       rect(ctx, '#22c55e', cx - 2, cy - 2, 4, 3);
-    } else if (itemId.includes('sunflower')) {
+    } else if (resolvedId.includes('sunflower')) {
       oval(ctx, '#eab308', cx, cy + 3, 4, 4);
       rect(ctx, '#78350f', cx - 1, cy + 2, 2, 2);
-    } else if (itemId.includes('grape')) {
+    } else if (resolvedId.includes('grape')) {
       oval(ctx, '#6b21a8', cx - 2, cy + 2, 3, 3);
       oval(ctx, '#6b21a8', cx + 2, cy + 2, 3, 3);
       oval(ctx, '#581c87', cx, cy + 4, 3, 3);
+    } else if (resolvedId.includes('cabbage')) {
+      oval(ctx, '#15803d', cx, cy + 3, 4, 4);
+      oval(ctx, '#86efac', cx, cy + 3, 2, 2);
+    } else if (resolvedId.includes('pineapple')) {
+      rect(ctx, '#ca8a04', cx - 2, cy + 1, 4, 5);
+      rect(ctx, '#16a34a', cx - 2, cy - 2, 4, 3);
+    } else if (resolvedId.includes('dragonfruit')) {
+      oval(ctx, '#db2777', cx, cy + 3, 4, 4);
+      rect(ctx, '#22c55e', cx - 2, cy - 1, 4, 2);
+    } else if (resolvedId.includes('sugarcane')) {
+      rect(ctx, '#6b21a8', cx - 1, cy, 3, 6);
+      rect(ctx, '#22c55e', cx - 2, cy - 2, 4, 2);
     } else {
       oval(ctx, '#22c55e', cx, cy + 3, 3, 3);
     }
   }
 
   // 2. HARVESTED CROPS (crop_*_harvest)
-  else if (itemId.startsWith('crop_') && itemId.endsWith('_harvest')) {
-    if (itemId.includes('rice')) {
+  else if (resolvedId.startsWith('crop_') && resolvedId.endsWith('_harvest')) {
+    if (resolvedId.includes('rice')) {
       // Golden bundle of rice ears tied with straw
       rect(ctx, '#b45309', cx - 8, cy - 8, 16, 18);
       rect(ctx, '#d97706', cx - 7, cy - 7, 14, 16);
@@ -107,7 +126,7 @@ export function farmItemIcon(itemId: string, size = 48): string {
         rect(ctx, '#ffffff', cx + i, cy - 11, 1, 1);
       }
       rect(ctx, '#78350f', cx - 7, cy + 1, 14, 3); // red/brown tie
-    } else if (itemId.includes('corn')) {
+    } else if (resolvedId.includes('corn')) {
       // Plump sweet corn with husk
       oval(ctx, '#15803d', cx - 8, cy, 6, 12);
       oval(ctx, '#16a34a', cx + 8, cy, 6, 12);
@@ -119,7 +138,7 @@ export function farmItemIcon(itemId: string, size = 48): string {
         }
       }
       rect(ctx, '#d97706', cx - 2, cy - 11, 4, 3);
-    } else if (itemId.includes('watermelon')) {
+    } else if (resolvedId.includes('watermelon')) {
       // Half watermelon slice showing ruby flesh & seeds
       oval(ctx, '#166534', cx, cy + 2, 16, 12);
       oval(ctx, '#22c55e', cx, cy + 2, 14, 10);
@@ -130,7 +149,7 @@ export function farmItemIcon(itemId: string, size = 48): string {
       rect(ctx, '#000000', cx + 4, cy, 2, 2);
       rect(ctx, '#000000', cx, cy + 3, 2, 2);
       rect(ctx, '#ffffff', cx - 5, cy - 2, 3, 1); // glint
-    } else if (itemId.includes('tomato')) {
+    } else if (resolvedId.includes('tomato')) {
       // Two glossy red tomatoes
       oval(ctx, '#991b1b', cx - 4, cy + 2, 9, 9);
       oval(ctx, '#dc2626', cx - 4, cy + 2, 8, 8);
@@ -143,7 +162,7 @@ export function farmItemIcon(itemId: string, size = 48): string {
       oval(ctx, '#991b1b', cx + 7, cy - 2, 7, 7);
       oval(ctx, '#dc2626', cx + 7, cy - 2, 6, 6);
       rect(ctx, '#15803d', cx + 6, cy - 8, 4, 2);
-    } else if (itemId.includes('chili')) {
+    } else if (resolvedId.includes('chili')) {
       // Two fiery red curved chili peppers
       rect(ctx, '#991b1b', cx - 6, cy - 8, 5, 16);
       rect(ctx, '#dc2626', cx - 5, cy - 7, 3, 14);
@@ -153,7 +172,7 @@ export function farmItemIcon(itemId: string, size = 48): string {
       rect(ctx, '#991b1b', cx + 3, cy - 5, 5, 14);
       rect(ctx, '#dc2626', cx + 4, cy - 4, 3, 12);
       rect(ctx, '#15803d', cx + 3, cy - 8, 4, 3);
-    } else if (itemId.includes('strawberry')) {
+    } else if (resolvedId.includes('strawberry')) {
       // Ruby red strawberry with seeds & leaves
       oval(ctx, '#991b1b', cx, cy + 1, 12, 13);
       oval(ctx, '#e11d48', cx, cy + 1, 10, 11);
@@ -168,7 +187,7 @@ export function farmItemIcon(itemId: string, size = 48): string {
       rect(ctx, '#15803d', cx - 8, cy - 9, 16, 4);
       rect(ctx, '#22c55e', cx - 6, cy - 10, 12, 2);
       rect(ctx, '#15803d', cx - 1, cy - 12, 2, 3);
-    } else if (itemId.includes('pumpkin')) {
+    } else if (resolvedId.includes('pumpkin')) {
       // Plump ribbed orange pumpkin
       oval(ctx, '#7c2d12', cx, cy + 2, 15, 12);
       oval(ctx, '#ea580c', cx, cy + 2, 14, 11);
@@ -178,7 +197,7 @@ export function farmItemIcon(itemId: string, size = 48): string {
       oval(ctx, '#fb923c', cx, cy, 5, 7);
       rect(ctx, '#78350f', cx - 1, cy - 10, 3, 5);
       rect(ctx, '#22c55e', cx + 2, cy - 11, 3, 2);
-    } else if (itemId.includes('eggplant')) {
+    } else if (resolvedId.includes('eggplant')) {
       // Long glossy purple eggplant
       oval(ctx, '#3b0764', cx, cy + 1, 8, 14);
       oval(ctx, '#6b21a8', cx, cy + 1, 7, 13);
@@ -186,7 +205,7 @@ export function farmItemIcon(itemId: string, size = 48): string {
       rect(ctx, '#e9d5ff', cx - 2, cy - 4, 2, 8); // sheen
       rect(ctx, '#15803d', cx - 4, cy - 11, 8, 4);
       rect(ctx, '#22c55e', cx - 1, cy - 13, 2, 3);
-    } else if (itemId.includes('carrot')) {
+    } else if (resolvedId.includes('carrot')) {
       // Bright orange tapered carrot with green tuft
       ctx.beginPath();
       ctx.moveTo(cx - 7, cy - 6);
@@ -205,7 +224,7 @@ export function farmItemIcon(itemId: string, size = 48): string {
       rect(ctx, '#fdba74', cx - 2, cy - 4, 2, 4);
       rect(ctx, '#22c55e', cx - 5, cy - 13, 10, 6);
       rect(ctx, '#4ade80', cx - 3, cy - 14, 6, 2);
-    } else if (itemId.includes('sunflower')) {
+    } else if (resolvedId.includes('sunflower')) {
       // Brilliant sunflower head
       oval(ctx, '#ca8a04', cx, cy, 14, 14);
       oval(ctx, '#eab308', cx, cy, 13, 13);
@@ -213,7 +232,7 @@ export function farmItemIcon(itemId: string, size = 48): string {
       oval(ctx, '#451a03', cx, cy, 6, 6);
       oval(ctx, '#78350f', cx, cy, 5, 5);
       rect(ctx, '#fbbf24', cx - 1, cy - 1, 2, 2);
-    } else if (itemId.includes('grape')) {
+    } else if (resolvedId.includes('grape')) {
       // Hanging cluster of purple grapes
       oval(ctx, '#166534', cx, cy - 10, 10, 5);
       rect(ctx, '#78350f', cx - 1, cy - 12, 2, 3);
@@ -231,6 +250,60 @@ export function farmItemIcon(itemId: string, size = 48): string {
         oval(ctx, '#7e22ce', gx, gy, 2, 2);
         rect(ctx, '#d8b4fe', gx - 1, gy - 1, 1, 1);
       }
+    } else if (resolvedId.includes('cabbage')) {
+      // Crisp layered green round cabbage head
+      oval(ctx, '#14532d', cx, cy + 1, 15, 13);
+      oval(ctx, '#16a34a', cx, cy + 1, 14, 12);
+      oval(ctx, '#22c55e', cx, cy + 1, 11, 10);
+      oval(ctx, '#86efac', cx, cy, 7, 7);
+      rect(ctx, '#bbf7d0', cx - 2, cy - 2, 4, 4);
+    } else if (resolvedId.includes('pineapple')) {
+      // Golden pineapple with green crown
+      oval(ctx, '#854d0e', cx, cy + 3, 10, 13);
+      oval(ctx, '#ca8a04', cx, cy + 3, 9, 12);
+      oval(ctx, '#eab308', cx, cy + 2, 7, 10);
+      // Diamond criss-cross eye pattern
+      for (let ix = -4; ix <= 4; ix += 4) {
+        for (let iy = -4; iy <= 6; iy += 4) {
+          rect(ctx, '#713f12', cx + ix, cy + iy, 2, 2);
+          rect(ctx, '#fef08a', cx + ix, cy + iy - 1, 1, 1);
+        }
+      }
+      // Spiky crown
+      rect(ctx, '#15803d', cx - 6, cy - 13, 12, 6);
+      rect(ctx, '#22c55e', cx - 4, cy - 15, 8, 4);
+      rect(ctx, '#4ade80', cx - 1, cy - 17, 2, 4);
+    } else if (resolvedId.includes('dragonfruit')) {
+      // Magenta dragonfruit with lime green fin tips
+      oval(ctx, '#831843', cx, cy + 1, 11, 14);
+      oval(ctx, '#be185d', cx, cy + 1, 10, 13);
+      oval(ctx, '#db2777', cx, cy + 1, 8, 10);
+      rect(ctx, '#f472b6', cx - 3, cy - 3, 3, 5);
+      // Green scale fins
+      rect(ctx, '#16a34a', cx - 9, cy - 4, 3, 4);
+      rect(ctx, '#22c55e', cx - 8, cy - 3, 2, 2);
+      rect(ctx, '#16a34a', cx + 7, cy - 4, 3, 4);
+      rect(ctx, '#22c55e', cx + 7, cy - 3, 2, 2);
+      rect(ctx, '#16a34a', cx - 7, cy + 4, 3, 4);
+      rect(ctx, '#16a34a', cx + 5, cy + 4, 3, 4);
+      rect(ctx, '#22c55e', cx - 2, cy - 13, 4, 4);
+    } else if (resolvedId.includes('sugarcane')) {
+      // Bundle of purple sugarcane stalks with nodes
+      rect(ctx, '#3b0764', cx - 7, cy - 11, 6, 24);
+      rect(ctx, '#6b21a8', cx - 6, cy - 10, 4, 22);
+      rect(ctx, '#9333ea', cx - 5, cy - 8, 2, 18);
+      rect(ctx, '#fef08a', cx - 7, cy - 2, 6, 2); // joint ring
+      rect(ctx, '#fef08a', cx - 7, cy + 5, 6, 2);
+
+      rect(ctx, '#3b0764', cx + 2, cy - 11, 6, 24);
+      rect(ctx, '#6b21a8', cx + 3, cy - 10, 4, 22);
+      rect(ctx, '#9333ea', cx + 4, cy - 8, 2, 18);
+      rect(ctx, '#fef08a', cx + 2, cy - 5, 6, 2);
+      rect(ctx, '#fef08a', cx + 2, cy + 2, 6, 2);
+
+      // Green ribbon wrap
+      rect(ctx, '#15803d', cx - 8, cy, 18, 3);
+      rect(ctx, '#22c55e', cx - 7, cy + 1, 16, 1);
     } else {
       oval(ctx, '#16a34a', cx, cy, 10, 10);
       oval(ctx, '#22c55e', cx, cy, 8, 8);
@@ -238,29 +311,29 @@ export function farmItemIcon(itemId: string, size = 48): string {
   }
 
   // 3. LIVESTOCK PRODUCTS (yield_*)
-  else if (itemId.startsWith('yield_')) {
-    if (itemId.includes('egg')) {
+  else if (resolvedId.startsWith('yield_')) {
+    if (resolvedId.includes('egg')) {
       // Warm brown or white chicken/duck egg
-      const isDuck = itemId.includes('duck');
+      const isDuck = resolvedId.includes('duck');
       oval(ctx, isDuck ? '#94a3b8' : '#78350f', cx, cy + 1, 10, 13);
       oval(ctx, isDuck ? '#cbd5e1' : '#b45309', cx, cy + 1, 9, 12);
       oval(ctx, isDuck ? '#f1f5f9' : '#fed7aa', cx, cy + 1, 7, 10);
       rect(ctx, '#ffffff', cx - 2, cy - 4, 3, 3);
-    } else if (itemId.includes('milk')) {
+    } else if (resolvedId.includes('milk')) {
       // Traditional glass bottle or metal pail of farm fresh milk
       rect(ctx, '#475569', cx - 7, cy - 11, 14, 22);
       rect(ctx, '#94a3b8', cx - 6, cy - 10, 12, 20);
       rect(ctx, '#ffffff', cx - 5, cy - 5, 10, 14); // white milk
       rect(ctx, '#38bdf8', cx - 4, cy - 1, 8, 4); // blue label
       rect(ctx, '#475569', cx - 3, cy - 14, 6, 3); // cap
-    } else if (itemId.includes('pork')) {
+    } else if (resolvedId.includes('pork')) {
       // Marbled fresh pork cut
       oval(ctx, '#991b1b', cx, cy, 13, 10);
       oval(ctx, '#f43f5e', cx, cy, 12, 9);
       oval(ctx, '#fb7185', cx, cy, 10, 7);
       rect(ctx, '#fecdd3', cx - 6, cy - 2, 8, 3); // marbling
       oval(ctx, '#ffffff', cx + 3, cy, 3, 3); // bone
-    } else if (itemId.includes('wool')) {
+    } else if (resolvedId.includes('wool')) {
       // Fluffy white cloud of fresh wool
       oval(ctx, '#cbd5e1', cx, cy + 2, 13, 9);
       oval(ctx, '#f1f5f9', cx, cy + 2, 12, 8);
@@ -271,8 +344,8 @@ export function farmItemIcon(itemId: string, size = 48): string {
   }
 
   // 4. LIVESTOCK CON GIỐNG (stock_*)
-  else if (itemId.startsWith('stock_')) {
-    if (itemId.includes('chicken')) {
+  else if (resolvedId.startsWith('stock_')) {
+    if (resolvedId.includes('chicken')) {
       // Cheerful yellow baby chick
       oval(ctx, '#ca8a04', cx, cy + 3, 8, 7);
       oval(ctx, '#eab308', cx, cy + 3, 7, 6);
@@ -282,14 +355,14 @@ export function farmItemIcon(itemId: string, size = 48): string {
       rect(ctx, '#000000', cx + 3, cy - 5, 1, 1); // eye
       rect(ctx, '#ea580c', cx - 2, cy + 9, 2, 3); // feet
       rect(ctx, '#ea580c', cx + 2, cy + 9, 2, 3);
-    } else if (itemId.includes('duck')) {
+    } else if (resolvedId.includes('duck')) {
       // Adorable white duckling
       oval(ctx, '#94a3b8', cx, cy + 3, 9, 7);
       oval(ctx, '#f8fafc', cx, cy + 3, 8, 6);
       oval(ctx, '#f8fafc', cx + 3, cy - 3, 6, 6);
       rect(ctx, '#f97316', cx + 7, cy - 3, 4, 2); // flat orange bill
       rect(ctx, '#000000', cx + 4, cy - 4, 1, 1);
-    } else if (itemId.includes('cow')) {
+    } else if (resolvedId.includes('cow')) {
       // Black and white Holstein dairy cow face
       oval(ctx, '#000000', cx, cy, 11, 10);
       oval(ctx, '#ffffff', cx, cy, 10, 9);
@@ -302,7 +375,7 @@ export function farmItemIcon(itemId: string, size = 48): string {
       // Small horns
       rect(ctx, '#d97706', cx - 7, cy - 8, 2, 3);
       rect(ctx, '#d97706', cx + 5, cy - 8, 2, 3);
-    } else if (itemId.includes('pig')) {
+    } else if (resolvedId.includes('pig')) {
       // Pink piglet snout & ears
       oval(ctx, '#db2777', cx, cy, 11, 10);
       oval(ctx, '#f472b6', cx, cy, 10, 9);
@@ -314,7 +387,35 @@ export function farmItemIcon(itemId: string, size = 48): string {
       // Ears
       rect(ctx, '#db2777', cx - 8, cy - 8, 4, 4);
       rect(ctx, '#db2777', cx + 5, cy - 8, 4, 4);
-    } else if (itemId.includes('fingerling') || itemId.includes('tom')) {
+    } else if (resolvedId.includes('goat')) {
+      // Mountain goat face with curved horns and beard
+      oval(ctx, '#78716c', cx, cy, 10, 11);
+      oval(ctx, '#e7e5e4', cx, cy, 9, 10);
+      rect(ctx, '#d6d3d1', cx - 2, cy + 6, 4, 4); // beard
+      oval(ctx, '#fbcfe8', cx, cy + 4, 5, 3); // muzzle
+      rect(ctx, '#44403c', cx - 2, cy + 4, 1, 1);
+      rect(ctx, '#44403c', cx + 1, cy + 4, 1, 1);
+      rect(ctx, '#000000', cx - 4, cy - 2, 2, 2); // eyes
+      rect(ctx, '#000000', cx + 2, cy - 2, 2, 2);
+      // Curved horns
+      rect(ctx, '#78350f', cx - 7, cy - 10, 2, 6);
+      rect(ctx, '#b45309', cx - 8, cy - 12, 3, 3);
+      rect(ctx, '#78350f', cx + 5, cy - 10, 2, 6);
+      rect(ctx, '#b45309', cx + 5, cy - 12, 3, 3);
+    } else if (resolvedId.includes('sheep')) {
+      // Fluffy woolly sheep head & curly ears
+      oval(ctx, '#cbd5e1', cx, cy, 12, 11);
+      oval(ctx, '#f8fafc', cx, cy, 11, 10);
+      oval(ctx, '#475569', cx, cy + 2, 7, 7); // dark sheep face
+      oval(ctx, '#1e293b', cx, cy + 2, 6, 6);
+      rect(ctx, '#ffffff', cx - 3, cy, 2, 2); // eyes
+      rect(ctx, '#000000', cx - 2, cy, 1, 1);
+      rect(ctx, '#ffffff', cx + 1, cy, 2, 2);
+      rect(ctx, '#000000', cx + 2, cy, 1, 1);
+      rect(ctx, '#fbcfe8', cx - 1, cy + 5, 2, 1); // pink nose
+      // Wool puff on top
+      oval(ctx, '#f8fafc', cx, cy - 8, 6, 4);
+    } else if (resolvedId.includes('fingerling') || resolvedId.includes('tom')) {
       // Fish / fingerling swimming in clear water bag
       oval(ctx, '#0284c7', cx, cy, 13, 14);
       oval(ctx, '#38bdf8', cx, cy, 12, 13);
@@ -330,7 +431,7 @@ export function farmItemIcon(itemId: string, size = 48): string {
   }
 
   // 5. TRACTOR VEHICLE (tractor_farm)
-  else if (itemId.includes('tractor')) {
+  else if (resolvedId.includes('tractor')) {
     // Sturdy green farm tractor with giant back wheel and yellow accents
     rect(ctx, '#14532d', cx - 12, cy - 8, 22, 12); // main body green
     rect(ctx, '#16a34a', cx - 11, cy - 7, 20, 10);
@@ -353,7 +454,7 @@ export function farmItemIcon(itemId: string, size = 48): string {
   }
 
   // 6. TOOLS & SUPPLIES
-  else if (itemId.includes('watering_can')) {
+  else if (resolvedId.includes('watering_can')) {
     // Traditional coconut shell / green metal watering can with spout
     rect(ctx, '#0369a1', cx - 7, cy - 3, 14, 12);
     rect(ctx, '#0284c7', cx - 6, cy - 2, 12, 10);
@@ -366,7 +467,7 @@ export function farmItemIcon(itemId: string, size = 48): string {
     // Water droplets
     rect(ctx, '#38bdf8', cx + 13, cy - 5, 2, 2);
     rect(ctx, '#7dd3fc', cx + 14, cy - 1, 2, 2);
-  } else if (itemId.includes('hoe')) {
+  } else if (resolvedId.includes('hoe')) {
     // Bamboo handle with iron hoe head
     ctx.beginPath();
     ctx.moveTo(cx - 9, cy + 11);
@@ -378,7 +479,7 @@ export function farmItemIcon(itemId: string, size = 48): string {
     rect(ctx, '#334155', cx + 4, cy - 13, 8, 4);
     rect(ctx, '#64748b', cx + 5, cy - 12, 6, 3);
     rect(ctx, '#cbd5e1', cx + 6, cy - 10, 4, 1); // sharp edge
-  } else if (itemId.includes('fertilizer')) {
+  } else if (resolvedId.includes('fertilizer')) {
     // Organic vermicompost sack
     rect(ctx, '#3f220d', cx - 9, cy - 8, 18, 18);
     rect(ctx, '#65a30d', cx - 8, cy - 7, 16, 16);
@@ -386,13 +487,13 @@ export function farmItemIcon(itemId: string, size = 48): string {
     // Leaf / earth emblem
     oval(ctx, '#365314', cx, cy, 4, 5);
     rect(ctx, '#bef264', cx - 1, cy - 1, 2, 3);
-  } else if (itemId.includes('feed')) {
+  } else if (resolvedId.includes('feed')) {
     // Burlap feed sack
     rect(ctx, '#78350f', cx - 9, cy - 8, 18, 18);
     rect(ctx, '#b45309', cx - 8, cy - 7, 16, 16);
     rect(ctx, '#fef08a', cx - 6, cy - 2, 12, 6);
     rect(ctx, '#d97706', cx - 3, cy, 6, 2);
-  } else if (itemId.includes('aerator')) {
+  } else if (resolvedId.includes('aerator')) {
     // Paddle wheel aerator with water splashes
     oval(ctx, '#0284c7', cx, cy + 2, 9, 9);
     rect(ctx, '#f59e0b', cx - 11, cy - 1, 22, 4); // axle
