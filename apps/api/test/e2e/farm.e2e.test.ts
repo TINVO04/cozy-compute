@@ -932,6 +932,54 @@ describe('Cozy Farm System E2E Specification', () => {
         const meClean = await api(h, 'GET', '/api/farm/me', { token: owner.token });
         expect(meClean.body.animals.find((a: { id: string }) => a.id === animalId)).toBeUndefined();
       });
+
+      it('F6.8: deposits feed into troughs and performs automated pen feeding', async () => {
+        const owner = await register(h);
+        await makeEligible(h, owner.id, 10000);
+
+        // Buy animal and feed grain
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_chicken', quantity: 1 },
+        });
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'feed_grain', quantity: 15 },
+        });
+
+        // Raise chicken
+        const raiseRes = await api(h, 'POST', '/api/farm/animals/raise', {
+          token: owner.token,
+          body: { stockItemId: 'stock_chicken' },
+        });
+        expect(raiseRes.status).toBe(200);
+
+        // Verify initial trough state
+        const meInitial = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(meInitial.body.troughs).toBeDefined();
+        expect(meInitial.body.troughs.poultry.amount).toBe(0);
+        expect(meInitial.body.troughs.poultry.capacity).toBe(40);
+
+        // Deposit 10 feed grain into poultry trough
+        const fillRes = await api(h, 'POST', '/api/farm/troughs/fill', {
+          token: owner.token,
+          body: { facility: 'poultry', quantity: 10 },
+        });
+        expect(fillRes.status).toBe(200);
+        expect(fillRes.body.ok).toBe(true);
+        expect(fillRes.body.addedQuantity).toBe(10);
+        expect(fillRes.body.trough.amount).toBe(10);
+
+        // Verify warehouse inventory decreased by 10
+        const meAfterFill = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        const grainWh = meAfterFill.body.warehouse.items.find(
+          (i: { itemId: string }) => i.itemId === 'feed_grain',
+        );
+        expect(grainWh?.quantity).toBe(5);
+        expect(meAfterFill.body.troughs.poultry.amount).toBe(10);
+      });
     });
 
     describe('Core Feature 7: Silo Warehouse Storage & Expansion', () => {

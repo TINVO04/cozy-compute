@@ -5,6 +5,7 @@ import {
   type AnimalType,
   computeAnimalGrowthStage,
   computeAnimalHunger,
+  STARVATION_WARNING_THRESHOLD_SEC,
 } from '@cozy/game-data';
 import Phaser from 'phaser';
 import {
@@ -620,8 +621,15 @@ export class FarmLivestockManager {
     }
 
     // Line 2: Hunger & Action Text
+    const isCriticalStarvation =
+      !isDead && isHungry && hunger.starvationRemainingSec <= STARVATION_WARNING_THRESHOLD_SEC;
+
     if (canYield) {
       entity.hungerText.setText('✨ Thu hoạch! (Bấm)').setColor('#fde047');
+    } else if (isCriticalStarvation) {
+      entity.hungerText
+        .setText(`🚨 NGUY CẤP (${formatTimer(hunger.starvationRemainingSec)})`)
+        .setColor('#ff8787');
     } else if (isHungry) {
       entity.hungerText
         .setText(`🌾 ĐÓI (Chết: ${formatTimer(hunger.starvationRemainingSec)})`)
@@ -635,6 +643,12 @@ export class FarmLivestockManager {
       g.fillStyle(0x064e3b, 0.88);
       g.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 6);
       g.lineStyle(1.5, 0x22c55e, 0.9);
+      g.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 6);
+    } else if (isCriticalStarvation) {
+      // Critical emergency starvation state (< 15 mins to death)
+      g.fillStyle(0x581c1c, 0.95);
+      g.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 6);
+      g.lineStyle(2, 0xef4444, 1.0);
       g.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 6);
     } else if (isHungry) {
       // Attention hunger state

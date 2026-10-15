@@ -684,6 +684,196 @@ export function computeAnimalGrowthStage(
 }
 
 // ==========================================
+// 2b. LIVESTOCK FACILITIES & FEED TROUGHS
+// ==========================================
+
+export type LivestockFacilityKey = 'poultry' | 'cattle' | 'pig' | 'goat';
+
+export interface FeedTroughDef {
+  facility: LivestockFacilityKey;
+  label: string;
+  penName: string;
+  icon: string;
+  feedItemId: string;
+  feedName: string;
+  capacity: number;
+  animalTypes: AnimalType[];
+}
+
+export const FEED_TROUGHS: Record<LivestockFacilityKey, FeedTroughDef> = {
+  poultry: {
+    facility: 'poultry',
+    label: 'Máng Chuồng Gia Cầm',
+    penName: 'Chuồng Gia Cầm',
+    icon: '🐓',
+    feedItemId: 'feed_grain',
+    feedName: 'Thóc Bồ Thơm',
+    capacity: 40,
+    animalTypes: ['chicken', 'duck'],
+  },
+  cattle: {
+    facility: 'cattle',
+    label: 'Máng Đồng Cỏ Bò Sữa',
+    penName: 'Đồng Cỏ Bò Sữa',
+    icon: '🐄',
+    feedItemId: 'feed_hay',
+    feedName: 'Rơm Khô Thượng Hạng',
+    capacity: 30,
+    animalTypes: ['cow'],
+  },
+  pig: {
+    facility: 'pig',
+    label: 'Máng Chuồng Heo Mọi',
+    penName: 'Chuồng Heo Mọi',
+    icon: '🐖',
+    feedItemId: 'feed_corn_mash',
+    feedName: 'Cám Bắp Lên Men',
+    capacity: 35,
+    animalTypes: ['pig'],
+  },
+  goat: {
+    facility: 'goat',
+    label: 'Máng Đồi Dê & Cừu',
+    penName: 'Đồi Dê & Cừu',
+    icon: '🐐',
+    feedItemId: 'feed_hay',
+    feedName: 'Rơm Khô Thượng Hạng',
+    capacity: 30,
+    animalTypes: ['goat', 'sheep'],
+  },
+};
+
+export const STARVATION_WARNING_THRESHOLD_SEC = 900; // 15 minutes
+
+export type StarvationSeverity = 'healthy' | 'hungry' | 'critical' | 'dead';
+
+export function getAnimalStarvationSeverity(
+  isDead: boolean,
+  isHungry: boolean,
+  starvationRemainingSec: number,
+): StarvationSeverity {
+  if (isDead) return 'dead';
+  if (!isHungry) return 'healthy';
+  if (starvationRemainingSec <= STARVATION_WARNING_THRESHOLD_SEC) return 'critical';
+  return 'hungry';
+}
+
+export function facilityForAnimalType(type: string): LivestockFacilityKey {
+  if (type === 'chicken' || type === 'duck') return 'poultry';
+  if (type === 'cow') return 'cattle';
+  if (type === 'pig') return 'pig';
+  return 'goat';
+}
+
+export interface AnimalCatchUpState {
+  id: string;
+  type: AnimalType;
+  createdAt: number;
+  fedAt: number | null;
+  growthAccumSec: number;
+  lastYieldAt: number | null;
+  happiness: number;
+}
+
+export interface TroughCatchUpState {
+  facility: LivestockFacilityKey;
+  amount: number;
+  capacity: number;
+  updatedAt?: number;
+}
+
+export function simulateTroughFeeding(
+  animals: AnimalCatchUpState[],
+  troughs: Record<LivestockFacilityKey, TroughCatchUpState>,
+  nowMs: number,
+): {
+  updatedAnimals: AnimalCatchUpState[];
+  updatedTroughs: Record<LivestockFacilityKey, TroughCatchUpState>;
+  mealsConsumed: Record<LivestockFacilityKey, number>;
+} {
+  const updatedAnimals = animals.map((a) => ({ ...a }));
+  const updatedTroughs: Record<LivestockFacilityKey, TroughCatchUpState> = {
+    poultry: { ...troughs.poultry },
+    cattle: { ...troughs.cattle },
+    pig: { ...troughs.pig },
+    goat: { ...troughs.goat },
+  };
+  const mealsConsumed: Record<LivestockFacilityKey, number> = {
+    poultry: 0,
+    cattle: 0,
+    pig: 0,
+    goat: 0,
+  };
+
+  const facilities: LivestockFacilityKey[] = ['poultry', 'cattle', 'pig', 'goat'];
+
+  for (const fac of facilities) {
+    const trough = updatedTroughs[fac];
+    if (!trough || trough.amount <= 0) continue;
+
+    const facAnimals = updatedAnimals.filter((a) => facilityForAnimalType(a.type) === fac);
+    if (facAnimals.length === 0) continue;
+
+    // Simulation loop: progressively feed the animal whose next feed time is earliest
+    // until trough is empty or all animals are no longer hungry before nowMs.
+    const maxIterations = 1000;
+    let iteration = 0;
+
+    while (trough.amount > 0 && iteration++ < maxIterations) {
+      let earliestAnimal: AnimalCatchUpState | null = null;
+      let earliestTime = Infinity;
+
+      for (const a of facAnimals) {
+        const def = (ANIMALS as Record<string, AnimalDef>)[a.type];
+        if (!def) continue;
+
+        const deadAt = a.fedAt
+          ? a.fedAt + (def.feedIntervalSec + def.hungerDecaySec) * 1000
+          : a.createdAt + def.hungerDecaySec * 1000;
+
+        let nextMealTime = a.fedAt ? a.fedAt + def.feedIntervalSec * 1000 : a.createdAt;
+        if (trough.updatedAt && nextMealTime < trough.updatedAt) {
+          nextMealTime = trough.updatedAt;
+        }
+
+        if (nextMealTime >= deadAt) {
+          // Animal starved before it could eat
+          continue;
+        }
+
+        if (nextMealTime <= nowMs && nextMealTime < earliestTime) {
+          earliestTime = nextMealTime;
+          earliestAnimal = a;
+        }
+      }
+
+      if (!earliestAnimal || earliestTime > nowMs) {
+        break; // No animals currently need food before nowMs
+      }
+
+      const def = (ANIMALS as Record<string, AnimalDef>)[earliestAnimal.type];
+      if (!def) break;
+      trough.amount -= 1;
+      mealsConsumed[fac] += 1;
+
+      // Digest elapsed during feeding window
+      const prevElapsed = earliestAnimal.fedAt
+        ? Math.max(0, (earliestTime - earliestAnimal.fedAt) / 1000)
+        : 0;
+      const digestSec = Math.min(def.feedIntervalSec, prevElapsed);
+      earliestAnimal.growthAccumSec = Math.min(
+        def.growthDurationSec,
+        earliestAnimal.growthAccumSec + Math.round(digestSec),
+      );
+      earliestAnimal.fedAt = earliestTime;
+      earliestAnimal.happiness = Math.min(100, earliestAnimal.happiness + (def.happinessBoost || 20));
+    }
+  }
+
+  return { updatedAnimals, updatedTroughs, mealsConsumed };
+}
+
+// ==========================================
 // 3. AQUACULTURE POND FISH TYPES & CATALOG
 // ==========================================
 

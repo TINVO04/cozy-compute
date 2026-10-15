@@ -158,6 +158,17 @@ export function farmRoutes(app: FastifyInstance, ctx: AppContext) {
     return farmService.sellAnimal(ctx, user.id, body.animalId, key);
   });
 
+  // 10d. Fill Feed Trough (Máng ăn tự động)
+  app.post('/api/farm/troughs/fill', async (req) => {
+    const user = requireUser(req);
+    const schema = z.object({
+      facility: z.enum(['poultry', 'cattle', 'pig', 'goat']),
+      quantity: z.number().int().min(1),
+    });
+    const body = schema.parse(req.body);
+    return farmService.fillFeedTrough(ctx, user.id, body.facility, body.quantity);
+  });
+
   // 11. Pond Stock Fingerling
   app.post('/api/farm/pond/stock', async (req) => {
     const user = requireUser(req);

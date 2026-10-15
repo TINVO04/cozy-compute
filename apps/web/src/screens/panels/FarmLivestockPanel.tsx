@@ -2,11 +2,26 @@ import {
   ANIMALS,
   computeAnimalGrowthStage,
   computeAnimalHunger,
+  FEED_TROUGHS,
+  STARVATION_WARNING_THRESHOLD_SEC,
   type AnimalGrowthStage,
   type AnimalType,
+  type LivestockFacilityKey,
+  type StarvationSeverity,
 } from '@cozy/game-data';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Heart, Plus, Skull, Sparkles, Store, Utensils, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  Heart,
+  Plus,
+  ShieldAlert,
+  Skull,
+  Sparkles,
+  Store,
+  Utensils,
+  Wheat,
+  X,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { farmItemIcon } from '../../art/farm-icons';
 import { api, ApiError, num, type Me } from '../../lib/api';
@@ -18,6 +33,7 @@ export interface FarmAnimal {
   id: string;
   type: string;
   name: string;
+  facility?: LivestockFacilityKey;
   createdAt?: string;
   fedAt?: string | null;
   growthAccumSec?: number;
@@ -30,6 +46,7 @@ export interface FarmAnimal {
   displayName?: string;
   isDead?: boolean;
   starvationRemainingSec?: number;
+  severity?: StarvationSeverity;
 }
 
 interface WarehouseItem {
@@ -39,10 +56,34 @@ interface WarehouseItem {
   tab: string;
 }
 
+interface FeedTroughInfo {
+  facility: LivestockFacilityKey;
+  label: string;
+  penName: string;
+  icon: string;
+  feedItemId: string;
+  feedName: string;
+  amount: number;
+  capacity: number;
+}
+
 interface FarmMeResponse {
   farm: { ownerId: string };
   warehouse: { capacity: number; items: WarehouseItem[] };
   animals: FarmAnimal[];
+  troughs?: Record<LivestockFacilityKey, FeedTroughInfo>;
+  starvationAlerts?: {
+    criticalCount: number;
+    deadCount: number;
+    hungryCount: number;
+    criticalAnimals: Array<{
+      id: string;
+      name: string;
+      type: string;
+      facility: string;
+      starvationRemainingSec: number;
+    }>;
+  };
 }
 
 type FacilityTab = 'all' | 'poultry' | 'cattle' | 'pig' | 'goat';
@@ -271,6 +312,37 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
     }
   };
 
+  // 6. Fill Feed Trough
+  const handleFillTrough = async (facility: LivestockFacilityKey, quantity: number) => {
+    setLoadingAction(`fill_trough_${facility}`);
+    setErrorMsg(null);
+    try {
+      const res = await api<{
+        ok: boolean;
+        addedQuantity: number;
+        trough: { amount: number; capacity: number; feedName: string; label: string };
+      }>('/api/farm/troughs/fill', {
+        method: 'POST',
+        idempotencyKey: crypto.randomUUID(),
+        body: { facility, quantity },
+      });
+      play('pop');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: 'Đã nạp máng ăn!',
+        body: `Đã nạp +${res.addedQuantity} ${res.trough.feedName} vào ${res.trough.label} (${res.trough.amount}/${res.trough.capacity}).`,
+      });
+      await refetch();
+      window.dispatchEvent(new CustomEvent('farm:refresh'));
+      await qc.invalidateQueries({ queryKey: ['farm'] });
+    } catch (err) {
+      play('error');
+      setErrorMsg(err instanceof ApiError ? err.message : 'Nạp máng ăn thất bại.');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
   return (
     <Panel
       title="Trại Chăn Nuôi Cozy"
@@ -434,6 +506,221 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
             </button>
           </div>
         )}
+
+        {/* EMERGENCY STARVATION ALERT BANNER */}
+        {(() => {
+          const criticalAnimals = animals.filter((a) => {
+            const hunger = computeAnimalHunger(
+              a.type,
+              a.fedAt || null,
+              a.lastYieldAt || null,
+              nowMs,
+              a.stage === 'adult',
+              a.createdAt || null,
+            );
+            return (
+              !hunger.isDead &&
+              hunger.isHungry &&
+              hunger.starvationRemainingSec <= STARVATION_WARNING_THRESHOLD_SEC
+            );
+          });
+
+          if (criticalAnimals.length === 0) return null;
+
+          return (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: 8,
+                background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.35) 0%, rgba(185, 28, 28, 0.2) 100%)',
+                border: '1px solid #ef4444',
+                color: '#fee2e2',
+                boxShadow: '0 0 16px rgba(239, 68, 68, 0.4)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <ShieldAlert size={22} color="#f87171" />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: '#fca5a5' }}>
+                    🚨 BÁO ĐỘNG ĐÓI KHẨN CẤP: Có {criticalAnimals.length} con vật đang sắp chết đói (&lt; 15
+                    phút)!
+                  </div>
+                  <div style={{ fontSize: 11, color: '#fecaca' }}>
+                    Hãy nạp đầy máng ăn tự động bên dưới hoặc cho ăn thủ công ngay để cứu sống đàn vật nuôi.
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* SECTION: FEED TROUGH AUTOMATION (MÁNG ĂN TỰ ĐỘNG) */}
+        {(() => {
+          const facilitiesToShow: LivestockFacilityKey[] =
+            activeTab === 'all' ? ['poultry', 'cattle', 'pig', 'goat'] : [activeTab as LivestockFacilityKey];
+
+          return (
+            <div
+              style={{
+                background: 'rgba(15, 23, 42, 0.65)',
+                borderRadius: 10,
+                border: '1px solid rgba(148, 163, 184, 0.2)',
+                padding: 12,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Wheat size={16} color="#f59e0b" />
+                  <span style={{ fontWeight: 700, fontSize: 13, color: '#f8fafc' }}>
+                    Máng Ăn Tự Động (Tự Động Nuôi Khi Offline &amp; Bận Rộn)
+                  </span>
+                </div>
+                <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                  Vật nuôi tự động ăn từ máng đúng giờ khi đói
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: activeTab === 'all' ? 'repeat(auto-fill, minmax(280px, 1fr))' : '1fr',
+                  gap: 10,
+                }}
+              >
+                {facilitiesToShow.map((fac) => {
+                  const def = FEED_TROUGHS[fac];
+                  const trough = data?.troughs?.[fac] ?? {
+                    ...def,
+                    amount: 0,
+                  };
+                  const stockQty = getStockQty(def.feedItemId);
+                  const isFull = trough.amount >= trough.capacity;
+                  const percent = Math.min(100, Math.round((trough.amount / trough.capacity) * 100));
+                  const isBusyTrough = loadingAction === `fill_trough_${fac}`;
+
+                  const barColor = percent > 50 ? '#10b981' : percent > 20 ? '#f59e0b' : '#ef4444';
+
+                  return (
+                    <div
+                      key={fac}
+                      style={{
+                        background: 'rgba(30, 41, 59, 0.6)',
+                        borderRadius: 8,
+                        border: '1px solid rgba(148, 163, 184, 0.15)',
+                        padding: 10,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 8,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 16 }}>{def.icon}</span>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc' }}>{def.label}</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8' }}>
+                              Cần: {def.feedName} (Kho có: {stockQty})
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: barColor }}>
+                            {trough.amount} / {trough.capacity} phần
+                          </div>
+                          <div style={{ fontSize: 10, color: '#94a3b8' }}>{percent}% đầy</div>
+                        </div>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div
+                        style={{
+                          width: '100%',
+                          height: 6,
+                          background: 'rgba(15, 23, 42, 0.8)',
+                          borderRadius: 3,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${percent}%`,
+                            height: '100%',
+                            background: barColor,
+                            borderRadius: 3,
+                            transition: 'width 0.3s ease',
+                          }}
+                        />
+                      </div>
+
+                      {/* Deposit Actions */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 6,
+                          justifyContent: 'flex-end',
+                          marginTop: 2,
+                        }}
+                      >
+                        <Button
+                          disabled={isBusyTrough || isFull || stockQty < 1}
+                          onClick={() => void handleFillTrough(fac, Math.min(10, stockQty))}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: 11,
+                            borderRadius: 6,
+                            background: 'rgba(59, 130, 246, 0.25)',
+                            border: '1px solid rgba(59, 130, 246, 0.5)',
+                            color: '#93c5fd',
+                            fontWeight: 600,
+                            cursor: isFull || stockQty < 1 ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          +10 Thức Ăn
+                        </Button>
+                        <Button
+                          disabled={isBusyTrough || isFull || stockQty < 1}
+                          onClick={() =>
+                            void handleFillTrough(fac, Math.min(trough.capacity - trough.amount, stockQty))
+                          }
+                          style={{
+                            padding: '4px 12px',
+                            fontSize: 11,
+                            borderRadius: 6,
+                            background: isFull ? 'rgba(71, 85, 105, 0.4)' : '#2563eb',
+                            color: '#ffffff',
+                            fontWeight: 700,
+                            border: 'none',
+                            cursor: isFull || stockQty < 1 ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          {isBusyTrough
+                            ? 'Đang nạp...'
+                            : isFull
+                              ? 'Đã Đầy Máng'
+                              : stockQty < 1
+                                ? 'Hết Thức Ăn'
+                                : 'Nạp Đầy Máng'}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* SECTION 1: Con Giống Chờ Thả Nuôi (From Silo Warehouse) */}
         {availableStockTypes.length > 0 && (
@@ -675,29 +962,47 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
 
                   const starveMins = Math.floor(hunger.starvationRemainingSec / 60);
                   const starveSecs = hunger.starvationRemainingSec % 60;
+                  const isCritical =
+                    !isDead &&
+                    hunger.isHungry &&
+                    hunger.starvationRemainingSec <= STARVATION_WARNING_THRESHOLD_SEC;
 
                   return (
                     <div
                       key={animal.id}
                       style={{
-                        background: isDead ? 'rgba(30, 15, 20, 0.85)' : 'rgba(30, 41, 59, 0.75)',
+                        background: isDead
+                          ? 'rgba(30, 15, 20, 0.85)'
+                          : isCritical
+                            ? 'rgba(45, 15, 20, 0.85)'
+                            : 'rgba(30, 41, 59, 0.75)',
                         borderRadius: 10,
                         border: isDead
                           ? '1px solid rgba(239, 68, 68, 0.6)'
-                          : isAdult
-                            ? '1px solid rgba(16, 185, 129, 0.4)'
-                            : isGrowing
-                              ? '1px solid rgba(56, 189, 248, 0.35)'
-                              : '1px solid rgba(245, 158, 11, 0.3)',
+                          : isCritical
+                            ? '1px solid #ef4444'
+                            : isAdult
+                              ? '1px solid rgba(16, 185, 129, 0.4)'
+                              : isGrowing
+                                ? '1px solid rgba(56, 189, 248, 0.35)'
+                                : '1px solid rgba(245, 158, 11, 0.3)',
                         padding: 12,
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 10,
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
+                        boxShadow: isCritical
+                          ? '0 0 16px rgba(239, 68, 68, 0.55)'
+                          : '0 4px 12px rgba(0, 0, 0, 0.25)',
                       }}
                     >
                       {/* Animal Card Header */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}
+                      >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <img
                             src={farmItemIcon(animal.type, 44)}
@@ -715,7 +1020,7 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
                               style={{
                                 fontSize: 13,
                                 fontWeight: 700,
-                                color: isDead ? '#f87171' : '#f8fafc',
+                                color: isDead ? '#f87171' : isCritical ? '#fca5a5' : '#f8fafc',
                               }}
                             >
                               {growth.displayName}
@@ -725,47 +1030,67 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
                         </div>
 
                         {/* Growth Stage Badge */}
-                        <span
-                          style={{
-                            padding: '3px 8px',
-                            borderRadius: 12,
-                            fontSize: 10,
-                            fontWeight: 700,
-                            background: isDead
-                              ? 'rgba(239, 68, 68, 0.22)'
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {isCritical && (
+                            <span
+                              style={{
+                                padding: '3px 8px',
+                                borderRadius: 12,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                background: '#ef4444',
+                                color: '#ffffff',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 3,
+                              }}
+                            >
+                              <AlertTriangle size={11} />
+                              <span>{starveMins}m còn lại!</span>
+                            </span>
+                          )}
+                          <span
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: 12,
+                              fontSize: 10,
+                              fontWeight: 700,
+                              background: isDead
+                                ? 'rgba(239, 68, 68, 0.22)'
+                                : isAdult
+                                  ? 'rgba(16, 185, 129, 0.18)'
+                                  : isGrowing
+                                    ? 'rgba(56, 189, 248, 0.18)'
+                                    : 'rgba(245, 158, 11, 0.18)',
+                              color: isDead
+                                ? '#ef4444'
+                                : isAdult
+                                  ? '#34d399'
+                                  : isGrowing
+                                    ? '#38bdf8'
+                                    : '#fbbf24',
+                              border: isDead
+                                ? '1px solid rgba(239, 68, 68, 0.5)'
+                                : isAdult
+                                  ? '1px solid rgba(16, 185, 129, 0.4)'
+                                  : isGrowing
+                                    ? '1px solid rgba(56, 189, 248, 0.4)'
+                                    : '1px solid rgba(245, 158, 11, 0.4)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            {isDead ? <Skull size={11} /> : isAdult ? <Sparkles size={11} /> : null}
+                            {isDead
+                              ? 'Đã Chết (Đói)'
                               : isAdult
-                                ? 'rgba(16, 185, 129, 0.18)'
+                                ? 'Trưởng Thành'
                                 : isGrowing
-                                  ? 'rgba(56, 189, 248, 0.18)'
-                                  : 'rgba(245, 158, 11, 0.18)',
-                            color: isDead
-                              ? '#ef4444'
-                              : isAdult
-                                ? '#34d399'
-                                : isGrowing
-                                  ? '#38bdf8'
-                                  : '#fbbf24',
-                            border: isDead
-                              ? '1px solid rgba(239, 68, 68, 0.5)'
-                              : isAdult
-                                ? '1px solid rgba(16, 185, 129, 0.4)'
-                                : isGrowing
-                                  ? '1px solid rgba(56, 189, 248, 0.4)'
-                                  : '1px solid rgba(245, 158, 11, 0.4)',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                          }}
-                        >
-                          {isDead ? <Skull size={11} /> : isAdult ? <Sparkles size={11} /> : null}
-                          {isDead
-                            ? 'Đã Chết (Đói)'
-                            : isAdult
-                              ? 'Trưởng Thành'
-                              : isGrowing
-                                ? 'Đang Lớn'
-                                : 'Con Non'}
-                        </span>
+                                  ? 'Đang Lớn'
+                                  : 'Con Non'}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Growth Progress Bar */}

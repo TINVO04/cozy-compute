@@ -12,6 +12,12 @@ import {
   WAREHOUSE_UPGRADE_TIERS,
   isPlotMoist,
   isWeatherRainy,
+  FEED_TROUGHS,
+  simulateTroughFeeding,
+  getAnimalStarvationSeverity,
+  facilityForAnimalType,
+  type LivestockFacilityKey,
+  type AnimalType,
   type CropId,
   type CropGrowthStage,
 } from '@cozy/game-data';
@@ -79,6 +85,15 @@ export interface FarmPondFishRow {
   current_weight_kg: string | number;
   fed_at: Date | null;
   growth_stage: string;
+}
+
+export interface FarmFeedTroughRow {
+  id: string;
+  farm_id: string;
+  facility: LivestockFacilityKey;
+  amount: number;
+  capacity: number;
+  updated_at: Date;
 }
 
 export function computeCropStage(
@@ -166,8 +181,86 @@ export async function getOrCreateFarm(q: Queryable, userId: string): Promise<Far
     [farm.id],
   );
 
+  // Provision 4 feed troughs if not already existing
+  await q.query(
+    `INSERT INTO farm_feed_troughs (farm_id, facility, amount, capacity)
+     VALUES
+       ($1, 'poultry', 0, 40),
+       ($1, 'cattle', 0, 30),
+       ($1, 'pig', 0, 35),
+       ($1, 'goat', 0, 30)
+     ON CONFLICT (farm_id, facility) DO NOTHING`,
+    [farm.id],
+  );
+
   // No hardcoded starter animals: animals must be bought in shop and raised
   return farm;
+}
+
+export async function catchUpTroughsAndAnimals(q: Queryable, farmId: string, nowMs: number) {
+  const troughsRes = await q.query<FarmFeedTroughRow>('SELECT * FROM farm_feed_troughs WHERE farm_id = $1', [
+    farmId,
+  ]);
+  if (troughsRes.rows.length === 0) return;
+
+  const animalsRes = await q.query<FarmAnimalRow>('SELECT * FROM farm_animals WHERE farm_id = $1', [farmId]);
+  if (animalsRes.rows.length === 0) return;
+
+  const troughsMap: Record<
+    LivestockFacilityKey,
+    { facility: LivestockFacilityKey; amount: number; capacity: number; updatedAt?: number }
+  > = {
+    poultry: { facility: 'poultry', amount: 0, capacity: 40 },
+    cattle: { facility: 'cattle', amount: 0, capacity: 30 },
+    pig: { facility: 'pig', amount: 0, capacity: 35 },
+    goat: { facility: 'goat', amount: 0, capacity: 30 },
+  };
+
+  for (const r of troughsRes.rows) {
+    if (r.facility in troughsMap) {
+      troughsMap[r.facility] = {
+        facility: r.facility,
+        amount: r.amount,
+        capacity: r.capacity,
+        updatedAt: r.updated_at ? new Date(r.updated_at).getTime() : undefined,
+      };
+    }
+  }
+
+  const catchUpAnimals = animalsRes.rows.map((a) => ({
+    id: a.id,
+    type: a.animal_type as AnimalType,
+    createdAt: new Date(a.created_at).getTime(),
+    fedAt: a.fed_at ? new Date(a.fed_at).getTime() : null,
+    growthAccumSec: a.growth_accum_sec ?? 0,
+    lastYieldAt: a.last_yield_at ? new Date(a.last_yield_at).getTime() : null,
+    happiness: a.happiness,
+  }));
+
+  const simulation = simulateTroughFeeding(catchUpAnimals, troughsMap, nowMs);
+
+  for (const [fac, count] of Object.entries(simulation.mealsConsumed)) {
+    if (count > 0) {
+      const t = simulation.updatedTroughs[fac as LivestockFacilityKey];
+      await q.query(
+        'UPDATE farm_feed_troughs SET amount = $1, updated_at = $2 WHERE farm_id = $3 AND facility = $4',
+        [t.amount, new Date(nowMs), farmId, fac],
+      );
+    }
+  }
+
+  for (const a of simulation.updatedAnimals) {
+    const orig = catchUpAnimals.find((o) => o.id === a.id);
+    if (
+      orig &&
+      (orig.fedAt !== a.fedAt || orig.growthAccumSec !== a.growthAccumSec || orig.happiness !== a.happiness)
+    ) {
+      await q.query(
+        'UPDATE farm_animals SET fed_at = $1, growth_accum_sec = $2, happiness = $3, updated_at = $4 WHERE id = $5',
+        [a.fedAt ? new Date(a.fedAt) : null, a.growthAccumSec, a.happiness, new Date(nowMs), a.id],
+      );
+    }
+  }
 }
 
 export async function getFarmFullState(ctx: AppContext, userId: string) {
@@ -185,6 +278,9 @@ export async function getFarmFullState(ctx: AppContext, userId: string) {
       [new Date(now), farm.id],
     );
   }
+
+  // Offline simulation catch-up for feed troughs
+  await catchUpTroughsAndAnimals(ctx.db, farm.id, now);
 
   const plotsRes = await ctx.db.query<FarmPlotRow>(
     'SELECT * FROM farm_plots WHERE farm_id = $1 ORDER BY plot_index ASC',
@@ -210,6 +306,36 @@ export async function getFarmFullState(ctx: AppContext, userId: string) {
     };
   });
 
+  const troughsRes = await ctx.db.query<FarmFeedTroughRow>(
+    'SELECT * FROM farm_feed_troughs WHERE farm_id = $1',
+    [farm.id],
+  );
+  const troughs: Record<
+    LivestockFacilityKey,
+    {
+      facility: LivestockFacilityKey;
+      label: string;
+      penName: string;
+      icon: string;
+      feedItemId: string;
+      feedName: string;
+      amount: number;
+      capacity: number;
+    }
+  > = {
+    poultry: { ...FEED_TROUGHS.poultry, amount: 0 },
+    cattle: { ...FEED_TROUGHS.cattle, amount: 0 },
+    pig: { ...FEED_TROUGHS.pig, amount: 0 },
+    goat: { ...FEED_TROUGHS.goat, amount: 0 },
+  };
+
+  for (const r of troughsRes.rows) {
+    if (r.facility in troughs) {
+      troughs[r.facility].amount = r.amount;
+      troughs[r.facility].capacity = r.capacity;
+    }
+  }
+
   const animalsRes = await ctx.db.query<FarmAnimalRow>(
     'SELECT * FROM farm_animals WHERE farm_id = $1 ORDER BY created_at ASC',
     [farm.id],
@@ -225,10 +351,18 @@ export async function getFarmFullState(ctx: AppContext, userId: string) {
     const isAdult = growth.stage === 'adult';
     const hunger = computeAnimalHunger(a.animal_type, a.fed_at, a.last_yield_at, now, isAdult, a.created_at);
     const def = Object.values(ANIMALS).find((d) => d.type === a.animal_type);
+    const severity = getAnimalStarvationSeverity(
+      hunger.isDead,
+      hunger.isHungry,
+      hunger.starvationRemainingSec,
+    );
+    const facility = facilityForAnimalType(a.animal_type);
+
     return {
       id: a.id,
       type: a.animal_type,
       name: a.name,
+      facility,
       createdAt: a.created_at,
       fedAt: a.fed_at,
       growthAccumSec: a.growth_accum_sec ?? 0,
@@ -244,10 +378,28 @@ export async function getFarmFullState(ctx: AppContext, userId: string) {
       canYield: hunger.canYield,
       isDead: hunger.isDead,
       starvationRemainingSec: hunger.starvationRemainingSec,
+      severity,
       feedItemId: def?.feedItemId ?? 'feed_grain',
       yieldItemId: def?.yieldItemId ?? 'yield_egg',
     };
   });
+
+  const criticalAnimals = animals.filter((a) => a.severity === 'critical');
+  const deadAnimals = animals.filter((a) => a.isDead);
+  const hungryAnimals = animals.filter((a) => a.isHungry && !a.isDead);
+
+  const starvationAlerts = {
+    criticalCount: criticalAnimals.length,
+    deadCount: deadAnimals.length,
+    hungryCount: hungryAnimals.length,
+    criticalAnimals: criticalAnimals.map((a) => ({
+      id: a.id,
+      name: a.displayName,
+      type: a.type,
+      facility: a.facility,
+      starvationRemainingSec: a.starvationRemainingSec,
+    })),
+  };
 
   const warehouseRes = await ctx.db.query<FarmWarehouseItemRow>(
     'SELECT * FROM farm_warehouse_items WHERE farm_id = $1 ORDER BY created_at ASC',
@@ -294,6 +446,8 @@ export async function getFarmFullState(ctx: AppContext, userId: string) {
     isRaining,
     plots,
     animals,
+    troughs,
+    starvationAlerts,
     warehouse: {
       capacity: farm.warehouse_capacity,
       items: warehouseItems,
@@ -1325,6 +1479,72 @@ export const raiseAnimal = (ctx: AppContext, userId: string, stockItemId: string
   farmMutation(ctx, userId, (tx) => raiseAnimalLocked(ctx, tx, userId, stockItemId));
 export const sellAnimal = (ctx: AppContext, userId: string, animalId: string, key?: string) =>
   farmMutation(ctx, userId, (tx) => sellAnimalLocked(ctx, tx, userId, animalId, key));
+async function fillFeedTroughLocked(
+  ctx: AppContext,
+  tx: Tx,
+  userId: string,
+  facility: LivestockFacilityKey,
+  quantity: number,
+) {
+  const farm = await getOrCreateFarm(tx, userId);
+  const def = FEED_TROUGHS[facility];
+  if (!def) throw badRequest('invalid_facility', 'Khu chuồng trại không hợp lệ.');
+  if (quantity <= 0) throw badRequest('invalid_quantity', 'Số lượng nạp phải lớn hơn 0.');
+
+  const nowMs = ctx.now().getTime();
+  await catchUpTroughsAndAnimals(tx, farm.id, nowMs);
+
+  const troughRes = await tx.query<FarmFeedTroughRow>(
+    'SELECT * FROM farm_feed_troughs WHERE farm_id = $1 AND facility = $2 FOR UPDATE',
+    [farm.id, facility],
+  );
+  const trough = troughRes.rows[0];
+  if (!trough) throw notFound('Không tìm thấy máng ăn.');
+
+  const availableSpace = trough.capacity - trough.amount;
+  if (availableSpace <= 0) {
+    throw badRequest('trough_full', `Máng ăn ${def.label} đã đầy (${trough.capacity}/${trough.capacity}).`);
+  }
+
+  const toAdd = Math.min(quantity, availableSpace);
+
+  // Check feed in warehouse
+  const whRes = await tx.query<FarmWarehouseItemRow>(
+    'SELECT * FROM farm_warehouse_items WHERE farm_id = $1 AND item_id = $2 FOR UPDATE',
+    [farm.id, def.feedItemId],
+  );
+  const whItem = whRes.rows[0];
+  if (!whItem || whItem.quantity < toAdd) {
+    throw badRequest('insufficient_feed', `Kho nông trại không đủ ${def.feedName} (cần ${toAdd}).`);
+  }
+
+  await takeFarmItem(tx, farm.id, def.feedItemId, toAdd);
+  const updatedTrough = await tx.query<FarmFeedTroughRow>(
+    'UPDATE farm_feed_troughs SET amount = amount + $1, updated_at = $2 WHERE id = $3 RETURNING *',
+    [toAdd, ctx.now(), trough.id],
+  );
+
+  return {
+    ok: true,
+    addedQuantity: toAdd,
+    trough: {
+      facility,
+      amount: updatedTrough.rows[0]!.amount,
+      capacity: updatedTrough.rows[0]!.capacity,
+      feedItemId: def.feedItemId,
+      feedName: def.feedName,
+      label: def.label,
+    },
+  };
+}
+
+export const fillFeedTrough = (
+  ctx: AppContext,
+  userId: string,
+  facility: LivestockFacilityKey,
+  quantity: number,
+) => farmMutation(ctx, userId, (tx) => fillFeedTroughLocked(ctx, tx, userId, facility, quantity));
+
 export const stockPondFish = (ctx: AppContext, userId: string, species: string) =>
   farmMutation(ctx, userId, (tx) => stockPondFishLocked(ctx, tx, userId, species));
 export const upgradeWarehouse = (ctx: AppContext, userId: string, key?: string) =>

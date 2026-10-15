@@ -42,6 +42,11 @@ import {
   TOWN_FARM_PORTAL_SPAWN,
   WAREHOUSE_UPGRADE_TIERS,
   ZONES,
+  FEED_TROUGHS,
+  getAnimalStarvationSeverity,
+  facilityForAnimalType,
+  simulateTroughFeeding,
+  type LivestockFacilityKey,
 } from './index.js';
 
 describe('Cozy Farm System Game Data', () => {
@@ -571,6 +576,135 @@ describe('Cozy Farm System Game Data', () => {
 
       const pathAtGate = PATHS.find((p) => p.x === 0 && p.y === 10 * TILE);
       expect(pathAtGate).toBeDefined();
+    });
+  });
+
+  describe('Feed Troughs & Starvation Warning System', () => {
+    it('defines feed troughs for all 4 livestock facilities', () => {
+      const facilities: LivestockFacilityKey[] = ['poultry', 'cattle', 'pig', 'goat'];
+      for (const fac of facilities) {
+        const trough = FEED_TROUGHS[fac];
+        expect(trough).toBeDefined();
+        expect(trough.facility).toBe(fac);
+        expect(trough.capacity).toBeGreaterThan(0);
+        expect(trough.feedItemId).toBeDefined();
+        expect(trough.feedName).toBeDefined();
+        expect(trough.animalTypes.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('correctly maps animal species to their respective facility', () => {
+      expect(facilityForAnimalType('chicken')).toBe('poultry');
+      expect(facilityForAnimalType('duck')).toBe('poultry');
+      expect(facilityForAnimalType('cow')).toBe('cattle');
+      expect(facilityForAnimalType('pig')).toBe('pig');
+      expect(facilityForAnimalType('goat')).toBe('goat');
+      expect(facilityForAnimalType('sheep')).toBe('goat');
+    });
+
+    it('classifies starvation severity tiers accurately', () => {
+      // Dead
+      expect(getAnimalStarvationSeverity(true, true, 0)).toBe('dead');
+      expect(getAnimalStarvationSeverity(true, false, 500)).toBe('dead');
+
+      // Healthy (not hungry)
+      expect(getAnimalStarvationSeverity(false, false, 600)).toBe('healthy');
+
+      // Hungry but safe (> 15 mins remaining)
+      expect(getAnimalStarvationSeverity(false, true, 1200)).toBe('hungry');
+      expect(getAnimalStarvationSeverity(false, true, 901)).toBe('hungry');
+
+      // Critical emergency (<= 15 mins remaining)
+      expect(getAnimalStarvationSeverity(false, true, 900)).toBe('critical');
+      expect(getAnimalStarvationSeverity(false, true, 300)).toBe('critical');
+      expect(getAnimalStarvationSeverity(false, true, 1)).toBe('critical');
+    });
+
+    it('simulates automated trough feeding and offline growth catch-up', () => {
+      const now = 20000000;
+      // Chicken created 15 minutes ago, unfed initially (feedInterval: 300s, growthDuration: 180s)
+      const chickenId = 'chick_1';
+      const animals = [
+        {
+          id: chickenId,
+          type: 'chicken' as const,
+          createdAt: now - 900 * 1000,
+          fedAt: null,
+          growthAccumSec: 0,
+          lastYieldAt: null,
+          happiness: 50,
+        },
+      ];
+
+      const troughs = {
+        poultry: { facility: 'poultry' as const, amount: 5, capacity: 40 },
+        cattle: { facility: 'cattle' as const, amount: 0, capacity: 30 },
+        pig: { facility: 'pig' as const, amount: 0, capacity: 35 },
+        goat: { facility: 'goat' as const, amount: 0, capacity: 30 },
+      };
+
+      const result = simulateTroughFeeding(animals, troughs, now);
+      const updatedChicken = result.updatedAnimals.find((a) => a.id === chickenId)!;
+
+      // Chicken should have eaten multiple times from the trough
+      expect(result.mealsConsumed.poultry).toBeGreaterThan(0);
+      expect(result.updatedTroughs.poultry.amount).toBeLessThan(5);
+      expect(updatedChicken.growthAccumSec).toBeGreaterThan(0);
+      expect(updatedChicken.fedAt).not.toBeNull();
+    });
+
+    it('stops feeding when trough is depleted', () => {
+      const now = 20000000;
+      const animals = [
+        {
+          id: 'cow_1',
+          type: 'cow' as const,
+          createdAt: now - 3600 * 1000, // 1 hour ago
+          fedAt: null,
+          growthAccumSec: 0,
+          lastYieldAt: null,
+          happiness: 50,
+        },
+      ];
+
+      // Only 1 meal in cattle trough
+      const troughs = {
+        poultry: { facility: 'poultry' as const, amount: 0, capacity: 40 },
+        cattle: { facility: 'cattle' as const, amount: 1, capacity: 30 },
+        pig: { facility: 'pig' as const, amount: 0, capacity: 35 },
+        goat: { facility: 'goat' as const, amount: 0, capacity: 30 },
+      };
+
+      const result = simulateTroughFeeding(animals, troughs, now);
+      expect(result.mealsConsumed.cattle).toBe(1);
+      expect(result.updatedTroughs.cattle.amount).toBe(0);
+    });
+
+    it('does not feed dead animals from troughs', () => {
+      const now = 50000000;
+      const animals = [
+        {
+          id: 'dead_pig',
+          type: 'pig' as const,
+          createdAt: now - 86400 * 1000, // 1 day ago (way past hungerDecaySec)
+          fedAt: null,
+          growthAccumSec: 0,
+          lastYieldAt: null,
+          happiness: 0,
+        },
+      ];
+
+      const troughs = {
+        poultry: { facility: 'poultry' as const, amount: 0, capacity: 40 },
+        cattle: { facility: 'cattle' as const, amount: 0, capacity: 30 },
+        pig: { facility: 'pig' as const, amount: 20, capacity: 35, updatedAt: now },
+        goat: { facility: 'goat' as const, amount: 0, capacity: 30 },
+      };
+
+      const result = simulateTroughFeeding(animals, troughs, now);
+      expect(result.mealsConsumed.pig).toBe(0);
+      expect(result.updatedTroughs.pig.amount).toBe(20);
+      expect(result.updatedAnimals[0]!.fedAt).toBeNull();
     });
   });
 });
