@@ -378,6 +378,7 @@ export interface AnimalDef {
   feedIntervalSec: number;
   happinessBoost: number;
   hungerDecaySec: number;
+  breedingCooldownSec: number;
   soundBubble: string;
   sprite: string;
 }
@@ -402,6 +403,7 @@ export const ANIMALS: Record<AnimalType, AnimalDef> = {
     feedIntervalSec: 300, // 5 minutes
     happinessBoost: 25,
     hungerDecaySec: 600, // 10 minutes
+    breedingCooldownSec: 300, // 5 minutes
     soundBubble: 'Cục tác! Cục ta cục tác!',
     sprite: 'farm:animal_chicken',
   },
@@ -424,6 +426,7 @@ export const ANIMALS: Record<AnimalType, AnimalDef> = {
     feedIntervalSec: 360, // 6 minutes
     happinessBoost: 25,
     hungerDecaySec: 720,
+    breedingCooldownSec: 360, // 6 minutes
     soundBubble: 'Cạp cạp cạp!',
     sprite: 'farm:animal_duck',
   },
@@ -446,6 +449,7 @@ export const ANIMALS: Record<AnimalType, AnimalDef> = {
     feedIntervalSec: 600, // 10 minutes
     happinessBoost: 15,
     hungerDecaySec: 1200,
+    breedingCooldownSec: 600, // 10 minutes
     soundBubble: 'Ùm bòoooo!',
     sprite: 'farm:animal_cow',
   },
@@ -468,6 +472,7 @@ export const ANIMALS: Record<AnimalType, AnimalDef> = {
     feedIntervalSec: 450, // 7.5 minutes
     happinessBoost: 20,
     hungerDecaySec: 900,
+    breedingCooldownSec: 480, // 8 minutes
     soundBubble: 'Ủn ỉn... zzz!',
     sprite: 'farm:animal_pig',
   },
@@ -490,6 +495,7 @@ export const ANIMALS: Record<AnimalType, AnimalDef> = {
     feedIntervalSec: 500, // 8.3 minutes
     happinessBoost: 20,
     hungerDecaySec: 1000,
+    breedingCooldownSec: 480, // 8 minutes
     soundBubble: 'Be he he!',
     sprite: 'farm:animal_goat',
   },
@@ -512,6 +518,7 @@ export const ANIMALS: Record<AnimalType, AnimalDef> = {
     feedIntervalSec: 540, // 9 minutes
     happinessBoost: 20,
     hungerDecaySec: 1080,
+    breedingCooldownSec: 480, // 8 minutes
     soundBubble: 'Beee beee!',
     sprite: 'farm:animal_sheep',
   },
@@ -871,6 +878,108 @@ export function simulateTroughFeeding(
   }
 
   return { updatedAnimals, updatedTroughs, mealsConsumed };
+}
+
+// ==========================================
+// 2c. LIVESTOCK BREEDING SYSTEM (NHÂN GIỐNG)
+// ==========================================
+
+export const BREEDING_MIN_HAPPINESS = 80;
+export const BREEDING_HAPPINESS_COST = 20;
+export const BREEDING_MAX_FARM_ANIMALS = 24;
+
+export interface AnimalBreedingStatus {
+  canBreed: boolean;
+  cooldownRemainingSec: number;
+  reason?: string;
+}
+
+export interface BreedingCandidate {
+  id: string;
+  type: AnimalType;
+  displayName: string;
+  stage: AnimalGrowthStage;
+  happiness: number;
+  isDead: boolean;
+  isHungry?: boolean;
+  bredAt: number | null;
+}
+
+export function getAnimalBreedingStatus(animal: BreedingCandidate, nowMs: number): AnimalBreedingStatus {
+  if (animal.isDead) {
+    return { canBreed: false, cooldownRemainingSec: 0, reason: 'Vật nuôi đã chết.' };
+  }
+  if (animal.stage !== 'adult') {
+    return {
+      canBreed: false,
+      cooldownRemainingSec: 0,
+      reason: 'Chỉ vật nuôi trưởng thành mới có thể ghép đôi sinh sản.',
+    };
+  }
+  if (animal.isHungry) {
+    return {
+      canBreed: false,
+      cooldownRemainingSec: 0,
+      reason: 'Vật nuôi đang đói, cần được cho ăn no trước khi ghép đôi.',
+    };
+  }
+  if (animal.happiness < BREEDING_MIN_HAPPINESS) {
+    return {
+      canBreed: false,
+      cooldownRemainingSec: 0,
+      reason: `Độ hạnh phúc phải đạt tối thiểu ${BREEDING_MIN_HAPPINESS}% (hiện tại: ${animal.happiness}%).`,
+    };
+  }
+
+  const def = (ANIMALS as Record<string, AnimalDef>)[animal.type];
+  const cooldownSec = def?.breedingCooldownSec ?? 600;
+
+  if (animal.bredAt) {
+    const elapsedSec = (nowMs - animal.bredAt) / 1000;
+    if (elapsedSec < cooldownSec) {
+      const remainingSec = Math.ceil(cooldownSec - elapsedSec);
+      return {
+        canBreed: false,
+        cooldownRemainingSec: remainingSec,
+        reason: `Đang trong thời gian nghỉ sinh sản (còn ${Math.ceil(remainingSec / 60)} phút).`,
+      };
+    }
+  }
+
+  return { canBreed: true, cooldownRemainingSec: 0 };
+}
+
+export function canBreedAnimals(
+  parentA: BreedingCandidate,
+  parentB: BreedingCandidate,
+  nowMs: number,
+  currentFarmAnimalCount: number,
+  maxFarmAnimals: number = BREEDING_MAX_FARM_ANIMALS,
+): { ok: boolean; reason?: string } {
+  if (parentA.id === parentB.id) {
+    return { ok: false, reason: 'Không thể ghép đôi một con vật với chính nó.' };
+  }
+  if (parentA.type !== parentB.type) {
+    return { ok: false, reason: 'Hai vật nuôi phải cùng loài để có thể nhân giống.' };
+  }
+  if (currentFarmAnimalCount >= maxFarmAnimals) {
+    return {
+      ok: false,
+      reason: `Trang trại đã đạt giới hạn tối đa (${maxFarmAnimals}/${maxFarmAnimals} con). Hãy xuất chuồng bớt trước khi nhân giống.`,
+    };
+  }
+
+  const statusA = getAnimalBreedingStatus(parentA, nowMs);
+  if (!statusA.canBreed) {
+    return { ok: false, reason: `${parentA.displayName}: ${statusA.reason}` };
+  }
+
+  const statusB = getAnimalBreedingStatus(parentB, nowMs);
+  if (!statusB.canBreed) {
+    return { ok: false, reason: `${parentB.displayName}: ${statusB.reason}` };
+  }
+
+  return { ok: true };
 }
 
 // ==========================================

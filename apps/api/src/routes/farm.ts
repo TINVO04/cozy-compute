@@ -169,6 +169,17 @@ export function farmRoutes(app: FastifyInstance, ctx: AppContext) {
     return farmService.fillFeedTrough(ctx, user.id, body.facility, body.quantity);
   });
 
+  // 10e. Animal Breeding (Ghép đôi sinh sản nhân giống)
+  app.post('/api/farm/animals/breed', async (req) => {
+    const user = requireUser(req);
+    const schema = z.object({
+      parentAId: z.string().uuid(),
+      parentBId: z.string().uuid(),
+    });
+    const body = schema.parse(req.body);
+    return farmService.breedAnimals(ctx, user.id, body.parentAId, body.parentBId);
+  });
+
   // 11. Pond Stock Fingerling
   app.post('/api/farm/pond/stock', async (req) => {
     const user = requireUser(req);

@@ -4,10 +4,17 @@ import {
   computeAnimalHunger,
   FEED_TROUGHS,
   STARVATION_WARNING_THRESHOLD_SEC,
+  BREEDING_MIN_HAPPINESS,
+  BREEDING_HAPPINESS_COST,
+  BREEDING_MAX_FARM_ANIMALS,
+  getAnimalBreedingStatus,
+  canBreedAnimals,
   type AnimalGrowthStage,
   type AnimalType,
   type LivestockFacilityKey,
   type StarvationSeverity,
+  type AnimalBreedingStatus,
+  type BreedingCandidate,
 } from '@cozy/game-data';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -39,6 +46,8 @@ export interface FarmAnimal {
   growthAccumSec?: number;
   happiness: number;
   lastYieldAt?: string | null;
+  bredAt?: string | null;
+  breedingStatus?: AnimalBreedingStatus;
   stage?: AnimalGrowthStage;
   progressPercent?: number;
   remainingSec?: number;
@@ -133,6 +142,7 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
   const [confirmSellId, setConfirmSellId] = useState<string | null>(null);
+  const [selectedBreedingParent, setSelectedBreedingParent] = useState<FarmAnimal | null>(null);
 
   // Real-time ticking every second for growth timers
   useEffect(() => {
@@ -338,6 +348,44 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
     } catch (err) {
       play('error');
       setErrorMsg(err instanceof ApiError ? err.message : 'Nạp máng ăn thất bại.');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  // 7. Breed Animals (Ghép đôi nhân giống)
+  const handleBreed = async (parentA: FarmAnimal, parentB: FarmAnimal) => {
+    if (animals.length >= BREEDING_MAX_FARM_ANIMALS) {
+      setErrorMsg(`Trang trại đã đạt giới hạn tối đa ${BREEDING_MAX_FARM_ANIMALS} con.`);
+      play('error');
+      return;
+    }
+    setLoadingAction(`breed_${parentA.id}_${parentB.id}`);
+    setErrorMsg(null);
+    try {
+      const res = await api<{
+        ok: boolean;
+        baby: { id: string; type: string; displayName: string };
+        parentA: { id: string; displayName: string; happiness: number };
+        parentB: { id: string; displayName: string; happiness: number };
+      }>('/api/farm/animals/breed', {
+        method: 'POST',
+        idempotencyKey: crypto.randomUUID(),
+        body: { parentAId: parentA.id, parentBId: parentB.id },
+      });
+      play('coin');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🎉 Nhân giống thành công!',
+        body: `Cặp đôi đã sinh ra một bé ${res.baby.displayName} siêu đáng yêu! Đàn vật nuôi đã có thêm thành viên mới.`,
+      });
+      setSelectedBreedingParent(null);
+      await refetch();
+      window.dispatchEvent(new CustomEvent('farm:refresh'));
+      await qc.invalidateQueries({ queryKey: ['farm'] });
+    } catch (err) {
+      play('error');
+      setErrorMsg(err instanceof ApiError ? err.message : 'Ghép đôi sinh sản thất bại.');
     } finally {
       setLoadingAction(null);
     }
@@ -967,6 +1015,18 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
                     hunger.isHungry &&
                     hunger.starvationRemainingSec <= STARVATION_WARNING_THRESHOLD_SEC;
 
+                  const breedingCandidate: BreedingCandidate = {
+                    id: animal.id,
+                    type: animal.type as AnimalType,
+                    displayName: growth.displayName,
+                    stage: growth.stage,
+                    happiness: isDead ? 0 : animal.happiness,
+                    isDead,
+                    isHungry: hunger.isHungry,
+                    bredAt: animal.bredAt ? new Date(animal.bredAt).getTime() : null,
+                  };
+                  const breedingStatus = getAnimalBreedingStatus(breedingCandidate, nowMs);
+
                   return (
                     <div
                       key={animal.id}
@@ -1249,6 +1309,67 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
                           </Button>
                         </div>
 
+                        {/* Breeding Action Row (Adult Living Animals) */}
+                        {isAdult && !isDead && (
+                          <div>
+                            {breedingStatus.canBreed ? (
+                              <button
+                                type="button"
+                                disabled={isBusy}
+                                onClick={() => {
+                                  play('click');
+                                  setSelectedBreedingParent(animal);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: 6,
+                                  padding: '6px 10px',
+                                  fontSize: 11,
+                                  borderRadius: 6,
+                                  background: 'linear-gradient(90deg, #ec4899 0%, #db2777 100%)',
+                                  color: '#ffffff',
+                                  fontWeight: 700,
+                                  cursor: isBusy ? 'not-allowed' : 'pointer',
+                                  border: '1px solid #f472b6',
+                                  boxShadow: '0 2px 6px rgba(236, 72, 153, 0.3)',
+                                  transition: 'all 0.2s ease',
+                                }}
+                                title="Chọn ghép đôi với con vật cùng loài để sinh sản ra con non mới"
+                              >
+                                <span>💕 Ghép Đôi Sinh Sản</span>
+                              </button>
+                            ) : (
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: '5px 8px',
+                                  fontSize: 10,
+                                  borderRadius: 6,
+                                  background: 'rgba(244, 114, 182, 0.08)',
+                                  border: '1px dashed rgba(244, 114, 182, 0.3)',
+                                  color: '#f472b6',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                <span>
+                                  {breedingStatus.cooldownRemainingSec > 0
+                                    ? `⏳ Nghỉ sinh sản (còn ${Math.ceil(breedingStatus.cooldownRemainingSec / 60)}p)`
+                                    : animal.happiness < BREEDING_MIN_HAPPINESS
+                                      ? `💕 Cần ≥${BREEDING_MIN_HAPPINESS}% hạnh phúc (${animal.happiness}%)`
+                                      : hunger.isHungry
+                                        ? '🌾 Cần ăn no để ghép đôi'
+                                        : (breedingStatus.reason ?? 'Chưa sẵn sàng ghép đôi')}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {/* Sell / Clean Animal Button */}
                         {!isConfirmingSell ? (
                           <button
@@ -1345,6 +1466,421 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
           )}
         </div>
       </div>
+
+      {/* Breeding Partner Selection Modal Overlay */}
+      {selectedBreedingParent &&
+        (() => {
+          const parentDef = (ANIMALS as Record<string, (typeof ANIMALS)[AnimalType]>)[
+            selectedBreedingParent.type
+          ];
+          const parentGrowth = computeAnimalGrowthStage(
+            selectedBreedingParent.type,
+            selectedBreedingParent.createdAt || new Date().toISOString(),
+            nowMs,
+            selectedBreedingParent.fedAt ?? null,
+            selectedBreedingParent.growthAccumSec || 0,
+          );
+          const parentHunger = computeAnimalHunger(
+            selectedBreedingParent.type,
+            selectedBreedingParent.fedAt ?? null,
+            selectedBreedingParent.lastYieldAt ?? null,
+            nowMs,
+            parentGrowth.stage === 'adult',
+            selectedBreedingParent.createdAt || new Date().toISOString(),
+          );
+          const parentCand: BreedingCandidate = {
+            id: selectedBreedingParent.id,
+            type: selectedBreedingParent.type as AnimalType,
+            displayName: parentGrowth.displayName,
+            stage: parentGrowth.stage,
+            happiness: selectedBreedingParent.happiness,
+            isDead: false,
+            isHungry: parentHunger.isHungry,
+            bredAt: selectedBreedingParent.bredAt ? new Date(selectedBreedingParent.bredAt).getTime() : null,
+          };
+
+          const candidatePartners = animals.filter(
+            (a) => a.type === selectedBreedingParent.type && a.id !== selectedBreedingParent.id && !a.isDead,
+          );
+
+          return (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0, 0, 0, 0.72)',
+                backdropFilter: 'blur(5px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000,
+                padding: 16,
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  setSelectedBreedingParent(null);
+                }
+              }}
+            >
+              <div
+                style={{
+                  width: '100%',
+                  maxWidth: 620,
+                  maxHeight: '88vh',
+                  background: '#0f172a',
+                  border: '1px solid rgba(244, 114, 182, 0.45)',
+                  borderRadius: 14,
+                  boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(236, 72, 153, 0.25)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Modal Header */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '14px 18px',
+                    background: 'rgba(30, 41, 59, 0.8)',
+                    borderBottom: '1px solid rgba(244, 114, 182, 0.2)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 20 }}>💕</span>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#f8fafc' }}>
+                        Ghép Đôi Nhân Giống: {parentDef?.name ?? selectedBreedingParent.type}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#f472b6' }}>
+                        Sinh sản con non tự nhiên mà không cần mua con giống!
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedBreedingParent(null)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#94a3b8',
+                      cursor: 'pointer',
+                      padding: 4,
+                    }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Modal Body */}
+                <div
+                  style={{
+                    padding: 18,
+                    overflowY: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 14,
+                  }}
+                >
+                  {/* Rules Banner */}
+                  <div
+                    style={{
+                      background: 'rgba(236, 72, 153, 0.1)',
+                      border: '1px solid rgba(244, 114, 182, 0.3)',
+                      borderRadius: 8,
+                      padding: '10px 14px',
+                      fontSize: 12,
+                      color: '#fbcfe8',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        color: '#f472b6',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      <span>✨ Quy tắc phối giống:</span>
+                    </div>
+                    <div>
+                      • Cả 2 con vật phải cùng loài, trưởng thành, no bụng và đạt{' '}
+                      <strong>≥{BREEDING_MIN_HAPPINESS}%</strong> hạnh phúc.
+                    </div>
+                    <div>
+                      • Sau khi ghép đôi: sinh ra 1 con non <strong>{parentDef?.babyName}</strong> (100% hạnh
+                      phúc).
+                    </div>
+                    <div>
+                      • Bố và Mẹ bị giảm <strong>-{BREEDING_HAPPINESS_COST}%</strong> hạnh phúc và cần nghỉ
+                      ngơi <strong>{Math.round((parentDef?.breedingCooldownSec ?? 600) / 60)} phút</strong>.
+                    </div>
+                  </div>
+
+                  {/* Primary Selected Parent Card */}
+                  <div
+                    style={{
+                      background: 'rgba(30, 41, 59, 0.6)',
+                      border: '1px solid rgba(244, 114, 182, 0.35)',
+                      borderRadius: 10,
+                      padding: 12,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <img
+                        src={farmItemIcon(selectedBreedingParent.type, 44)}
+                        alt={parentGrowth.displayName}
+                        style={{ width: 44, height: 44, imageRendering: 'pixelated' }}
+                      />
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: '#f472b6',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          Con Bố / Mẹ 1
+                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc' }}>
+                          {selectedBreedingParent.name || parentGrowth.displayName}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#94a3b8' }}>{parentDef?.name} · Trưởng Thành</div>
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        color: '#f43f5e',
+                        fontSize: 12,
+                        fontWeight: 700,
+                      }}
+                    >
+                      <Heart size={14} fill="#f43f5e" />
+                      <span>{selectedBreedingParent.happiness}% Hạnh phúc</span>
+                    </div>
+                  </div>
+
+                  {/* Partner Candidate List */}
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', marginBottom: 8 }}>
+                      Chọn Bạn Ghép Đôi ({candidatePartners.length} con trong chuồng):
+                    </div>
+
+                    {candidatePartners.length === 0 ? (
+                      <div
+                        style={{
+                          padding: '24px 16px',
+                          textAlign: 'center',
+                          background: 'rgba(30, 41, 59, 0.4)',
+                          border: '1px dashed rgba(148, 163, 184, 0.3)',
+                          borderRadius: 10,
+                          color: '#94a3b8',
+                          fontSize: 13,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 8,
+                        }}
+                      >
+                        <span style={{ fontSize: 28 }}>🏠</span>
+                        <div>
+                          Trang trại chưa có thêm con <strong>{parentDef?.name}</strong> nào khác để ghép đôi!
+                        </div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>
+                          Hãy vào Cửa Hàng Bác Sáu mua thêm con giống để nuôi lớn rồi ghép đôi nhé.
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {candidatePartners.map((partner) => {
+                          const partnerGrowth = computeAnimalGrowthStage(
+                            partner.type,
+                            partner.createdAt || new Date().toISOString(),
+                            nowMs,
+                            partner.fedAt ?? null,
+                            partner.growthAccumSec || 0,
+                          );
+                          const partnerHunger = computeAnimalHunger(
+                            partner.type,
+                            partner.fedAt ?? null,
+                            partner.lastYieldAt ?? null,
+                            nowMs,
+                            partnerGrowth.stage === 'adult',
+                            partner.createdAt || new Date().toISOString(),
+                          );
+                          const partnerCand: BreedingCandidate = {
+                            id: partner.id,
+                            type: partner.type as AnimalType,
+                            displayName: partnerGrowth.displayName,
+                            stage: partnerGrowth.stage,
+                            happiness: partner.happiness,
+                            isDead: false,
+                            isHungry: partnerHunger.isHungry,
+                            bredAt: partner.bredAt ? new Date(partner.bredAt).getTime() : null,
+                          };
+
+                          const check = canBreedAnimals(
+                            parentCand,
+                            partnerCand,
+                            nowMs,
+                            animals.length,
+                            BREEDING_MAX_FARM_ANIMALS,
+                          );
+
+                          const isBreedingThis =
+                            loadingAction === `breed_${selectedBreedingParent.id}_${partner.id}`;
+
+                          return (
+                            <div
+                              key={partner.id}
+                              style={{
+                                background: check.ok ? 'rgba(30, 41, 59, 0.7)' : 'rgba(15, 23, 42, 0.5)',
+                                border: check.ok
+                                  ? '1px solid rgba(244, 114, 182, 0.4)'
+                                  : '1px solid rgba(71, 85, 105, 0.3)',
+                                borderRadius: 10,
+                                padding: 10,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 12,
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <img
+                                  src={farmItemIcon(partner.type, 38)}
+                                  alt={partnerGrowth.displayName}
+                                  style={{ width: 38, height: 38, imageRendering: 'pixelated' }}
+                                />
+                                <div>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>
+                                    {partner.name || partnerGrowth.displayName}
+                                  </div>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 8,
+                                      fontSize: 11,
+                                      color: '#94a3b8',
+                                      marginTop: 2,
+                                    }}
+                                  >
+                                    <span
+                                      style={{
+                                        color: partnerGrowth.stage === 'adult' ? '#34d399' : '#fbbf24',
+                                      }}
+                                    >
+                                      {partnerGrowth.stage === 'adult' ? 'Trưởng thành' : 'Đang lớn'}
+                                    </span>
+                                    <span>·</span>
+                                    <span
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 3,
+                                        color: '#f43f5e',
+                                      }}
+                                    >
+                                      <Heart size={11} fill="#f43f5e" /> {partner.happiness}%
+                                    </span>
+                                    <span>·</span>
+                                    <span style={{ color: partnerHunger.isHungry ? '#f87171' : '#cbd5e1' }}>
+                                      {partnerHunger.isHungry ? 'Đang đói' : 'No bụng'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div>
+                                {check.ok ? (
+                                  <Button
+                                    disabled={loadingAction !== null}
+                                    onClick={() => void handleBreed(selectedBreedingParent, partner)}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 5,
+                                      padding: '6px 14px',
+                                      fontSize: 11,
+                                      borderRadius: 6,
+                                      background: 'linear-gradient(90deg, #ec4899 0%, #db2777 100%)',
+                                      color: '#ffffff',
+                                      fontWeight: 700,
+                                      cursor: loadingAction !== null ? 'not-allowed' : 'pointer',
+                                      border: 'none',
+                                      boxShadow: '0 2px 6px rgba(236, 72, 153, 0.4)',
+                                    }}
+                                  >
+                                    {isBreedingThis ? 'Đang ghép đôi...' : '💕 Ghép Đôi Ngay'}
+                                  </Button>
+                                ) : (
+                                  <div
+                                    style={{
+                                      fontSize: 11,
+                                      color: '#94a3b8',
+                                      background: 'rgba(51, 65, 85, 0.5)',
+                                      padding: '4px 8px',
+                                      borderRadius: 6,
+                                      maxWidth: 200,
+                                      textAlign: 'right',
+                                    }}
+                                    title={check.reason}
+                                  >
+                                    {check.reason}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    padding: '12px 18px',
+                    background: 'rgba(30, 41, 59, 0.5)',
+                    borderTop: '1px solid rgba(71, 85, 105, 0.3)',
+                  }}
+                >
+                  <Button
+                    onClick={() => setSelectedBreedingParent(null)}
+                    style={{
+                      padding: '6px 14px',
+                      fontSize: 12,
+                      borderRadius: 6,
+                      background: 'rgba(71, 85, 105, 0.6)',
+                      color: '#e2e8f0',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Đóng
+                  </Button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
     </Panel>
   );
 }

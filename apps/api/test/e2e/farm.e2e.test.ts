@@ -980,6 +980,91 @@ describe('Cozy Farm System E2E Specification', () => {
         expect(grainWh?.quantity).toBe(5);
         expect(meAfterFill.body.troughs.poultry.amount).toBe(10);
       });
+
+      it('F6.9: breeds two adult animals to produce a baby animal and applies cooldown and happiness cost', async () => {
+        const owner = await register(h);
+        await makeEligible(h, owner.id, 10000);
+
+        // Buy 2 chickens and feed grain
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_chicken', quantity: 2 },
+        });
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'feed_grain', quantity: 4 },
+        });
+
+        // Raise 2 chickens
+        const raise1 = await api(h, 'POST', '/api/farm/animals/raise', {
+          token: owner.token,
+          body: { stockItemId: 'stock_chicken' },
+        });
+        const raise2 = await api(h, 'POST', '/api/farm/animals/raise', {
+          token: owner.token,
+          body: { stockItemId: 'stock_chicken' },
+        });
+        const chicken1Id = raise1.body.animal.id;
+        const chicken2Id = raise2.body.animal.id;
+
+        // Feed both chickens initially
+        await api(h, 'POST', '/api/farm/animals/feed', {
+          token: owner.token,
+          body: { animalId: chicken1Id, feedItemId: 'feed_grain' },
+        });
+        await api(h, 'POST', '/api/farm/animals/feed', {
+          token: owner.token,
+          body: { animalId: chicken2Id, feedItemId: 'feed_grain' },
+        });
+
+        // Advance time by 200s so chickens grow to adult (180s)
+        h.clock.now += 200 * 1000;
+
+        // Feed both again so they are well-fed (not hungry)
+        await api(h, 'POST', '/api/farm/animals/feed', {
+          token: owner.token,
+          body: { animalId: chicken1Id, feedItemId: 'feed_grain' },
+        });
+        await api(h, 'POST', '/api/farm/animals/feed', {
+          token: owner.token,
+          body: { animalId: chicken2Id, feedItemId: 'feed_grain' },
+        });
+
+        // Attempting to breed an animal with itself must fail
+        const selfBreedRes = await api(h, 'POST', '/api/farm/animals/breed', {
+          token: owner.token,
+          body: { parentAId: chicken1Id, parentBId: chicken1Id },
+        });
+        expect(selfBreedRes.status).toBe(400);
+
+        // Breed chicken 1 and chicken 2
+        const breedRes = await api(h, 'POST', '/api/farm/animals/breed', {
+          token: owner.token,
+          body: { parentAId: chicken1Id, parentBId: chicken2Id },
+        });
+        expect(breedRes.status).toBe(200);
+        expect(breedRes.body.ok).toBe(true);
+        expect(breedRes.body.baby.type).toBe('chicken');
+        expect(breedRes.body.baby.stage).toBe('baby');
+        expect(breedRes.body.parentA.happiness).toBe(80);
+        expect(breedRes.body.parentB.happiness).toBe(80);
+
+        // Immediate subsequent breeding must fail due to cooldown
+        const cooldownRes = await api(h, 'POST', '/api/farm/animals/breed', {
+          token: owner.token,
+          body: { parentAId: chicken1Id, parentBId: chicken2Id },
+        });
+        expect(cooldownRes.status).toBe(400);
+
+        // Verify total animal count is now 3 (2 parents + 1 baby)
+        const meAfter = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(meAfter.body.animals.length).toBe(3);
+        const babyInList = meAfter.body.animals.find((a: { id: string }) => a.id === breedRes.body.baby.id);
+        expect(babyInList).toBeDefined();
+        expect(babyInList.stage).toBe('baby');
+      });
     });
 
     describe('Core Feature 7: Silo Warehouse Storage & Expansion', () => {

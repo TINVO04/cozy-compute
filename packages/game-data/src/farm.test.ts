@@ -47,6 +47,12 @@ import {
   facilityForAnimalType,
   simulateTroughFeeding,
   type LivestockFacilityKey,
+  BREEDING_MIN_HAPPINESS,
+  BREEDING_HAPPINESS_COST,
+  BREEDING_MAX_FARM_ANIMALS,
+  getAnimalBreedingStatus,
+  canBreedAnimals,
+  type BreedingCandidate,
 } from './index.js';
 
 describe('Cozy Farm System Game Data', () => {
@@ -705,6 +711,101 @@ describe('Cozy Farm System Game Data', () => {
       expect(result.mealsConsumed.pig).toBe(0);
       expect(result.updatedTroughs.pig.amount).toBe(20);
       expect(result.updatedAnimals[0]!.fedAt).toBeNull();
+    });
+  });
+
+  describe('Livestock Breeding System (Ghép Đôi Sinh Sản)', () => {
+    const now = 10000000;
+
+    it('defines breeding cooldown for all animal species', () => {
+      expect(BREEDING_MIN_HAPPINESS).toBe(80);
+      expect(BREEDING_HAPPINESS_COST).toBe(20);
+      expect(ANIMALS.chicken.breedingCooldownSec).toBeGreaterThan(0);
+      expect(ANIMALS.duck.breedingCooldownSec).toBeGreaterThan(0);
+      expect(ANIMALS.cow.breedingCooldownSec).toBeGreaterThan(0);
+      expect(ANIMALS.pig.breedingCooldownSec).toBeGreaterThan(0);
+      expect(ANIMALS.goat.breedingCooldownSec).toBeGreaterThan(0);
+      expect(ANIMALS.sheep.breedingCooldownSec).toBeGreaterThan(0);
+    });
+
+    it('requires adult stage, happiness >= 80, well-fed, and cooldown elapsed', () => {
+      const candidate: BreedingCandidate = {
+        id: 'cow_1',
+        type: 'cow',
+        displayName: 'Bò Sữa Đồng Nai',
+        stage: 'adult',
+        happiness: 85,
+        isDead: false,
+        isHungry: false,
+        bredAt: null,
+      };
+
+      // Fully eligible
+      expect(getAnimalBreedingStatus(candidate, now).canBreed).toBe(true);
+
+      // Ineligible: baby or growing
+      expect(getAnimalBreedingStatus({ ...candidate, stage: 'baby' }, now).canBreed).toBe(false);
+      expect(getAnimalBreedingStatus({ ...candidate, stage: 'growing' }, now).canBreed).toBe(false);
+
+      // Ineligible: happiness < 80
+      expect(getAnimalBreedingStatus({ ...candidate, happiness: 79 }, now).canBreed).toBe(false);
+
+      // Ineligible: hungry
+      expect(getAnimalBreedingStatus({ ...candidate, isHungry: true }, now).canBreed).toBe(false);
+
+      // Ineligible: dead
+      expect(getAnimalBreedingStatus({ ...candidate, isDead: true }, now).canBreed).toBe(false);
+
+      // Ineligible: in cooldown (cooldown for cow is 600s)
+      const inCooldown = getAnimalBreedingStatus(
+        { ...candidate, bredAt: now - 300 * 1000 }, // 300s ago
+        now,
+      );
+      expect(inCooldown.canBreed).toBe(false);
+      expect(inCooldown.cooldownRemainingSec).toBe(300);
+
+      // Eligible once cooldown passed (700s ago)
+      expect(getAnimalBreedingStatus({ ...candidate, bredAt: now - 700 * 1000 }, now).canBreed).toBe(true);
+    });
+
+    it('validates pair compatibility: same species, distinct animals, farm capacity', () => {
+      const parentA: BreedingCandidate = {
+        id: 'cow_1',
+        type: 'cow',
+        displayName: 'Bò Mẹ 1',
+        stage: 'adult',
+        happiness: 90,
+        isDead: false,
+        isHungry: false,
+        bredAt: null,
+      };
+      const parentB: BreedingCandidate = {
+        id: 'cow_2',
+        type: 'cow',
+        displayName: 'Bò Ba 2',
+        stage: 'adult',
+        happiness: 85,
+        isDead: false,
+        isHungry: false,
+        bredAt: null,
+      };
+
+      // Valid pair
+      expect(canBreedAnimals(parentA, parentB, now, 10, BREEDING_MAX_FARM_ANIMALS).ok).toBe(true);
+
+      // Cannot breed with itself
+      expect(canBreedAnimals(parentA, parentA, now, 10, BREEDING_MAX_FARM_ANIMALS).ok).toBe(false);
+
+      // Cannot breed different species
+      const chickenPartner: BreedingCandidate = {
+        ...parentB,
+        id: 'chick_2',
+        type: 'chicken',
+      };
+      expect(canBreedAnimals(parentA, chickenPartner, now, 10, BREEDING_MAX_FARM_ANIMALS).ok).toBe(false);
+
+      // Farm capacity full (>= 24)
+      expect(canBreedAnimals(parentA, parentB, now, 24, BREEDING_MAX_FARM_ANIMALS).ok).toBe(false);
     });
   });
 });

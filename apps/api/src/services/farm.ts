@@ -16,8 +16,14 @@ import {
   simulateTroughFeeding,
   getAnimalStarvationSeverity,
   facilityForAnimalType,
+  BREEDING_HAPPINESS_COST,
+  BREEDING_MAX_FARM_ANIMALS,
+  canBreedAnimals,
+  getAnimalBreedingStatus,
   type LivestockFacilityKey,
   type AnimalType,
+  type AnimalDef,
+  type BreedingCandidate,
   type CropId,
   type CropGrowthStage,
 } from '@cozy/game-data';
@@ -65,6 +71,7 @@ export interface FarmAnimalRow {
   happiness: number;
   last_yield_at: Date | null;
   growth_accum_sec?: number;
+  bred_at?: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -358,6 +365,18 @@ export async function getFarmFullState(ctx: AppContext, userId: string) {
     );
     const facility = facilityForAnimalType(a.animal_type);
 
+    const breedingCandidate: BreedingCandidate = {
+      id: a.id,
+      type: a.animal_type as AnimalType,
+      displayName: growth.displayName,
+      stage: growth.stage,
+      happiness: hunger.isDead ? 0 : a.happiness,
+      isDead: hunger.isDead,
+      isHungry: hunger.isHungry,
+      bredAt: a.bred_at ? new Date(a.bred_at).getTime() : null,
+    };
+    const breedingStatus = getAnimalBreedingStatus(breedingCandidate, now);
+
     return {
       id: a.id,
       type: a.animal_type,
@@ -368,6 +387,8 @@ export async function getFarmFullState(ctx: AppContext, userId: string) {
       growthAccumSec: a.growth_accum_sec ?? 0,
       happiness: hunger.isDead ? 0 : a.happiness,
       lastYieldAt: a.last_yield_at,
+      bredAt: a.bred_at ?? null,
+      breedingStatus,
       stage: growth.stage,
       progressPercent: growth.progressPercent,
       remainingSec: growth.remainingSec,
@@ -1292,6 +1313,154 @@ async function sellAnimalLocked(
   });
 }
 
+async function breedAnimalsLocked(
+  ctx: AppContext,
+  tx: Tx,
+  userId: string,
+  parentAId: string,
+  parentBId: string,
+) {
+  if (parentAId === parentBId) {
+    throw badRequest('invalid_pair', 'Không thể ghép đôi một con vật với chính nó.');
+  }
+
+  const farm = await getOrCreateFarm(tx, userId);
+
+  // Check farm livestock capacity
+  const countRes = await tx.query<{ n: number }>(
+    'SELECT count(*)::int n FROM farm_animals WHERE farm_id = $1',
+    [farm.id],
+  );
+  const currentCount = countRes.rows[0]?.n ?? 0;
+  if (currentCount >= BREEDING_MAX_FARM_ANIMALS) {
+    throw badRequest(
+      'farm_animals_full',
+      `Trang trại đã đạt tối đa ${BREEDING_MAX_FARM_ANIMALS} vật nuôi. Hãy xuất chuồng bớt trước khi nhân giống.`,
+    );
+  }
+
+  // Fetch both animals with FOR UPDATE
+  const animalsRes = await tx.query<FarmAnimalRow>(
+    'SELECT * FROM farm_animals WHERE id IN ($1, $2) AND farm_id = $3 FOR UPDATE',
+    [parentAId, parentBId, farm.id],
+  );
+
+  if (animalsRes.rows.length < 2) {
+    throw notFound('Không tìm thấy đủ 2 con vật trong chuồng trại của bạn.');
+  }
+
+  const a = animalsRes.rows.find((x) => x.id === parentAId)!;
+  const b = animalsRes.rows.find((x) => x.id === parentBId)!;
+
+  const nowMs = ctx.now().getTime();
+
+  const growthA = computeAnimalGrowthStage(
+    a.animal_type,
+    a.created_at,
+    nowMs,
+    a.fed_at,
+    a.growth_accum_sec ?? 0,
+  );
+  const hungerA = computeAnimalHunger(
+    a.animal_type,
+    a.fed_at,
+    a.last_yield_at,
+    nowMs,
+    growthA.stage === 'adult',
+    a.created_at,
+  );
+
+  const growthB = computeAnimalGrowthStage(
+    b.animal_type,
+    b.created_at,
+    nowMs,
+    b.fed_at,
+    b.growth_accum_sec ?? 0,
+  );
+  const hungerB = computeAnimalHunger(
+    b.animal_type,
+    b.fed_at,
+    b.last_yield_at,
+    nowMs,
+    growthB.stage === 'adult',
+    b.created_at,
+  );
+
+  const candA: BreedingCandidate = {
+    id: a.id,
+    type: a.animal_type as AnimalType,
+    displayName: growthA.displayName,
+    stage: growthA.stage,
+    happiness: hungerA.isDead ? 0 : a.happiness,
+    isDead: hungerA.isDead,
+    isHungry: hungerA.isHungry,
+    bredAt: a.bred_at ? new Date(a.bred_at).getTime() : null,
+  };
+
+  const candB: BreedingCandidate = {
+    id: b.id,
+    type: b.animal_type as AnimalType,
+    displayName: growthB.displayName,
+    stage: growthB.stage,
+    happiness: hungerB.isDead ? 0 : b.happiness,
+    isDead: hungerB.isDead,
+    isHungry: hungerB.isHungry,
+    bredAt: b.bred_at ? new Date(b.bred_at).getTime() : null,
+  };
+
+  const check = canBreedAnimals(candA, candB, nowMs, currentCount, BREEDING_MAX_FARM_ANIMALS);
+  if (!check.ok) {
+    throw badRequest('cannot_breed', check.reason || 'Không đủ điều kiện ghép đôi sinh sản.');
+  }
+
+  const def = (ANIMALS as Record<string, AnimalDef>)[a.animal_type];
+  if (!def) throw badRequest('invalid_animal', 'Loài vật nuôi không hợp lệ.');
+
+  const nowDate = ctx.now();
+
+  // Deduct happiness from parents and set bred_at
+  const updatedA = await tx.query<FarmAnimalRow>(
+    'UPDATE farm_animals SET bred_at = $1, happiness = GREATEST(0, happiness - $2), updated_at = $1 WHERE id = $3 RETURNING *',
+    [nowDate, BREEDING_HAPPINESS_COST, a.id],
+  );
+  const updatedB = await tx.query<FarmAnimalRow>(
+    'UPDATE farm_animals SET bred_at = $1, happiness = GREATEST(0, happiness - $2), updated_at = $1 WHERE id = $3 RETURNING *',
+    [nowDate, BREEDING_HAPPINESS_COST, b.id],
+  );
+
+  // Insert baby animal
+  const babyRes = await tx.query<FarmAnimalRow>(
+    'INSERT INTO farm_animals(farm_id, animal_type, name, happiness, growth_accum_sec, created_at, updated_at) VALUES ($1, $2, $3, 100, 0, $4, $4) RETURNING *',
+    [farm.id, a.animal_type, def.babyName, nowDate],
+  );
+  const baby = babyRes.rows[0]!;
+
+  return {
+    ok: true,
+    baby: {
+      id: baby.id,
+      type: baby.animal_type,
+      name: baby.name,
+      displayName: def.babyName,
+      stage: 'baby' as const,
+      happiness: baby.happiness,
+      createdAt: baby.created_at,
+    },
+    parentA: {
+      id: updatedA.rows[0]!.id,
+      displayName: candA.displayName,
+      happiness: updatedA.rows[0]!.happiness,
+      bredAt: updatedA.rows[0]!.bred_at,
+    },
+    parentB: {
+      id: updatedB.rows[0]!.id,
+      displayName: candB.displayName,
+      happiness: updatedB.rows[0]!.happiness,
+      bredAt: updatedB.rows[0]!.bred_at,
+    },
+  };
+}
+
 async function stockPondFishLocked(ctx: AppContext, tx: Tx, userId: string, fishSpecies: string) {
   const validSpecies = ['tra', 'basa', 'loc', 'tom_cang', 'bong_tuong'];
   if (!validSpecies.includes(fishSpecies)) {
@@ -1479,6 +1648,8 @@ export const raiseAnimal = (ctx: AppContext, userId: string, stockItemId: string
   farmMutation(ctx, userId, (tx) => raiseAnimalLocked(ctx, tx, userId, stockItemId));
 export const sellAnimal = (ctx: AppContext, userId: string, animalId: string, key?: string) =>
   farmMutation(ctx, userId, (tx) => sellAnimalLocked(ctx, tx, userId, animalId, key));
+export const breedAnimals = (ctx: AppContext, userId: string, parentAId: string, parentBId: string) =>
+  farmMutation(ctx, userId, (tx) => breedAnimalsLocked(ctx, tx, userId, parentAId, parentBId));
 async function fillFeedTroughLocked(
   ctx: AppContext,
   tx: Tx,
