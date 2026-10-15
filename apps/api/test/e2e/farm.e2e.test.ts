@@ -1065,6 +1065,125 @@ describe('Cozy Farm System E2E Specification', () => {
         expect(babyInList).toBeDefined();
         expect(babyInList.stage).toBe('baby');
       });
+
+      it('F6.10: upgrades livestock pen capacity from 24 to 32 and rejects when coins are insufficient', async () => {
+        const owner = await register(h);
+
+        // Check initial state
+        const farmInitial = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(farmInitial.body.livestockCapacity).toBe(24);
+        expect(farmInitial.body.nextCapacityUpgrade?.capacity).toBe(32);
+        expect(farmInitial.body.nextCapacityUpgrade?.costCoins).toBe(15000);
+
+        // Insufficient coins attempt
+        const failUpgrade = await api(h, 'POST', '/api/farm/facility/capacity/upgrade', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+        });
+        expect(failUpgrade.status).toBe(400);
+
+        // Grant coins to owner
+        await makeEligible(h, owner.id, 20000);
+
+        // Successful upgrade
+        const okUpgrade = await api(h, 'POST', '/api/farm/facility/capacity/upgrade', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+        });
+        expect(okUpgrade.status).toBe(200);
+        expect(okUpgrade.body.ok).toBe(true);
+        expect(okUpgrade.body.capacity).toBe(32);
+        expect(okUpgrade.body.nextUpgrade?.capacity).toBe(40);
+
+        // Verify updated state in farm me
+        const farmAfter = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(farmAfter.body.livestockCapacity).toBe(32);
+        expect(farmAfter.body.nextCapacityUpgrade?.capacity).toBe(40);
+      });
+
+      it('F6.11: upgrades feed trough level, increasing capacity from 40 to 70 for poultry', async () => {
+        const owner = await register(h);
+
+        // Check initial poultry trough
+        const farmInitial = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(farmInitial.body.troughs.poultry.upgradeLevel).toBe(1);
+        expect(farmInitial.body.troughs.poultry.capacity).toBe(40);
+        expect(farmInitial.body.troughs.poultry.nextUpgrade?.level).toBe(2);
+        expect(farmInitial.body.troughs.poultry.nextUpgrade?.capacity).toBe(70);
+        expect(farmInitial.body.troughs.poultry.nextUpgrade?.costCoins).toBe(5000);
+
+        // Insufficient funds
+        const failTrough = await api(h, 'POST', '/api/farm/troughs/upgrade', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { facility: 'poultry' },
+        });
+        expect(failTrough.status).toBe(400);
+
+        // Grant funds
+        await makeEligible(h, owner.id, 10000);
+
+        // Successful trough upgrade
+        const okTrough = await api(h, 'POST', '/api/farm/troughs/upgrade', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { facility: 'poultry' },
+        });
+        expect(okTrough.status).toBe(200);
+        expect(okTrough.body.ok).toBe(true);
+        expect(okTrough.body.trough.upgradeLevel).toBe(2);
+        expect(okTrough.body.trough.capacity).toBe(70);
+
+        // Verify in farm me
+        const farmAfter = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(farmAfter.body.troughs.poultry.upgradeLevel).toBe(2);
+        expect(farmAfter.body.troughs.poultry.capacity).toBe(70);
+      });
+
+      it('F6.12: feeds all hungry animals in facility in one click using warehouse feed stock', async () => {
+        const owner = await register(h);
+        await makeEligible(h, owner.id, 10000);
+
+        // Buy 2 chickens and 5 feed grains
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_chicken', quantity: 2 },
+        });
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'feed_grain', quantity: 5 },
+        });
+
+        // Raise 2 chickens
+        await api(h, 'POST', '/api/farm/animals/raise', {
+          token: owner.token,
+          body: { stockItemId: 'stock_chicken' },
+        });
+        await api(h, 'POST', '/api/farm/animals/raise', {
+          token: owner.token,
+          body: { stockItemId: 'stock_chicken' },
+        });
+
+        // Both are hungry on birth -> feed all facility
+        const feedAllRes = await api(h, 'POST', '/api/farm/facility/feed-all', {
+          token: owner.token,
+          body: { facility: 'poultry' },
+        });
+        expect(feedAllRes.status).toBe(200);
+        expect(feedAllRes.body.ok).toBe(true);
+        expect(feedAllRes.body.fedCount).toBe(2);
+
+        // Calling again when all animals are well fed
+        const feedAllAgain = await api(h, 'POST', '/api/farm/facility/feed-all', {
+          token: owner.token,
+          body: { facility: 'poultry' },
+        });
+        expect(feedAllAgain.status).toBe(200);
+        expect(feedAllAgain.body.ok).toBe(true);
+        expect(feedAllAgain.body.fedCount).toBe(0);
+      });
     });
 
     describe('Core Feature 7: Silo Warehouse Storage & Expansion', () => {

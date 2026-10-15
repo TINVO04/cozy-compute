@@ -180,6 +180,34 @@ export function farmRoutes(app: FastifyInstance, ctx: AppContext) {
     return farmService.breedAnimals(ctx, user.id, body.parentAId, body.parentBId);
   });
 
+  // 10f. Upgrade Farm Livestock Capacity (Mở rộng quy mô chuồng trại)
+  app.post('/api/farm/facility/capacity/upgrade', async (req) => {
+    const user = requireUser(req);
+    const key = req.headers['idempotency-key'] ? idem(req.headers as Record<string, unknown>) : undefined;
+    return farmService.upgradeLivestockCapacity(ctx, user.id, key);
+  });
+
+  // 10g. Upgrade Feed Trough Level (Nâng cấp máng ăn tự động)
+  app.post('/api/farm/troughs/upgrade', async (req) => {
+    const user = requireUser(req);
+    const schema = z.object({
+      facility: z.enum(['poultry', 'cattle', 'pig', 'goat']),
+    });
+    const body = schema.parse(req.body);
+    const key = req.headers['idempotency-key'] ? idem(req.headers as Record<string, unknown>) : undefined;
+    return farmService.upgradeFeedTrough(ctx, user.id, body.facility, key);
+  });
+
+  // 10h. Feed All Facility Animals in One Click (Cho cả chuồng ăn cùng lúc)
+  app.post('/api/farm/facility/feed-all', async (req) => {
+    const user = requireUser(req);
+    const schema = z.object({
+      facility: z.enum(['poultry', 'cattle', 'pig', 'goat']),
+    });
+    const body = schema.parse(req.body);
+    return farmService.feedAllFacilityAnimals(ctx, user.id, body.facility);
+  });
+
   // 11. Pond Stock Fingerling
   app.post('/api/farm/pond/stock', async (req) => {
     const user = requireUser(req);

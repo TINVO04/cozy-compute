@@ -750,6 +750,61 @@ export const FEED_TROUGHS: Record<LivestockFacilityKey, FeedTroughDef> = {
   },
 };
 
+export interface LivestockCapacityTier {
+  capacity: number;
+  tier: number;
+  name: string;
+  costCoins: number;
+}
+
+export const BASE_LIVESTOCK_CAPACITY = 24;
+
+export const LIVESTOCK_CAPACITY_TIERS: LivestockCapacityTier[] = [
+  { tier: 0, capacity: 24, name: 'Chuồng Cơ Bản (Cấp 0)', costCoins: 0 },
+  { tier: 1, capacity: 32, name: 'Chuồng Mở Rộng (Cấp 1)', costCoins: 15_000 },
+  { tier: 2, capacity: 40, name: 'Trang Trại Quy Mô Lớn (Cấp 2)', costCoins: 35_000 },
+  { tier: 3, capacity: 50, name: 'Khu Phức Hợp Chăn Nuôi (Cấp 3)', costCoins: 75_000 },
+];
+
+export function getNextLivestockCapacityTier(currentCapacity: number): LivestockCapacityTier | null {
+  const currentIdx = LIVESTOCK_CAPACITY_TIERS.findIndex((t) => t.capacity === currentCapacity);
+  if (currentIdx === -1) {
+    return LIVESTOCK_CAPACITY_TIERS.find((t) => t.capacity > currentCapacity) ?? null;
+  }
+  return LIVESTOCK_CAPACITY_TIERS[currentIdx + 1] ?? null;
+}
+
+export interface TroughUpgradeTier {
+  level: number;
+  capacityMultiplier: number;
+  costCoins: number;
+}
+
+export const TROUGH_UPGRADE_TIERS: TroughUpgradeTier[] = [
+  { level: 1, capacityMultiplier: 1.0, costCoins: 0 },
+  { level: 2, capacityMultiplier: 1.75, costCoins: 5_000 },
+  { level: 3, capacityMultiplier: 2.5, costCoins: 12_000 },
+];
+
+export function getTroughCapacityForLevel(facility: LivestockFacilityKey, level: number): number {
+  const def = FEED_TROUGHS[facility];
+  const tier = TROUGH_UPGRADE_TIERS.find((t) => t.level === level) ?? TROUGH_UPGRADE_TIERS[0]!;
+  return Math.round(def.capacity * tier.capacityMultiplier);
+}
+
+export function getNextTroughUpgrade(
+  facility: LivestockFacilityKey,
+  currentLevel: number,
+): { level: number; capacity: number; costCoins: number } | null {
+  const nextTier = TROUGH_UPGRADE_TIERS.find((t) => t.level === currentLevel + 1);
+  if (!nextTier) return null;
+  return {
+    level: nextTier.level,
+    capacity: getTroughCapacityForLevel(facility, nextTier.level),
+    costCoins: nextTier.costCoins,
+  };
+}
+
 export const STARVATION_WARNING_THRESHOLD_SEC = 900; // 15 minutes
 
 export type StarvationSeverity = 'healthy' | 'hungry' | 'critical' | 'dead';

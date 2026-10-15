@@ -6,7 +6,8 @@ import {
   STARVATION_WARNING_THRESHOLD_SEC,
   BREEDING_MIN_HAPPINESS,
   BREEDING_HAPPINESS_COST,
-  BREEDING_MAX_FARM_ANIMALS,
+  BASE_LIVESTOCK_CAPACITY,
+  type LivestockCapacityTier,
   getAnimalBreedingStatus,
   canBreedAnimals,
   type AnimalGrowthStage,
@@ -19,6 +20,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
+  ArrowUpCircle,
   Heart,
   Plus,
   ShieldAlert,
@@ -74,12 +76,16 @@ interface FeedTroughInfo {
   feedName: string;
   amount: number;
   capacity: number;
+  upgradeLevel?: number;
+  nextUpgrade?: { level: number; capacity: number; costCoins: number } | null;
 }
 
 interface FarmMeResponse {
   farm: { ownerId: string };
   warehouse: { capacity: number; items: WarehouseItem[] };
   animals: FarmAnimal[];
+  livestockCapacity?: number;
+  nextCapacityUpgrade?: LivestockCapacityTier | null;
   troughs?: Record<LivestockFacilityKey, FeedTroughInfo>;
   starvationAlerts?: {
     criticalCount: number;
@@ -156,6 +162,9 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
   });
 
   const animals = data?.animals ?? [];
+  const livestockCapacity = data?.livestockCapacity ?? BASE_LIVESTOCK_CAPACITY;
+  const nextCapacityUpgrade = data?.nextCapacityUpgrade;
+  const troughs = data?.troughs;
   const warehouseItems = data?.warehouse.items ?? [];
   const getStockQty = (stockId: string) => warehouseItems.find((i) => i.itemId === stockId)?.quantity ?? 0;
 
@@ -169,8 +178,10 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
 
   // 1. Raise animal from warehouse into pen
   const handleRaise = async (def: (typeof ANIMALS)[AnimalType]) => {
-    if (animals.length >= 24) {
-      setErrorMsg('Chuồng trại đã đạt giới hạn tối đa 24 con. Hãy bán bớt vật nuôi trước!');
+    if (animals.length >= livestockCapacity) {
+      setErrorMsg(
+        `Chuồng trại đã đạt giới hạn tối đa ${livestockCapacity} con. Hãy cơi nới mở rộng chuồng trại hoặc bán bớt vật nuôi trước!`,
+      );
       play('error');
       return;
     }
@@ -355,8 +366,10 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
 
   // 7. Breed Animals (Ghép đôi nhân giống)
   const handleBreed = async (parentA: FarmAnimal, parentB: FarmAnimal) => {
-    if (animals.length >= BREEDING_MAX_FARM_ANIMALS) {
-      setErrorMsg(`Trang trại đã đạt giới hạn tối đa ${BREEDING_MAX_FARM_ANIMALS} con.`);
+    if (animals.length >= livestockCapacity) {
+      setErrorMsg(
+        `Trang trại đã đạt giới hạn tối đa ${livestockCapacity} con. Hãy cơi nới mở rộng chuồng trại hoặc xuất chuồng bớt trước!`,
+      );
       play('error');
       return;
     }
@@ -386,6 +399,129 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
     } catch (err) {
       play('error');
       setErrorMsg(err instanceof ApiError ? err.message : 'Ghép đôi sinh sản thất bại.');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  // 8. Upgrade Livestock Pen Capacity (Cơi nới mở rộng chuồng trại)
+  const handleUpgradeCapacity = async () => {
+    if (!nextCapacityUpgrade) return;
+    if (me.balances.coin < nextCapacityUpgrade.costCoins) {
+      setErrorMsg(`Không đủ Xu! Cần ${num(nextCapacityUpgrade.costCoins)} Xu để nâng cấp chuồng trại.`);
+      play('error');
+      return;
+    }
+    setLoadingAction('upgrade_capacity');
+    setErrorMsg(null);
+    try {
+      const res = await api<{
+        ok: boolean;
+        tier: number;
+        name: string;
+        capacity: number;
+        coinBalance: number;
+      }>('/api/farm/facility/capacity/upgrade', {
+        method: 'POST',
+        idempotencyKey: crypto.randomUUID(),
+      });
+      play('coin');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🎉 Cơi nới chuồng trại thành công!',
+        body: `Đã nâng cấp lên ${res.name}. Sức chứa tối đa tăng lên ${res.capacity} con!`,
+      });
+      await refetch();
+      window.dispatchEvent(new CustomEvent('farm:refresh'));
+      await qc.invalidateQueries({ queryKey: ['me'] });
+      await qc.invalidateQueries({ queryKey: ['farm'] });
+    } catch (err) {
+      play('error');
+      setErrorMsg(err instanceof ApiError ? err.message : 'Nâng cấp chuồng trại thất bại.');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  // 9. Upgrade Feed Trough (Nâng cấp máng ăn tự động)
+  const handleUpgradeTrough = async (facility: LivestockFacilityKey) => {
+    const trough = troughs?.[facility];
+    if (!trough || !trough.nextUpgrade) return;
+    if (me.balances.coin < trough.nextUpgrade.costCoins) {
+      setErrorMsg(`Không đủ Xu! Cần ${num(trough.nextUpgrade.costCoins)} Xu để nâng cấp máng ăn.`);
+      play('error');
+      return;
+    }
+    setLoadingAction(`upgrade_trough_${facility}`);
+    setErrorMsg(null);
+    try {
+      const res = await api<{
+        ok: boolean;
+        trough: {
+          facility: string;
+          upgradeLevel: number;
+          capacity: number;
+          label: string;
+        };
+        coinBalance: number;
+      }>('/api/farm/troughs/upgrade', {
+        method: 'POST',
+        idempotencyKey: crypto.randomUUID(),
+        body: { facility },
+      });
+      play('coin');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: '🎉 Nâng cấp máng ăn thành công!',
+        body: `Đã nâng cấp ${res.trough.label} lên Cấp ${res.trough.upgradeLevel}. Sức chứa tăng lên ${res.trough.capacity} phần!`,
+      });
+      await refetch();
+      window.dispatchEvent(new CustomEvent('farm:refresh'));
+      await qc.invalidateQueries({ queryKey: ['me'] });
+      await qc.invalidateQueries({ queryKey: ['farm'] });
+    } catch (err) {
+      play('error');
+      setErrorMsg(err instanceof ApiError ? err.message : 'Nâng cấp máng ăn thất bại.');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  // 10. Feed All Facility Animals in 1 click (Cho cả chuồng ăn cùng lúc)
+  const handleFeedAll = async (facility: LivestockFacilityKey) => {
+    setLoadingAction(`feed_all_${facility}`);
+    setErrorMsg(null);
+    try {
+      const res = await api<{
+        ok: boolean;
+        fedCount: number;
+        totalHungry: number;
+        feedName: string;
+        message?: string;
+      }>('/api/farm/facility/feed-all', {
+        method: 'POST',
+        body: { facility },
+      });
+      if (res.fedCount > 0) {
+        play('pop');
+        useUi.getState().toast({
+          kind: 'success',
+          title: '🌾 Cho cả chuồng ăn thành công!',
+          body: `Đã cho ${res.fedCount} con vật no bụng bằng ${res.feedName} từ kho Silo!`,
+        });
+      } else {
+        useUi.getState().toast({
+          kind: 'info',
+          title: 'Chuồng trại đã no!',
+          body: res.message || 'Tất cả vật nuôi trong khu vực này đều đã no bụng.',
+        });
+      }
+      await refetch();
+      window.dispatchEvent(new CustomEvent('farm:refresh'));
+      await qc.invalidateQueries({ queryKey: ['farm'] });
+    } catch (err) {
+      play('error');
+      setErrorMsg(err instanceof ApiError ? err.message : 'Cho cả chuồng ăn thất bại.');
     } finally {
       setLoadingAction(null);
     }
@@ -426,12 +562,53 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
             <span style={{ fontSize: 22 }}>🌾</span>
             <div>
               <div style={{ fontWeight: 700, fontSize: 14, color: '#f8fafc' }}>
-                Đàn Vật Nuôi: {animals.length} / 24 con
+                Đàn Vật Nuôi: {animals.length} / {livestockCapacity} con
               </div>
               <div style={{ fontSize: 12, color: '#94a3b8' }}>{currentConfig.desc}</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {nextCapacityUpgrade && (
+              <button
+                type="button"
+                disabled={loadingAction !== null || me.balances.coin < nextCapacityUpgrade.costCoins}
+                onClick={() => void handleUpgradeCapacity()}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  borderRadius: 8,
+                  background:
+                    me.balances.coin >= nextCapacityUpgrade.costCoins
+                      ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)'
+                      : 'rgba(71, 85, 105, 0.4)',
+                  color: me.balances.coin >= nextCapacityUpgrade.costCoins ? '#ffffff' : '#94a3b8',
+                  border:
+                    me.balances.coin >= nextCapacityUpgrade.costCoins
+                      ? '1px solid #34d399'
+                      : '1px solid rgba(148, 163, 184, 0.2)',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor:
+                    loadingAction !== null || me.balances.coin < nextCapacityUpgrade.costCoins
+                      ? 'not-allowed'
+                      : 'pointer',
+                  boxShadow:
+                    me.balances.coin >= nextCapacityUpgrade.costCoins
+                      ? '0 2px 6px rgba(16, 185, 129, 0.3)'
+                      : 'none',
+                }}
+                title={`Mở rộng sức chứa lên ${nextCapacityUpgrade.capacity} con (${num(nextCapacityUpgrade.costCoins)} Xu)`}
+              >
+                <ArrowUpCircle size={14} />
+                <span>
+                  {loadingAction === 'upgrade_capacity'
+                    ? 'Đang nâng...'
+                    : `Cơi Nới Chuồng (${nextCapacityUpgrade.capacity} con · ${num(nextCapacityUpgrade.costCoins)} Xu)`}
+                </span>
+              </button>
+            )}
             <div
               style={{
                 display: 'inline-flex',
@@ -677,7 +854,24 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontSize: 16 }}>{def.icon}</span>
                           <div>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc' }}>{def.label}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc' }}>
+                                {def.label}
+                              </div>
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  padding: '1px 6px',
+                                  borderRadius: 4,
+                                  background: 'rgba(59, 130, 246, 0.2)',
+                                  color: '#93c5fd',
+                                  border: '1px solid rgba(59, 130, 246, 0.4)',
+                                }}
+                              >
+                                Cấp {trough.upgradeLevel ?? 1}
+                              </span>
+                            </div>
                             <div style={{ fontSize: 10, color: '#94a3b8' }}>
                               Cần: {def.feedName} (Kho có: {stockQty})
                             </div>
@@ -712,15 +906,67 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
                         />
                       </div>
 
-                      {/* Deposit Actions */}
+                      {/* Deposit & Facility Actions */}
                       <div
                         style={{
                           display: 'flex',
+                          flexWrap: 'wrap',
                           gap: 6,
                           justifyContent: 'flex-end',
+                          alignItems: 'center',
                           marginTop: 2,
                         }}
                       >
+                        {/* Feed all hungry animals in facility in 1 click */}
+                        <Button
+                          disabled={loadingAction !== null || stockQty < 1}
+                          onClick={() => void handleFeedAll(fac)}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: 11,
+                            borderRadius: 6,
+                            background: 'rgba(245, 158, 11, 0.2)',
+                            border: '1px solid rgba(245, 158, 11, 0.4)',
+                            color: '#fbbf24',
+                            fontWeight: 600,
+                            cursor: loadingAction !== null || stockQty < 1 ? 'not-allowed' : 'pointer',
+                          }}
+                          title={`Cho toàn bộ động vật đói trong ${def.penName} ăn ngay lập tức bằng thức ăn từ kho Silo`}
+                        >
+                          {loadingAction === `feed_all_${fac}` ? 'Đang cho ăn...' : '🌾 Cho Cả Chuồng Ăn'}
+                        </Button>
+
+                        {/* Upgrade Trough Button */}
+                        {trough.nextUpgrade && (
+                          <Button
+                            disabled={
+                              loadingAction !== null || me.balances.coin < trough.nextUpgrade.costCoins
+                            }
+                            onClick={() => void handleUpgradeTrough(fac)}
+                            style={{
+                              padding: '4px 10px',
+                              fontSize: 11,
+                              borderRadius: 6,
+                              background:
+                                me.balances.coin >= trough.nextUpgrade.costCoins
+                                  ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)'
+                                  : 'rgba(71, 85, 105, 0.3)',
+                              color: me.balances.coin >= trough.nextUpgrade.costCoins ? '#ffffff' : '#94a3b8',
+                              fontWeight: 600,
+                              border: 'none',
+                              cursor:
+                                loadingAction !== null || me.balances.coin < trough.nextUpgrade.costCoins
+                                  ? 'not-allowed'
+                                  : 'pointer',
+                            }}
+                            title={`Nâng cấp máng lên Cấp ${trough.nextUpgrade.level} (${trough.nextUpgrade.capacity} phần, tốn ${num(trough.nextUpgrade.costCoins)} Xu)`}
+                          >
+                            {loadingAction === `upgrade_trough_${fac}`
+                              ? 'Đang nâng...'
+                              : `⬆️ Cấp ${trough.nextUpgrade.level} (${trough.nextUpgrade.capacity}p · ${num(trough.nextUpgrade.costCoins)} Xu)`}
+                          </Button>
+                        )}
+
                         <Button
                           disabled={isBusyTrough || isFull || stockQty < 1}
                           onClick={() => void handleFillTrough(fac, Math.min(10, stockQty))}
@@ -1736,7 +1982,7 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
                             partnerCand,
                             nowMs,
                             animals.length,
-                            BREEDING_MAX_FARM_ANIMALS,
+                            livestockCapacity,
                           );
 
                           const isBreedingThis =

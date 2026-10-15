@@ -17,9 +17,11 @@ import {
   getAnimalStarvationSeverity,
   facilityForAnimalType,
   BREEDING_HAPPINESS_COST,
-  BREEDING_MAX_FARM_ANIMALS,
   canBreedAnimals,
   getAnimalBreedingStatus,
+  BASE_LIVESTOCK_CAPACITY,
+  getNextLivestockCapacityTier,
+  getNextTroughUpgrade,
   type LivestockFacilityKey,
   type AnimalType,
   type AnimalDef,
@@ -41,6 +43,7 @@ export interface FarmRecord {
   password_hash: string | null;
   is_public: boolean;
   warehouse_capacity: number;
+  livestock_capacity?: number;
   created_at: Date;
   updated_at: Date;
   access_version: string;
@@ -100,6 +103,7 @@ export interface FarmFeedTroughRow {
   facility: LivestockFacilityKey;
   amount: number;
   capacity: number;
+  upgrade_level?: number;
   updated_at: Date;
 }
 
@@ -328,18 +332,43 @@ export async function getFarmFullState(ctx: AppContext, userId: string) {
       feedName: string;
       amount: number;
       capacity: number;
+      upgradeLevel: number;
+      nextUpgrade: { level: number; capacity: number; costCoins: number } | null;
     }
   > = {
-    poultry: { ...FEED_TROUGHS.poultry, amount: 0 },
-    cattle: { ...FEED_TROUGHS.cattle, amount: 0 },
-    pig: { ...FEED_TROUGHS.pig, amount: 0 },
-    goat: { ...FEED_TROUGHS.goat, amount: 0 },
+    poultry: {
+      ...FEED_TROUGHS.poultry,
+      amount: 0,
+      upgradeLevel: 1,
+      nextUpgrade: getNextTroughUpgrade('poultry', 1),
+    },
+    cattle: {
+      ...FEED_TROUGHS.cattle,
+      amount: 0,
+      upgradeLevel: 1,
+      nextUpgrade: getNextTroughUpgrade('cattle', 1),
+    },
+    pig: {
+      ...FEED_TROUGHS.pig,
+      amount: 0,
+      upgradeLevel: 1,
+      nextUpgrade: getNextTroughUpgrade('pig', 1),
+    },
+    goat: {
+      ...FEED_TROUGHS.goat,
+      amount: 0,
+      upgradeLevel: 1,
+      nextUpgrade: getNextTroughUpgrade('goat', 1),
+    },
   };
 
   for (const r of troughsRes.rows) {
     if (r.facility in troughs) {
       troughs[r.facility].amount = r.amount;
       troughs[r.facility].capacity = r.capacity;
+      const lvl = r.upgrade_level ?? 1;
+      troughs[r.facility].upgradeLevel = lvl;
+      troughs[r.facility].nextUpgrade = getNextTroughUpgrade(r.facility, lvl);
     }
   }
 
@@ -467,6 +496,8 @@ export async function getFarmFullState(ctx: AppContext, userId: string) {
     isRaining,
     plots,
     animals,
+    livestockCapacity: farm.livestock_capacity ?? BASE_LIVESTOCK_CAPACITY,
+    nextCapacityUpgrade: getNextLivestockCapacityTier(farm.livestock_capacity ?? BASE_LIVESTOCK_CAPACITY),
     troughs,
     starvationAlerts,
     warehouse: {
@@ -1190,7 +1221,13 @@ async function raiseAnimalLocked(ctx: AppContext, tx: Tx, userId: string, stockI
   const count = await tx.query<{ n: number }>('SELECT count(*)::int n FROM farm_animals WHERE farm_id=$1', [
     farm.id,
   ]);
-  if (count.rows[0]!.n >= 24) throw badRequest('barn_full', 'Chuồng trại đã đạt tối đa 24 con.');
+  const maxCapacity = farm.livestock_capacity ?? BASE_LIVESTOCK_CAPACITY;
+  if (count.rows[0]!.n >= maxCapacity) {
+    throw badRequest(
+      'barn_full',
+      `Chuồng trại đã đạt tối đa ${maxCapacity} con. Hãy cơi nới mở rộng chuồng trại hoặc bán bớt thú!`,
+    );
+  }
 
   await takeFarmItem(tx, farm.id, stockItemId, 1);
   const now = ctx.now();
@@ -1332,10 +1369,11 @@ async function breedAnimalsLocked(
     [farm.id],
   );
   const currentCount = countRes.rows[0]?.n ?? 0;
-  if (currentCount >= BREEDING_MAX_FARM_ANIMALS) {
+  const maxCapacity = farm.livestock_capacity ?? BASE_LIVESTOCK_CAPACITY;
+  if (currentCount >= maxCapacity) {
     throw badRequest(
       'farm_animals_full',
-      `Trang trại đã đạt tối đa ${BREEDING_MAX_FARM_ANIMALS} vật nuôi. Hãy xuất chuồng bớt trước khi nhân giống.`,
+      `Trang trại đã đạt tối đa ${maxCapacity} vật nuôi. Hãy cơi nới chuồng trại hoặc xuất chuồng bớt trước khi nhân giống.`,
     );
   }
 
@@ -1408,7 +1446,7 @@ async function breedAnimalsLocked(
     bredAt: b.bred_at ? new Date(b.bred_at).getTime() : null,
   };
 
-  const check = canBreedAnimals(candA, candB, nowMs, currentCount, BREEDING_MAX_FARM_ANIMALS);
+  const check = canBreedAnimals(candA, candB, nowMs, currentCount, maxCapacity);
   if (!check.ok) {
     throw badRequest('cannot_breed', check.reason || 'Không đủ điều kiện ghép đôi sinh sản.');
   }
@@ -1709,12 +1747,273 @@ async function fillFeedTroughLocked(
   };
 }
 
+async function upgradeLivestockCapacityLocked(
+  ctx: AppContext,
+  tx: Tx,
+  userId: string,
+  idempotencyKey?: string,
+) {
+  const farm = await getOrCreateFarm(tx, userId);
+  return inFarmTransaction(tx, async (tx) => {
+    const actionKey = idempotencyKey ? `farm:facility:capacity:${idempotencyKey}` : null;
+    if (actionKey) {
+      const prior = await tx.query<{ result: unknown }>(
+        'SELECT result FROM gameplay_actions WHERE user_id=$1 AND action_key=$2',
+        [userId, actionKey],
+      );
+      if (prior.rows[0]) return prior.rows[0].result;
+    }
+
+    const farmRow = await tx.query<FarmRecord>('SELECT * FROM farms WHERE id = $1 FOR UPDATE', [farm.id]);
+    const current = farmRow.rows[0]?.livestock_capacity ?? BASE_LIVESTOCK_CAPACITY;
+    const nextTier = getNextLivestockCapacityTier(current);
+    if (!nextTier) {
+      throw badRequest('max_capacity', 'Chuồng trại đã đạt quy mô sức chứa tối đa.');
+    }
+
+    const balRes = await tx.query<{ coin: string | number }>('SELECT coin FROM balances WHERE user_id = $1', [
+      userId,
+    ]);
+    const balance = Number(balRes.rows[0]?.coin ?? 0);
+    if (balance < nextTier.costCoins) {
+      throw badRequest(
+        'insufficient_coins',
+        `Không đủ Xu để nâng cấp chuồng trại (cần ${nextTier.costCoins} Xu).`,
+      );
+    }
+
+    const ledger = await postLedger(tx, {
+      userId,
+      currency: 'coin',
+      amount: -nextTier.costCoins,
+      reason: 'farm_pen_upgrade',
+      referenceId: String(nextTier.tier),
+      idempotencyKey: actionKey ?? undefined,
+      metadata: { fromCapacity: current, toCapacity: nextTier.capacity, tier: nextTier.tier },
+    });
+
+    await tx.query('UPDATE farms SET livestock_capacity = $1, updated_at = $2 WHERE id = $3', [
+      nextTier.capacity,
+      ctx.now(),
+      farm.id,
+    ]);
+
+    const result = {
+      ok: true,
+      tier: nextTier.tier,
+      name: nextTier.name,
+      capacity: nextTier.capacity,
+      nextUpgrade: getNextLivestockCapacityTier(nextTier.capacity),
+      coinBalance: ledger.balanceAfter,
+    };
+
+    if (actionKey) {
+      await tx.query(
+        'INSERT INTO gameplay_actions(user_id,action_key,fingerprint,result) VALUES($1,$2,$3,$4)',
+        [userId, actionKey, 'pen_upgrade', JSON.stringify(result)],
+      );
+    }
+
+    return result;
+  });
+}
+
+async function upgradeFeedTroughLocked(
+  ctx: AppContext,
+  tx: Tx,
+  userId: string,
+  facility: LivestockFacilityKey,
+  idempotencyKey?: string,
+) {
+  const farm = await getOrCreateFarm(tx, userId);
+  const def = FEED_TROUGHS[facility];
+  if (!def) throw badRequest('invalid_facility', 'Khu chuồng trại không hợp lệ.');
+
+  return inFarmTransaction(tx, async (tx) => {
+    const actionKey = idempotencyKey ? `farm:trough:upgrade:${facility}:${idempotencyKey}` : null;
+    if (actionKey) {
+      const prior = await tx.query<{ result: unknown }>(
+        'SELECT result FROM gameplay_actions WHERE user_id=$1 AND action_key=$2',
+        [userId, actionKey],
+      );
+      if (prior.rows[0]) return prior.rows[0].result;
+    }
+
+    const nowMs = ctx.now().getTime();
+    await catchUpTroughsAndAnimals(tx, farm.id, nowMs);
+
+    const troughRes = await tx.query<FarmFeedTroughRow>(
+      'SELECT * FROM farm_feed_troughs WHERE farm_id = $1 AND facility = $2 FOR UPDATE',
+      [farm.id, facility],
+    );
+    const trough = troughRes.rows[0];
+    if (!trough) throw notFound('Không tìm thấy máng ăn.');
+
+    const currentLevel = trough.upgrade_level ?? 1;
+    const nextUpgrade = getNextTroughUpgrade(facility, currentLevel);
+    if (!nextUpgrade) {
+      throw badRequest('max_trough_level', `Máng ăn ${def.label} đã đạt cấp tối đa.`);
+    }
+
+    const balRes = await tx.query<{ coin: string | number }>('SELECT coin FROM balances WHERE user_id = $1', [
+      userId,
+    ]);
+    const balance = Number(balRes.rows[0]?.coin ?? 0);
+    if (balance < nextUpgrade.costCoins) {
+      throw badRequest(
+        'insufficient_coins',
+        `Không đủ Xu để nâng cấp máng ăn (cần ${nextUpgrade.costCoins} Xu).`,
+      );
+    }
+
+    const ledger = await postLedger(tx, {
+      userId,
+      currency: 'coin',
+      amount: -nextUpgrade.costCoins,
+      reason: 'farm_trough_upgrade',
+      referenceId: `${facility}:${nextUpgrade.level}`,
+      idempotencyKey: actionKey ?? undefined,
+      metadata: {
+        facility,
+        fromLevel: currentLevel,
+        toLevel: nextUpgrade.level,
+        newCapacity: nextUpgrade.capacity,
+      },
+    });
+
+    const updated = await tx.query<FarmFeedTroughRow>(
+      'UPDATE farm_feed_troughs SET upgrade_level = $1, capacity = $2, updated_at = $3 WHERE id = $4 RETURNING *',
+      [nextUpgrade.level, nextUpgrade.capacity, ctx.now(), trough.id],
+    );
+
+    const result = {
+      ok: true,
+      trough: {
+        facility,
+        upgradeLevel: nextUpgrade.level,
+        capacity: nextUpgrade.capacity,
+        amount: updated.rows[0]!.amount,
+        label: def.label,
+        nextUpgrade: getNextTroughUpgrade(facility, nextUpgrade.level),
+      },
+      coinBalance: ledger.balanceAfter,
+    };
+
+    if (actionKey) {
+      await tx.query(
+        'INSERT INTO gameplay_actions(user_id,action_key,fingerprint,result) VALUES($1,$2,$3,$4)',
+        [userId, actionKey, 'trough_upgrade', JSON.stringify(result)],
+      );
+    }
+
+    return result;
+  });
+}
+
+async function feedAllFacilityAnimalsLocked(
+  ctx: AppContext,
+  tx: Tx,
+  userId: string,
+  facility: LivestockFacilityKey,
+) {
+  const farm = await getOrCreateFarm(tx, userId);
+  const def = FEED_TROUGHS[facility];
+  if (!def) throw badRequest('invalid_facility', 'Khu chuồng trại không hợp lệ.');
+
+  const nowMs = ctx.now().getTime();
+  await catchUpTroughsAndAnimals(tx, farm.id, nowMs);
+
+  const animalsRes = await tx.query<FarmAnimalRow>(
+    'SELECT * FROM farm_animals WHERE farm_id = $1 AND animal_type = ANY($2) FOR UPDATE',
+    [farm.id, def.animalTypes],
+  );
+
+  const hungryAnimals = animalsRes.rows.filter((a) => {
+    const growth = computeAnimalGrowthStage(
+      a.animal_type,
+      a.created_at,
+      nowMs,
+      a.fed_at,
+      a.growth_accum_sec ?? 0,
+    );
+    const hunger = computeAnimalHunger(
+      a.animal_type,
+      a.fed_at,
+      a.last_yield_at,
+      nowMs,
+      growth.stage === 'adult',
+      a.created_at,
+    );
+    return !hunger.isDead && hunger.isHungry;
+  });
+
+  if (hungryAnimals.length === 0) {
+    return {
+      ok: true,
+      fedCount: 0,
+      totalHungry: 0,
+      message: `Tất cả vật nuôi trong ${def.penName} đều đã no bụng!`,
+    };
+  }
+
+  const whRes = await tx.query<FarmWarehouseItemRow>(
+    'SELECT * FROM farm_warehouse_items WHERE farm_id = $1 AND item_id = $2 FOR UPDATE',
+    [farm.id, def.feedItemId],
+  );
+  const stock = whRes.rows[0]?.quantity ?? 0;
+  if (stock <= 0) {
+    throw badRequest('insufficient_feed', `Kho nông trại không còn ${def.feedName} để cho đàn vật nuôi ăn.`);
+  }
+
+  const toFeedCount = Math.min(stock, hungryAnimals.length);
+  await takeFarmItem(tx, farm.id, def.feedItemId, toFeedCount);
+
+  const toFeed = hungryAnimals.slice(0, toFeedCount);
+  const nowDate = ctx.now();
+
+  for (const animal of toFeed) {
+    const aDef = (ANIMALS as Record<string, AnimalDef>)[animal.animal_type];
+    const prevElapsedSec = animal.fed_at ? Math.max(0, (nowMs - animal.fed_at.getTime()) / 1000) : 0;
+    const prevDigestionSec = Math.min(aDef?.feedIntervalSec ?? 300, prevElapsedSec);
+    const prevAccum = animal.growth_accum_sec ?? 0;
+    const newAccum = Math.min(aDef?.growthDurationSec ?? 300, prevAccum + Math.round(prevDigestionSec));
+    const newHappiness = Math.min(100, animal.happiness + (aDef?.happinessBoost || 20));
+
+    await tx.query(
+      'UPDATE farm_animals SET happiness = $1, fed_at = $2, growth_accum_sec = $3, updated_at = $2 WHERE id = $4',
+      [newHappiness, nowDate, newAccum, animal.id],
+    );
+  }
+
+  return {
+    ok: true,
+    fedCount: toFeedCount,
+    totalHungry: hungryAnimals.length,
+    remainingStock: stock - toFeedCount,
+    feedItemId: def.feedItemId,
+    feedName: def.feedName,
+  };
+}
+
 export const fillFeedTrough = (
   ctx: AppContext,
   userId: string,
   facility: LivestockFacilityKey,
   quantity: number,
 ) => farmMutation(ctx, userId, (tx) => fillFeedTroughLocked(ctx, tx, userId, facility, quantity));
+
+export const upgradeLivestockCapacity = (ctx: AppContext, userId: string, key?: string) =>
+  farmMutation(ctx, userId, (tx) => upgradeLivestockCapacityLocked(ctx, tx, userId, key));
+
+export const upgradeFeedTrough = (
+  ctx: AppContext,
+  userId: string,
+  facility: LivestockFacilityKey,
+  key?: string,
+) => farmMutation(ctx, userId, (tx) => upgradeFeedTroughLocked(ctx, tx, userId, facility, key));
+
+export const feedAllFacilityAnimals = (ctx: AppContext, userId: string, facility: LivestockFacilityKey) =>
+  farmMutation(ctx, userId, (tx) => feedAllFacilityAnimalsLocked(ctx, tx, userId, facility));
 
 export const stockPondFish = (ctx: AppContext, userId: string, species: string) =>
   farmMutation(ctx, userId, (tx) => stockPondFishLocked(ctx, tx, userId, species));

@@ -53,6 +53,12 @@ import {
   getAnimalBreedingStatus,
   canBreedAnimals,
   type BreedingCandidate,
+  BASE_LIVESTOCK_CAPACITY,
+  LIVESTOCK_CAPACITY_TIERS,
+  getNextLivestockCapacityTier,
+  TROUGH_UPGRADE_TIERS,
+  getTroughCapacityForLevel,
+  getNextTroughUpgrade,
 } from './index.js';
 
 describe('Cozy Farm System Game Data', () => {
@@ -806,6 +812,64 @@ describe('Cozy Farm System Game Data', () => {
 
       // Farm capacity full (>= 24)
       expect(canBreedAnimals(parentA, parentB, now, 24, BREEDING_MAX_FARM_ANIMALS).ok).toBe(false);
+    });
+  });
+
+  describe('Farm Facility Capacity & Trough Upgrades', () => {
+    it('handles livestock pen capacity expansion tiers', () => {
+      expect(BASE_LIVESTOCK_CAPACITY).toBe(24);
+      expect(LIVESTOCK_CAPACITY_TIERS).toHaveLength(4);
+
+      // Base capacity next tier is 32
+      const tier1 = getNextLivestockCapacityTier(24);
+      expect(tier1).not.toBeNull();
+      expect(tier1?.capacity).toBe(32);
+      expect(tier1?.costCoins).toBe(15000);
+
+      // Tier 1 next is 40
+      const tier2 = getNextLivestockCapacityTier(32);
+      expect(tier2?.capacity).toBe(40);
+      expect(tier2?.costCoins).toBe(35000);
+
+      // Tier 2 next is 50
+      const tier3 = getNextLivestockCapacityTier(40);
+      expect(tier3?.capacity).toBe(50);
+      expect(tier3?.costCoins).toBe(75000);
+
+      // Max tier has no next tier
+      expect(getNextLivestockCapacityTier(50)).toBeNull();
+    });
+
+    it('calculates trough capacity multipliers and next upgrade tiers', () => {
+      expect(TROUGH_UPGRADE_TIERS).toHaveLength(3);
+
+      // Level 1: base (poultry = 40)
+      expect(getTroughCapacityForLevel('poultry', 1)).toBe(40);
+      // Level 2: 40 * 1.75 = 70
+      expect(getTroughCapacityForLevel('poultry', 2)).toBe(70);
+      // Level 3: 40 * 2.5 = 100
+      expect(getTroughCapacityForLevel('poultry', 3)).toBe(100);
+
+      // Cattle base: 30
+      expect(getTroughCapacityForLevel('cattle', 1)).toBe(30);
+      expect(getTroughCapacityForLevel('cattle', 2)).toBe(53); // Math.round(30 * 1.75) = 53
+      expect(getTroughCapacityForLevel('cattle', 3)).toBe(75); // Math.round(30 * 2.5) = 75
+
+      // Next upgrade from level 1
+      const nextPoultry = getNextTroughUpgrade('poultry', 1);
+      expect(nextPoultry).not.toBeNull();
+      expect(nextPoultry?.level).toBe(2);
+      expect(nextPoultry?.capacity).toBe(70);
+      expect(nextPoultry?.costCoins).toBe(5000);
+
+      // Next upgrade from level 2
+      const nextPoultryL3 = getNextTroughUpgrade('poultry', 2);
+      expect(nextPoultryL3?.level).toBe(3);
+      expect(nextPoultryL3?.capacity).toBe(100);
+      expect(nextPoultryL3?.costCoins).toBe(12000);
+
+      // Level 3 is max
+      expect(getNextTroughUpgrade('poultry', 3)).toBeNull();
     });
   });
 });
