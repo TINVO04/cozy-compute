@@ -2296,16 +2296,19 @@ export class FarmScene extends WorldScene {
       useUi.getState().toast({ kind: 'info', title: 'Ghế nghỉ chân', body: 'Nghỉ một lát dưới tán cây.' });
     });
 
-    this.interactAt(
-      FARM_POIS.aquaculture_pond.x - 16,
-      FARM_POIS.aquaculture_pond.y + 128,
-      'Cầu tàu ao sen (Nuôi cá & Thủy sản)',
-      () => {
-        play('pop');
-        useUi.getState().setLivestockFacility('pond');
-        useUi.getState().setPanel('farm-care');
-      },
-    );
+    const pondDockX = FARM_POIS.aquaculture_pond.x - 16;
+    const pondDockY = FARM_POIS.aquaculture_pond.y + 128;
+    const openPond = () => {
+      play('pop');
+      useUi.getState().setLivestockFacility('pond');
+      useUi.getState().setPanel('farm-care');
+    };
+    this.add
+      .zone(pondDockX, pondDockY, 48, 36)
+      .setOrigin(0.5, 0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', openPond);
+    this.interactAt(pondDockX, pondDockY, 'Cầu tàu ao sen (Nuôi cá & Thủy sản)', openPond);
 
     // 7. Interactive Mountable Farm Tractor (Xe máy cày sân kho Silo)
     const tractorX = FARM_GARDEN.tractor.x + FARM_GARDEN.tractor.w / 2;
