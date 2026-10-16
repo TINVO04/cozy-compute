@@ -22,6 +22,26 @@ export interface ChimneyConfig {
   y: number;
 }
 
+export interface ServerPondFishData {
+  id: string;
+  species: string;
+  weightKg: number;
+  stage: string;
+  fedAt?: string | null;
+}
+
+interface LivingPondFishItem {
+  id: string;
+  species: string;
+  weightKg: number;
+  stage: string;
+  fedAt?: string | null;
+  phase: number;
+  speed: number;
+  orbitRadiusX: number;
+  orbitRadiusY: number;
+}
+
 export class FarmLivingPropsSystem {
   private scene: Phaser.Scene;
   private waterGraphics: Phaser.GameObjects.Graphics | null = null;
@@ -30,6 +50,7 @@ export class FarmLivingPropsSystem {
   private sparkleTimer: Phaser.Time.TimerEvent | null = null;
   private swimmingFish: Phaser.GameObjects.Graphics | null = null;
   private fishProgress = 0;
+  private livePondFishes: LivingPondFishItem[] = [];
   private livingTrees: { sprite: Phaser.GameObjects.Sprite; phase: number; flexibility: number }[] = [];
   private lanterns: Phaser.GameObjects.Arc[] = [];
   private hangingSigns: Phaser.GameObjects.GameObject[] = [];
@@ -52,6 +73,27 @@ export class FarmLivingPropsSystem {
     this.initChimneySmoke();
     this.initTreeCanopySway();
     this.initHangingProps();
+  }
+
+  syncPondFishes(serverFishes: ServerPondFishData[]) {
+    this.livePondFishes = serverFishes.map((f, i) => {
+      const hash = f.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+      const phase = (hash * 0.17 + i * 1.3) % (Math.PI * 2);
+      const orbitRadiusX = 0.18 + ((hash % 15) / 100) * 0.22;
+      const orbitRadiusY = 0.15 + (((hash >> 2) % 15) / 100) * 0.18;
+      const speed = 0.0006 + ((hash % 7) / 100) * 0.0004;
+      return {
+        id: f.id,
+        species: f.species,
+        weightKg: f.weightKg,
+        stage: f.stage,
+        fedAt: f.fedAt,
+        phase,
+        speed,
+        orbitRadiusX,
+        orbitRadiusY,
+      };
+    });
   }
 
   // =========================================================================
@@ -300,17 +342,62 @@ export class FarmLivingPropsSystem {
     // Swimming fish cruise animation
     if (this.swimmingFish) {
       this.swimmingFish.clear();
-      this.fishProgress += Math.min(delta, 50) * 0.000048;
-      const fx = x + w / 2 + Math.cos(this.fishProgress * 2.5) * (w * 0.3);
-      const fy = y + h / 2 + Math.sin(this.fishProgress * 1.8) * (h * 0.25);
 
-      // Dark translucent fish silhouette below water
-      this.swimmingFish.fillStyle(0x0c4a6e, 0.35);
-      this.swimmingFish.fillEllipse(fx, fy, 9, 3.5);
-      // Small tail
-      const tailX = fx - Math.cos(this.fishProgress * 2.5) * 5;
-      const tailY = fy - Math.sin(this.fishProgress * 1.8) * 3;
-      this.swimmingFish.fillTriangle(tailX, tailY, tailX - 4, tailY - 3, tailX - 4, tailY + 3);
+      if (this.livePondFishes.length > 0) {
+        for (const fish of this.livePondFishes) {
+          const angle = time * fish.speed + fish.phase;
+          const fx = x + w / 2 + Math.cos(angle * 2.1) * (w * fish.orbitRadiusX);
+          const fy = y + h / 2 + Math.sin(angle * 1.6) * (h * fish.orbitRadiusY);
+
+          const isSpecialty = fish.stage === 'specialty';
+          const isAdult = fish.stage === 'adult';
+          const isJuvenile = fish.stage === 'juvenile';
+          const rx = isSpecialty ? 13 : isAdult ? 10 : isJuvenile ? 7 : 5;
+          const ry = isSpecialty ? 5 : isAdult ? 4 : isJuvenile ? 3 : 2;
+
+          let color = 0x0c4a6e;
+          if (fish.species === 'tra') color = 0x334155;
+          else if (fish.species === 'basa') color = 0x0284c7;
+          else if (fish.species === 'loc') color = 0x166534;
+          else if (fish.species === 'tom_cang') color = 0x0e7490;
+          else if (fish.species === 'bong_tuong') color = 0x713f12;
+
+          this.swimmingFish.fillStyle(color, isSpecialty ? 0.55 : isAdult ? 0.45 : 0.35);
+          this.swimmingFish.fillEllipse(fx, fy, rx, ry);
+
+          const tailAngle = angle * 2.1;
+          const tailDist = rx * 0.75;
+          const tailX = fx - Math.cos(tailAngle) * tailDist;
+          const tailY = fy - Math.sin(angle * 1.6) * tailDist * 0.7;
+          const tailW = rx * 0.45;
+          const tailH = ry * 0.8;
+          const swish = Math.sin(time * 0.01 + fish.phase * 3) * 1.8;
+          this.swimmingFish.fillTriangle(
+            tailX,
+            tailY,
+            tailX - Math.cos(tailAngle) * tailW - swish,
+            tailY - tailH,
+            tailX - Math.cos(tailAngle) * tailW + swish,
+            tailY + tailH,
+          );
+
+          if (isSpecialty || isAdult) {
+            this.swimmingFish.fillStyle(isSpecialty ? 0xc084fc : 0xfde047, 0.4);
+            this.swimmingFish.fillCircle(fx + (isSpecialty ? 2 : 1), fy, 1.2);
+          }
+        }
+      } else {
+        // Ambient minnow cruise when pond is empty
+        this.fishProgress += Math.min(delta, 50) * 0.000048;
+        const fx = x + w / 2 + Math.cos(this.fishProgress * 2.5) * (w * 0.28);
+        const fy = y + h / 2 + Math.sin(this.fishProgress * 1.8) * (h * 0.22);
+
+        this.swimmingFish.fillStyle(0x0c4a6e, 0.25);
+        this.swimmingFish.fillEllipse(fx, fy, 7, 2.8);
+        const tailX = fx - Math.cos(this.fishProgress * 2.5) * 4;
+        const tailY = fy - Math.sin(this.fishProgress * 1.8) * 2.5;
+        this.swimmingFish.fillTriangle(tailX, tailY, tailX - 3.5, tailY - 2.5, tailX - 3.5, tailY + 2.5);
+      }
     }
   }
 

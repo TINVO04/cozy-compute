@@ -111,7 +111,7 @@ import { RiverVesselTraffic } from './river-vessel-traffic';
 import { RIVER_BRIDGE } from '@cozy/game-data';
 import { boatPose } from './river-motion';
 import { FarmLivestockManager, type ServerLivestockData } from './farm-livestock';
-import { FarmLivingPropsSystem } from './farm-living-props';
+import { FarmLivingPropsSystem, type ServerPondFishData } from './farm-living-props';
 import { loadTiledFarmMap } from './tiled-farm';
 
 /** Keyboard input is ignored while typing in React inputs. */
@@ -2417,6 +2417,7 @@ export class FarmScene extends WorldScene {
         farm: { isPublic: boolean; hasPassword: boolean };
         plots: FarmPlotData[];
         animals?: ServerLivestockData[];
+        pondFishes?: ServerPondFishData[];
         warehouse?: { items: Array<{ id: string; itemId: string; quantity: number }> };
       }>(
         useUi.getState().room.ownerId === useUi.getState().myUserId
@@ -2429,6 +2430,9 @@ export class FarmScene extends WorldScene {
       }
       if (res?.animals && this.livestock) {
         this.livestock.syncAnimals(res.animals, res.warehouse?.items);
+      }
+      if (res?.pondFishes && this.livingProps) {
+        this.livingProps.syncPondFishes(res.pondFishes);
       }
     } catch {
       // offline / not logged in
