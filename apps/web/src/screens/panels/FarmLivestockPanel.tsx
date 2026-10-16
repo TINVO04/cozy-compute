@@ -7,6 +7,9 @@ import {
   BREEDING_MIN_HAPPINESS,
   BREEDING_HAPPINESS_COST,
   BASE_LIVESTOCK_CAPACITY,
+  POND_FISHES,
+  type PondFishSpecies,
+  type PondFishDef,
   type LivestockCapacityTier,
   getAnimalBreedingStatus,
   canBreedAnimals,
@@ -21,6 +24,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   ArrowUpCircle,
+  Fish,
   Heart,
   Plus,
   ShieldAlert,
@@ -80,10 +84,20 @@ interface FeedTroughInfo {
   nextUpgrade?: { level: number; capacity: number; costCoins: number } | null;
 }
 
+export interface FarmPondFish {
+  id: string;
+  species: string;
+  weightKg: number;
+  stage: string;
+  fedAt?: string | null;
+  stockedAt?: string;
+}
+
 interface FarmMeResponse {
   farm: { ownerId: string };
   warehouse: { capacity: number; items: WarehouseItem[] };
   animals: FarmAnimal[];
+  pondFishes?: FarmPondFish[];
   livestockCapacity?: number;
   nextCapacityUpgrade?: LivestockCapacityTier | null;
   troughs?: Record<LivestockFacilityKey, FeedTroughInfo>;
@@ -101,7 +115,7 @@ interface FarmMeResponse {
   };
 }
 
-type FacilityTab = 'all' | 'poultry' | 'cattle' | 'pig' | 'goat';
+type FacilityTab = 'all' | 'poultry' | 'cattle' | 'pig' | 'goat' | 'pond';
 
 const FACILITY_CONFIG: Record<
   FacilityTab,
@@ -137,7 +151,47 @@ const FACILITY_CONFIG: Record<
     animalTypes: ['goat', 'sheep'],
     desc: 'Đồi cỏ dốc đứng nơi Dê Bách Thảo và Cừu Phan Rang leo trèo.',
   },
+  pond: {
+    label: 'Ao Thủy Sản',
+    icon: '🐟',
+    animalTypes: [],
+    desc: 'Ao sen nuôi cá nước ngọt: Cá tra, Basa, Cá lóc, Tôm càng xanh và Cá bống tượng.',
+  },
 };
+
+function getPondStageBadge(stage: string) {
+  switch (stage) {
+    case 'specialty':
+      return {
+        label: 'Thượng Hạng',
+        color: '#c084fc',
+        bg: 'rgba(192, 132, 252, 0.18)',
+        border: 'rgba(192, 132, 252, 0.4)',
+      };
+    case 'adult':
+      return {
+        label: 'Xuất Bán (Trưởng Thành)',
+        color: '#34d399',
+        bg: 'rgba(16, 185, 129, 0.18)',
+        border: 'rgba(16, 185, 129, 0.4)',
+      };
+    case 'juvenile':
+      return {
+        label: 'Đang Lớn',
+        color: '#38bdf8',
+        bg: 'rgba(56, 189, 248, 0.18)',
+        border: 'rgba(56, 189, 248, 0.4)',
+      };
+    case 'fingerling':
+    default:
+      return {
+        label: 'Cá Giống',
+        color: '#fbbf24',
+        bg: 'rgba(245, 158, 11, 0.18)',
+        border: 'rgba(245, 158, 11, 0.4)',
+      };
+  }
+}
 
 export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => void }) {
   const qc = useQueryClient();
@@ -162,11 +216,13 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
   });
 
   const animals = data?.animals ?? [];
+  const pondFishes = data?.pondFishes ?? [];
   const livestockCapacity = data?.livestockCapacity ?? BASE_LIVESTOCK_CAPACITY;
   const nextCapacityUpgrade = data?.nextCapacityUpgrade;
   const troughs = data?.troughs;
   const warehouseItems = data?.warehouse.items ?? [];
   const getStockQty = (stockId: string) => warehouseItems.find((i) => i.itemId === stockId)?.quantity ?? 0;
+  const aquaticFeedQty = getStockQty('feed_aquatic');
 
   const currentConfig = FACILITY_CONFIG[activeTab];
   const filteredAnimals = animals.filter((a) => currentConfig.animalTypes.includes(a.type as AnimalType));
@@ -174,6 +230,9 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
   // Available stock items in warehouse for current tab
   const availableStockTypes = (Object.values(ANIMALS) as Array<(typeof ANIMALS)[AnimalType]>).filter(
     (def) => currentConfig.animalTypes.includes(def.type) && getStockQty(def.stockItemId) > 0,
+  );
+  const availableFingerlings = (Object.values(POND_FISHES) as PondFishDef[]).filter(
+    (def) => getStockQty(def.fingerlingItemId) > 0,
   );
 
   // 1. Raise animal from warehouse into pen
@@ -527,6 +586,171 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
     }
   };
 
+  // 11. Pond: Stock Fingerling
+  const handleStockPond = async (def: PondFishDef) => {
+    if (pondFishes.length >= 12) {
+      setErrorMsg('Ao thủy sản đã đạt giới hạn tối đa 12 con cá! Hãy kéo lưới thu hoạch cá lớn trước.');
+      play('error');
+      return;
+    }
+    setLoadingAction(`stock_pond_${def.species}`);
+    setErrorMsg(null);
+    try {
+      await api('/api/farm/pond/stock', {
+        method: 'POST',
+        body: { fishSpecies: def.species },
+      });
+      play('pop');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: 'Thả cá thành công!',
+        body: `Đã thả cá giống ${def.name} vào ao nuôi. Nhớ rải cám nổi chăm sóc nhé!`,
+      });
+      await refetch();
+      window.dispatchEvent(new CustomEvent('farm:refresh'));
+      await qc.invalidateQueries({ queryKey: ['farm'] });
+    } catch (err) {
+      play('error');
+      setErrorMsg(err instanceof ApiError ? err.message : 'Thả cá vào ao thất bại.');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  // 12. Pond: Feed Single Fish
+  const handleFeedPondFish = async (fish: FarmPondFish, def: PondFishDef) => {
+    if (aquaticFeedQty <= 0) {
+      setErrorMsg('Hết Thức Ăn Thủy Sản (Cám nổi) trong kho Silo! Hãy mua thêm tại Tiệm Bác Sáu.');
+      play('error');
+      return;
+    }
+    setLoadingAction(`feed_pond_${fish.id}`);
+    setErrorMsg(null);
+    try {
+      await api('/api/farm/care', {
+        method: 'POST',
+        body: { kind: 'pond-feed', id: fish.id },
+      });
+      play('pop');
+      useUi.getState().toast({
+        kind: 'success',
+        title: 'Đã rải cám nổi!',
+        body: `${def.name} đã được cho ăn cám nổi thơm ngon, đang phát triển tăng trọng.`,
+      });
+      await refetch();
+      window.dispatchEvent(new CustomEvent('farm:refresh'));
+      await qc.invalidateQueries({ queryKey: ['farm'] });
+    } catch (err) {
+      play('error');
+      setErrorMsg(err instanceof ApiError ? err.message : 'Cho cá ăn thất bại.');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  // 13. Pond: Harvest Single Fish
+  const handleHarvestPondFish = async (fish: FarmPondFish, def: PondFishDef) => {
+    setLoadingAction(`harvest_pond_${fish.id}`);
+    setErrorMsg(null);
+    try {
+      await api('/api/farm/care', {
+        method: 'POST',
+        body: { kind: 'pond-harvest', id: fish.id },
+      });
+      play('coin');
+      useUi.getState().toast({
+        kind: 'reward',
+        title: 'Kéo lưới thu hoạch!',
+        body: `Đã kéo lưới thu hoạch 1x ${def.name} (${fish.weightKg.toFixed(1)} kg) chuyển về kho Silo!`,
+      });
+      await refetch();
+      window.dispatchEvent(new CustomEvent('farm:refresh'));
+      await qc.invalidateQueries({ queryKey: ['farm'] });
+    } catch (err) {
+      play('error');
+      setErrorMsg(err instanceof ApiError ? err.message : 'Thu hoạch cá thất bại.');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  // 14. Pond: Feed All Pond Fishes in 1 Click
+  const handleFeedAllPond = async () => {
+    setLoadingAction('feed_all_pond');
+    setErrorMsg(null);
+    try {
+      const res = await api<{
+        ok: boolean;
+        fedCount: number;
+        totalUnfed?: number;
+        remainingStock?: number;
+        message?: string;
+      }>('/api/farm/pond/feed-all', {
+        method: 'POST',
+      });
+      if (res.fedCount > 0) {
+        play('pop');
+        useUi.getState().toast({
+          kind: 'success',
+          title: '🌊 Rải cám nổi toàn ao!',
+          body: `Đã cho ${res.fedCount} con cá trong ao ăn cám nổi no nê!`,
+        });
+      } else {
+        useUi.getState().toast({
+          kind: 'info',
+          title: 'Ao cá đã no!',
+          body: res.message || 'Tất cả cá trong ao đều đã được cho ăn.',
+        });
+      }
+      await refetch();
+      window.dispatchEvent(new CustomEvent('farm:refresh'));
+      await qc.invalidateQueries({ queryKey: ['farm'] });
+    } catch (err) {
+      play('error');
+      setErrorMsg(err instanceof ApiError ? err.message : 'Rải cám toàn ao thất bại.');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  // 15. Pond: Harvest All Ready Fishes in 1 Click
+  const handleHarvestAllPond = async () => {
+    setLoadingAction('harvest_all_pond');
+    setErrorMsg(null);
+    try {
+      const res = await api<{
+        ok: boolean;
+        harvestedCount: number;
+        harvestedItems?: Record<string, number>;
+        message?: string;
+      }>('/api/farm/pond/harvest-all', {
+        method: 'POST',
+      });
+      if (res.harvestedCount > 0) {
+        play('coin');
+        useUi.getState().toast({
+          kind: 'reward',
+          title: '🎣 Kéo lưới đại thắng!',
+          body: `Đã thu hoạch mẻ cá lớn gồm ${res.harvestedCount} con cá các loại về kho Silo!`,
+        });
+      } else {
+        useUi.getState().toast({
+          kind: 'info',
+          title: 'Chưa tới kỳ kéo lưới',
+          body: res.message || 'Chưa có cá nào trong ao đạt tiêu chuẩn xuất bán.',
+        });
+      }
+      await refetch();
+      window.dispatchEvent(new CustomEvent('farm:refresh'));
+      await qc.invalidateQueries({ queryKey: ['farm'] });
+    } catch (err) {
+      play('error');
+      setErrorMsg(err instanceof ApiError ? err.message : 'Kéo lưới toàn ao thất bại.');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
   return (
     <Panel
       title="Trại Chăn Nuôi Cozy"
@@ -559,16 +783,18 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 22 }}>🌾</span>
+            <span style={{ fontSize: 22 }}>{activeTab === 'pond' ? '🐟' : '🌾'}</span>
             <div>
               <div style={{ fontWeight: 700, fontSize: 14, color: '#f8fafc' }}>
-                Đàn Vật Nuôi: {animals.length} / {livestockCapacity} con
+                {activeTab === 'pond'
+                  ? `Đàn Cá Ao Thủy Sản: ${pondFishes.length} / 12 con`
+                  : `Đàn Vật Nuôi: ${animals.length} / ${livestockCapacity} con`}
               </div>
               <div style={{ fontSize: 12, color: '#94a3b8' }}>{currentConfig.desc}</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {nextCapacityUpgrade && (
+            {nextCapacityUpgrade && activeTab !== 'pond' && (
               <button
                 type="button"
                 disabled={loadingAction !== null || me.balances.coin < nextCapacityUpgrade.costCoins}
@@ -664,7 +890,12 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
           {(Object.keys(FACILITY_CONFIG) as FacilityTab[]).map((tabKey) => {
             const conf = FACILITY_CONFIG[tabKey];
             const isSelected = activeTab === tabKey;
-            const count = animals.filter((a) => conf.animalTypes.includes(a.type as AnimalType)).length;
+            const count =
+              tabKey === 'pond'
+                ? pondFishes.length
+                : tabKey === 'all'
+                  ? animals.length
+                  : animals.filter((a) => conf.animalTypes.includes(a.type as AnimalType)).length;
             return (
               <button
                 key={tabKey}
@@ -734,6 +965,7 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
 
         {/* EMERGENCY STARVATION ALERT BANNER */}
         {(() => {
+          if (activeTab === 'pond') return null;
           const criticalAnimals = animals.filter((a) => {
             const hunger = computeAnimalHunger(
               a.type,
@@ -784,6 +1016,7 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
 
         {/* SECTION: FEED TROUGH AUTOMATION (MÁNG ĂN TỰ ĐỘNG) */}
         {(() => {
+          if (activeTab === 'pond') return null;
           const facilitiesToShow: LivestockFacilityKey[] =
             activeTab === 'all' ? ['poultry', 'cattle', 'pig', 'goat'] : [activeTab as LivestockFacilityKey];
 
@@ -1016,191 +1249,361 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
           );
         })()}
 
-        {/* SECTION 1: Con Giống Chờ Thả Nuôi (From Silo Warehouse) */}
-        {availableStockTypes.length > 0 && (
-          <div
-            style={{
-              background: 'rgba(15, 23, 42, 0.5)',
-              borderRadius: 10,
-              padding: 12,
-              border: '1px dashed rgba(245, 158, 11, 0.35)',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: '#fbbf24',
-                marginBottom: 10,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              <Plus size={14} />
-              <span>Con Giống Trong Kho Silo Sẵn Sàng Thả Nuôi:</span>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {availableStockTypes.map((def) => {
-                const stockQty = getStockQty(def.stockItemId);
-                const isRaising = loadingAction === `raise_${def.type}`;
-                return (
-                  <div
-                    key={def.type}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '8px 12px',
-                      borderRadius: 8,
-                      background: 'rgba(30, 41, 59, 0.7)',
-                      border: '1px solid rgba(148, 163, 184, 0.2)',
-                    }}
-                  >
-                    <img
-                      src={farmItemIcon(def.type, 36)}
-                      alt={def.name}
-                      style={{ width: 32, height: 32, imageRendering: 'pixelated' }}
-                    />
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>{def.babyName}</div>
-                      <div style={{ fontSize: 11, color: '#94a3b8' }}>Còn: {stockQty} con giống</div>
-                    </div>
-                    <Button
-                      disabled={isRaising}
-                      onClick={() => void handleRaise(def)}
-                      style={{
-                        padding: '4px 10px',
-                        fontSize: 12,
-                        borderRadius: 6,
-                        background: '#16a34a',
-                        color: '#ffffff',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {isRaising ? 'Đang thả...' : 'Thả Vào Chuồng'}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {/* SECTION: POND BATCH ACTIONS & FEED OVERVIEW */}
+        {activeTab === 'pond' &&
+          (() => {
+            const unfedFishes = pondFishes.filter((f) => !f.fedAt);
+            const readyFishes = pondFishes.filter((f) => {
+              if (!f.fedAt) return false;
+              const def = POND_FISHES[f.species as PondFishSpecies];
+              if (!def) return false;
+              const elapsed = (nowMs - new Date(f.fedAt).getTime()) / 1000;
+              return elapsed >= def.growthDurationSec;
+            });
 
-        {/* SECTION 2: Active Animals List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {isLoading ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8', fontSize: 13 }}>
-              Đang tải dữ liệu trang trại...
-            </div>
-          ) : filteredAnimals.length === 0 ? (
-            <div
-              style={{
-                textAlign: 'center',
-                padding: '40px 20px',
-                background: 'rgba(15, 23, 42, 0.4)',
-                borderRadius: 10,
-                border: '1px solid rgba(148, 163, 184, 0.1)',
-              }}
-            >
-              <div style={{ fontSize: 40, marginBottom: 8 }}>{currentConfig.icon}</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc', marginBottom: 4 }}>
-                Chưa có con vật nào trong {currentConfig.label}
-              </div>
-              <div style={{ fontSize: 12, color: '#94a3b8', maxWidth: 420, margin: '0 auto 16px auto' }}>
-                Hãy ghé Tiệm Bác Sáu để chọn mua con giống khỏe mạnh, nuôi lớn từng ngày và xuất bán thu về
-                lợi nhuận cao!
-              </div>
-              <Button
-                onClick={() => {
-                  play('click');
-                  useUi.getState().setPanel('farm-shop');
-                }}
+            return (
+              <div
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '8px 16px',
-                  borderRadius: 8,
-                  background: '#f59e0b',
-                  color: '#000',
-                  fontWeight: 700,
-                  fontSize: 13,
-                  cursor: 'pointer',
+                  background: 'rgba(15, 23, 42, 0.65)',
+                  borderRadius: 10,
+                  border: '1px solid rgba(14, 165, 233, 0.25)',
+                  padding: 12,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
                 }}
               >
-                <Store size={15} />
-                <span>Mua Con Giống Tại Tiệm Bác Sáu</span>
-              </Button>
-            </div>
-          ) : (
-            <>
-              {(() => {
-                const deadInCurrentFacility = filteredAnimals.filter((a) => {
-                  const hunger = computeAnimalHunger(
-                    a.type,
-                    a.fedAt || null,
-                    a.lastYieldAt || null,
-                    nowMs,
-                    a.stage === 'adult',
-                    a.createdAt || null,
-                  );
-                  const growth = computeAnimalGrowthStage(
-                    a.type,
-                    a.createdAt || null,
-                    nowMs,
-                    a.fedAt || null,
-                    a.growthAccumSec || 0,
-                  );
-                  return hunger.isDead || growth.isDead;
-                });
-
-                if (deadInCurrentFacility.length === 0) return null;
-
-                return (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Fish size={18} color="#38bdf8" />
+                    <span style={{ fontWeight: 700, fontSize: 13, color: '#f8fafc' }}>
+                      Quản Lý Ao Thủy Sản &amp; Chăm Sóc Đàn Cá (Tối đa 12 con)
+                    </span>
+                  </div>
                   <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '8px 12px',
-                      background: 'rgba(239, 68, 68, 0.2)',
-                      border: '1px solid rgba(239, 68, 68, 0.5)',
-                      borderRadius: 8,
-                      color: '#fca5a5',
-                      fontSize: 12,
-                    }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#94a3b8' }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span>💀</span>
-                      <span>
-                        Có <b>{deadInCurrentFacility.length}</b> con vật đã chết vì bị đói trong khu vực này.
-                      </span>
+                    <span>Kho Silo có:</span>
+                    <span style={{ fontWeight: 700, color: aquaticFeedQty > 0 ? '#38bdf8' : '#ef4444' }}>
+                      {aquaticFeedQty} Thức Ăn Thủy Sản (Cám nổi)
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: 'rgba(30, 41, 59, 0.6)',
+                    borderRadius: 8,
+                    padding: '10px 14px',
+                    border: '1px solid rgba(148, 163, 184, 0.15)',
+                    flexWrap: 'wrap',
+                    gap: 10,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>Tổng số cá trong ao</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#38bdf8' }}>
+                        {pondFishes.length} / 12 con
+                      </div>
                     </div>
+                    <div style={{ width: 1, height: 28, background: 'rgba(148, 163, 184, 0.2)' }} />
+                    <div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>Cá chưa ăn cám</div>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: unfedFishes.length > 0 ? '#fbbf24' : '#94a3b8',
+                        }}
+                      >
+                        {unfedFishes.length} con
+                      </div>
+                    </div>
+                    <div style={{ width: 1, height: 28, background: 'rgba(148, 163, 184, 0.2)' }} />
+                    <div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>Sẵn sàng thu hoạch</div>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: readyFishes.length > 0 ? '#34d399' : '#94a3b8',
+                        }}
+                      >
+                        {readyFishes.length} con
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8 }}>
                     <Button
-                      disabled={loadingAction !== null}
-                      onClick={() => void handleCleanAllDead(deadInCurrentFacility)}
+                      disabled={loadingAction !== null || unfedFishes.length === 0 || aquaticFeedQty <= 0}
+                      onClick={() => void handleFeedAllPond()}
                       style={{
-                        padding: '4px 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '6px 14px',
                         fontSize: 12,
                         borderRadius: 6,
-                        background: '#ef4444',
-                        color: '#ffffff',
+                        background:
+                          unfedFishes.length > 0 && aquaticFeedQty > 0 ? '#0284c7' : 'rgba(71, 85, 105, 0.3)',
+                        color: unfedFishes.length > 0 && aquaticFeedQty > 0 ? '#ffffff' : '#94a3b8',
                         fontWeight: 700,
+                        cursor:
+                          loadingAction !== null || unfedFishes.length === 0 || aquaticFeedQty <= 0
+                            ? 'not-allowed'
+                            : 'pointer',
                         border: 'none',
-                        cursor: 'pointer',
                       }}
+                      title="Rải cám nổi cho tất cả cá chưa được cho ăn trong ao"
                     >
-                      {loadingAction === 'clean_all_dead'
-                        ? 'Đang dọn...'
-                        : `Dọn Sạch Tất Cả Xác (${deadInCurrentFacility.length})`}
+                      <Wheat size={14} />
+                      <span>
+                        {loadingAction === 'feed_all_pond'
+                          ? 'Đang rải...'
+                          : `Cho Cả Ao Ăn (${unfedFishes.length})`}
+                      </span>
+                    </Button>
+
+                    <Button
+                      disabled={loadingAction !== null || readyFishes.length === 0}
+                      onClick={() => void handleHarvestAllPond()}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '6px 14px',
+                        fontSize: 12,
+                        borderRadius: 6,
+                        background:
+                          readyFishes.length > 0
+                            ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)'
+                            : 'rgba(71, 85, 105, 0.3)',
+                        color: readyFishes.length > 0 ? '#ffffff' : '#94a3b8',
+                        fontWeight: 700,
+                        cursor:
+                          loadingAction !== null || readyFishes.length === 0 ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        boxShadow: readyFishes.length > 0 ? '0 2px 6px rgba(16, 185, 129, 0.3)' : 'none',
+                      }}
+                      title="Kéo lưới thu hoạch toàn bộ cá đã đạt tiêu chuẩn xuất bán về kho Silo"
+                    >
+                      <Sparkles size={14} />
+                      <span>
+                        {loadingAction === 'harvest_all_pond'
+                          ? 'Đang kéo lưới...'
+                          : `Kéo Lưới Hết (${readyFishes.length})`}
+                      </span>
                     </Button>
                   </div>
-                );
-              })()}
+                </div>
+              </div>
+            );
+          })()}
 
+        {/* SECTION 1: Con Giống / Cá Giống Chờ Thả Nuôi (From Silo Warehouse) */}
+        {activeTab === 'pond'
+          ? availableFingerlings.length > 0 && (
+              <div
+                style={{
+                  background: 'rgba(15, 23, 42, 0.5)',
+                  borderRadius: 10,
+                  padding: 12,
+                  border: '1px dashed rgba(14, 165, 233, 0.35)',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: '#38bdf8',
+                    marginBottom: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>Cá Giống Trong Kho Silo Sẵn Sàng Thả Vào Ao:</span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                  {availableFingerlings.map((def) => {
+                    const stockQty = getStockQty(def.fingerlingItemId);
+                    const isStocking = loadingAction === `stock_pond_${def.species}`;
+                    return (
+                      <div
+                        key={def.species}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '8px 12px',
+                          borderRadius: 8,
+                          background: 'rgba(30, 41, 59, 0.7)',
+                          border: '1px solid rgba(148, 163, 184, 0.2)',
+                        }}
+                      >
+                        <img
+                          src={farmItemIcon(def.fingerlingItemId, 36)}
+                          alt={def.name}
+                          style={{ width: 32, height: 32, imageRendering: 'pixelated' }}
+                        />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>{def.name}</div>
+                          <div style={{ fontSize: 11, color: '#94a3b8' }}>Còn: {stockQty} con giống</div>
+                        </div>
+                        <Button
+                          disabled={isStocking || pondFishes.length >= 12}
+                          onClick={() => void handleStockPond(def)}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: 12,
+                            borderRadius: 6,
+                            background: pondFishes.length >= 12 ? 'rgba(71, 85, 105, 0.4)' : '#0284c7',
+                            color: '#ffffff',
+                            border: 'none',
+                            cursor: pondFishes.length >= 12 ? 'not-allowed' : 'pointer',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {isStocking
+                            ? 'Đang thả...'
+                            : pondFishes.length >= 12
+                              ? 'Ao Đã Đầy (12/12)'
+                              : 'Thả Vào Ao'}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )
+          : availableStockTypes.length > 0 && (
+              <div
+                style={{
+                  background: 'rgba(15, 23, 42, 0.5)',
+                  borderRadius: 10,
+                  padding: 12,
+                  border: '1px dashed rgba(245, 158, 11, 0.35)',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: '#fbbf24',
+                    marginBottom: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>Con Giống Trong Kho Silo Sẵn Sàng Thả Nuôi:</span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                  {availableStockTypes.map((def) => {
+                    const stockQty = getStockQty(def.stockItemId);
+                    const isRaising = loadingAction === `raise_${def.type}`;
+                    return (
+                      <div
+                        key={def.type}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '8px 12px',
+                          borderRadius: 8,
+                          background: 'rgba(30, 41, 59, 0.7)',
+                          border: '1px solid rgba(148, 163, 184, 0.2)',
+                        }}
+                      >
+                        <img
+                          src={farmItemIcon(def.type, 36)}
+                          alt={def.name}
+                          style={{ width: 32, height: 32, imageRendering: 'pixelated' }}
+                        />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>
+                            {def.babyName}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#94a3b8' }}>Còn: {stockQty} con giống</div>
+                        </div>
+                        <Button
+                          disabled={isRaising}
+                          onClick={() => void handleRaise(def)}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: 12,
+                            borderRadius: 6,
+                            background: '#16a34a',
+                            color: '#ffffff',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {isRaising ? 'Đang thả...' : 'Thả Vào Chuồng'}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+        {/* SECTION 2: Active Animals List or Pond Fishes List */}
+        {activeTab === 'pond' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {isLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8', fontSize: 13 }}>
+                Đang tải dữ liệu ao thủy sản...
+              </div>
+            ) : pondFishes.length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '40px 20px',
+                  background: 'rgba(15, 23, 42, 0.4)',
+                  borderRadius: 10,
+                  border: '1px solid rgba(148, 163, 184, 0.1)',
+                }}
+              >
+                <div style={{ fontSize: 40, marginBottom: 8 }}>🐟</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc', marginBottom: 4 }}>
+                  Chưa có cá nào trong Ao Thủy Sản Cozy
+                </div>
+                <div style={{ fontSize: 12, color: '#94a3b8', maxWidth: 460, margin: '0 auto 16px auto' }}>
+                  Hãy ghé Tiệm Bác Sáu để chọn mua cá giống (Cá tra, Basa, Cá lóc, Tôm càng xanh, Cá bống
+                  tượng) và cám nổi để nuôi dưỡng phát triển kinh tế thủy sản!
+                </div>
+                <Button
+                  onClick={() => {
+                    play('click');
+                    useUi.getState().setPanel('farm-shop');
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    background: '#0284c7',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Store size={15} />
+                  <span>Mua Cá Giống Tại Tiệm Bác Sáu</span>
+                </Button>
+              </div>
+            ) : (
               <div
                 style={{
                   display: 'grid',
@@ -1211,97 +1614,51 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
                   paddingRight: 4,
                 }}
               >
-                {filteredAnimals.map((animal) => {
-                  const def = (ANIMALS as Record<string, (typeof ANIMALS)[AnimalType]>)[animal.type];
+                {pondFishes.map((fish) => {
+                  const def = POND_FISHES[fish.species as PondFishSpecies];
                   if (!def) return null;
 
-                  // Compute real-time dynamic hunger & growth based on feeding status
-                  const hunger = computeAnimalHunger(
-                    animal.type,
-                    animal.fedAt || null,
-                    animal.lastYieldAt || null,
-                    nowMs,
-                    animal.stage === 'adult',
-                    animal.createdAt || null,
-                  );
-                  const growth = computeAnimalGrowthStage(
-                    animal.type,
-                    animal.createdAt || null,
-                    nowMs,
-                    animal.fedAt || null,
-                    animal.growthAccumSec || 0,
-                  );
+                  const elapsedSec = fish.fedAt
+                    ? Math.max(0, (nowMs - new Date(fish.fedAt).getTime()) / 1000)
+                    : 0;
+                  const isReady = !!fish.fedAt && elapsedSec >= def.growthDurationSec;
+                  const progressPercent = !fish.fedAt
+                    ? 0
+                    : Math.min(100, Math.round((elapsedSec / def.growthDurationSec) * 100));
+                  const currentWeightKg = fish.fedAt
+                    ? Number(
+                        (
+                          0.2 +
+                          Math.min(1, elapsedSec / def.growthDurationSec) * (def.marketWeightMaxKg - 0.2)
+                        ).toFixed(2),
+                      )
+                    : fish.weightKg || 0.2;
 
-                  const isDead = hunger.isDead || growth.isDead;
-                  const isAdult = !isDead && growth.stage === 'adult';
-                  const isGrowing = !isDead && growth.stage === 'growing';
-                  const isBaby = !isDead && growth.stage === 'baby';
-
-                  // Check feed & produce state
-                  const pending =
-                    !isDead &&
-                    !!animal.fedAt &&
-                    (!animal.lastYieldAt ||
-                      new Date(animal.lastYieldAt).getTime() < new Date(animal.fedAt).getTime());
-
-                  const fedTimeMs = animal.fedAt ? new Date(animal.fedAt).getTime() : 0;
-                  const digestionElapsedSec = fedTimeMs ? (nowMs - fedTimeMs) / 1000 : 0;
-                  const canCollect =
-                    !isDead && pending && digestionElapsedSec >= def.feedIntervalSec && isAdult;
-                  const isDigesting = !isDead && pending && !canCollect;
-
-                  const feedStock = getStockQty(def.feedItemId);
+                  const stageBadge = getPondStageBadge(fish.stage);
                   const isBusy = loadingAction !== null;
-                  const isConfirmingSell = confirmSellId === animal.id;
-
-                  const starveMins = Math.floor(hunger.starvationRemainingSec / 60);
-                  const starveSecs = hunger.starvationRemainingSec % 60;
-                  const isCritical =
-                    !isDead &&
-                    hunger.isHungry &&
-                    hunger.starvationRemainingSec <= STARVATION_WARNING_THRESHOLD_SEC;
-
-                  const breedingCandidate: BreedingCandidate = {
-                    id: animal.id,
-                    type: animal.type as AnimalType,
-                    displayName: growth.displayName,
-                    stage: growth.stage,
-                    happiness: isDead ? 0 : animal.happiness,
-                    isDead,
-                    isHungry: hunger.isHungry,
-                    bredAt: animal.bredAt ? new Date(animal.bredAt).getTime() : null,
-                  };
-                  const breedingStatus = getAnimalBreedingStatus(breedingCandidate, nowMs);
+                  const estValue = Math.round(currentWeightKg * def.pricePerKg);
 
                   return (
                     <div
-                      key={animal.id}
+                      key={fish.id}
                       style={{
-                        background: isDead
-                          ? 'rgba(30, 15, 20, 0.85)'
-                          : isCritical
-                            ? 'rgba(45, 15, 20, 0.85)'
-                            : 'rgba(30, 41, 59, 0.75)',
+                        background: 'rgba(30, 41, 59, 0.75)',
                         borderRadius: 10,
-                        border: isDead
-                          ? '1px solid rgba(239, 68, 68, 0.6)'
-                          : isCritical
-                            ? '1px solid #ef4444'
-                            : isAdult
-                              ? '1px solid rgba(16, 185, 129, 0.4)'
-                              : isGrowing
-                                ? '1px solid rgba(56, 189, 248, 0.35)'
-                                : '1px solid rgba(245, 158, 11, 0.3)',
+                        border: isReady
+                          ? '1px solid rgba(16, 185, 129, 0.5)'
+                          : fish.fedAt
+                            ? '1px solid rgba(56, 189, 248, 0.35)'
+                            : '1px solid rgba(245, 158, 11, 0.3)',
                         padding: 12,
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 10,
-                        boxShadow: isCritical
-                          ? '0 0 16px rgba(239, 68, 68, 0.55)'
+                        boxShadow: isReady
+                          ? '0 0 14px rgba(16, 185, 129, 0.25)'
                           : '0 4px 12px rgba(0, 0, 0, 0.25)',
                       }}
                     >
-                      {/* Animal Card Header */}
+                      {/* Fish Card Header */}
                       <div
                         style={{
                           display: 'flex',
@@ -1311,406 +1668,825 @@ export function FarmLivestockPanel({ me, onClose }: { me: Me; onClose: () => voi
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <img
-                            src={farmItemIcon(animal.type, 44)}
-                            alt={growth.displayName}
+                            src={farmItemIcon(def.fingerlingItemId, 40)}
+                            alt={def.name}
                             style={{
-                              width: isBaby ? 32 : isGrowing ? 38 : 44,
-                              height: isBaby ? 32 : isGrowing ? 38 : 44,
+                              width: 36,
+                              height: 36,
                               imageRendering: 'pixelated',
-                              filter: isDead ? 'grayscale(100%) opacity(45%)' : 'none',
-                              transition: 'all 0.3s ease',
                             }}
                           />
                           <div>
-                            <div
-                              style={{
-                                fontSize: 13,
-                                fontWeight: 700,
-                                color: isDead ? '#f87171' : isCritical ? '#fca5a5' : '#f8fafc',
-                              }}
-                            >
-                              {growth.displayName}
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>{def.name}</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8' }}>
+                              Thả nuôi:{' '}
+                              {fish.stockedAt
+                                ? new Date(fish.stockedAt).toLocaleTimeString('vi-VN', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })
+                                : '--:--'}
                             </div>
-                            <div style={{ fontSize: 11, color: '#94a3b8' }}>{def.name}</div>
                           </div>
                         </div>
 
-                        {/* Growth Stage Badge */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          {isCritical && (
-                            <span
-                              style={{
-                                padding: '3px 8px',
-                                borderRadius: 12,
-                                fontSize: 10,
-                                fontWeight: 700,
-                                background: '#ef4444',
-                                color: '#ffffff',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 3,
-                              }}
-                            >
-                              <AlertTriangle size={11} />
-                              <span>{starveMins}m còn lại!</span>
-                            </span>
-                          )}
-                          <span
-                            style={{
-                              padding: '3px 8px',
-                              borderRadius: 12,
-                              fontSize: 10,
-                              fontWeight: 700,
-                              background: isDead
-                                ? 'rgba(239, 68, 68, 0.22)'
-                                : isAdult
-                                  ? 'rgba(16, 185, 129, 0.18)'
-                                  : isGrowing
-                                    ? 'rgba(56, 189, 248, 0.18)'
-                                    : 'rgba(245, 158, 11, 0.18)',
-                              color: isDead
-                                ? '#ef4444'
-                                : isAdult
-                                  ? '#34d399'
-                                  : isGrowing
-                                    ? '#38bdf8'
-                                    : '#fbbf24',
-                              border: isDead
-                                ? '1px solid rgba(239, 68, 68, 0.5)'
-                                : isAdult
-                                  ? '1px solid rgba(16, 185, 129, 0.4)'
-                                  : isGrowing
-                                    ? '1px solid rgba(56, 189, 248, 0.4)'
-                                    : '1px solid rgba(245, 158, 11, 0.4)',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                            }}
-                          >
-                            {isDead ? <Skull size={11} /> : isAdult ? <Sparkles size={11} /> : null}
-                            {isDead
-                              ? 'Đã Chết (Đói)'
-                              : isAdult
-                                ? 'Trưởng Thành'
-                                : isGrowing
-                                  ? 'Đang Lớn'
-                                  : 'Con Non'}
-                          </span>
-                        </div>
+                        <span
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: 12,
+                            fontSize: 10,
+                            fontWeight: 700,
+                            background: stageBadge.bg,
+                            color: stageBadge.color,
+                            border: `1px solid ${stageBadge.border}`,
+                          }}
+                        >
+                          {stageBadge.label}
+                        </span>
                       </div>
 
-                      {/* Growth Progress Bar */}
-                      <div>
+                      {/* Weight and Growth Progress */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <div
                           style={{
                             display: 'flex',
                             justifyContent: 'space-between',
                             fontSize: 11,
-                            marginBottom: 4,
                           }}
                         >
-                          <span style={{ color: '#94a3b8' }}>
-                            {isDead
-                              ? 'Sinh trưởng: Ngừng'
-                              : !animal.fedAt && !animal.growthAccumSec
-                                ? 'Cần cho ăn để lớn'
-                                : `Độ tuổi: ${growth.progressPercent}%`}
-                          </span>
-                          <span
-                            style={{
-                              color: isDead ? '#ef4444' : isAdult ? '#34d399' : '#fbbf24',
-                              fontWeight: 600,
-                            }}
-                          >
-                            {isDead
-                              ? 'Vật nuôi đã chết'
-                              : isAdult
-                                ? 'Đạt độ lớn tối đa ✨'
-                                : !animal.fedAt && !animal.growthAccumSec
-                                  ? `Chưa lớn (cần ăn)`
-                                  : `Còn ${Math.floor(growth.remainingSec / 60)}p ${growth.remainingSec % 60}s`}
+                          <span style={{ color: '#94a3b8' }}>Trọng lượng hiện tại:</span>
+                          <span style={{ fontWeight: 700, color: '#38bdf8' }}>
+                            {currentWeightKg.toFixed(2)} / {def.marketWeightMaxKg} kg
                           </span>
                         </div>
                         <div
                           style={{
                             width: '100%',
                             height: 6,
+                            background: 'rgba(15, 23, 42, 0.8)',
                             borderRadius: 3,
-                            background: 'rgba(15, 23, 42, 0.6)',
                             overflow: 'hidden',
                           }}
                         >
                           <div
                             style={{
-                              width: `${isDead ? 0 : growth.progressPercent}%`,
+                              width: `${progressPercent}%`,
                               height: '100%',
+                              background: isReady ? '#10b981' : '#0284c7',
                               borderRadius: 3,
-                              background: isDead
-                                ? '#64748b'
-                                : isAdult
-                                  ? 'linear-gradient(90deg, #10b981, #34d399)'
-                                  : isGrowing
-                                    ? 'linear-gradient(90deg, #0284c7, #38bdf8)'
-                                    : 'linear-gradient(90deg, #d97706, #f59e0b)',
-                              transition: 'width 0.5s ease',
+                              transition: 'width 0.3s ease',
                             }}
                           />
                         </div>
-                      </div>
-
-                      {/* Stats & Happiness Indicator */}
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: '1fr 1fr',
-                          gap: 8,
-                          padding: '6px 10px',
-                          borderRadius: 6,
-                          background: isDead ? 'rgba(69, 10, 10, 0.4)' : 'rgba(15, 23, 42, 0.4)',
-                          fontSize: 11,
-                        }}
-                      >
                         <div
                           style={{
                             display: 'flex',
-                            alignItems: 'center',
-                            gap: 5,
-                            color: isDead ? '#94a3b8' : '#f43f5e',
+                            justifyContent: 'space-between',
+                            fontSize: 10,
+                            color: '#94a3b8',
                           }}
                         >
-                          {isDead ? <Skull size={12} color="#ef4444" /> : <Heart size={12} fill="#f43f5e" />}
-                          <span style={{ fontWeight: 600 }}>
-                            {isDead ? '0/100' : `${animal.happiness}/100`}
-                          </span>
-                        </div>
-
-                        <div style={{ textAlign: 'right' }}>
-                          {isDead ? (
-                            <span style={{ color: '#ef4444', fontWeight: 700 }}>Chết vì bị bỏ đói</span>
-                          ) : canCollect ? (
-                            <span style={{ color: '#34d399', fontWeight: 700 }}>Có {def.yieldName}!</span>
-                          ) : isDigesting ? (
-                            <span style={{ color: '#fbbf24' }}>Đang tiêu hóa...</span>
-                          ) : hunger.isHungry ? (
-                            <span style={{ color: '#f87171', fontWeight: 700 }}>
-                              ⚠️ Đói (Chết: {starveMins}p {starveSecs}s)
-                            </span>
-                          ) : (
-                            <span style={{ color: '#cbd5e1' }}>Đang no bụng</span>
-                          )}
+                          <span>{progressPercent}% tăng trọng</span>
+                          <span>Giá trị: ~{num(estValue)} Xu</span>
                         </div>
                       </div>
 
-                      {/* Card Actions: Feed / Collect / Sell */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 'auto' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                          {/* Feed Button */}
+                      {/* Status row */}
+                      <div
+                        style={{
+                          fontSize: 11,
+                          padding: '4px 8px',
+                          borderRadius: 6,
+                          background: 'rgba(15, 23, 42, 0.5)',
+                        }}
+                      >
+                        {!fish.fedAt ? (
+                          <span style={{ color: '#fbbf24', fontWeight: 600 }}>
+                            ⚠️ Cần rải cám nổi để cá lớn
+                          </span>
+                        ) : isReady ? (
+                          <span style={{ color: '#34d399', fontWeight: 700 }}>
+                            ✨ Sẵn sàng kéo lưới xuất bán!
+                          </span>
+                        ) : (
+                          <span style={{ color: '#38bdf8' }}>
+                            ⏳ Đang lớn, còn {Math.ceil((def.growthDurationSec - elapsedSec) / 60)} phút
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Card Actions */}
+                      <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
+                        {!fish.fedAt ? (
                           <Button
-                            disabled={isBusy || pending || isDead}
-                            onClick={() => void handleFeed(animal, def)}
+                            disabled={isBusy || aquaticFeedQty <= 0}
+                            onClick={() => void handleFeedPondFish(fish, def)}
                             style={{
+                              width: '100%',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              gap: 4,
-                              padding: '6px 8px',
+                              gap: 6,
+                              padding: '6px 10px',
                               fontSize: 11,
                               borderRadius: 6,
-                              background: isDead
-                                ? 'rgba(71, 85, 105, 0.3)'
-                                : pending
-                                  ? 'rgba(71, 85, 105, 0.4)'
-                                  : '#d97706',
-                              color: isDead ? '#64748b' : '#ffffff',
-                              fontWeight: 600,
-                              cursor: isDead || pending ? 'not-allowed' : 'pointer',
+                              background: aquaticFeedQty > 0 ? '#0284c7' : 'rgba(71, 85, 105, 0.3)',
+                              color: aquaticFeedQty > 0 ? '#ffffff' : '#94a3b8',
+                              fontWeight: 700,
+                              cursor: isBusy || aquaticFeedQty <= 0 ? 'not-allowed' : 'pointer',
                               border: 'none',
                             }}
                           >
-                            <Utensils size={12} />
-                            <span>{isDead ? 'Đã Chết' : pending ? 'Đã Ăn No' : `Cho Ăn (${feedStock})`}</span>
+                            <Wheat size={12} />
+                            <span>
+                              {aquaticFeedQty > 0
+                                ? `Cho Ăn Cám Nổi (${aquaticFeedQty})`
+                                : 'Hết Cám Nổi Trong Kho'}
+                            </span>
                           </Button>
-
-                          {/* Collect Button */}
+                        ) : isReady ? (
                           <Button
-                            disabled={isBusy || !canCollect || isDead}
-                            onClick={() => void handleCollect(animal, def)}
+                            disabled={isBusy}
+                            onClick={() => void handleHarvestPondFish(fish, def)}
                             style={{
+                              width: '100%',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              gap: 4,
-                              padding: '6px 8px',
+                              gap: 6,
+                              padding: '6px 10px',
                               fontSize: 11,
                               borderRadius: 6,
-                              background: canCollect ? '#10b981' : 'rgba(71, 85, 105, 0.3)',
-                              color: canCollect ? '#ffffff' : '#94a3b8',
-                              fontWeight: 600,
-                              cursor: canCollect ? 'pointer' : 'not-allowed',
+                              background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                              color: '#ffffff',
+                              fontWeight: 700,
+                              cursor: isBusy ? 'not-allowed' : 'pointer',
                               border: 'none',
+                              boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)',
                             }}
                           >
                             <Sparkles size={12} />
-                            <span>Thu Hoạch</span>
+                            <span>Kéo Lưới Thu Hoạch (~{num(estValue)} Xu)</span>
                           </Button>
-                        </div>
-
-                        {/* Breeding Action Row (Adult Living Animals) */}
-                        {isAdult && !isDead && (
-                          <div>
-                            {breedingStatus.canBreed ? (
-                              <button
-                                type="button"
-                                disabled={isBusy}
-                                onClick={() => {
-                                  play('click');
-                                  setSelectedBreedingParent(animal);
-                                }}
-                                style={{
-                                  width: '100%',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: 6,
-                                  padding: '6px 10px',
-                                  fontSize: 11,
-                                  borderRadius: 6,
-                                  background: 'linear-gradient(90deg, #ec4899 0%, #db2777 100%)',
-                                  color: '#ffffff',
-                                  fontWeight: 700,
-                                  cursor: isBusy ? 'not-allowed' : 'pointer',
-                                  border: '1px solid #f472b6',
-                                  boxShadow: '0 2px 6px rgba(236, 72, 153, 0.3)',
-                                  transition: 'all 0.2s ease',
-                                }}
-                                title="Chọn ghép đôi với con vật cùng loài để sinh sản ra con non mới"
-                              >
-                                <span>💕 Ghép Đôi Sinh Sản</span>
-                              </button>
-                            ) : (
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  padding: '5px 8px',
-                                  fontSize: 10,
-                                  borderRadius: 6,
-                                  background: 'rgba(244, 114, 182, 0.08)',
-                                  border: '1px dashed rgba(244, 114, 182, 0.3)',
-                                  color: '#f472b6',
-                                  textAlign: 'center',
-                                }}
-                              >
-                                <span>
-                                  {breedingStatus.cooldownRemainingSec > 0
-                                    ? `⏳ Nghỉ sinh sản (còn ${Math.ceil(breedingStatus.cooldownRemainingSec / 60)}p)`
-                                    : animal.happiness < BREEDING_MIN_HAPPINESS
-                                      ? `💕 Cần ≥${BREEDING_MIN_HAPPINESS}% hạnh phúc (${animal.happiness}%)`
-                                      : hunger.isHungry
-                                        ? '🌾 Cần ăn no để ghép đôi'
-                                        : (breedingStatus.reason ?? 'Chưa sẵn sàng ghép đôi')}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Sell / Clean Animal Button */}
-                        {!isConfirmingSell ? (
-                          <button
-                            type="button"
-                            disabled={isBusy}
-                            onClick={() => {
-                              if (isDead) {
-                                void handleSell(animal, 0, growth.displayName);
-                              } else {
-                                play('click');
-                                setConfirmSellId(animal.id);
-                              }
-                            }}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              padding: '6px 10px',
-                              borderRadius: 6,
-                              background: isDead ? 'rgba(239, 68, 68, 0.25)' : 'rgba(239, 68, 68, 0.12)',
-                              border: isDead
-                                ? '1px solid rgba(239, 68, 68, 0.6)'
-                                : '1px solid rgba(239, 68, 68, 0.3)',
-                              color: '#fca5a5',
-                              fontSize: 11,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <span>{isDead ? '💀 Dọn dẹp xác chết (Bấm dọn ngay)' : 'Bán con vật'}</span>
-                            <span style={{ fontWeight: 700, color: isDead ? '#f87171' : '#fef08a' }}>
-                              {num(growth.sellPrice)} Xu
-                              {isAdult && !isDead ? (
-                                <span style={{ color: '#34d399', marginLeft: 4 }}>
-                                  (+{num(growth.sellPrice - def.stockPrice)} Lãi)
-                                </span>
-                              ) : null}
-                            </span>
-                          </button>
                         ) : (
-                          <div
+                          <Button
+                            disabled
                             style={{
+                              width: '100%',
                               display: 'flex',
                               alignItems: 'center',
+                              justifyContent: 'center',
                               gap: 6,
-                              padding: 6,
-                              background: 'rgba(239, 68, 68, 0.25)',
+                              padding: '6px 10px',
+                              fontSize: 11,
                               borderRadius: 6,
-                              border: '1px solid #ef4444',
+                              background: 'rgba(71, 85, 105, 0.3)',
+                              color: '#94a3b8',
+                              fontWeight: 600,
+                              cursor: 'not-allowed',
+                              border: 'none',
                             }}
                           >
-                            <span style={{ fontSize: 11, color: '#ffffff', flex: 1 }}>
-                              {isDead
-                                ? `Dọn xác ${def.name} để giải phóng chuồng?`
-                                : `Bán ${growth.displayName} lấy ${num(growth.sellPrice)} Xu?`}
-                            </span>
-                            <Button
-                              disabled={isBusy}
-                              onClick={() => void handleSell(animal, growth.sellPrice, growth.displayName)}
-                              style={{
-                                padding: '3px 8px',
-                                fontSize: 11,
-                                borderRadius: 4,
-                                background: '#ef4444',
-                                color: '#fff',
-                                fontWeight: 700,
-                                border: 'none',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {isDead ? 'Dọn' : 'Bán'}
-                            </Button>
-                            <Button
-                              onClick={() => setConfirmSellId(null)}
-                              style={{
-                                padding: '3px 8px',
-                                fontSize: 11,
-                                borderRadius: 4,
-                                background: 'rgba(71, 85, 105, 0.8)',
-                                color: '#cbd5e1',
-                                border: 'none',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Hủy
-                            </Button>
-                          </div>
+                            <span>Đang Phát Triển ({progressPercent}%)</span>
+                          </Button>
                         )}
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {isLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8', fontSize: 13 }}>
+                Đang tải dữ liệu trang trại...
+              </div>
+            ) : filteredAnimals.length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '40px 20px',
+                  background: 'rgba(15, 23, 42, 0.4)',
+                  borderRadius: 10,
+                  border: '1px solid rgba(148, 163, 184, 0.1)',
+                }}
+              >
+                <div style={{ fontSize: 40, marginBottom: 8 }}>{currentConfig.icon}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc', marginBottom: 4 }}>
+                  Chưa có con vật nào trong {currentConfig.label}
+                </div>
+                <div style={{ fontSize: 12, color: '#94a3b8', maxWidth: 420, margin: '0 auto 16px auto' }}>
+                  Hãy ghé Tiệm Bác Sáu để chọn mua con giống khỏe mạnh, nuôi lớn từng ngày và xuất bán thu về
+                  lợi nhuận cao!
+                </div>
+                <Button
+                  onClick={() => {
+                    play('click');
+                    useUi.getState().setPanel('farm-shop');
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    background: '#f59e0b',
+                    color: '#000',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Store size={15} />
+                  <span>Mua Con Giống Tại Tiệm Bác Sáu</span>
+                </Button>
+              </div>
+            ) : (
+              <>
+                {(() => {
+                  const deadInCurrentFacility = filteredAnimals.filter((a) => {
+                    const hunger = computeAnimalHunger(
+                      a.type,
+                      a.fedAt || null,
+                      a.lastYieldAt || null,
+                      nowMs,
+                      a.stage === 'adult',
+                      a.createdAt || null,
+                    );
+                    const growth = computeAnimalGrowthStage(
+                      a.type,
+                      a.createdAt || null,
+                      nowMs,
+                      a.fedAt || null,
+                      a.growthAccumSec || 0,
+                    );
+                    return hunger.isDead || growth.isDead;
+                  });
+
+                  if (deadInCurrentFacility.length === 0) return null;
+
+                  return (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 12px',
+                        background: 'rgba(239, 68, 68, 0.2)',
+                        border: '1px solid rgba(239, 68, 68, 0.5)',
+                        borderRadius: 8,
+                        color: '#fca5a5',
+                        fontSize: 12,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>💀</span>
+                        <span>
+                          Có <b>{deadInCurrentFacility.length}</b> con vật đã chết vì bị đói trong khu vực
+                          này.
+                        </span>
+                      </div>
+                      <Button
+                        disabled={loadingAction !== null}
+                        onClick={() => void handleCleanAllDead(deadInCurrentFacility)}
+                        style={{
+                          padding: '4px 12px',
+                          fontSize: 12,
+                          borderRadius: 6,
+                          background: '#ef4444',
+                          color: '#ffffff',
+                          fontWeight: 700,
+                          border: 'none',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {loadingAction === 'clean_all_dead'
+                          ? 'Đang dọn...'
+                          : `Dọn Sạch Tất Cả Xác (${deadInCurrentFacility.length})`}
+                      </Button>
+                    </div>
+                  );
+                })()}
+
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))',
+                    gap: 12,
+                    maxHeight: 460,
+                    overflowY: 'auto',
+                    paddingRight: 4,
+                  }}
+                >
+                  {filteredAnimals.map((animal) => {
+                    const def = (ANIMALS as Record<string, (typeof ANIMALS)[AnimalType]>)[animal.type];
+                    if (!def) return null;
+
+                    // Compute real-time dynamic hunger & growth based on feeding status
+                    const hunger = computeAnimalHunger(
+                      animal.type,
+                      animal.fedAt || null,
+                      animal.lastYieldAt || null,
+                      nowMs,
+                      animal.stage === 'adult',
+                      animal.createdAt || null,
+                    );
+                    const growth = computeAnimalGrowthStage(
+                      animal.type,
+                      animal.createdAt || null,
+                      nowMs,
+                      animal.fedAt || null,
+                      animal.growthAccumSec || 0,
+                    );
+
+                    const isDead = hunger.isDead || growth.isDead;
+                    const isAdult = !isDead && growth.stage === 'adult';
+                    const isGrowing = !isDead && growth.stage === 'growing';
+                    const isBaby = !isDead && growth.stage === 'baby';
+
+                    // Check feed & produce state
+                    const pending =
+                      !isDead &&
+                      !!animal.fedAt &&
+                      (!animal.lastYieldAt ||
+                        new Date(animal.lastYieldAt).getTime() < new Date(animal.fedAt).getTime());
+
+                    const fedTimeMs = animal.fedAt ? new Date(animal.fedAt).getTime() : 0;
+                    const digestionElapsedSec = fedTimeMs ? (nowMs - fedTimeMs) / 1000 : 0;
+                    const canCollect =
+                      !isDead && pending && digestionElapsedSec >= def.feedIntervalSec && isAdult;
+                    const isDigesting = !isDead && pending && !canCollect;
+
+                    const feedStock = getStockQty(def.feedItemId);
+                    const isBusy = loadingAction !== null;
+                    const isConfirmingSell = confirmSellId === animal.id;
+
+                    const starveMins = Math.floor(hunger.starvationRemainingSec / 60);
+                    const starveSecs = hunger.starvationRemainingSec % 60;
+                    const isCritical =
+                      !isDead &&
+                      hunger.isHungry &&
+                      hunger.starvationRemainingSec <= STARVATION_WARNING_THRESHOLD_SEC;
+
+                    const breedingCandidate: BreedingCandidate = {
+                      id: animal.id,
+                      type: animal.type as AnimalType,
+                      displayName: growth.displayName,
+                      stage: growth.stage,
+                      happiness: isDead ? 0 : animal.happiness,
+                      isDead,
+                      isHungry: hunger.isHungry,
+                      bredAt: animal.bredAt ? new Date(animal.bredAt).getTime() : null,
+                    };
+                    const breedingStatus = getAnimalBreedingStatus(breedingCandidate, nowMs);
+
+                    return (
+                      <div
+                        key={animal.id}
+                        style={{
+                          background: isDead
+                            ? 'rgba(30, 15, 20, 0.85)'
+                            : isCritical
+                              ? 'rgba(45, 15, 20, 0.85)'
+                              : 'rgba(30, 41, 59, 0.75)',
+                          borderRadius: 10,
+                          border: isDead
+                            ? '1px solid rgba(239, 68, 68, 0.6)'
+                            : isCritical
+                              ? '1px solid #ef4444'
+                              : isAdult
+                                ? '1px solid rgba(16, 185, 129, 0.4)'
+                                : isGrowing
+                                  ? '1px solid rgba(56, 189, 248, 0.35)'
+                                  : '1px solid rgba(245, 158, 11, 0.3)',
+                          padding: 12,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 10,
+                          boxShadow: isCritical
+                            ? '0 0 16px rgba(239, 68, 68, 0.55)'
+                            : '0 4px 12px rgba(0, 0, 0, 0.25)',
+                        }}
+                      >
+                        {/* Animal Card Header */}
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <img
+                              src={farmItemIcon(animal.type, 44)}
+                              alt={growth.displayName}
+                              style={{
+                                width: isBaby ? 32 : isGrowing ? 38 : 44,
+                                height: isBaby ? 32 : isGrowing ? 38 : 44,
+                                imageRendering: 'pixelated',
+                                filter: isDead ? 'grayscale(100%) opacity(45%)' : 'none',
+                                transition: 'all 0.3s ease',
+                              }}
+                            />
+                            <div>
+                              <div
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 700,
+                                  color: isDead ? '#f87171' : isCritical ? '#fca5a5' : '#f8fafc',
+                                }}
+                              >
+                                {growth.displayName}
+                              </div>
+                              <div style={{ fontSize: 11, color: '#94a3b8' }}>{def.name}</div>
+                            </div>
+                          </div>
+
+                          {/* Growth Stage Badge */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {isCritical && (
+                              <span
+                                style={{
+                                  padding: '3px 8px',
+                                  borderRadius: 12,
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  background: '#ef4444',
+                                  color: '#ffffff',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 3,
+                                }}
+                              >
+                                <AlertTriangle size={11} />
+                                <span>{starveMins}m còn lại!</span>
+                              </span>
+                            )}
+                            <span
+                              style={{
+                                padding: '3px 8px',
+                                borderRadius: 12,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                background: isDead
+                                  ? 'rgba(239, 68, 68, 0.22)'
+                                  : isAdult
+                                    ? 'rgba(16, 185, 129, 0.18)'
+                                    : isGrowing
+                                      ? 'rgba(56, 189, 248, 0.18)'
+                                      : 'rgba(245, 158, 11, 0.18)',
+                                color: isDead
+                                  ? '#ef4444'
+                                  : isAdult
+                                    ? '#34d399'
+                                    : isGrowing
+                                      ? '#38bdf8'
+                                      : '#fbbf24',
+                                border: isDead
+                                  ? '1px solid rgba(239, 68, 68, 0.5)'
+                                  : isAdult
+                                    ? '1px solid rgba(16, 185, 129, 0.4)'
+                                    : isGrowing
+                                      ? '1px solid rgba(56, 189, 248, 0.4)'
+                                      : '1px solid rgba(245, 158, 11, 0.4)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}
+                            >
+                              {isDead ? <Skull size={11} /> : isAdult ? <Sparkles size={11} /> : null}
+                              {isDead
+                                ? 'Đã Chết (Đói)'
+                                : isAdult
+                                  ? 'Trưởng Thành'
+                                  : isGrowing
+                                    ? 'Đang Lớn'
+                                    : 'Con Non'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Growth Progress Bar */}
+                        <div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              fontSize: 11,
+                              marginBottom: 4,
+                            }}
+                          >
+                            <span style={{ color: '#94a3b8' }}>
+                              {isDead
+                                ? 'Sinh trưởng: Ngừng'
+                                : !animal.fedAt && !animal.growthAccumSec
+                                  ? 'Cần cho ăn để lớn'
+                                  : `Độ tuổi: ${growth.progressPercent}%`}
+                            </span>
+                            <span
+                              style={{
+                                color: isDead ? '#ef4444' : isAdult ? '#34d399' : '#fbbf24',
+                                fontWeight: 600,
+                              }}
+                            >
+                              {isDead
+                                ? 'Vật nuôi đã chết'
+                                : isAdult
+                                  ? 'Đạt độ lớn tối đa ✨'
+                                  : !animal.fedAt && !animal.growthAccumSec
+                                    ? `Chưa lớn (cần ăn)`
+                                    : `Còn ${Math.floor(growth.remainingSec / 60)}p ${growth.remainingSec % 60}s`}
+                            </span>
+                          </div>
+                          <div
+                            style={{
+                              width: '100%',
+                              height: 6,
+                              borderRadius: 3,
+                              background: 'rgba(15, 23, 42, 0.6)',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: `${isDead ? 0 : growth.progressPercent}%`,
+                                height: '100%',
+                                borderRadius: 3,
+                                background: isDead
+                                  ? '#64748b'
+                                  : isAdult
+                                    ? 'linear-gradient(90deg, #10b981, #34d399)'
+                                    : isGrowing
+                                      ? 'linear-gradient(90deg, #0284c7, #38bdf8)'
+                                      : 'linear-gradient(90deg, #d97706, #f59e0b)',
+                                transition: 'width 0.5s ease',
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Stats & Happiness Indicator */}
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr',
+                            gap: 8,
+                            padding: '6px 10px',
+                            borderRadius: 6,
+                            background: isDead ? 'rgba(69, 10, 10, 0.4)' : 'rgba(15, 23, 42, 0.4)',
+                            fontSize: 11,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              color: isDead ? '#94a3b8' : '#f43f5e',
+                            }}
+                          >
+                            {isDead ? (
+                              <Skull size={12} color="#ef4444" />
+                            ) : (
+                              <Heart size={12} fill="#f43f5e" />
+                            )}
+                            <span style={{ fontWeight: 600 }}>
+                              {isDead ? '0/100' : `${animal.happiness}/100`}
+                            </span>
+                          </div>
+
+                          <div style={{ textAlign: 'right' }}>
+                            {isDead ? (
+                              <span style={{ color: '#ef4444', fontWeight: 700 }}>Chết vì bị bỏ đói</span>
+                            ) : canCollect ? (
+                              <span style={{ color: '#34d399', fontWeight: 700 }}>Có {def.yieldName}!</span>
+                            ) : isDigesting ? (
+                              <span style={{ color: '#fbbf24' }}>Đang tiêu hóa...</span>
+                            ) : hunger.isHungry ? (
+                              <span style={{ color: '#f87171', fontWeight: 700 }}>
+                                ⚠️ Đói (Chết: {starveMins}p {starveSecs}s)
+                              </span>
+                            ) : (
+                              <span style={{ color: '#cbd5e1' }}>Đang no bụng</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Card Actions: Feed / Collect / Sell */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 'auto' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                            {/* Feed Button */}
+                            <Button
+                              disabled={isBusy || pending || isDead}
+                              onClick={() => void handleFeed(animal, def)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 4,
+                                padding: '6px 8px',
+                                fontSize: 11,
+                                borderRadius: 6,
+                                background: isDead
+                                  ? 'rgba(71, 85, 105, 0.3)'
+                                  : pending
+                                    ? 'rgba(71, 85, 105, 0.4)'
+                                    : '#d97706',
+                                color: isDead ? '#64748b' : '#ffffff',
+                                fontWeight: 600,
+                                cursor: isDead || pending ? 'not-allowed' : 'pointer',
+                                border: 'none',
+                              }}
+                            >
+                              <Utensils size={12} />
+                              <span>
+                                {isDead ? 'Đã Chết' : pending ? 'Đã Ăn No' : `Cho Ăn (${feedStock})`}
+                              </span>
+                            </Button>
+
+                            {/* Collect Button */}
+                            <Button
+                              disabled={isBusy || !canCollect || isDead}
+                              onClick={() => void handleCollect(animal, def)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 4,
+                                padding: '6px 8px',
+                                fontSize: 11,
+                                borderRadius: 6,
+                                background: canCollect ? '#10b981' : 'rgba(71, 85, 105, 0.3)',
+                                color: canCollect ? '#ffffff' : '#94a3b8',
+                                fontWeight: 600,
+                                cursor: canCollect ? 'pointer' : 'not-allowed',
+                                border: 'none',
+                              }}
+                            >
+                              <Sparkles size={12} />
+                              <span>Thu Hoạch</span>
+                            </Button>
+                          </div>
+
+                          {/* Breeding Action Row (Adult Living Animals) */}
+                          {isAdult && !isDead && (
+                            <div>
+                              {breedingStatus.canBreed ? (
+                                <button
+                                  type="button"
+                                  disabled={isBusy}
+                                  onClick={() => {
+                                    play('click');
+                                    setSelectedBreedingParent(animal);
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 6,
+                                    padding: '6px 10px',
+                                    fontSize: 11,
+                                    borderRadius: 6,
+                                    background: 'linear-gradient(90deg, #ec4899 0%, #db2777 100%)',
+                                    color: '#ffffff',
+                                    fontWeight: 700,
+                                    cursor: isBusy ? 'not-allowed' : 'pointer',
+                                    border: '1px solid #f472b6',
+                                    boxShadow: '0 2px 6px rgba(236, 72, 153, 0.3)',
+                                    transition: 'all 0.2s ease',
+                                  }}
+                                  title="Chọn ghép đôi với con vật cùng loài để sinh sản ra con non mới"
+                                >
+                                  <span>💕 Ghép Đôi Sinh Sản</span>
+                                </button>
+                              ) : (
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '5px 8px',
+                                    fontSize: 10,
+                                    borderRadius: 6,
+                                    background: 'rgba(244, 114, 182, 0.08)',
+                                    border: '1px dashed rgba(244, 114, 182, 0.3)',
+                                    color: '#f472b6',
+                                    textAlign: 'center',
+                                  }}
+                                >
+                                  <span>
+                                    {breedingStatus.cooldownRemainingSec > 0
+                                      ? `⏳ Nghỉ sinh sản (còn ${Math.ceil(breedingStatus.cooldownRemainingSec / 60)}p)`
+                                      : animal.happiness < BREEDING_MIN_HAPPINESS
+                                        ? `💕 Cần ≥${BREEDING_MIN_HAPPINESS}% hạnh phúc (${animal.happiness}%)`
+                                        : hunger.isHungry
+                                          ? '🌾 Cần ăn no để ghép đôi'
+                                          : (breedingStatus.reason ?? 'Chưa sẵn sàng ghép đôi')}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Sell / Clean Animal Button */}
+                          {!isConfirmingSell ? (
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => {
+                                if (isDead) {
+                                  void handleSell(animal, 0, growth.displayName);
+                                } else {
+                                  play('click');
+                                  setConfirmSellId(animal.id);
+                                }
+                              }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '6px 10px',
+                                borderRadius: 6,
+                                background: isDead ? 'rgba(239, 68, 68, 0.25)' : 'rgba(239, 68, 68, 0.12)',
+                                border: isDead
+                                  ? '1px solid rgba(239, 68, 68, 0.6)'
+                                  : '1px solid rgba(239, 68, 68, 0.3)',
+                                color: '#fca5a5',
+                                fontSize: 11,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <span>{isDead ? '💀 Dọn dẹp xác chết (Bấm dọn ngay)' : 'Bán con vật'}</span>
+                              <span style={{ fontWeight: 700, color: isDead ? '#f87171' : '#fef08a' }}>
+                                {num(growth.sellPrice)} Xu
+                                {isAdult && !isDead ? (
+                                  <span style={{ color: '#34d399', marginLeft: 4 }}>
+                                    (+{num(growth.sellPrice - def.stockPrice)} Lãi)
+                                  </span>
+                                ) : null}
+                              </span>
+                            </button>
+                          ) : (
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: 6,
+                                background: 'rgba(239, 68, 68, 0.25)',
+                                borderRadius: 6,
+                                border: '1px solid #ef4444',
+                              }}
+                            >
+                              <span style={{ fontSize: 11, color: '#ffffff', flex: 1 }}>
+                                {isDead
+                                  ? `Dọn xác ${def.name} để giải phóng chuồng?`
+                                  : `Bán ${growth.displayName} lấy ${num(growth.sellPrice)} Xu?`}
+                              </span>
+                              <Button
+                                disabled={isBusy}
+                                onClick={() => void handleSell(animal, growth.sellPrice, growth.displayName)}
+                                style={{
+                                  padding: '3px 8px',
+                                  fontSize: 11,
+                                  borderRadius: 4,
+                                  background: '#ef4444',
+                                  color: '#fff',
+                                  fontWeight: 700,
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {isDead ? 'Dọn' : 'Bán'}
+                              </Button>
+                              <Button
+                                onClick={() => setConfirmSellId(null)}
+                                style={{
+                                  padding: '3px 8px',
+                                  fontSize: 11,
+                                  borderRadius: 4,
+                                  background: 'rgba(71, 85, 105, 0.8)',
+                                  color: '#cbd5e1',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Hủy
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Breeding Partner Selection Modal Overlay */}

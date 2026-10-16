@@ -218,6 +218,18 @@ export function farmRoutes(app: FastifyInstance, ctx: AppContext) {
     return farmService.stockPondFish(ctx, user.id, body.fishSpecies);
   });
 
+  // 11b. Feed All Pond Fishes in One Click (Cho cả ao cá ăn)
+  app.post('/api/farm/pond/feed-all', async (req) => {
+    const user = requireUser(req);
+    return farmService.feedAllPondFishes(ctx, user.id);
+  });
+
+  // 11c. Harvest All Ready Pond Fishes in One Click (Thu hoạch toàn bộ cá đạt chuẩn)
+  app.post('/api/farm/pond/harvest-all', async (req) => {
+    const user = requireUser(req);
+    return farmService.harvestAllPondFishes(ctx, user.id);
+  });
+
   // 12. Warehouse Upgrade
   app.post('/api/farm/warehouse/upgrade', async (req) => {
     const user = requireUser(req);

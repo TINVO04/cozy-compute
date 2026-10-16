@@ -811,6 +811,114 @@ describe('Cozy Farm System E2E Specification', () => {
         expect(basa.weightKg).toBeGreaterThan(initialWeight);
       });
 
+      it('F6.5b: batch feeds all pond fishes with 1-click endpoint /api/farm/pond/feed-all', async () => {
+        const owner = await register(h);
+        await makeEligible(h, owner.id, 10000);
+
+        // Buy 2 fingerlings and 2 feeds
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_fingerling_tra', quantity: 1 },
+        });
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_fingerling_loc', quantity: 1 },
+        });
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'feed_aquatic', quantity: 2 },
+        });
+
+        // Stock both fingerlings into pond
+        await api(h, 'POST', '/api/farm/pond/stock', {
+          token: owner.token,
+          body: { fishSpecies: 'tra' },
+        });
+        await api(h, 'POST', '/api/farm/pond/stock', {
+          token: owner.token,
+          body: { fishSpecies: 'loc' },
+        });
+
+        // Batch feed all pond fishes
+        const feedAllRes = await api(h, 'POST', '/api/farm/pond/feed-all', {
+          token: owner.token,
+        });
+
+        expect(feedAllRes.status).toBe(200);
+        expect(feedAllRes.body.ok).toBe(true);
+        expect(feedAllRes.body.fedCount).toBe(2);
+
+        // Verify both are now marked fed
+        const meRes = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(meRes.body.pondFishes.length).toBe(2);
+        for (const f of meRes.body.pondFishes) {
+          expect(f.fedAt).toBeTruthy();
+        }
+
+        // Calling feed-all again when all are fed returns 0 fedCount
+        const feedAgainRes = await api(h, 'POST', '/api/farm/pond/feed-all', {
+          token: owner.token,
+        });
+        expect(feedAgainRes.status).toBe(200);
+        expect(feedAgainRes.body.fedCount).toBe(0);
+      });
+
+      it('F6.5c: batch harvests all ready pond fishes with 1-click endpoint /api/farm/pond/harvest-all', async () => {
+        const owner = await register(h);
+        await makeEligible(h, owner.id, 10000);
+
+        // Buy fingerling & feed
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_fingerling_tra', quantity: 1 },
+        });
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'feed_aquatic', quantity: 1 },
+        });
+
+        // Stock and feed
+        await api(h, 'POST', '/api/farm/pond/stock', {
+          token: owner.token,
+          body: { fishSpecies: 'tra' },
+        });
+        await api(h, 'POST', '/api/farm/pond/feed-all', {
+          token: owner.token,
+        });
+
+        // Try harvesting before ready
+        const earlyRes = await api(h, 'POST', '/api/farm/pond/harvest-all', {
+          token: owner.token,
+        });
+        expect(earlyRes.status).toBe(200);
+        expect(earlyRes.body.harvestedCount).toBe(0);
+
+        // Advance time past growth duration (900 sec for tra)
+        h.clock.now += 1000 * 1000;
+
+        // Batch harvest all ready fish
+        const harvestRes = await api(h, 'POST', '/api/farm/pond/harvest-all', {
+          token: owner.token,
+        });
+        expect(harvestRes.status).toBe(200);
+        expect(harvestRes.body.ok).toBe(true);
+        expect(harvestRes.body.harvestedCount).toBe(1);
+
+        // Verify pond is now empty and warehouse has harvested item
+        const meAfter = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(meAfter.body.pondFishes.length).toBe(0);
+        const harvestedFish = meAfter.body.warehouse.items.find(
+          (i: { itemId: string }) => i.itemId === 'fish_pond_tra_harvest',
+        );
+        expect(harvestedFish).toBeDefined();
+        expect(harvestedFish.quantity).toBe(1);
+      });
+
       it('F6.6: tracks livestock growth stages over time and sells mature animal for coins', async () => {
         const owner = await register(h);
         await makeEligible(h, owner.id, 10000);

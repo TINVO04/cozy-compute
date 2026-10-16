@@ -415,8 +415,16 @@ export function farmItemIcon(itemId: string, size = 48): string {
       rect(ctx, '#fbcfe8', cx - 1, cy + 5, 2, 1); // pink nose
       // Wool puff on top
       oval(ctx, '#f8fafc', cx, cy - 8, 6, 4);
-    } else if (resolvedId.includes('fingerling') || resolvedId.includes('tom')) {
-      // Fish / fingerling swimming in clear water bag
+    } else if (
+      resolvedId.includes('fingerling') ||
+      resolvedId.includes('tom') ||
+      resolvedId.includes('tra') ||
+      resolvedId.includes('basa') ||
+      resolvedId.includes('loc') ||
+      resolvedId.includes('bong_tuong') ||
+      resolvedId.includes('fish')
+    ) {
+      // Fish / fingerling swimming in clear water bag or pond
       oval(ctx, '#0284c7', cx, cy, 13, 14);
       oval(ctx, '#38bdf8', cx, cy, 12, 13);
       oval(ctx, '#bae6fd', cx, cy + 1, 10, 11);

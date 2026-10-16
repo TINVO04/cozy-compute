@@ -1533,6 +1533,86 @@ async function stockPondFishLocked(ctx: AppContext, tx: Tx, userId: string, fish
   };
 }
 
+async function feedAllPondFishesLocked(ctx: AppContext, tx: Tx, userId: string) {
+  const farm = await getOrCreateFarm(tx, userId);
+  const fishesRes = await tx.query<FarmPondFishRow>(
+    'SELECT * FROM farm_pond_fishes WHERE farm_id=$1 AND fed_at IS NULL FOR UPDATE',
+    [farm.id],
+  );
+  const unfedFishes = fishesRes.rows;
+  if (unfedFishes.length === 0) {
+    return {
+      ok: true,
+      fedCount: 0,
+      message: 'Tất cả cá trong ao đều đã được cho ăn!',
+    };
+  }
+
+  // Check feed_aquatic in warehouse
+  const whRes = await tx.query<FarmWarehouseItemRow>(
+    'SELECT * FROM farm_warehouse_items WHERE farm_id=$1 AND item_id=$2 FOR UPDATE',
+    [farm.id, 'feed_aquatic'],
+  );
+  const stock = whRes.rows[0]?.quantity ?? 0;
+  if (stock <= 0) {
+    throw badRequest('insufficient_feed', 'Kho nông trại không còn Thức Ăn Thủy Sản (Cám nổi) để cho cá ăn.');
+  }
+
+  const toFeedCount = Math.min(stock, unfedFishes.length);
+  await takeFarmItem(tx, farm.id, 'feed_aquatic', toFeedCount);
+
+  const toFeed = unfedFishes.slice(0, toFeedCount);
+  const nowDate = ctx.now();
+  for (const f of toFeed) {
+    await tx.query('UPDATE farm_pond_fishes SET fed_at=$1 WHERE id=$2', [nowDate, f.id]);
+  }
+
+  return {
+    ok: true,
+    fedCount: toFeedCount,
+    totalUnfed: unfedFishes.length,
+    remainingStock: stock - toFeedCount,
+  };
+}
+
+async function harvestAllPondFishesLocked(ctx: AppContext, tx: Tx, userId: string) {
+  const farm = await getOrCreateFarm(tx, userId);
+  const fishesRes = await tx.query<FarmPondFishRow>(
+    'SELECT * FROM farm_pond_fishes WHERE farm_id=$1 FOR UPDATE',
+    [farm.id],
+  );
+  const nowMs = ctx.now().getTime();
+  const readyFishes = fishesRes.rows.filter((f) => {
+    if (!f.fed_at) return false;
+    const def = Object.values(POND_FISHES).find((def) => def.species === f.fish_species);
+    if (!def) return false;
+    const elapsedSec = (nowMs - new Date(f.fed_at).getTime()) / 1000;
+    return elapsedSec >= def.growthDurationSec;
+  });
+
+  if (readyFishes.length === 0) {
+    return {
+      ok: true,
+      harvestedCount: 0,
+      message: 'Chưa có cá nào trong ao đạt tiêu chuẩn thu hoạch.',
+    };
+  }
+
+  const harvestedItems: Record<string, number> = {};
+  for (const f of readyFishes) {
+    const def = Object.values(POND_FISHES).find((def) => def.species === f.fish_species)!;
+    await putFarmItem(tx, farm.id, def.harvestItemId, 1);
+    await tx.query('DELETE FROM farm_pond_fishes WHERE id=$1', [f.id]);
+    harvestedItems[def.harvestItemId] = (harvestedItems[def.harvestItemId] || 0) + 1;
+  }
+
+  return {
+    ok: true,
+    harvestedCount: readyFishes.length,
+    harvestedItems,
+  };
+}
+
 async function upgradeWarehouseLocked(ctx: AppContext, tx: Tx, userId: string, idempotencyKey?: string) {
   const farm = await getOrCreateFarm(tx, userId);
   const currentCapacity = farm.warehouse_capacity;
@@ -2017,6 +2097,10 @@ export const feedAllFacilityAnimals = (ctx: AppContext, userId: string, facility
 
 export const stockPondFish = (ctx: AppContext, userId: string, species: string) =>
   farmMutation(ctx, userId, (tx) => stockPondFishLocked(ctx, tx, userId, species));
+export const feedAllPondFishes = (ctx: AppContext, userId: string) =>
+  farmMutation(ctx, userId, (tx) => feedAllPondFishesLocked(ctx, tx, userId));
+export const harvestAllPondFishes = (ctx: AppContext, userId: string) =>
+  farmMutation(ctx, userId, (tx) => harvestAllPondFishesLocked(ctx, tx, userId));
 export const upgradeWarehouse = (ctx: AppContext, userId: string, key?: string) =>
   farmMutation(ctx, userId, (tx) => upgradeWarehouseLocked(ctx, tx, userId, key));
 

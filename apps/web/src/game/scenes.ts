@@ -2299,9 +2299,10 @@ export class FarmScene extends WorldScene {
     this.interactAt(
       FARM_POIS.aquaculture_pond.x - 16,
       FARM_POIS.aquaculture_pond.y + 128,
-      'Cầu tàu câu cá',
+      'Cầu tàu ao sen (Nuôi cá & Thủy sản)',
       () => {
         play('pop');
+        useUi.getState().setLivestockFacility('pond');
         useUi.getState().setPanel('farm-care');
       },
     );
