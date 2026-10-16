@@ -1083,26 +1083,42 @@ async function sellAllProduceLocked(ctx: AppContext, tx: Tx, userId: string, ide
     }
 
     const rows = await tx.query<FarmWarehouseItemRow>(
-      "SELECT * FROM farm_warehouse_items WHERE farm_id = $1 AND (category = 'crop' OR item_id LIKE 'crop_%')",
+      `SELECT * FROM farm_warehouse_items 
+       WHERE farm_id = $1 
+         AND (category IN ('crop', 'animal_product') 
+              OR item_id LIKE 'crop_%' 
+              OR item_id LIKE 'yield_%' 
+              OR item_id LIKE 'fish_pond_%')`,
       [farm.id],
     );
     if (rows.rows.length === 0) {
-      throw badRequest('no_crops_to_sell', 'Không có nông sản nào trong kho Silo để bán.');
+      throw badRequest('no_crops_to_sell', 'Không có nông sản hay thủy sản nào trong kho Silo để bán.');
     }
     let totalCoin = 0;
     let totalItems = 0;
+    const soldItemIds: string[] = [];
     for (const item of rows.rows) {
       const crop = Object.values(CROPS).find(
         (c) => c.harvestItemId === item.item_id || c.id === item.item_id,
       );
-      const unitPrice = crop?.sellPrice ?? 20;
+      const animal = Object.values(ANIMALS).find(
+        (a) => a.yieldItemId === item.item_id || a.yieldItem === item.item_id,
+      );
+      const pondFish = Object.values(POND_FISHES).find((p) => p.harvestItemId === item.item_id);
+      let unitPrice = 0;
+      if (crop) unitPrice = crop.sellPrice;
+      else if (animal) unitPrice = animal.yieldPrice;
+      else if (pondFish) unitPrice = Math.floor(pondFish.pricePerKg * pondFish.marketWeightMinKg);
+      else continue;
+
       totalCoin += unitPrice * item.quantity;
       totalItems += item.quantity;
+      soldItemIds.push(item.id);
     }
-    await tx.query(
-      "DELETE FROM farm_warehouse_items WHERE farm_id = $1 AND (category = 'crop' OR item_id LIKE 'crop_%')",
-      [farm.id],
-    );
+    if (totalItems === 0) {
+      throw badRequest('no_crops_to_sell', 'Không có nông sản hay thủy sản nào trong kho Silo để bán.');
+    }
+    await tx.query('DELETE FROM farm_warehouse_items WHERE id = ANY($1)', [soldItemIds]);
     const ledger = await postLedger(tx, {
       userId,
       currency: 'coin',

@@ -919,6 +919,70 @@ describe('Cozy Farm System E2E Specification', () => {
         expect(harvestedFish.quantity).toBe(1);
       });
 
+      it('F6.5d: batch sells all farm produce, animal yields and harvested fish with /api/farm/shop/sell-all', async () => {
+        const owner = await register(h);
+        await makeEligible(h, owner.id, 10000);
+
+        // Put a harvested pond fish, crop, and animal yield in farm warehouse
+        const fishRes = await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_fingerling_tra', quantity: 1 },
+        });
+        expect(fishRes.status).toBe(200);
+
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'feed_aquatic', quantity: 1 },
+        });
+
+        await api(h, 'POST', '/api/farm/pond/stock', {
+          token: owner.token,
+          body: { fishSpecies: 'tra' },
+        });
+        await api(h, 'POST', '/api/farm/pond/feed-all', {
+          token: owner.token,
+        });
+
+        // Fast forward time to maturity and batch harvest
+        h.clock.now += 1000 * 1000;
+        await api(h, 'POST', '/api/farm/pond/harvest-all', {
+          token: owner.token,
+        });
+
+        const balBefore = await getLedgerCoin(owner.id);
+
+        // Sell all produce with 1-click endpoint
+        const sellAllRes = await api(h, 'POST', '/api/farm/shop/sell-all', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+        });
+
+        expect(sellAllRes.status).toBe(200);
+        expect(sellAllRes.body.ok).toBe(true);
+        expect(sellAllRes.body.totalItemsSold).toBeGreaterThan(0);
+        expect(sellAllRes.body.totalCoinEarned).toBeGreaterThan(0);
+
+        const balAfter = await getLedgerCoin(owner.id);
+        expect(balAfter).toBe(balBefore + sellAllRes.body.totalCoinEarned);
+
+        // Warehouse is now empty of sellable produce
+        const meAfter = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        const hasFish = meAfter.body.warehouse.items.some(
+          (i: { itemId: string }) => i.itemId === 'fish_pond_tra_harvest',
+        );
+        expect(hasFish).toBe(false);
+
+        // Re-invoking when empty returns 400
+        const emptySellRes = await api(h, 'POST', '/api/farm/shop/sell-all', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+        });
+        expect(emptySellRes.status).toBe(400);
+        expect(emptySellRes.body.error).toBe('no_crops_to_sell');
+      });
+
       it('F6.6: tracks livestock growth stages over time and sells mature animal for coins', async () => {
         const owner = await register(h);
         await makeEligible(h, owner.id, 10000);

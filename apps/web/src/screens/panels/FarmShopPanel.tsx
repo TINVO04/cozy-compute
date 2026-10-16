@@ -18,7 +18,7 @@ import { useUi } from '../../lib/store';
 import { Button, CoinIcon, Panel } from '../../ui/primitives';
 
 type ShopTab = 'buy' | 'sell' | 'contracts';
-type ShopCategory = 'all' | 'seeds' | 'livestock' | 'feed' | 'supplies';
+type ShopCategory = 'all' | 'seeds' | 'livestock' | 'aquaculture' | 'feed' | 'supplies';
 
 interface WarehouseItem {
   id: string;
@@ -247,6 +247,12 @@ export function FarmShopPanel({ me, onClose }: { me: Me; onClose: () => void }) 
 
   const filteredShopItems = BAC_SAU_SHOP_ITEMS.filter((item) => {
     if (categoryFilter === 'all') return true;
+    if (categoryFilter === 'aquaculture') {
+      return item.id.startsWith('stock_fingerling_') || item.id === 'feed_aquatic';
+    }
+    if (categoryFilter === 'livestock') {
+      return item.category === 'livestock' && !item.id.startsWith('stock_fingerling_');
+    }
     return item.category === categoryFilter;
   });
 
@@ -373,6 +379,7 @@ export function FarmShopPanel({ me, onClose }: { me: Me; onClose: () => void }) 
                 { id: 'all', label: 'Tất Cả' },
                 { id: 'seeds', label: 'Hạt Giống' },
                 { id: 'livestock', label: 'Con Giống' },
+                { id: 'aquaculture', label: 'Cá Giống & Thủy Sản' },
                 { id: 'feed', label: 'Thức Ăn' },
                 { id: 'supplies', label: 'Vật Tư & Xe Cày' },
               ].map((cat) => {

@@ -25,9 +25,9 @@ interface FarmMeResponse {
 
 const TAB_CONFIG: Record<SiloTab, { label: string; icon: typeof Wheat }> = {
   crops: { label: 'Nông Sản', icon: Wheat },
-  animal_products: { label: 'Chăn Nuôi', icon: Egg },
+  animal_products: { label: 'Chăn Nuôi & Thủy Sản', icon: Egg },
   seeds_stocks: { label: 'Hạt & Con Giống', icon: Sprout },
-  supplies: { label: 'Vật Tư & Xe Cày', icon: Box },
+  supplies: { label: 'Vật Tư & Cám Nuôi', icon: Box },
 };
 
 export function FarmSiloPanel({ me, onClose }: { me: Me; onClose: () => void }) {
@@ -52,11 +52,20 @@ export function FarmSiloPanel({ me, onClose }: { me: Me; onClose: () => void }) 
     if (activeTab === 'crops') return it.tab === 'crops' || it.itemId.startsWith('crop_');
     if (activeTab === 'animal_products')
       return (
-        it.tab === 'animal_products' || it.itemId.startsWith('yield_') || it.itemId.startsWith('harvest_')
+        it.tab === 'animal_products' ||
+        it.itemId.startsWith('yield_') ||
+        it.itemId.startsWith('harvest_') ||
+        it.itemId.startsWith('fish_pond_')
       );
     if (activeTab === 'seeds_stocks')
       return it.tab === 'seeds_stocks' || it.itemId.startsWith('seed_') || it.itemId.startsWith('stock_');
-    if (activeTab === 'supplies') return it.tab === 'supplies' || it.itemId.includes('tractor');
+    if (activeTab === 'supplies')
+      return (
+        it.tab === 'supplies' ||
+        it.itemId.includes('tractor') ||
+        it.itemId.startsWith('feed_') ||
+        it.itemId.startsWith('fert_')
+      );
     return true;
   });
 
