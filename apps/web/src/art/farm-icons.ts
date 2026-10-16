@@ -343,6 +343,88 @@ export function farmItemIcon(itemId: string, size = 48): string {
     }
   }
 
+  // 3b. HARVESTED AQUACULTURE FISH & PRAWN (fish_pond_*_harvest)
+  else if (resolvedId.startsWith('fish_pond_')) {
+    // Rustic woven bamboo fish basket (giỏ cá / rổ tre miền Tây)
+    oval(ctx, '#451a03', cx, cy + 4, 15, 10);
+    oval(ctx, '#78350f', cx, cy + 3, 14, 9);
+    oval(ctx, '#b45309', cx, cy + 3, 13, 8);
+    // Woven bamboo slats
+    rect(ctx, '#92400e', cx - 10, cy + 2, 20, 2);
+    rect(ctx, '#d97706', cx - 8, cy + 4, 16, 1);
+
+    if (resolvedId.includes('tom_cang')) {
+      // Tôm càng xanh Nam Bộ with long azure pincers
+      oval(ctx, '#0e7490', cx, cy, 10, 6);
+      oval(ctx, '#06b6d4', cx - 2, cy - 1, 8, 4);
+      // Prawn segments
+      rect(ctx, '#164e63', cx - 5, cy - 2, 2, 5);
+      rect(ctx, '#164e63', cx - 1, cy - 2, 2, 5);
+      rect(ctx, '#164e63', cx + 3, cy - 2, 2, 5);
+      // Fan tail
+      rect(ctx, '#0891b2', cx + 7, cy - 3, 3, 6);
+      rect(ctx, '#06b6d4', cx + 9, cy - 2, 2, 4);
+      // Characteristic long cyan/blue pincers
+      rect(ctx, '#0284c7', cx - 9, cy - 6, 2, 6);
+      rect(ctx, '#38bdf8', cx - 11, cy - 8, 3, 3);
+      rect(ctx, '#0284c7', cx - 7, cy - 4, 2, 5);
+      rect(ctx, '#38bdf8', cx - 9, cy - 6, 3, 2);
+    } else if (resolvedId.includes('tra')) {
+      // Cá tra sông Tiền (silver-grey catfish with whiskers)
+      oval(ctx, '#1e293b', cx, cy, 13, 6);
+      oval(ctx, '#475569', cx, cy - 1, 12, 5);
+      oval(ctx, '#cbd5e1', cx, cy + 1, 10, 4);
+      rect(ctx, '#ffffff', cx - 4, cy + 1, 6, 2); // white belly
+      // Tail
+      rect(ctx, '#334155', cx + 10, cy - 3, 3, 6);
+      rect(ctx, '#475569', cx + 12, cy - 4, 2, 8);
+      // Whiskers
+      rect(ctx, '#0f172a', cx - 12, cy - 2, 3, 1);
+      rect(ctx, '#0f172a', cx - 11, cy + 1, 3, 1);
+      rect(ctx, '#000000', cx - 8, cy - 2, 1, 1); // eye
+    } else if (resolvedId.includes('basa')) {
+      // Cá basa Bến Tre (plump white-bellied with teal back)
+      oval(ctx, '#0369a1', cx, cy - 1, 12, 6);
+      oval(ctx, '#0284c7', cx, cy - 1, 11, 5);
+      oval(ctx, '#f8fafc', cx, cy + 1, 10, 4); // plump creamy belly
+      rect(ctx, '#38bdf8', cx - 2, cy - 3, 4, 2); // dorsal fin
+      rect(ctx, '#0284c7', cx + 10, cy - 3, 3, 6); // tail
+      rect(ctx, '#000000', cx - 7, cy - 2, 1, 1);
+    } else if (resolvedId.includes('loc')) {
+      // Cá lóc bông (olive green camouflage snakehead)
+      oval(ctx, '#14532d', cx, cy, 14, 5);
+      oval(ctx, '#166534', cx, cy, 13, 4);
+      oval(ctx, '#22c55e', cx - 2, cy, 10, 3);
+      // Mottled darker camouflage bands
+      rect(ctx, '#052e16', cx - 4, cy - 2, 2, 4);
+      rect(ctx, '#052e16', cx, cy - 2, 2, 4);
+      rect(ctx, '#052e16', cx + 4, cy - 2, 2, 4);
+      // Tail & sharp eye
+      rect(ctx, '#15803d', cx + 11, cy - 3, 3, 6);
+      rect(ctx, '#fde047', cx - 9, cy - 1, 2, 2);
+      rect(ctx, '#000000', cx - 9, cy - 1, 1, 1);
+    } else if (resolvedId.includes('bong_tuong')) {
+      // Cá bống tượng (golden-brown mottled goby)
+      oval(ctx, '#451a03', cx, cy, 13, 6);
+      oval(ctx, '#713f12', cx, cy, 12, 5);
+      oval(ctx, '#a16207', cx, cy - 1, 10, 4);
+      oval(ctx, '#fde047', cx - 1, cy, 7, 3);
+      // Spotted pattern
+      rect(ctx, '#291102', cx - 5, cy - 1, 2, 2);
+      rect(ctx, '#291102', cx - 1, cy - 2, 2, 2);
+      rect(ctx, '#291102', cx + 3, cy - 1, 2, 2);
+      // Fan tail & fins
+      rect(ctx, '#854d0e', cx + 10, cy - 3, 3, 6);
+      rect(ctx, '#000000', cx - 8, cy - 2, 1, 1);
+    } else {
+      oval(ctx, '#0284c7', cx, cy, 12, 6);
+      rect(ctx, '#38bdf8', cx + 10, cy - 3, 3, 6);
+    }
+    // Water splash droplets on basket
+    rect(ctx, '#bae6fd', cx - 5, cy - 5, 2, 2);
+    rect(ctx, '#ffffff', cx + 4, cy - 4, 1, 1);
+  }
+
   // 4. LIVESTOCK CON GIỐNG (stock_*)
   else if (resolvedId.startsWith('stock_')) {
     if (resolvedId.includes('chicken')) {

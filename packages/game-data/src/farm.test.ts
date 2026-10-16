@@ -358,7 +358,7 @@ describe('Cozy Farm System Game Data', () => {
     });
 
     it('defines daily market contracts with +25% bonus math', () => {
-      expect(DAILY_MARKET_CONTRACTS).toHaveLength(9);
+      expect(DAILY_MARKET_CONTRACTS).toHaveLength(18);
       for (const contract of DAILY_MARKET_CONTRACTS) {
         expect(contract.requiredQuantity).toBeGreaterThan(0);
         expect(contract.rewardCoin).toBeGreaterThan(0);
