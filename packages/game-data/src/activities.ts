@@ -874,8 +874,8 @@ export const SHADOW_TIER_CONFIG: Record<FishShadowTier, ShadowTierInfo> = {
     tier: 1,
     name: 'Bé xíu',
     label: 'Bóng 1 (Cực nhỏ)',
-    lengthPx: 26,
-    widthPx: 9,
+    lengthPx: 32,
+    widthPx: 11,
     swimSpeed: 1.35,
     wiggleSpeed: 1.6,
     color: '#1e3a5f',
@@ -884,8 +884,8 @@ export const SHADOW_TIER_CONFIG: Record<FishShadowTier, ShadowTierInfo> = {
     tier: 2,
     name: 'Nhỏ',
     label: 'Bóng 2 (Nhỏ)',
-    lengthPx: 40,
-    widthPx: 13,
+    lengthPx: 52,
+    widthPx: 17,
     swimSpeed: 1.15,
     wiggleSpeed: 1.3,
     color: '#1b3454',
@@ -894,8 +894,8 @@ export const SHADOW_TIER_CONFIG: Record<FishShadowTier, ShadowTierInfo> = {
     tier: 3,
     name: 'Trung bình',
     label: 'Bóng 3 (Vừa)',
-    lengthPx: 58,
-    widthPx: 19,
+    lengthPx: 82,
+    widthPx: 26,
     swimSpeed: 1.0,
     wiggleSpeed: 1.0,
     color: '#162b46',
@@ -904,8 +904,8 @@ export const SHADOW_TIER_CONFIG: Record<FishShadowTier, ShadowTierInfo> = {
     tier: 4,
     name: 'Lớn',
     label: 'Bóng 4 (Lớn)',
-    lengthPx: 84,
-    widthPx: 26,
+    lengthPx: 126,
+    widthPx: 39,
     swimSpeed: 0.85,
     wiggleSpeed: 0.85,
     color: '#122238',
@@ -914,8 +914,8 @@ export const SHADOW_TIER_CONFIG: Record<FishShadowTier, ShadowTierInfo> = {
     tier: 5,
     name: 'Khổng lồ',
     label: 'Bóng 5 (Khổng lồ)',
-    lengthPx: 118,
-    widthPx: 36,
+    lengthPx: 185,
+    widthPx: 56,
     swimSpeed: 0.72,
     wiggleSpeed: 0.7,
     color: '#0e1b2d',
@@ -924,8 +924,8 @@ export const SHADOW_TIER_CONFIG: Record<FishShadowTier, ShadowTierInfo> = {
     tier: 6,
     name: 'Thần thoại Vương miện',
     label: 'Bóng 6 (Vương miện / Leviathan)',
-    lengthPx: 165,
-    widthPx: 50,
+    lengthPx: 260,
+    widthPx: 78,
     swimSpeed: 0.58,
     wiggleSpeed: 0.6,
     hasCrown: true,
@@ -933,6 +933,29 @@ export const SHADOW_TIER_CONFIG: Record<FishShadowTier, ShadowTierInfo> = {
     color: '#0a1422',
   },
 };
+
+export interface ShadowTierOverride {
+  lengthPx?: number;
+  widthPx?: number;
+  swimSpeed?: number;
+  wiggleSpeed?: number;
+  hasCrown?: boolean;
+  hasGlow?: boolean;
+}
+
+export function resolveShadowTier(tier: FishShadowTier, override?: ShadowTierOverride): ShadowTierInfo {
+  const base = SHADOW_TIER_CONFIG[tier];
+  if (!override) return base;
+  return {
+    ...base,
+    lengthPx: override.lengthPx ?? base.lengthPx,
+    widthPx: override.widthPx ?? base.widthPx,
+    swimSpeed: override.swimSpeed ?? base.swimSpeed,
+    wiggleSpeed: override.wiggleSpeed ?? base.wiggleSpeed,
+    hasCrown: override.hasCrown ?? base.hasCrown,
+    hasGlow: override.hasGlow ?? base.hasGlow,
+  };
+}
 
 export function getFishShadowTier(sizeCm: number, rarity?: string, habitat?: string): FishShadowTier {
   if (

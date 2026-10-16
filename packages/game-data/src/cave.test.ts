@@ -34,17 +34,33 @@ describe('cave maps and economy', () => {
     expect(isWalkable(back.x, back.y)).toBe(true);
     expect(back.x).toBeLessThan(1488);
   });
-  it('keeps all encounters reachable and increases difficulty through five floors', () => {
+  it('keeps all encounters reachable and increases difficulty through 18 tiers with daily lockout', () => {
     expect(isWalkable(CAVE_SPAWN.x, CAVE_SPAWN.y, CAVE_BLOCKERS)).toBe(true);
     expect(isWalkable(CAVE_STAIRS.x, CAVE_STAIRS.y, CAVE_BLOCKERS)).toBe(true);
-    for (let floor = 1; floor <= 5; floor++) {
+    for (let floor = 1; floor <= 18; floor++) {
       const contents = caveFloor(floor);
       for (const entity of [...contents.enemies, ...contents.ores])
         expect(isWalkable(entity.x, entity.y, CAVE_BLOCKERS)).toBe(true);
-      expect(contents.enemies.length).toBe(3 + floor);
+      if (floor <= 5) expect(contents.enemies.length).toBe(3 + floor);
+      else expect(contents.enemies.length).toBeGreaterThanOrEqual(6);
     }
+    // Floor 5 features golem
     expect(caveFloor(5).enemies.some((e) => e.kind === 'golem')).toBe(true);
-    expect(() => caveFloor(6)).toThrow();
+    // Floor 18 features the ancient boss Colossus
+    expect(caveFloor(18).enemies.some((e) => e.kind === 'colossus')).toBe(true);
+    // Daily lockout clears monsters when already cleared today
+    const lockedToday = caveFloor(10, true);
+    expect(lockedToday.enemies.length).toBe(0);
+    expect(lockedToday.ores.length).toBe(0);
+    // Defeated enemies and mined nodes remain dead within the day
+    const partiallyDefeated = caveFloor(1, false, new Set(['enemy-0', 'enemy-2']), new Set(['ore-1']));
+    expect(partiallyDefeated.enemies.some((e) => e.id === 'enemy-0')).toBe(false);
+    expect(partiallyDefeated.enemies.some((e) => e.id === 'enemy-2')).toBe(false);
+    expect(partiallyDefeated.enemies.some((e) => e.id === 'enemy-1')).toBe(true);
+    expect(partiallyDefeated.ores.some((o) => o.id === 'ore-1')).toBe(false);
+    expect(partiallyDefeated.ores.some((o) => o.id === 'ore-0')).toBe(true);
+    // Floors beyond 18 throw
+    expect(() => caveFloor(19)).toThrow();
     expect(caveSaleValue({ stone: 3, iron: 2, crystal: 4 })).toBe(123);
   });
 });

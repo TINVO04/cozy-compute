@@ -4,9 +4,12 @@ import {
   RARITY_LABELS,
   SHADOW_TIER_CONFIG,
   type FishingConditions,
+  type FishingBehaviorConfig,
   type FishShadowTier,
   type Rarity,
   type RodConfig,
+  type ShadowTierInfo,
+  type ShadowTierOverride,
 } from '@cozy/game-data';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BookOpen, CircleAlert, Coffee, Fish, Package, RotateCcw, Star, Waves, Zap } from 'lucide-react';
@@ -68,6 +71,7 @@ type FishPhase =
       biteAt: number;
       windowMs: number;
       shadowTier: FishShadowTier;
+      customShadow?: ShadowTierOverride | null;
       nibbleCount: number;
       currentNibble: number;
       nibbleTimes: number[];
@@ -81,6 +85,7 @@ type FishPhase =
       biteAt: number;
       windowMs: number;
       shadowTier: FishShadowTier;
+      customShadow?: ShadowTierOverride | null;
       equippedRod: RodConfig;
     }
   | {
@@ -89,6 +94,7 @@ type FishPhase =
       nonce: string;
       equippedRod: RodConfig;
       shadowTier: FishShadowTier;
+      customShadow?: ShadowTierOverride | null;
       mashProgress: number;
     }
   | {
@@ -101,6 +107,7 @@ type FishPhase =
       tip?: string;
       fishId?: string;
       shadowTier?: FishShadowTier;
+      customShadow?: ShadowTierOverride | null;
       equippedRod?: RodConfig;
       sizeCm?: number;
       weightKg?: number;
@@ -123,6 +130,16 @@ export function FishingActivity() {
     refetchInterval: 30_000,
     retry: false,
   });
+  const shadowTiersQuery = useQuery({
+    queryKey: ['fishing-shadow-tiers'],
+    queryFn: () => api<Record<FishShadowTier, ShadowTierInfo>>('/activities/fishing/shadow-tiers'),
+    staleTime: 60_000,
+  });
+  useEffect(() => {
+    if (shadowTiersQuery.data) {
+      useUi.getState().setShadowTierConfig(shadowTiersQuery.data);
+    }
+  }, [shadowTiersQuery.data]);
   const conditions = phase.kind === 'idle' ? forecast : castConditions;
   const qc = useQueryClient();
   const { data: me } = useQuery<Me>({ queryKey: qk.me, queryFn: () => api<Me>('/me') });
@@ -202,10 +219,12 @@ export function FishingActivity() {
         biteInMs: number;
         reactionWindowMs: number;
         shadowTier?: FishShadowTier;
+        customShadow?: ShadowTierOverride | null;
         nibbleCount: number;
         nibbleOffsetsMs: number[];
         nibbleOrbitTurns: number[];
         shadowDelayMs: number;
+        behavior?: Partial<FishingBehaviorConfig>;
         equippedRod?: RodConfig;
         conditions?: FishingConditions;
       }>('/activities/fishing/start', { body: {} });
@@ -220,6 +239,7 @@ export function FishingActivity() {
 
       const equippedRod = r.equippedRod ?? FISHING_RODS['rod_twig']!;
       const shadowTier = r.shadowTier ?? 1;
+      const customShadow = r.customShadow ?? null;
 
       // Start In-World Visuals on Town Lake
       const selfPos = getTownSelfPosition();
@@ -242,11 +262,13 @@ export function FishingActivity() {
         selfX: selfPos.x,
         selfY: selfPos.y,
         shadowTier,
+        customShadow,
         nibbleCount,
         nibbleTimes,
         nibbleOrbitTurns,
         biteInMs: r.biteInMs,
         shadowDelayMs,
+        behavior: r.behavior,
         equippedRod,
         onNibble: (idx) => {
           net.send('fishing:nibble', { nibbleIndex: idx });
@@ -264,6 +286,7 @@ export function FishingActivity() {
               biteAt: prev.biteAt,
               windowMs: prev.windowMs,
               shadowTier: prev.shadowTier,
+              customShadow: prev.customShadow,
               equippedRod: prev.equippedRod,
             };
           });
@@ -278,6 +301,7 @@ export function FishingActivity() {
         biteAt,
         windowMs: r.reactionWindowMs,
         shadowTier,
+        customShadow,
         nibbleCount,
         currentNibble: 0,
         nibbleTimes,
@@ -293,7 +317,13 @@ export function FishingActivity() {
 
   // Complete catch API
   const finishCatch = useCallback(
-    async (p: { runId: string; nonce: string; equippedRod: RodConfig; shadowTier: FishShadowTier }) => {
+    async (p: {
+      runId: string;
+      nonce: string;
+      equippedRod: RodConfig;
+      shadowTier: FishShadowTier;
+      customShadow?: ShadowTierOverride | null;
+    }) => {
       if (phaseRef.current.kind !== 'reeling' && phaseRef.current.kind !== 'waiting') return;
       setPhase({ kind: 'resolving' });
       try {
@@ -308,6 +338,7 @@ export function FishingActivity() {
           weightKg?: number;
           sizeCategory?: 'small' | 'standard' | 'large' | 'giant';
           shadowTier?: FishShadowTier;
+          customShadow?: ShadowTierOverride | null;
           isFirstCatch?: boolean;
           isRecord?: boolean;
         }>('/activities/fishing/complete', { body: { runId: p.runId, nonce: p.nonce } });
@@ -363,6 +394,7 @@ export function FishingActivity() {
             weightKg: r.weightKg,
             sizeCategory: r.sizeCategory,
             shadowTier: r.shadowTier ?? p.shadowTier,
+            customShadow: r.customShadow ?? p.customShadow,
             equippedRod: p.equippedRod,
             isFirstCatch: r.isFirstCatch,
             isRecord: r.isRecord,
@@ -412,6 +444,7 @@ export function FishingActivity() {
       nonce: p.nonce,
       equippedRod: p.equippedRod,
       shadowTier: p.shadowTier,
+      customShadow: p.customShadow,
       mashProgress: 30,
     });
     townFishingController?.onMashReel(30);
@@ -563,7 +596,21 @@ export function FishingActivity() {
     phase.kind === 'waiting' || phase.kind === 'bite' || phase.kind === 'reeling' || phase.kind === 'result'
       ? phase.shadowTier
       : undefined;
-  const shadowInfo = shadowTier ? SHADOW_TIER_CONFIG[shadowTier] : undefined;
+  const customShadow =
+    phase.kind === 'waiting' || phase.kind === 'bite' || phase.kind === 'reeling' || phase.kind === 'result'
+      ? phase.customShadow
+      : undefined;
+  const activeShadowTiers = useUi((s) => s.shadowTierConfig);
+  const baseShadowInfo = shadowTier
+    ? (activeShadowTiers?.[shadowTier] ??
+      shadowTiersQuery.data?.[shadowTier] ??
+      SHADOW_TIER_CONFIG[shadowTier])
+    : undefined;
+  const shadowInfo = baseShadowInfo
+    ? customShadow
+      ? { ...baseShadowInfo, ...customShadow }
+      : baseShadowInfo
+    : undefined;
 
   return (
     <div className="fishing-inworld-hud" role="region" aria-label="Giao diện câu cá ngoài thế giới">

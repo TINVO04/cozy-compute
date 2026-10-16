@@ -3,13 +3,22 @@ import { z } from 'zod';
 import { requireAdmin } from '../auth.js';
 import type { AppContext } from '../context.js';
 import { withTx } from '../db.js';
+import { postLedger } from '../ledger.js';
 import { AppError, badRequest, forbidden, notFound } from '../errors.js';
 import * as ai from '../services/ai.js';
 import { audit } from '../services/audit.js';
 import { scheduleNext, finishEvent } from '../services/events.js';
 import { getSetting, settingSchema, type SettingKey } from '../settings.js';
 import { getPresence } from '../redis.js';
-import { FISH } from '@cozy/game-data';
+import {
+  FISH,
+  SHADOW_TIER_CONFIG,
+  getFishShadowTier,
+  DEFAULT_FISHING_BEHAVIOR_CONFIG,
+  type FishingBehaviorConfig,
+  type FishShadowTier,
+  type ShadowTierOverride,
+} from '@cozy/game-data';
 
 const SECRET_REF = /^UPSTREAM_KEY_[A-Z0-9_]{1,40}$/;
 
@@ -393,19 +402,55 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext) {
       : {};
   }
 
+  function parseFishShadowOverrides(raw: unknown): Record<string, ShadowTierOverride> {
+    if (!raw) return {};
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        return typeof parsed === 'object' && parsed !== null ? parsed : {};
+      } catch {
+        return {};
+      }
+    }
+    return typeof raw === 'object' && raw !== null ? (raw as Record<string, ShadowTierOverride>) : {};
+  }
+
   app.get('/admin/fish', async (req) => {
     requireAdmin(req);
-    const r = await ctx.db.query<{ value: unknown }>(`SELECT value FROM settings WHERE key = 'fish_sizes'`);
-    const overrides = parseFishOverrides(r.rows[0]?.value);
+    const [sizeRes, shadowTiersRes, speciesShadowsRes] = await Promise.all([
+      ctx.db.query<{ value: unknown }>(`SELECT value FROM settings WHERE key = 'fish_sizes'`),
+      ctx.db.query<{ value: unknown }>(`SELECT value FROM settings WHERE key = 'fish_shadow_tiers'`),
+      ctx.db.query<{ value: unknown }>(`SELECT value FROM settings WHERE key = 'fish_species_shadows'`),
+    ]);
+    const overrides = parseFishOverrides(sizeRes.rows[0]?.value);
+    const tierOverrides = parseFishShadowOverrides(shadowTiersRes.rows[0]?.value);
+    const speciesShadowOverrides = parseFishShadowOverrides(speciesShadowsRes.rows[0]?.value);
+
     return FISH.map((f) => {
       const o = overrides[f.id];
+      const minSizeCm = o?.minSizeCm ?? f.minSizeCm;
+      const maxSizeCm = o?.maxSizeCm ?? f.maxSizeCm;
+      const avgSize = (minSizeCm + maxSizeCm) / 2;
+      const defaultShadowTier = getFishShadowTier(avgSize, f.rarity, f.habitat);
+      const baseTierCfg = tierOverrides[String(defaultShadowTier)] ?? SHADOW_TIER_CONFIG[defaultShadowTier];
+      const customShadow = speciesShadowOverrides[f.id] ?? null;
+
       return {
         ...f,
-        minSizeCm: o?.minSizeCm ?? f.minSizeCm,
-        maxSizeCm: o?.maxSizeCm ?? f.maxSizeCm,
+        minSizeCm,
+        maxSizeCm,
         defaultMinSizeCm: f.minSizeCm,
         defaultMaxSizeCm: f.maxSizeCm,
         isOverridden: Boolean(o),
+        defaultShadowTier,
+        customShadow,
+        isShadowOverridden: Boolean(customShadow),
+        shadowLengthPx: customShadow?.lengthPx ?? baseTierCfg.lengthPx,
+        shadowWidthPx: customShadow?.widthPx ?? baseTierCfg.widthPx,
+        shadowSwimSpeed: customShadow?.swimSpeed ?? baseTierCfg.swimSpeed,
+        shadowWiggleSpeed: customShadow?.wiggleSpeed ?? baseTierCfg.wiggleSpeed,
+        shadowHasCrown: customShadow?.hasCrown ?? baseTierCfg.hasCrown ?? false,
+        shadowHasGlow: customShadow?.hasGlow ?? baseTierCfg.hasGlow ?? false,
       };
     });
   });
@@ -594,6 +639,425 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     });
   });
 
+  const shadowTierInput = z.object({
+    lengthPx: z.number().positive().max(50000),
+    widthPx: z.number().positive().max(25000),
+    swimSpeed: z.number().positive().max(50).optional(),
+    wiggleSpeed: z.number().positive().max(50).optional(),
+    hasCrown: z.boolean().optional(),
+    hasGlow: z.boolean().optional(),
+  });
+
+  app.get('/admin/fish/shadow-tiers', async (req) => {
+    requireAdmin(req);
+    const r = await ctx.db.query<{ value: unknown }>(
+      `SELECT value FROM settings WHERE key = 'fish_shadow_tiers'`,
+    );
+    const overrides = parseFishShadowOverrides(r.rows[0]?.value);
+    return ([1, 2, 3, 4, 5, 6] as const).map((tier) => {
+      const base = SHADOW_TIER_CONFIG[tier];
+      const o = overrides[String(tier)] ?? overrides[tier];
+      return {
+        tier,
+        name: base.name,
+        label: base.label,
+        color: base.color,
+        lengthPx: o?.lengthPx ?? base.lengthPx,
+        widthPx: o?.widthPx ?? base.widthPx,
+        swimSpeed: o?.swimSpeed ?? base.swimSpeed,
+        wiggleSpeed: o?.wiggleSpeed ?? base.wiggleSpeed,
+        hasCrown: o?.hasCrown ?? base.hasCrown ?? false,
+        hasGlow: o?.hasGlow ?? base.hasGlow ?? false,
+        defaultLengthPx: base.lengthPx,
+        defaultWidthPx: base.widthPx,
+        defaultSwimSpeed: base.swimSpeed,
+        defaultWiggleSpeed: base.wiggleSpeed,
+        isOverridden: Boolean(o),
+      };
+    });
+  });
+
+  app.put('/admin/fish/shadow-tiers/:tier', async (req) => {
+    const admin = requireAdmin(req);
+    const { tier } = z.object({ tier: z.coerce.number().int().min(1).max(6) }).parse(req.params) as {
+      tier: FishShadowTier;
+    };
+    const b = shadowTierInput.parse(req.body);
+    const baseTier = SHADOW_TIER_CONFIG[tier];
+    if (!baseTier) throw notFound('Shadow tier not found.');
+
+    return withTx(ctx.db, async (tx) => {
+      const r = await tx.query<{ value: unknown }>(
+        `SELECT value FROM settings WHERE key = 'fish_shadow_tiers' FOR UPDATE`,
+      );
+      const current = parseFishShadowOverrides(r.rows[0]?.value);
+      const updated = {
+        ...current,
+        [String(tier)]: {
+          lengthPx: b.lengthPx,
+          widthPx: b.widthPx,
+          ...(b.swimSpeed !== undefined ? { swimSpeed: b.swimSpeed } : {}),
+          ...(b.wiggleSpeed !== undefined ? { wiggleSpeed: b.wiggleSpeed } : {}),
+          ...(b.hasCrown !== undefined ? { hasCrown: b.hasCrown } : {}),
+          ...(b.hasGlow !== undefined ? { hasGlow: b.hasGlow } : {}),
+        },
+      };
+
+      await tx.query(
+        `INSERT INTO settings (key, value, updated_at) VALUES ('fish_shadow_tiers', $1, now())
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now()`,
+        [JSON.stringify(updated)],
+      );
+
+      await audit(
+        tx,
+        admin.id,
+        'fish_shadow_tier.update',
+        'fish_shadow_tier',
+        String(tier),
+        current[String(tier)] ?? null,
+        b,
+      );
+
+      const o = updated[String(tier)];
+      return {
+        tier,
+        name: baseTier.name,
+        label: baseTier.label,
+        color: baseTier.color,
+        lengthPx: o?.lengthPx ?? baseTier.lengthPx,
+        widthPx: o?.widthPx ?? baseTier.widthPx,
+        swimSpeed: o?.swimSpeed ?? baseTier.swimSpeed,
+        wiggleSpeed: o?.wiggleSpeed ?? baseTier.wiggleSpeed,
+        hasCrown: o?.hasCrown ?? baseTier.hasCrown ?? false,
+        hasGlow: o?.hasGlow ?? baseTier.hasGlow ?? false,
+        defaultLengthPx: baseTier.lengthPx,
+        defaultWidthPx: baseTier.widthPx,
+        defaultSwimSpeed: baseTier.swimSpeed,
+        defaultWiggleSpeed: baseTier.wiggleSpeed,
+        isOverridden: true,
+      };
+    });
+  });
+
+  app.put('/admin/fish/shadow-tiers', async (req) => {
+    const admin = requireAdmin(req);
+    const b = z
+      .object({
+        tiers: z.record(z.coerce.number().int().min(1).max(6), shadowTierInput),
+      })
+      .parse(req.body);
+
+    return withTx(ctx.db, async (tx) => {
+      const r = await tx.query<{ value: unknown }>(
+        `SELECT value FROM settings WHERE key = 'fish_shadow_tiers' FOR UPDATE`,
+      );
+      const current = parseFishShadowOverrides(r.rows[0]?.value);
+      const updated = { ...current };
+      for (const [t, patch] of Object.entries(b.tiers)) {
+        if (!patch) continue;
+        updated[t] = {
+          lengthPx: patch.lengthPx,
+          widthPx: patch.widthPx,
+          ...(patch.swimSpeed !== undefined ? { swimSpeed: patch.swimSpeed } : {}),
+          ...(patch.wiggleSpeed !== undefined ? { wiggleSpeed: patch.wiggleSpeed } : {}),
+          ...(patch.hasCrown !== undefined ? { hasCrown: patch.hasCrown } : {}),
+          ...(patch.hasGlow !== undefined ? { hasGlow: patch.hasGlow } : {}),
+        };
+      }
+
+      await tx.query(
+        `INSERT INTO settings (key, value, updated_at) VALUES ('fish_shadow_tiers', $1, now())
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now()`,
+        [JSON.stringify(updated)],
+      );
+
+      await audit(tx, admin.id, 'fish_shadow_tier.batch_update', 'fish_shadow_tier', 'batch', null, b);
+
+      return ([1, 2, 3, 4, 5, 6] as const).map((tier) => {
+        const base = SHADOW_TIER_CONFIG[tier];
+        const o = updated[String(tier)] ?? updated[tier];
+        return {
+          tier,
+          name: base.name,
+          label: base.label,
+          color: base.color,
+          lengthPx: o?.lengthPx ?? base.lengthPx,
+          widthPx: o?.widthPx ?? base.widthPx,
+          swimSpeed: o?.swimSpeed ?? base.swimSpeed,
+          wiggleSpeed: o?.wiggleSpeed ?? base.wiggleSpeed,
+          hasCrown: o?.hasCrown ?? base.hasCrown ?? false,
+          hasGlow: o?.hasGlow ?? base.hasGlow ?? false,
+          defaultLengthPx: base.lengthPx,
+          defaultWidthPx: base.widthPx,
+          defaultSwimSpeed: base.swimSpeed,
+          defaultWiggleSpeed: base.wiggleSpeed,
+          isOverridden: Boolean(o),
+        };
+      });
+    });
+  });
+
+  app.delete('/admin/fish/shadow-tiers/:tier', async (req) => {
+    const admin = requireAdmin(req);
+    const { tier } = z.object({ tier: z.coerce.number().int().min(1).max(6) }).parse(req.params) as {
+      tier: FishShadowTier;
+    };
+    return withTx(ctx.db, async (tx) => {
+      const r = await tx.query<{ value: unknown }>(
+        `SELECT value FROM settings WHERE key = 'fish_shadow_tiers' FOR UPDATE`,
+      );
+      const current = parseFishShadowOverrides(r.rows[0]?.value);
+      const prev = current[String(tier)];
+      const updated = { ...current };
+      delete updated[String(tier)];
+
+      await tx.query(
+        `INSERT INTO settings (key, value, updated_at) VALUES ('fish_shadow_tiers', $1, now())
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now()`,
+        [JSON.stringify(updated)],
+      );
+
+      await audit(
+        tx,
+        admin.id,
+        'fish_shadow_tier.reset',
+        'fish_shadow_tier',
+        String(tier),
+        prev ?? null,
+        null,
+      );
+
+      const base = SHADOW_TIER_CONFIG[tier];
+      return {
+        tier,
+        name: base.name,
+        label: base.label,
+        color: base.color,
+        lengthPx: base.lengthPx,
+        widthPx: base.widthPx,
+        swimSpeed: base.swimSpeed,
+        wiggleSpeed: base.wiggleSpeed,
+        hasCrown: base.hasCrown ?? false,
+        hasGlow: base.hasGlow ?? false,
+        defaultLengthPx: base.lengthPx,
+        defaultWidthPx: base.widthPx,
+        defaultSwimSpeed: base.swimSpeed,
+        defaultWiggleSpeed: base.wiggleSpeed,
+        isOverridden: false,
+      };
+    });
+  });
+
+  app.delete('/admin/fish/shadow-tiers', async (req) => {
+    const admin = requireAdmin(req);
+    return withTx(ctx.db, async (tx) => {
+      await tx.query(`DELETE FROM settings WHERE key = 'fish_shadow_tiers'`);
+      await audit(tx, admin.id, 'fish_shadow_tier.reset_all', 'fish_shadow_tier', 'all', null, null);
+      return ([1, 2, 3, 4, 5, 6] as const).map((tier) => {
+        const base = SHADOW_TIER_CONFIG[tier];
+        return {
+          tier,
+          name: base.name,
+          label: base.label,
+          color: base.color,
+          lengthPx: base.lengthPx,
+          widthPx: base.widthPx,
+          swimSpeed: base.swimSpeed,
+          wiggleSpeed: base.wiggleSpeed,
+          hasCrown: base.hasCrown ?? false,
+          hasGlow: base.hasGlow ?? false,
+          defaultLengthPx: base.lengthPx,
+          defaultWidthPx: base.widthPx,
+          defaultSwimSpeed: base.swimSpeed,
+          defaultWiggleSpeed: base.wiggleSpeed,
+          isOverridden: false,
+        };
+      });
+    });
+  });
+
+  app.put('/admin/fish/:id/shadow', async (req) => {
+    const admin = requireAdmin(req);
+    const { id } = z.object({ id: z.string().max(60) }).parse(req.params);
+    const baseFish = FISH.find((f) => f.id === id);
+    if (!baseFish) throw notFound('Fish species not found.');
+
+    const b = shadowTierInput.parse(req.body);
+
+    return withTx(ctx.db, async (tx) => {
+      const r = await tx.query<{ value: unknown }>(
+        `SELECT value FROM settings WHERE key = 'fish_species_shadows' FOR UPDATE`,
+      );
+      const current = parseFishShadowOverrides(r.rows[0]?.value);
+      const prev = current[id] ?? null;
+      current[id] = {
+        lengthPx: b.lengthPx,
+        widthPx: b.widthPx,
+        swimSpeed: b.swimSpeed,
+        wiggleSpeed: b.wiggleSpeed,
+        hasCrown: b.hasCrown,
+        hasGlow: b.hasGlow,
+      };
+
+      await tx.query(
+        `INSERT INTO settings (key, value, updated_at)
+         VALUES ('fish_species_shadows', $1, now())
+         ON CONFLICT (key) DO UPDATE
+         SET value = EXCLUDED.value, updated_at = now()`,
+        [JSON.stringify(current)],
+      );
+
+      await audit(tx, admin.id, 'fish_shadow_species.update', 'fish_species_shadow', id, prev, current[id]);
+
+      const avgSize = (baseFish.minSizeCm + baseFish.maxSizeCm) / 2;
+      const defaultTier = getFishShadowTier(avgSize, baseFish.rarity, baseFish.habitat);
+      const defaultCfg = SHADOW_TIER_CONFIG[defaultTier];
+
+      return {
+        id,
+        fishName: baseFish.name,
+        defaultTier,
+        customShadow: current[id],
+        isShadowOverridden: true,
+        lengthPx: current[id].lengthPx ?? defaultCfg.lengthPx,
+        widthPx: current[id].widthPx ?? defaultCfg.widthPx,
+        swimSpeed: current[id].swimSpeed ?? defaultCfg.swimSpeed,
+        wiggleSpeed: current[id].wiggleSpeed ?? defaultCfg.wiggleSpeed,
+        hasCrown: current[id].hasCrown ?? defaultCfg.hasCrown ?? false,
+        hasGlow: current[id].hasGlow ?? defaultCfg.hasGlow ?? false,
+      };
+    });
+  });
+
+  app.delete('/admin/fish/:id/shadow', async (req) => {
+    const admin = requireAdmin(req);
+    const { id } = z.object({ id: z.string().max(60) }).parse(req.params);
+    const baseFish = FISH.find((f) => f.id === id);
+    if (!baseFish) throw notFound('Fish species not found.');
+
+    return withTx(ctx.db, async (tx) => {
+      const r = await tx.query<{ value: unknown }>(
+        `SELECT value FROM settings WHERE key = 'fish_species_shadows' FOR UPDATE`,
+      );
+      const current = parseFishShadowOverrides(r.rows[0]?.value);
+      const prev = current[id] ?? null;
+      if (prev) {
+        delete current[id];
+        await tx.query(
+          `INSERT INTO settings (key, value, updated_at)
+           VALUES ('fish_species_shadows', $1, now())
+           ON CONFLICT (key) DO UPDATE
+           SET value = EXCLUDED.value, updated_at = now()`,
+          [JSON.stringify(current)],
+        );
+        await audit(tx, admin.id, 'fish_shadow_species.reset', 'fish_species_shadow', id, prev, null);
+      }
+
+      const avgSize = (baseFish.minSizeCm + baseFish.maxSizeCm) / 2;
+      const defaultTier = getFishShadowTier(avgSize, baseFish.rarity, baseFish.habitat);
+      const defaultCfg = SHADOW_TIER_CONFIG[defaultTier];
+
+      return {
+        id,
+        fishName: baseFish.name,
+        defaultTier,
+        customShadow: null,
+        isShadowOverridden: false,
+        lengthPx: defaultCfg.lengthPx,
+        widthPx: defaultCfg.widthPx,
+        swimSpeed: defaultCfg.swimSpeed,
+        wiggleSpeed: defaultCfg.wiggleSpeed,
+        hasCrown: defaultCfg.hasCrown ?? false,
+        hasGlow: defaultCfg.hasGlow ?? false,
+      };
+    });
+  });
+
+  app.delete('/admin/fish/shadow-species', async (req) => {
+    const admin = requireAdmin(req);
+    return withTx(ctx.db, async (tx) => {
+      await tx.query(`DELETE FROM settings WHERE key = 'fish_species_shadows'`);
+      await audit(tx, admin.id, 'fish_shadow_species.reset_all', 'fish_species_shadow', 'all', null, null);
+      return { success: true };
+    });
+  });
+
+  const fishingBehaviorInput = z
+    .object({
+      minNibbles: z.number().int().min(0).max(15),
+      maxNibbles: z.number().int().min(0).max(15),
+      nibbleIntervalMinMs: z.number().int().min(200).max(10000),
+      nibbleIntervalMaxMs: z.number().int().min(200).max(10000),
+      shadowDelayMinMs: z.number().int().min(500).max(60000),
+      shadowDelayMaxMs: z.number().int().min(500).max(60000),
+      retreatDistancePx: z.number().min(30).max(300),
+      dashSpeedFactor: z.number().min(0.2).max(5.0),
+    })
+    .refine((d) => d.minNibbles <= d.maxNibbles, {
+      message: 'minNibbles must be <= maxNibbles',
+      path: ['minNibbles'],
+    })
+    .refine((d) => d.nibbleIntervalMinMs <= d.nibbleIntervalMaxMs, {
+      message: 'nibbleIntervalMinMs must be <= nibbleIntervalMaxMs',
+      path: ['nibbleIntervalMinMs'],
+    })
+    .refine((d) => d.shadowDelayMinMs <= d.shadowDelayMaxMs, {
+      message: 'shadowDelayMinMs must be <= shadowDelayMaxMs',
+      path: ['shadowDelayMinMs'],
+    });
+
+  app.get('/admin/fishing/behavior', async (req) => {
+    requireAdmin(req);
+    const r = await ctx.db.query<{ value: unknown }>(
+      `SELECT value FROM settings WHERE key = 'fishing_behavior_config'`,
+    );
+    const raw = r.rows[0]?.value;
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const isOverridden = Boolean(parsed && typeof parsed === 'object');
+    const config: FishingBehaviorConfig = {
+      ...DEFAULT_FISHING_BEHAVIOR_CONFIG,
+      ...(isOverridden ? (parsed as Partial<FishingBehaviorConfig>) : {}),
+    };
+    return { config, isOverridden, defaults: DEFAULT_FISHING_BEHAVIOR_CONFIG };
+  });
+
+  app.put('/admin/fishing/behavior', async (req) => {
+    const admin = requireAdmin(req);
+    const b = fishingBehaviorInput.parse(req.body);
+    return withTx(ctx.db, async (tx) => {
+      const prevRes = await tx.query<{ value: unknown }>(
+        `SELECT value FROM settings WHERE key = 'fishing_behavior_config' FOR UPDATE`,
+      );
+      const prev = prevRes.rows[0]?.value ?? null;
+      await tx.query(
+        `INSERT INTO settings (key, value, updated_at)
+         VALUES ('fishing_behavior_config', $1, now())
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now()`,
+        [JSON.stringify(b)],
+      );
+      await audit(tx, admin.id, 'fishing_behavior.update', 'fishing_behavior', 'global', prev, b);
+      return { config: b, isOverridden: true, defaults: DEFAULT_FISHING_BEHAVIOR_CONFIG };
+    });
+  });
+
+  app.delete('/admin/fishing/behavior', async (req) => {
+    const admin = requireAdmin(req);
+    return withTx(ctx.db, async (tx) => {
+      const prevRes = await tx.query<{ value: unknown }>(
+        `SELECT value FROM settings WHERE key = 'fishing_behavior_config' FOR UPDATE`,
+      );
+      const prev = prevRes.rows[0]?.value ?? null;
+      await tx.query(`DELETE FROM settings WHERE key = 'fishing_behavior_config'`);
+      await audit(tx, admin.id, 'fishing_behavior.reset', 'fishing_behavior', 'global', prev, null);
+      return {
+        config: DEFAULT_FISHING_BEHAVIOR_CONFIG,
+        isOverridden: false,
+        defaults: DEFAULT_FISHING_BEHAVIOR_CONFIG,
+      };
+    });
+  });
+
   app.post('/admin/events/schedule', async (req) => {
     const admin = requireAdmin(req);
     const b = z.object({ startInSeconds: z.number().int().min(10).max(3600) }).parse(req.body);
@@ -653,6 +1117,81 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext) {
         room: pres?.roomLabel ?? null,
       };
     });
+  });
+
+  app.post('/admin/players/:id/coin', async (req) => {
+    const admin = requireAdmin(req);
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const b = z
+      .object({
+        action: z.enum(['add', 'subtract', 'set']),
+        amount: z.number().int().min(0).max(1_000_000_000),
+        reason: z.string().trim().max(200).default('admin_adjust'),
+      })
+      .parse(req.body);
+
+    const result = await withTx(ctx.db, async (tx) => {
+      const current = await tx.query<{ coin: number }>(
+        'SELECT coin FROM balances WHERE user_id = $1 FOR UPDATE',
+        [id],
+      );
+      if (!current.rows[0]) throw notFound('Player not found.');
+      const curCoin = current.rows[0].coin;
+
+      let delta = 0;
+      if (b.action === 'add') {
+        delta = b.amount;
+      } else if (b.action === 'subtract') {
+        if (b.amount > curCoin) {
+          throw badRequest(
+            'insufficient_coin',
+            `Không thể trừ ${b.amount} xu vì người chơi hiện chỉ có ${curCoin} xu.`,
+          );
+        }
+        delta = -b.amount;
+      } else if (b.action === 'set') {
+        delta = b.amount - curCoin;
+      }
+
+      if (delta === 0) {
+        return { previousCoin: curCoin, newCoin: curCoin, delta: 0 };
+      }
+
+      const leg = await postLedger(tx, {
+        userId: id,
+        currency: 'coin',
+        amount: delta,
+        reason: 'admin_adjust',
+        metadata: {
+          adminId: admin.id,
+          adminEmail: admin.email,
+          action: b.action,
+          requestedAmount: b.amount,
+          note: b.reason || 'Admin điều chỉnh số dư',
+        },
+      });
+
+      await audit(
+        tx,
+        admin.id,
+        'player.coin_adjust',
+        'user',
+        id,
+        { coin: curCoin },
+        { coin: leg.balanceAfter, delta, action: b.action, note: b.reason },
+      );
+
+      return {
+        previousCoin: curCoin,
+        newCoin: leg.balanceAfter,
+        delta,
+      };
+    });
+
+    return {
+      ok: true,
+      ...result,
+    };
   });
 
   app.post('/admin/players/:id/status', async (req) => {

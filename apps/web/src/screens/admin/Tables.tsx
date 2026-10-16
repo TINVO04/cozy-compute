@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { RefreshCw, Search } from 'lucide-react';
+import { Coins, RefreshCw, Search } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, num, usd, type AiKey } from '../../lib/api';
 import { useUi } from '../../lib/store';
@@ -517,6 +517,46 @@ export function PlayersPage() {
   );
   const [sendingId, setSendingId] = useState<string | null>(null);
 
+  const [targetCoin, setTargetCoin] = useState<null | { id: string; name: string; currentCoin: number }>(
+    null,
+  );
+  const [coinAction, setCoinAction] = useState<'add' | 'subtract' | 'set'>('add');
+  const [coinAmount, setCoinAmount] = useState<string>('1000');
+  const [coinReason, setCoinReason] = useState<string>('Thưởng sự kiện');
+
+  const actCoin = useMutation({
+    mutationFn: () => {
+      const parsedAmount = parseInt(coinAmount.replace(/,/g, ''), 10);
+      if (isNaN(parsedAmount) || parsedAmount < 0) {
+        throw new Error('Số lượng xu không hợp lệ.');
+      }
+      return api<{ ok: boolean; previousCoin: number; newCoin: number; delta: number }>(
+        `/admin/players/${targetCoin!.id}/coin`,
+        {
+          body: {
+            action: coinAction,
+            amount: parsedAmount,
+            reason: coinReason.trim() || 'Admin điều chỉnh số dư',
+          },
+        },
+      );
+    },
+    onSuccess: (res) => {
+      toast({
+        kind: 'success',
+        title: 'Đã điều chỉnh số dư Xu',
+        body: `Người chơi ${targetCoin?.name}: số dư mới là ${num(res.newCoin)} xu (${res.delta >= 0 ? '+' : ''}${num(res.delta)} xu).`,
+      });
+      setTargetCoin(null);
+      setCoinAmount('1000');
+      setCoinReason('Thưởng sự kiện');
+      void qc.invalidateQueries({ queryKey: ['admin', 'players'] });
+      void qc.invalidateQueries({ queryKey: ['admin', 'ledger'] });
+      void qc.invalidateQueries({ queryKey: ['admin', 'audit'] });
+    },
+    onError: (err) => toastError(err),
+  });
+
   const actStatus = useMutation({
     mutationFn: () =>
       api(`/admin/players/${target!.id}/status`, {
@@ -763,35 +803,248 @@ export function PlayersPage() {
             ),
           ],
           ['Tin cậy', (p) => p.trust_score, 'num'],
-          ['Xu', (p) => num(p.coin), 'num'],
+          [
+            'Xu',
+            (p) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                <span style={{ fontWeight: 600, color: '#facc15' }}>{num(p.coin)}</span>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  style={{ padding: '2px 6px', height: 'auto', minHeight: 0, fontSize: 11 }}
+                  title="Điều chỉnh số dư Xu của người chơi này"
+                  onClick={() => {
+                    setTargetCoin({ id: p.id, name: p.display_name, currentCoin: p.coin });
+                    setCoinAction('add');
+                    setCoinAmount('1000');
+                    setCoinReason('Thưởng sự kiện');
+                  }}
+                >
+                  <Coins size={12} style={{ color: '#facc15' }} /> Sửa
+                </button>
+              </div>
+            ),
+            'num',
+          ],
           ['Danh tiếng', (p) => num(p.fame), 'num'],
           ['AI Credit', (p) => usd(p.ai_credit_cents), 'num'],
           ['Tham gia', (p) => new Date(p.created_at).toLocaleDateString('vi-VN')],
           [
             'Hành động',
-            (p) =>
-              p.role === 'admin' ? null : (
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <Button
-                    size="sm"
-                    variant={p.status === 'active' ? 'secondary' : 'primary'}
-                    onClick={() => setTarget({ id: p.id, name: p.display_name, status: p.status })}
-                  >
-                    {p.status === 'active' ? 'Tạm khóa' : 'Mở khóa'}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => setTargetDelete({ id: p.id, name: p.display_name, email: p.email })}
-                    title="Xóa vĩnh viễn tài khoản người chơi này"
-                  >
-                    Xóa
-                  </Button>
-                </div>
-              ),
+            (p) => (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setTargetCoin({ id: p.id, name: p.display_name, currentCoin: p.coin });
+                    setCoinAction('add');
+                    setCoinAmount('1000');
+                    setCoinReason('Thưởng sự kiện');
+                  }}
+                  title="Cộng, trừ hoặc đặt số dư Xu"
+                  style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                >
+                  <Coins size={13} style={{ color: '#facc15' }} />
+                  Xu
+                </Button>
+                {p.role !== 'admin' && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant={p.status === 'active' ? 'secondary' : 'primary'}
+                      onClick={() => setTarget({ id: p.id, name: p.display_name, status: p.status })}
+                    >
+                      {p.status === 'active' ? 'Tạm khóa' : 'Mở khóa'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => setTargetDelete({ id: p.id, name: p.display_name, email: p.email })}
+                      title="Xóa vĩnh viễn tài khoản người chơi này"
+                    >
+                      Xóa
+                    </Button>
+                  </>
+                )}
+              </div>
+            ),
           ],
         ]}
       />
+      {targetCoin ? (
+        <Modal
+          title={`Quản lý Xu: ${targetCoin.name}`}
+          description={`Số dư hiện tại: ${num(targetCoin.currentCoin)} Xu`}
+          onClose={() => setTargetCoin(null)}
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setTargetCoin(null)}>
+                Hủy
+              </Button>
+              <Button
+                variant={coinAction === 'subtract' ? 'danger' : 'primary'}
+                loading={actCoin.isPending}
+                disabled={
+                  isNaN(parseInt(coinAmount.replace(/,/g, ''), 10)) ||
+                  parseInt(coinAmount.replace(/,/g, ''), 10) < 0 ||
+                  (coinAction === 'subtract' &&
+                    parseInt(coinAmount.replace(/,/g, ''), 10) > targetCoin.currentCoin)
+                }
+                onClick={() => actCoin.mutate()}
+              >
+                {coinAction === 'add'
+                  ? 'Cộng thêm Xu'
+                  : coinAction === 'subtract'
+                    ? 'Xác nhận trừ Xu'
+                    : 'Đặt lại số dư'}
+              </Button>
+            </>
+          }
+        >
+          <div className="stack" style={{ gap: 14 }}>
+            <div className="field">
+              <label>Hành động</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    background:
+                      coinAction === 'add' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+                    borderColor: coinAction === 'add' ? '#10b981' : 'rgba(255, 255, 255, 0.1)',
+                    color: coinAction === 'add' ? '#34d399' : '#94a3b8',
+                    fontWeight: 600,
+                  }}
+                  onClick={() => setCoinAction('add')}
+                >
+                  + Cộng Xu
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    background:
+                      coinAction === 'subtract' ? 'rgba(244, 63, 94, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+                    borderColor: coinAction === 'subtract' ? '#f43f5e' : 'rgba(255, 255, 255, 0.1)',
+                    color: coinAction === 'subtract' ? '#fb7185' : '#94a3b8',
+                    fontWeight: 600,
+                  }}
+                  onClick={() => setCoinAction('subtract')}
+                >
+                  - Trừ Xu
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    background:
+                      coinAction === 'set' ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+                    borderColor: coinAction === 'set' ? '#38bdf8' : 'rgba(255, 255, 255, 0.1)',
+                    color: coinAction === 'set' ? '#38bdf8' : '#94a3b8',
+                    fontWeight: 600,
+                  }}
+                  onClick={() => setCoinAction('set')}
+                >
+                  Đặt số dư
+                </button>
+              </div>
+            </div>
+
+            <div className="field">
+              <label htmlFor="coinAmount">
+                {coinAction === 'add'
+                  ? 'Số lượng Xu muốn cộng'
+                  : coinAction === 'subtract'
+                    ? 'Số lượng Xu muốn trừ'
+                    : 'Số dư Xu mới'}
+              </label>
+              <input
+                id="coinAmount"
+                type="number"
+                min="0"
+                className="input"
+                value={coinAmount}
+                onChange={(e) => setCoinAmount(e.target.value)}
+                placeholder="Nhập số xu..."
+              />
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                {[1000, 5000, 10000, 50000, 100000].map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ fontSize: 11, padding: '2px 6px' }}
+                    onClick={() => setCoinAmount(String(val))}
+                  >
+                    +{num(val)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="field">
+              <label htmlFor="coinReason">Lý do điều chỉnh (lưu vào Sổ cái & Kiểm toán)</label>
+              <input
+                id="coinReason"
+                type="text"
+                className="input"
+                value={coinReason}
+                onChange={(e) => setCoinReason(e.target.value)}
+                placeholder="Lý do điều chỉnh..."
+              />
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                {['Thưởng sự kiện', 'Bồi thường lỗi', 'Admin hỗ trợ', 'Xử lý gian lận'].map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ fontSize: 11, padding: '2px 6px' }}
+                    onClick={() => setCoinReason(r)}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Preview Box */}
+            <div
+              style={{
+                background: 'rgba(0, 0, 0, 0.3)',
+                padding: '10px 14px',
+                borderRadius: 8,
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                fontSize: 13,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <span className="muted">Số dư sau khi lưu:</span>
+              <span style={{ fontWeight: 700, fontSize: 15, color: '#facc15' }}>
+                {(() => {
+                  const amt = parseInt(coinAmount.replace(/,/g, ''), 10) || 0;
+                  const next =
+                    coinAction === 'add'
+                      ? targetCoin.currentCoin + amt
+                      : coinAction === 'subtract'
+                        ? targetCoin.currentCoin - amt
+                        : amt;
+                  return `${num(Math.max(0, next))} Xu`;
+                })()}
+              </span>
+            </div>
+
+            {coinAction === 'subtract' &&
+              (parseInt(coinAmount.replace(/,/g, ''), 10) || 0) > targetCoin.currentCoin && (
+                <div style={{ color: '#f87171', fontSize: 12 }}>
+                  ⚠️ Số xu muốn trừ vượt quá số dư hiện có ({num(targetCoin.currentCoin)} xu).
+                </div>
+              )}
+          </div>
+        </Modal>
+      ) : null}
       {target ? (
         <ConfirmDialog
           danger={target.status === 'active'}

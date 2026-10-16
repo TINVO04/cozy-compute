@@ -8,7 +8,20 @@ export const CAVE_THEMES = [
   { name: 'Vườn nấm lam', floor: '#3a4d4c', rock: '#657e79', light: '#82d6b6' },
   { name: 'Mạch ngọc bích', floor: '#3e4859', rock: '#6b7b95', light: '#71e5d6' },
   { name: 'Hồ thạch anh tím', floor: '#494354', rock: '#867b99', light: '#cbb0ee' },
-  { name: 'Điện thờ cổ', floor: '#3d494d', rock: '#7e8985', light: '#f2d68b' },
+  { name: 'Hốc nham thạch rực', floor: '#4a3832', rock: '#7a554a', light: '#ff8a50' },
+  { name: 'Hầm rêu độc', floor: '#354838', rock: '#5c735d', light: '#79ea86' },
+  { name: 'Vực sâu tĩnh lặng', floor: '#32394a', rock: '#55637d', light: '#6baeff' },
+  { name: 'Rạn san hô ngọc', floor: '#2a4450', rock: '#4e7587', light: '#45e3ff' },
+  { name: 'Hang tinh thể hoàng kim', floor: '#484335', rock: '#7c725c', light: '#ffd166' },
+  { name: 'Lăng mộ đá đen', floor: '#2c2a33', rock: '#4f4a5c', light: '#c084fc' },
+  { name: 'Thung lũng lân tinh', floor: '#29433e', rock: '#4c736a', light: '#4ade80' },
+  { name: 'Đền thờ lãng quên', floor: '#3e3a47', rock: '#6a6378', light: '#f472b6' },
+  { name: 'Vực băng vĩnh cửu', floor: '#2f4252', rock: '#54728c', light: '#a5f3fc' },
+  { name: 'Mạch huyết ngọc', floor: '#482a2f', rock: '#784650', light: '#f87171' },
+  { name: 'Vườn hoa độc dược', floor: '#382a44', rock: '#624a75', light: '#d946ef' },
+  { name: 'Điện thờ sấm sét', floor: '#2a3b4c', rock: '#4d6985', light: '#38bdf8' },
+  { name: 'Vực hỗn mang', floor: '#262235', rock: '#473d61', light: '#a855f7' },
+  { name: 'Ngai vàng Hư Vô', floor: '#1e1a2e', rock: '#3c3257', light: '#e879f9' },
 ];
 function rect(c: Ctx, color: string, x: number, y: number, w: number, h: number) {
   c.fillStyle = color;
@@ -477,6 +490,44 @@ function paintInterior(c: Ctx, floor: number, r: () => number) {
         rock(c, x, y, 28, 47, '#9c9b86', x + y);
         crystal(c, x + 13, y - 41, 23, '#e8cd83');
       }
+  } else if (floor === 18) {
+    // Grand Void Arena for Tier 18 Colossus Boss
+    for (let radius = 60; radius <= 160; radius += 30) {
+      c.strokeStyle = radius === 120 ? '#c084fc70' : '#7c3aed40';
+      c.lineWidth = radius === 120 ? 3 : 2;
+      c.beginPath();
+      c.ellipse(480, 333, radius, radius * 0.55, 0, 0, Math.PI * 2);
+      c.stroke();
+    }
+    // 8-pointed Void Rune Astrological Array
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4;
+      const x1 = 480 + Math.cos(a) * 60;
+      const y1 = 333 + Math.sin(a) * 33;
+      const x2 = 480 + Math.cos(a) * 150;
+      const y2 = 333 + Math.sin(a) * 82;
+      stroke(c, '#a855f760', x1, y1, x2, y2, 2);
+      // Outer glyph dots
+      oval(c, '#38bdf8', x2, y2, 4, 3);
+      oval(c, '#ffffff', x2, y2, 2, 1);
+    }
+    // Grand Void Crystal Pillars at the 4 corners
+    for (const x of [110, 850])
+      for (const y of [180, 490]) {
+        rock(c, x, y, 36, 56, '#1e1b4b', x + y);
+        crystal(c, x + 16, y - 50, 38, '#c084fc');
+        glow(c, x + 16, y - 30, '#818cf8', 55, 0.25);
+      }
+    glow(c, 480, 333, '#7c3aed', 160, 0.2);
+  } else if (floor >= 13 && floor <= 15) {
+    // Molten Magma Fissures
+    for (let i = 0; i < 6; i++) {
+      const fx = 220 + r() * 520;
+      const fy = 200 + r() * 260;
+      stroke(c, '#ef444460', fx, fy, fx + 40, fy - 10, 3);
+      stroke(c, '#f9731690', fx + 4, fy, fx + 36, fy - 8, 1);
+      glow(c, fx + 20, fy - 5, '#ff5722', 40, 0.15);
+    }
   }
   // A quiet vignette separates the lit exploration space from the cavern depths.
   const v = c.createRadialGradient(490, 330, 190, 480, 320, 570);

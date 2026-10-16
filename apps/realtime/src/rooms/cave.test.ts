@@ -28,6 +28,7 @@ interface Internals {
   tick(dt: number): void;
   flushLoot(): Promise<void>;
   pendingLoot: { requestId: string; quantity: number }[];
+  clearedToday: boolean;
 }
 describe('authoritative cave expedition', () => {
   let room: CaveRoom, internal: Internals, player: PlayerState, client: Client;
@@ -251,5 +252,58 @@ describe('authoritative cave expedition', () => {
     await internal.flushLoot();
     expect(api.mock.calls[0]![0].requestId).toBe(api.mock.calls[1]![0].requestId);
     expect(internal.pendingLoot).toHaveLength(0);
+  });
+  it('enforces anti-farming: killed monsters remain dead when re-entering on the same day, respawn next day', async () => {
+    enter();
+    expect(internal.enemies.length).toBeGreaterThan(0);
+    const initialCount = internal.enemies.length;
+    const target = internal.enemies[0]!;
+    target.hp = 1;
+    Object.assign(player, { x: target.x, y: target.y });
+    send('attack');
+    await Promise.resolve();
+    expect(target.hp).toBe(0);
+
+    // Retreat to floor 0
+    vi.advanceTimersByTime(800);
+    send('retreat');
+    expect(internal.floor).toBe(0);
+
+    // Re-enter floor 1 on the same day
+    vi.advanceTimersByTime(800);
+    enter();
+    expect(internal.floor).toBe(1);
+    // The defeated monster is NOT respawned!
+    expect(internal.enemies.length).toBe(initialCount - 1);
+    expect(internal.enemies.some((e) => e.id === target.id)).toBe(false);
+
+    // Kill remaining monsters on floor 1 to clear it
+    internal.enemies.forEach((e) => {
+      e.hp = 0;
+    });
+    // Trigger defeat check by clearing remaining
+    internal.clearedToday = true;
+    (internal as unknown as { clearedFloors: Set<number> }).clearedFloors.add(1);
+
+    // Retreat to floor 0
+    vi.advanceTimersByTime(800);
+    send('retreat');
+    expect(internal.floor).toBe(0);
+
+    // Re-entering cleared floor today has 0 monsters (clearedToday)
+    vi.advanceTimersByTime(800);
+    enter();
+    expect(internal.floor).toBe(1);
+    expect(internal.enemies.length).toBe(0);
+
+    // Advance system time by 24 hours (next day)
+    vi.advanceTimersByTime(24 * 3600 * 1000 + 1000);
+    send('retreat');
+    expect(internal.floor).toBe(0);
+    vi.advanceTimersByTime(800);
+    enter();
+    expect(internal.floor).toBe(1);
+    // On the next day, monsters are respawned!
+    expect(internal.enemies.length).toBe(initialCount);
   });
 });

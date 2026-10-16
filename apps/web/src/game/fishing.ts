@@ -3,11 +3,14 @@ import {
   FISHING_RODS,
   SHADOW_TIER_CONFIG,
   type FishShadowTier,
+  type FishingBehaviorConfig,
   type RodConfig,
+  type ShadowTierOverride,
 } from '@cozy/game-data';
 import type Phaser from 'phaser';
 import { play } from '../lib/sound';
-import { fishNibblePose } from './fishing-motion';
+import { useUi } from '../lib/store';
+import { fishNibblePose, fishStrikePose } from './fishing-motion';
 import { drawOrganicFishShadow } from './fish-shadow';
 import { ensureFishTexture } from './fish-texture';
 import { fishRenderDimensions } from '../art/fish';
@@ -16,11 +19,13 @@ export interface FishingSessionParams {
   selfX: number;
   selfY: number;
   shadowTier: FishShadowTier;
+  customShadow?: ShadowTierOverride | null;
   nibbleCount: number;
   nibbleTimes: number[];
   nibbleOrbitTurns?: number[];
   biteInMs: number;
   shadowDelayMs?: number;
+  behavior?: Partial<FishingBehaviorConfig>;
   equippedRod?: RodConfig;
   onNibble?: (index: number) => void;
   onBite?: () => void;
@@ -205,11 +210,10 @@ export class InWorldFishingController {
 
     this.facingDir = facingDir;
     this.approachAngle = Math.atan2(approachDy, approachDx);
-    let nibbleAngle = this.approachAngle;
     this.nibbleApproachAngles = params.nibbleTimes.map((_, index) => {
-      const startAngle = nibbleAngle;
-      nibbleAngle += (params.nibbleOrbitTurns?.[index] ?? 1.5) * Math.PI * 2;
-      return startAngle;
+      // Natural retreat position in open water facing the float, slight jitter per strike
+      const jitter = ((index % 3) - 1) * 0.32;
+      return this.approachAngle + jitter;
     });
 
     // Make character face the water and adopt the fishing stance with rod in hand
@@ -404,7 +408,11 @@ export class InWorldFishingController {
     const selfX = this.params.selfX + offset.x;
     const selfY = this.params.selfY + offset.y;
     const rod = this.params.equippedRod ?? FISHING_RODS['rod_twig']!;
-    const tierCfg = SHADOW_TIER_CONFIG[shadowTier] ?? SHADOW_TIER_CONFIG[1];
+    const baseTierCfg =
+      useUi.getState().shadowTierConfig?.[shadowTier] ??
+      SHADOW_TIER_CONFIG[shadowTier] ??
+      SHADOW_TIER_CONFIG[1];
+    const tierCfg = this.params.customShadow ? { ...baseTierCfg, ...this.params.customShadow } : baseTierCfg;
 
     // Compute Hand, Butt and Rod Coordinates based on character's facing direction
     let handX = selfX;
@@ -519,13 +527,33 @@ export class InWorldFishingController {
           this.spawnRipple(this.fishStartX, this.fishStartY, 1.4);
         }
 
-        // Base idle hover point ~22px from bobber along the approach line
-        const hoverDist = 22;
-        const hoverTargetX = this.bobberBaseX + Math.cos(this.approachAngle) * hoverDist;
-        const hoverTargetY = this.bobberBaseY + Math.sin(this.approachAngle) * hoverDist;
+        const retreatDist =
+          this.params.behavior?.retreatDistancePx ?? Math.max(65, Math.min(150, tierCfg.lengthPx * 0.42));
+        const dashSpeed = this.params.behavior?.dashSpeedFactor ?? 1.4;
+        const strikeLeadMs = Math.max(120, Math.round(200 / dashSpeed));
 
-        if (now < firstNibble) {
-          // Approaching phase: fish swims smoothly from lake depths to bobber hover point
+        // When nibbleCount is 0 (instant strike)
+        if (nibbleTimes.length === 0) {
+          const timeUntilBite = this.biteAt - now;
+          if (timeUntilBite <= strikeLeadMs && timeUntilBite > 0) {
+            // Instant bite strike darting straight into bobber!
+            const elapsedStrike = strikeLeadMs - timeUntilBite;
+            const pose = fishStrikePose(elapsedStrike, strikeLeadMs, this.approachAngle, retreatDist);
+            this.fishCurrentX = this.bobberBaseX + pose.x;
+            this.fishCurrentY = this.bobberBaseY + pose.y;
+            this.fishAngle = pose.angle;
+          } else {
+            // Hovering at retreat distance before instant bite
+            const sway = Math.sin(time * 0.004 * tierCfg.swimSpeed) * 3;
+            const dist = retreatDist + sway;
+            this.fishCurrentX = this.bobberBaseX + Math.cos(this.approachAngle) * dist;
+            this.fishCurrentY = this.bobberBaseY + Math.sin(this.approachAngle) * dist;
+            this.fishAngle = this.approachAngle + Math.PI;
+          }
+        } else if (now < firstNibble) {
+          // Approaching phase: fish swims smoothly from lake depths to retreat stalking point
+          const hoverTargetX = this.bobberBaseX + Math.cos(this.approachAngle) * retreatDist;
+          const hoverTargetY = this.bobberBaseY + Math.sin(this.approachAngle) * retreatDist;
           const approachDuration = Math.max(1, firstNibble - this.shadowAppearAt);
           const t = Math.min(1, Math.max(0, (now - this.shadowAppearAt) / approachDuration));
           const ease = 1 - Math.pow(1 - t, 3);
@@ -536,7 +564,7 @@ export class InWorldFishingController {
             this.bobberBaseX - this.fishCurrentX,
           );
         } else {
-          // Nibbling phase (4 to 8 distinct, lifelike nibbles)
+          // Nibbling phase
           let activeNibbleIdx = -1;
           for (let i = 0; i < nibbleTimes.length; i++) {
             const nt = nibbleTimes[i]!;
@@ -559,26 +587,34 @@ export class InWorldFishingController {
           if (activeNibbleIdx >= 0) {
             const nibbleAt = nibbleTimes[activeNibbleIdx]!;
             const nextStrikeAt = nibbleTimes[activeNibbleIdx + 1] ?? this.biteAt;
-            const pose = fishNibblePose(
-              now - nibbleAt,
-              nextStrikeAt - nibbleAt - FISHING_NIBBLE_DURATION_MS,
-              this.nibbleApproachAngles[activeNibbleIdx] ?? this.approachAngle,
-              this.params.nibbleOrbitTurns?.[activeNibbleIdx] ?? 1.5,
-            );
-            this.fishCurrentX = this.bobberBaseX + pose.x;
-            this.fishCurrentY = this.bobberBaseY + pose.y;
-            this.fishAngle = pose.angle;
-            isRecoil = pose.isRecoil;
+            const currentAngle = this.nibbleApproachAngles[activeNibbleIdx] ?? this.approachAngle;
+
+            // Final strike into bite right before biteAt
+            if (activeNibbleIdx === nibbleTimes.length - 1 && this.biteAt - now <= strikeLeadMs) {
+              const elapsedStrike = strikeLeadMs - (this.biteAt - now);
+              const pose = fishStrikePose(elapsedStrike, strikeLeadMs, currentAngle, retreatDist);
+              this.fishCurrentX = this.bobberBaseX + pose.x;
+              this.fishCurrentY = this.bobberBaseY + pose.y;
+              this.fishAngle = pose.angle;
+            } else {
+              const pose = fishNibblePose(
+                now - nibbleAt,
+                nextStrikeAt - nibbleAt - FISHING_NIBBLE_DURATION_MS,
+                currentAngle,
+                { retreatDistancePx: retreatDist, dashSpeedFactor: dashSpeed },
+              );
+              this.fishCurrentX = this.bobberBaseX + pose.x;
+              this.fishCurrentY = this.bobberBaseY + pose.y;
+              this.fishAngle = pose.angle;
+              isRecoil = pose.isRecoil;
+            }
           } else {
-            // Hovering between nibbles: attentive hovering facing bobber with gentle water drift
+            // Hovering at retreat distance facing the float
             const sway = Math.sin(time * 0.003 * tierCfg.swimSpeed) * 2.5;
-            const breathe = Math.cos(time * 0.004) * 1.5;
-            this.fishCurrentX = hoverTargetX + Math.cos(this.approachAngle + Math.PI / 2) * sway;
-            this.fishCurrentY = hoverTargetY + Math.sin(this.approachAngle + Math.PI / 2) * sway + breathe;
-            this.fishAngle = Math.atan2(
-              this.bobberBaseY - this.fishCurrentY,
-              this.bobberBaseX - this.fishCurrentX,
-            );
+            const dist = retreatDist + sway;
+            this.fishCurrentX = this.bobberBaseX + Math.cos(this.approachAngle) * dist;
+            this.fishCurrentY = this.bobberBaseY + Math.sin(this.approachAngle) * dist;
+            this.fishAngle = this.approachAngle + Math.PI;
           }
         }
       }
