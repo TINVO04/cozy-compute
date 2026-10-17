@@ -2168,7 +2168,7 @@ export class FarmScene extends WorldScene {
       this.textures.addCanvas('farm:shop_bac_sau', paintShopBacSau());
     }
     const shopP = FARM_POIS.shop_bac_sau;
-    this.add
+    const shopSprite = this.add
       .image(shopP.x + shopP.w / 2, shopP.y + shopP.h - 8, 'farm:shop_bac_sau')
       .setOrigin(0.5, 1.0)
       .setDepth(shopP.y + shopP.h);
@@ -2176,6 +2176,11 @@ export class FarmScene extends WorldScene {
       play('pop');
       useUi.getState().setPanel('farm-shop');
     };
+    shopSprite.setInteractive({ useHandCursor: true }).on('pointerdown', openShop);
+    const greenhouseSprite = this.children.getByName(
+      'farm:estate:greenhouse',
+    ) as Phaser.GameObjects.Image | null;
+    greenhouseSprite?.setInteractive({ useHandCursor: true }).on('pointerdown', openShop);
     // Doorway welcome mat with click and 48px proximity [E]
     this.add
       .image(shopP.x + shopP.w / 2, shopP.y + shopP.h + 2, 'farm:welcome_mat')
@@ -2199,7 +2204,7 @@ export class FarmScene extends WorldScene {
       this.textures.addCanvas('farm:silo_warehouse', paintSiloWarehouse());
     }
     const siloP = FARM_POIS.silo_warehouse;
-    this.add
+    const siloSprite = this.add
       .image(siloP.x + siloP.w / 2, siloP.y + siloP.h, 'farm:silo_warehouse')
       .setOrigin(0.5, 1.0)
       .setDepth(siloP.y + siloP.h);
@@ -2207,6 +2212,7 @@ export class FarmScene extends WorldScene {
       play('pop');
       useUi.getState().setPanel('farm-silo');
     };
+    siloSprite.setInteractive({ useHandCursor: true }).on('pointerdown', openSilo);
     this.add
       .image(siloP.x + siloP.w / 2, siloP.y + siloP.h + 2, 'farm:welcome_mat')
       .setOrigin(0.5, 0.5)
