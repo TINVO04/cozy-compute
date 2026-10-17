@@ -40,16 +40,54 @@ export function ellipse(
 
 export function flowerBed(ctx: CanvasRenderingContext2D, r: Rect, seed = 1) {
   const rng = mulberry(seed);
-  box(ctx, '#667953', r.x - 2, r.y, r.w + 4, r.h + 4);
-  box(ctx, '#d4c2a0', r.x - 2, r.y - 2, r.w + 4, r.h + 3);
-  box(ctx, '#68844f', r.x, r.y, r.w, r.h);
-  for (let y = r.y + 4; y < r.y + r.h - 2; y += 7) {
-    for (let x = r.x + 4; x < r.x + r.w - 2; x += 8) {
-      const col = ['#f4deb2', '#dd9b99', '#e8bd6c', '#b4a4c9'][Math.floor(rng() * 4)]!;
-      box(ctx, '#a2bc79', x - 3, y + 1, 6, 3);
-      box(ctx, col, x - 2, y, 5, 2);
-      box(ctx, col, x, y - 2, 2, 5);
-      box(ctx, '#fff1cd', x, y, 1, 1);
+
+  // 1. Terracotta brick / river-stone garden bed border edging
+  box(ctx, '#26180f', r.x - 2, r.y - 1, r.w + 4, r.h + 5);
+  box(ctx, '#60422b', r.x - 2, r.y - 2, r.w + 4, 3);
+  box(ctx, '#8d6342', r.x - 2, r.y - 3, r.w + 4, 2);
+  box(ctx, '#b58359', r.x - 1, r.y - 3, r.w + 2, 1); // stone rim highlight
+
+  // Vertical mortar lines between border stones
+  for (let sx = r.x; sx < r.x + r.w; sx += 8) {
+    box(ctx, '#332014', sx, r.y - 3, 1, 3);
+  }
+
+  // 2. Rich dark fertile humus garden soil
+  box(ctx, '#27170e', r.x, r.y, r.w, r.h);
+  box(ctx, '#3b2416', r.x + 1, r.y + 1, r.w - 2, r.h - 2);
+  // Soil texture flecks
+  for (let i = 0; i < Math.floor((r.w * r.h) / 28); i++) {
+    const fx = r.x + 2 + Math.floor(rng() * (r.w - 4));
+    const fy = r.y + 2 + Math.floor(rng() * (r.h - 4));
+    box(ctx, rng() > 0.5 ? '#1f130b' : '#4d301e', fx, fy, 2, 1);
+  }
+
+  // 3. Dense clusters of lush garden foliage & vibrant floral blossoms
+  const flowerPalettes = [
+    { main: '#f43f5e', light: '#fda4af', center: '#fef08a' }, // Hồng nhung
+    { main: '#f59e0b', light: '#fde047', center: '#78350f' }, // Cúc vạn thọ vàng cam
+    { main: '#a855f7', light: '#d8b4fe', center: '#fef08a' }, // Dạ yến thảo tím
+    { main: '#ffffff', light: '#f1f5f9', center: '#eab308' }, // Hoa lài trắng
+    { main: '#ef4444', light: '#fca5a5', center: '#fef08a' }, // Mẫu đơn đỏ
+  ];
+
+  for (let y = r.y + 3; y < r.y + r.h - 2; y += 6) {
+    for (let x = r.x + 3; x < r.x + r.w - 2; x += 7) {
+      const jx = x + Math.floor((rng() - 0.5) * 3);
+      const jy = y + Math.floor((rng() - 0.5) * 2);
+
+      // Lush green leaf rosette
+      box(ctx, '#143818', jx - 3, jy + 1, 7, 3);
+      box(ctx, '#225d28', jx - 2, jy, 5, 3);
+      box(ctx, '#3ea247', jx - 2, jy - 1, 4, 2);
+      box(ctx, '#6ee7b7', jx - 1, jy - 1, 2, 1);
+
+      // Blossom
+      const pal = flowerPalettes[Math.floor(rng() * flowerPalettes.length)]!;
+      box(ctx, pal.main, jx - 2, jy - 1, 5, 3);
+      box(ctx, pal.main, jx - 1, jy - 2, 3, 5);
+      box(ctx, pal.light, jx - 1, jy - 1, 3, 2);
+      box(ctx, pal.center, jx, jy, 1, 1); // center pistil
     }
   }
 }

@@ -119,6 +119,13 @@ export function farmRoutes(app: FastifyInstance, ctx: AppContext) {
     return farmService.sellShopProduce(ctx, user.id, body.itemId, body.quantity, body.contractId, key);
   });
 
+  // 9b. Shop Sell All Wholesale Produce
+  app.post('/api/farm/shop/sell-all', async (req) => {
+    const user = requireUser(req);
+    const key = req.headers['idempotency-key'] ? idem(req.headers as Record<string, unknown>) : undefined;
+    return farmService.sellAllProduce(ctx, user.id, key);
+  });
+
   // 10. Animal Feed
   app.post('/api/farm/animals/feed', async (req) => {
     const user = requireUser(req);
@@ -130,6 +137,77 @@ export function farmRoutes(app: FastifyInstance, ctx: AppContext) {
     return farmService.feedAnimal(ctx, user.id, body.animalId, body.feedItemId);
   });
 
+  // 10b. Animal Raise (Place into pen)
+  app.post('/api/farm/animals/raise', async (req) => {
+    const user = requireUser(req);
+    const schema = z.object({
+      stockItemId: z.string().min(1),
+    });
+    const body = schema.parse(req.body);
+    return farmService.raiseAnimal(ctx, user.id, body.stockItemId);
+  });
+
+  // 10c. Animal Sell (Sell animal for coins)
+  app.post('/api/farm/animals/sell', async (req) => {
+    const user = requireUser(req);
+    const schema = z.object({
+      animalId: z.string().uuid(),
+    });
+    const body = schema.parse(req.body);
+    const key = req.headers['idempotency-key'] ? idem(req.headers as Record<string, unknown>) : undefined;
+    return farmService.sellAnimal(ctx, user.id, body.animalId, key);
+  });
+
+  // 10d. Fill Feed Trough (Máng ăn tự động)
+  app.post('/api/farm/troughs/fill', async (req) => {
+    const user = requireUser(req);
+    const schema = z.object({
+      facility: z.enum(['poultry', 'cattle', 'pig', 'goat']),
+      quantity: z.number().int().min(1),
+    });
+    const body = schema.parse(req.body);
+    return farmService.fillFeedTrough(ctx, user.id, body.facility, body.quantity);
+  });
+
+  // 10e. Animal Breeding (Ghép đôi sinh sản nhân giống)
+  app.post('/api/farm/animals/breed', async (req) => {
+    const user = requireUser(req);
+    const schema = z.object({
+      parentAId: z.string().uuid(),
+      parentBId: z.string().uuid(),
+    });
+    const body = schema.parse(req.body);
+    return farmService.breedAnimals(ctx, user.id, body.parentAId, body.parentBId);
+  });
+
+  // 10f. Upgrade Farm Livestock Capacity (Mở rộng quy mô chuồng trại)
+  app.post('/api/farm/facility/capacity/upgrade', async (req) => {
+    const user = requireUser(req);
+    const key = req.headers['idempotency-key'] ? idem(req.headers as Record<string, unknown>) : undefined;
+    return farmService.upgradeLivestockCapacity(ctx, user.id, key);
+  });
+
+  // 10g. Upgrade Feed Trough Level (Nâng cấp máng ăn tự động)
+  app.post('/api/farm/troughs/upgrade', async (req) => {
+    const user = requireUser(req);
+    const schema = z.object({
+      facility: z.enum(['poultry', 'cattle', 'pig', 'goat']),
+    });
+    const body = schema.parse(req.body);
+    const key = req.headers['idempotency-key'] ? idem(req.headers as Record<string, unknown>) : undefined;
+    return farmService.upgradeFeedTrough(ctx, user.id, body.facility, key);
+  });
+
+  // 10h. Feed All Facility Animals in One Click (Cho cả chuồng ăn cùng lúc)
+  app.post('/api/farm/facility/feed-all', async (req) => {
+    const user = requireUser(req);
+    const schema = z.object({
+      facility: z.enum(['poultry', 'cattle', 'pig', 'goat']),
+    });
+    const body = schema.parse(req.body);
+    return farmService.feedAllFacilityAnimals(ctx, user.id, body.facility);
+  });
+
   // 11. Pond Stock Fingerling
   app.post('/api/farm/pond/stock', async (req) => {
     const user = requireUser(req);
@@ -138,6 +216,18 @@ export function farmRoutes(app: FastifyInstance, ctx: AppContext) {
     });
     const body = schema.parse(req.body);
     return farmService.stockPondFish(ctx, user.id, body.fishSpecies);
+  });
+
+  // 11b. Feed All Pond Fishes in One Click (Cho cả ao cá ăn)
+  app.post('/api/farm/pond/feed-all', async (req) => {
+    const user = requireUser(req);
+    return farmService.feedAllPondFishes(ctx, user.id);
+  });
+
+  // 11c. Harvest All Ready Pond Fishes in One Click (Thu hoạch toàn bộ cá đạt chuẩn)
+  app.post('/api/farm/pond/harvest-all', async (req) => {
+    const user = requireUser(req);
+    return farmService.harvestAllPondFishes(ctx, user.id);
   });
 
   // 12. Warehouse Upgrade

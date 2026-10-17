@@ -662,12 +662,49 @@ export const VEHICLES: Record<string, VehicleDef> = {
       spotlightIntensity: 1.0,
     },
   },
+
+  // === FARM SPECIAL VEHICLE ===
+  tractor_farm: {
+    id: 'tractor_farm',
+    kind: 'car',
+    name: 'Máy Cày Đồng Quê Farm Trac',
+    brand: 'FarmTrac',
+    price: 1500,
+    speed: 180,
+    color: '#16a34a',
+    assetPath: 'cars/tractor-farm',
+    description:
+      'Xe máy cày chuyên dụng cho nhà nông. Lái qua các ô đất để tự động thu hoạch vụ mùa và gieo hạt giống cực kỳ nhanh chóng!',
+    dimensions: {
+      frameWidth: 48,
+      frameHeight: 40,
+      bodyWidth: 36,
+      bodyHeight: 28,
+      contactY: 37,
+    },
+    mounting: {
+      seat: { x: 24, y: 16 },
+      hideAvatar: true,
+    },
+    lighting: {
+      headlight: { dx: 20, dy: 18 },
+      taillight: { dx: 18, dy: 18 },
+    },
+    showroomTheme: {
+      accentColor: '#16a34a',
+      badge: 'Xe máy cày nông vụ',
+      spotlightIntensity: 0.9,
+    },
+  },
 };
 
 export const VEHICLE_ALIASES: Record<string, string> = {
   // Legacy aliases
   car_sunset: 'cars/lamborghini-aventador',
   car_mercedes: 'cars/mercedes-benz-g63',
+  tractor_farm: 'cars/tractor-farm',
+  'cars/tractor-farm': 'tractor_farm',
+  'tractor-farm': 'tractor_farm',
 
   // Asset paths to canonical vehicle IDs
   'bicycles/trek-marlin-7': 'bicycle_sky',

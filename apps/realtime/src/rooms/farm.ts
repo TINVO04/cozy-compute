@@ -68,7 +68,7 @@ export class FarmRoom extends BaseRoom {
       });
     });
 
-    this.onMessage('vehicle:toggle', (client) => {
+    this.onMessage('vehicle:toggle', (client, msg?: { vehicle?: string }) => {
       const p = this.state.players.get(client.sessionId);
       if (!p) return;
       if (p.vehicle) {
@@ -77,7 +77,10 @@ export class FarmRoom extends BaseRoom {
         if (data) p.speed = this.playerSpeedFor(data, p);
         return;
       }
-      const vehicle = vehicleById(this.sessionFor(client.sessionId)?.appearance.vehicle);
+      const requestedId = typeof msg?.vehicle === 'string' ? msg.vehicle : undefined;
+      const requestedVehicle = requestedId ? vehicleById(requestedId) : undefined;
+      const appearanceVehicle = vehicleById(this.sessionFor(client.sessionId)?.appearance.vehicle);
+      const vehicle = requestedVehicle ?? appearanceVehicle ?? vehicleById('tractor_farm');
       if (!vehicle) {
         client.send('notice', { kind: 'warning', text: 'Hãy mua và chọn xe tại Gara Bạc Hà trước.' });
         return;

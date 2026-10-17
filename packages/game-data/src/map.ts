@@ -653,7 +653,12 @@ export const FARM_ZONES: FarmZone[] = [
     prompt: 'Mở kho Silo',
     rect: FARM_POIS.silo_warehouse,
   },
-  { id: 'farm_pond', label: 'Ao Thủy Sản', prompt: 'Ngắm ao cá', rect: FARM_POIS.aquaculture_pond },
+  {
+    id: 'farm_pond',
+    label: 'Ao Thủy Sản',
+    prompt: 'Nuôi trồng thủy sản & ao cá',
+    rect: FARM_POIS.aquaculture_pond,
+  },
   { id: 'barn_poultry', label: 'Chuồng Gia Cầm', prompt: 'Chăm sóc gia cầm', rect: FARM_POIS.poultry_coop },
   { id: 'barn_cattle', label: 'Đồng Cỏ Bò Sữa', prompt: 'Chăm sóc bò sữa', rect: FARM_POIS.cattle_pasture },
   { id: 'barn_pig', label: 'Chuồng Heo', prompt: 'Thăm đàn heo', rect: FARM_POIS.pig_pen },

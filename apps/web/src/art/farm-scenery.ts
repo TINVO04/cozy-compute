@@ -1,6 +1,8 @@
 import type Phaser from 'phaser';
 import { FARM_GARDEN, FARM_POIS, FARM_SHELTER_WIDTH, TILE, type Rect } from '@cozy/game-data';
-import { drawTree, paintBuilding, paintProp } from './town';
+import { paintBuilding, paintProp } from './town';
+import { paintPalm } from './town-detail';
+import { paintTractorCanvas } from './vehicle';
 import { mulberry } from './pixel';
 import { box as rect, ellipse, tiledRoof, fence, flowerBed } from './farm-detail';
 import { decorateFarmEstate } from './farm-estate';
@@ -516,56 +518,10 @@ export function paintAncientWell(): HTMLCanvasElement {
 }
 
 /**
- * Static Prop: Xe Máy Cày Nông Trại (Classic Red Farm Tractor)
+ * Static Prop: Xe Máy Cày Nông Trại (Classic Farm Tractor)
  */
 export function paintTractor(): HTMLCanvasElement {
-  const c = document.createElement('canvas');
-  c.width = 48;
-  c.height = 36;
-  const ctx = c.getContext('2d')!;
-  ctx.imageSmoothingEnabled = false;
-
-  const box = (color: string, x: number, y: number, w: number, h: number) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
-  };
-
-  // Shadow
-  box('rgba(0,0,0,0.25)', 4, 30, 42, 6);
-
-  // Large Rear Tread Tire (Bánh xe sau lớn)
-  box('#0f172a', 4, 14, 16, 18);
-  box('#334155', 6, 16, 12, 14);
-  box('#a9824b', 9, 19, 6, 8); // yellow rim
-  box('#ebce85', 10, 20, 4, 6);
-
-  // Smaller Front Tire (Bánh xe trước nhỏ)
-  box('#0f172a', 36, 22, 10, 11);
-  box('#334155', 38, 23, 6, 9);
-  box('#a9824b', 40, 25, 3, 5);
-
-  // Chassis & Red Engine Hood (Thân xe đỏ)
-  box('#7f1d1d', 16, 18, 26, 10);
-  box('#a65746', 17, 16, 24, 10);
-  box('#bb6651', 18, 15, 22, 8);
-  box('#d98568', 20, 15, 18, 3); // hood highlight
-
-  // Black Engine Front Grille
-  box('#0f172a', 40, 18, 3, 8);
-  box('#475569', 41, 19, 1, 6);
-
-  // Vertical Exhaust Stack Pipe (Ống xả khói cao)
-  box('#0f172a', 34, 4, 3, 12);
-  box('#475569', 35, 4, 1, 12);
-  box('#0f172a', 33, 3, 5, 2);
-
-  // Driver Seat & Steering Wheel (Ghế ngồi & vô lăng)
-  box('#1e293b', 12, 11, 7, 6); // padded seat
-  box('#0f172a', 14, 9, 2, 7);
-  box('#475569', 24, 10, 2, 7); // steering column
-  box('#0f172a', 23, 8, 5, 2); // steering wheel
-
-  return c;
+  return paintTractorCanvas(2, 0);
 }
 
 /**
@@ -656,62 +612,452 @@ export function paintRoundHayRoll(): HTMLCanvasElement {
   return c;
 }
 
+// ==========================================
+// HIGH-FIDELITY REALISTIC FARM TREES
+// ==========================================
+
+export function paintFarmShadeTree(): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = 96;
+  c.height = 112;
+  const ctx = c.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  const cx = 48;
+  const by = 108;
+  const rng = mulberry(429);
+
+  // 1. Soft multi-tiered ground contact shadow
+  ellipse(ctx, 'rgba(15, 23, 42, 0.18)', cx + 2, by - 1, 38, 9);
+  ellipse(ctx, 'rgba(15, 23, 42, 0.32)', cx + 1, by - 2, 26, 6);
+
+  // 2. Buttress roots anchoring into soil
+  const roots: [number, number, number, number][] = [
+    [cx - 16, by - 2, 8, 4],
+    [cx - 9, by - 5, 8, 6],
+    [cx + 2, by - 4, 10, 5],
+    [cx + 8, by - 2, 8, 4],
+  ];
+  for (const [rx, ry, rw, rh] of roots) {
+    rect(ctx, '#2c1810', rx, ry, rw, rh);
+    rect(ctx, '#4a2c1b', rx + 1, ry, rw - 2, rh - 1);
+    rect(ctx, '#6e4428', rx + 2, ry, Math.max(1, rw - 4), rh - 2);
+  }
+  // Moss on roots
+  rect(ctx, '#2d4a1d', cx - 12, by - 3, 5, 2);
+  rect(ctx, '#4d7c0f', cx + 4, by - 3, 4, 2);
+
+  // 3. Thick ancient gnarled trunk with branching boughs
+  // Base trunk
+  rect(ctx, '#2c1810', cx - 8, by - 36, 16, 34);
+  rect(ctx, '#4a2c1b', cx - 7, by - 34, 13, 31);
+  rect(ctx, '#6e4428', cx - 6, by - 32, 9, 28);
+  rect(ctx, '#8c5a32', cx - 5, by - 30, 4, 24); // sunlit bark highlight
+
+  // Bark furrow texture lines
+  rect(ctx, '#2c1810', cx - 3, by - 28, 1, 20);
+  rect(ctx, '#2c1810', cx + 2, by - 22, 1, 14);
+  rect(ctx, '#4a2c1b', cx - 1, by - 18, 1, 10);
+
+  // Major boughs extending into canopy
+  // Left bough
+  rect(ctx, '#2c1810', cx - 14, by - 48, 8, 16);
+  rect(ctx, '#4a2c1b', cx - 13, by - 46, 6, 13);
+  rect(ctx, '#6e4428', cx - 12, by - 44, 3, 9);
+  // Right bough
+  rect(ctx, '#2c1810', cx + 6, by - 46, 8, 14);
+  rect(ctx, '#4a2c1b', cx + 7, by - 44, 6, 11);
+  rect(ctx, '#6e4428', cx + 8, by - 42, 3, 8);
+  // Central fork
+  rect(ctx, '#2c1810', cx - 4, by - 52, 8, 18);
+  rect(ctx, '#4a2c1b', cx - 3, by - 50, 6, 15);
+
+  // 4. Volumetric Natural Foliage Clusters (7 clusters with 5-tone depth)
+  const clusters: [number, number, number, number][] = [
+    [-18, -50, 22, 17], // lower left
+    [18, -48, 22, 16], // lower right
+    [-22, -66, 20, 16], // mid left
+    [20, -64, 21, 16], // mid right
+    [-10, -78, 22, 17], // upper left
+    [11, -76, 21, 16], // upper right
+    [0, -88, 23, 18], // top crown
+  ];
+
+  for (const [dx, dy, rx, ry] of clusters) {
+    const x = cx + dx;
+    const y = by + dy;
+
+    // Deep under-canopy occlusion shadow
+    ellipse(ctx, '#132614', x + 1, y + 2, rx + 1, ry + 1);
+    // Dark foliage shadow
+    ellipse(ctx, '#1b3b1c', x, y + 1, rx, ry);
+    // Midtone lush green
+    ellipse(ctx, '#2f612d', x - 1, y - 1, rx * 0.88, ry * 0.85);
+    // Sunlit canopy top-left
+    ellipse(ctx, '#509440', x - 3, y - 3, rx * 0.7, ry * 0.65);
+    // Bright leaf highlights
+    ellipse(ctx, '#78bf50', x - 5, y - 5, rx * 0.45, ry * 0.4);
+
+    // Natural pixel leaf dither fringe (breaks up geometric oval into leaves)
+    for (let f = 0; f < 14; f++) {
+      const fx = x - rx + rng() * (rx * 2);
+      const fy = y - ry + rng() * (ry * 2);
+      const dist = Math.hypot((fx - x) / rx, (fy - y) / ry);
+      if (dist < 1.15) {
+        const color =
+          fy < y - 2
+            ? rng() > 0.4
+              ? '#a8e66e'
+              : '#78bf50'
+            : fy < y + 3
+              ? rng() > 0.5
+                ? '#509440'
+                : '#2f612d'
+              : '#1b3b1c';
+        rect(ctx, color, fx, fy, 2, 2);
+      }
+    }
+  }
+
+  // Hanging leafy tendrils
+  for (const tx of [cx - 24, cx - 12, cx + 8, cx + 22]) {
+    const len = 4 + Math.floor(rng() * 6);
+    rect(ctx, '#1b3b1c', tx, by - 40, 2, len);
+    rect(ctx, '#2f612d', tx, by - 40 + len, 2, 2);
+  }
+
+  return c;
+}
+
+export function paintFarmFruitTree(): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = 96;
+  c.height = 112;
+  const ctx = c.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  const cx = 48;
+  const by = 108;
+  const rng = mulberry(731);
+
+  // 1. Ground shadow
+  ellipse(ctx, 'rgba(15, 23, 42, 0.18)', cx + 2, by - 1, 36, 8);
+  ellipse(ctx, 'rgba(15, 23, 42, 0.3)', cx + 1, by - 2, 24, 5);
+
+  // 2. Spreading orchard trunk
+  rect(ctx, '#2c1810', cx - 7, by - 30, 14, 28);
+  rect(ctx, '#4a2c1b', cx - 6, by - 28, 11, 25);
+  rect(ctx, '#6e4428', cx - 5, by - 26, 7, 22);
+  rect(ctx, '#8c5a32', cx - 4, by - 24, 3, 18);
+
+  // Lateral orchard boughs
+  rect(ctx, '#2c1810', cx - 18, by - 42, 13, 14);
+  rect(ctx, '#4a2c1b', cx - 17, by - 40, 10, 11);
+  rect(ctx, '#2c1810', cx + 5, by - 40, 14, 13);
+  rect(ctx, '#4a2c1b', cx + 6, by - 38, 11, 10);
+
+  // 3. Dense bushy foliage clusters
+  const clusters: [number, number, number, number][] = [
+    [-19, -46, 20, 15],
+    [19, -44, 20, 15],
+    [-16, -62, 21, 16],
+    [16, -60, 21, 16],
+    [-8, -74, 20, 16],
+    [9, -72, 20, 15],
+    [0, -82, 21, 16],
+  ];
+
+  for (const [dx, dy, rx, ry] of clusters) {
+    const x = cx + dx;
+    const y = by + dy;
+
+    ellipse(ctx, '#142915', x + 1, y + 2, rx + 1, ry + 1);
+    ellipse(ctx, '#1d3f1d', x, y + 1, rx, ry);
+    ellipse(ctx, '#336b30', x - 1, y - 1, rx * 0.88, ry * 0.85);
+    ellipse(ctx, '#5ca346', x - 3, y - 3, rx * 0.7, ry * 0.65);
+    ellipse(ctx, '#82cc56', x - 5, y - 5, rx * 0.45, ry * 0.4);
+
+    for (let f = 0; f < 12; f++) {
+      const fx = x - rx + rng() * (rx * 2);
+      const fy = y - ry + rng() * (ry * 2);
+      if (Math.hypot((fx - x) / rx, (fy - y) / ry) < 1.1) {
+        rect(ctx, fy < y ? '#82cc56' : '#336b30', fx, fy, 2, 2);
+      }
+    }
+  }
+
+  // 4. Plump ripe golden-orange fruits nestled in foliage
+  const fruitPositions: [number, number][] = [
+    [cx - 24, by - 42],
+    [cx - 16, by - 48],
+    [cx - 28, by - 56],
+    [cx - 12, by - 58],
+    [cx - 22, by - 68],
+    [cx - 8, by - 70],
+    [cx - 14, by - 80],
+    [cx + 2, by - 84],
+    [cx + 14, by - 78],
+    [cx + 6, by - 68],
+    [cx + 22, by - 66],
+    [cx + 12, by - 54],
+    [cx + 26, by - 52],
+    [cx + 18, by - 40],
+    [cx + 4, by - 44],
+    [cx - 4, by - 38],
+  ];
+
+  for (const [fx, fy] of fruitPositions) {
+    // Green stem
+    rect(ctx, '#15803d', fx + 1, fy - 3, 2, 2);
+    // 3D Plump golden-orange fruit
+    ellipse(ctx, '#b45309', fx, fy + 1, 4, 4);
+    ellipse(ctx, '#ea580c', fx, fy, 4, 3.5);
+    ellipse(ctx, '#f97316', fx - 1, fy - 1, 3, 2.5);
+    rect(ctx, '#fef08a', fx - 1, fy - 1, 1, 1); // glint
+  }
+
+  // Fallen fruits on the grass below
+  ellipse(ctx, '#ea580c', cx - 18, by - 3, 3, 2);
+  rect(ctx, '#fde047', cx - 19, by - 4, 1, 1);
+  ellipse(ctx, '#ea580c', cx + 16, by - 2, 3, 2);
+  rect(ctx, '#fde047', cx + 15, by - 3, 1, 1);
+
+  return c;
+}
+
+export function paintFarmBlossomTree(): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = 96;
+  c.height = 112;
+  const ctx = c.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  const cx = 48;
+  const by = 108;
+  const rng = mulberry(952);
+
+  // 1. Soft shadow
+  ellipse(ctx, 'rgba(15, 23, 42, 0.18)', cx + 2, by - 1, 36, 8);
+  ellipse(ctx, 'rgba(15, 23, 42, 0.3)', cx + 1, by - 2, 22, 5);
+
+  // 2. Elegant twisting dark bark trunk
+  rect(ctx, '#1c1917', cx - 6, by - 32, 12, 30);
+  rect(ctx, '#292524', cx - 5, by - 30, 9, 27);
+  rect(ctx, '#44403c', cx - 4, by - 28, 5, 24);
+  rect(ctx, '#78716c', cx - 3, by - 26, 2, 20);
+
+  // Boughs
+  rect(ctx, '#1c1917', cx - 16, by - 46, 12, 16);
+  rect(ctx, '#292524', cx - 15, by - 44, 9, 13);
+  rect(ctx, '#1c1917', cx + 5, by - 44, 12, 15);
+  rect(ctx, '#292524', cx + 6, by - 42, 9, 12);
+
+  // 3. Flower blossom clusters (Mai Vàng rực rỡ / Đào phai mùa xuân)
+  const clusters: [number, number, number, number][] = [
+    [-18, -48, 20, 15],
+    [18, -46, 20, 15],
+    [-17, -64, 21, 16],
+    [17, -62, 21, 16],
+    [-8, -76, 20, 16],
+    [9, -74, 20, 15],
+    [0, -84, 22, 17],
+  ];
+
+  for (const [dx, dy, rx, ry] of clusters) {
+    const x = cx + dx;
+    const y = by + dy;
+
+    // Deep warm under-shadow
+    ellipse(ctx, '#713f12', x + 1, y + 2, rx + 1, ry + 1);
+    ellipse(ctx, '#a16207', x, y + 1, rx, ry);
+    ellipse(ctx, '#ca8a04', x - 1, y - 1, rx * 0.88, ry * 0.85);
+    ellipse(ctx, '#eab308', x - 3, y - 3, rx * 0.72, ry * 0.65);
+    ellipse(ctx, '#fde047', x - 5, y - 5, rx * 0.5, ry * 0.42);
+
+    // Individual detailed blossom petals & center pistils
+    for (let f = 0; f < 22; f++) {
+      const fx = x - rx + rng() * (rx * 2);
+      const fy = y - ry + rng() * (ry * 2);
+      if (Math.hypot((fx - x) / rx, (fy - y) / ry) < 1.1) {
+        rect(ctx, rng() > 0.4 ? '#fef08a' : '#fde047', fx, fy, 2, 2);
+        if (rng() > 0.6) rect(ctx, '#ffffff', fx + 1, fy, 1, 1);
+        if (rng() > 0.7) rect(ctx, '#b45309', fx, fy + 1, 1, 1);
+      }
+    }
+  }
+
+  // Scattered falling blossom petals
+  for (let p = 0; p < 18; p++) {
+    const px = cx - 28 + rng() * 56;
+    const py = by - 38 + rng() * 36;
+    rect(ctx, '#fef08a', px, py, 2, 1);
+    rect(ctx, '#ffffff', px + 1, py, 1, 1);
+  }
+
+  // Fallen petals carpet around roots
+  for (let p = 0; p < 16; p++) {
+    const px = cx - 24 + rng() * 48;
+    const py = by - 4 + rng() * 5;
+    rect(ctx, p % 2 ? '#facc15' : '#fef08a', px, py, 2, 1);
+  }
+
+  return c;
+}
+
+export function paintFarmCoconutPalm(): HTMLCanvasElement {
+  return paintPalm();
+}
+
+export function paintFarmBamboo(): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = 96;
+  c.height = 112;
+  const ctx = c.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  const cx = 48;
+  const by = 108;
+  const rng = mulberry(618);
+
+  // 1. Soft contact shadow & fallen bamboo leaves carpet
+  ellipse(ctx, 'rgba(15, 23, 42, 0.18)', cx + 1, by - 1, 32, 7);
+  ellipse(ctx, 'rgba(15, 23, 42, 0.28)', cx, by - 2, 20, 4);
+
+  // Dry fallen bamboo leaves on ground (màu lá tre khô vàng nâu)
+  for (let l = 0; l < 16; l++) {
+    const lx = cx - 24 + rng() * 48;
+    const ly = by - 4 + rng() * 5;
+    rect(ctx, l % 2 ? '#b45309' : '#d97706', lx, ly, 3, 1);
+    rect(ctx, '#fef08a', lx + 1, ly, 1, 1);
+  }
+
+  // 2. Bamboo Culms (Bụi tre làng Việt Nam với các thân tre vươn cao)
+  const culmConfigs = [
+    { baseX: cx - 14, topX: cx - 22, height: 92, width: 4 },
+    { baseX: cx - 8, topX: cx - 12, height: 100, width: 4.5 },
+    { baseX: cx - 2, topX: cx - 3, height: 104, width: 5 },
+    { baseX: cx + 4, topX: cx + 5, height: 102, width: 4.5 },
+    { baseX: cx + 10, topX: cx + 15, height: 96, width: 4 },
+    { baseX: cx + 16, topX: cx + 24, height: 88, width: 3.5 },
+  ];
+
+  for (const { baseX, topX, height, width } of culmConfigs) {
+    const topY = by - height;
+
+    // Draw culm segments between nodes (đốt tre)
+    const nodeInterval = 14;
+    for (let y = by; y >= topY; y--) {
+      const t = (by - y) / height;
+      const x = baseX + (topX - baseX) * t;
+
+      // Dark shadow edge (right)
+      rect(ctx, '#14532d', x - width / 2, y, width, 1);
+      // Main green culm
+      rect(ctx, '#16a34a', x - width / 2 + 0.5, y, width - 1, 1);
+      // Sunlit culm edge (left)
+      rect(ctx, '#4ade80', x - width / 2 + 0.5, y, width * 0.4, 1);
+      rect(ctx, '#86efac', x - width / 2 + 1, y, 1, 1);
+
+      // Node rings (Mắt tre / lóng tre)
+      if ((by - y) % nodeInterval === 0 && y > topY + 4 && y < by - 4) {
+        rect(ctx, '#052e16', x - width / 2 - 1, y, width + 2, 1); // dark node ring
+        rect(ctx, '#bef264', x - width / 2, y - 1, width * 0.6, 1); // bright ring lip
+      }
+    }
+  }
+
+  // 3. Spray of feathery lanceolate bamboo leaf clusters
+  const leafClusters = [
+    { x: cx - 26, y: by - 70 },
+    { x: cx - 18, y: by - 85 },
+    { x: cx - 22, y: by - 96 },
+    { x: cx - 6, y: by - 98 },
+    { x: cx - 4, y: by - 82 },
+    { x: cx + 8, y: by - 95 },
+    { x: cx + 12, y: by - 80 },
+    { x: cx + 20, y: by - 90 },
+    { x: cx + 28, y: by - 76 },
+    { x: cx + 4, y: by - 68 },
+    { x: cx - 12, y: by - 60 },
+  ];
+
+  for (const { x, y } of leafClusters) {
+    // 5-7 pointed lanceolate leaves fanning out in each cluster
+    for (let a = -1.2; a <= 1.2; a += 0.45) {
+      const len = 9 + Math.floor(rng() * 6);
+      const angle = a + (rng() - 0.5) * 0.2;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+
+      for (let s = 1; s <= len; s++) {
+        const lx = x + sin * s;
+        const ly = y + cos * s * 0.6 + (s * s) / 28; // gentle drooping curve
+
+        const leafW = s < len * 0.6 ? 2 : 1;
+        const color = s < 3 ? '#166534' : s < len * 0.7 ? '#22c55e' : '#86efac';
+        rect(ctx, color, lx, ly, leafW, 1.5);
+      }
+    }
+  }
+
+  return c;
+}
+
 export function decorateFarm(scene: Phaser.Scene) {
   decorateFarmEstate(scene);
-  // 1. Trees
+  // 1. Realistic Vietnamese Rural Trees & Flora
   if (!scene.textures.exists('farm:tree')) {
-    const c = document.createElement('canvas');
-    c.width = 96;
-    c.height = 112;
-    drawTree(c.getContext('2d')!, 48, 108, 2);
-    scene.textures.addCanvas('farm:tree', c);
+    scene.textures.addCanvas('farm:tree', paintFarmShadeTree());
   }
   if (!scene.textures.exists('farm:orchard')) {
-    const c = document.createElement('canvas');
-    c.width = 96;
-    c.height = 112;
-    const ctx = c.getContext('2d')!;
-    drawTree(ctx, 48, 108, 2);
-    for (const [x, y] of [
-      [30, 43],
-      [59, 32],
-      [44, 24],
-      [69, 58],
-      [25, 64],
-      [47, 72],
-    ]) {
-      ellipse(ctx, '#8f713e', x!, y! + 1, 5, 5);
-      ellipse(ctx, '#dcaa5e', x!, y!, 4, 4);
-      rect(ctx, '#f6d78c', x! - 2, y! - 2, 2, 2);
-      rect(ctx, '#4f7946', x!, y! - 5, 3, 2);
-    }
-    scene.textures.addCanvas('farm:orchard', c);
+    scene.textures.addCanvas('farm:orchard', paintFarmFruitTree());
   }
   if (!scene.textures.exists('farm:blossom')) {
-    const c = document.createElement('canvas');
-    c.width = 96;
-    c.height = 112;
-    const ctx = c.getContext('2d')!;
-    drawTree(ctx, 48, 108, 2, ['#796957', '#ba8c87', '#dda9a0', '#efc9b4', '#f5dcc1', '#b48380']);
-    const rng = mulberry(812);
-    for (let i = 0; i < 34; i++) {
-      const x = 23 + rng() * 47,
-        y = 24 + rng() * 48;
-      rect(ctx, i % 2 ? '#f8dfc5' : '#f0c1b6', x, y, 3, 2);
-      rect(ctx, '#b98078', x + 1, y + 1, 1, 1);
-    }
-    scene.textures.addCanvas('farm:blossom', c);
+    scene.textures.addCanvas('farm:blossom', paintFarmBlossomTree());
   }
-  const trees = FARM_GARDEN.trees.map(([x, y], i) =>
-    scene.add
-      .sprite(
-        x * TILE,
-        y * TILE,
-        i % 9 === 4 ? 'farm:blossom' : i >= 9 && y <= 3 ? 'farm:orchard' : 'farm:tree',
-      )
+  if (!scene.textures.exists('farm:coconut')) {
+    scene.textures.addCanvas('farm:coconut', paintFarmCoconutPalm());
+  }
+  if (!scene.textures.exists('farm:bamboo')) {
+    scene.textures.addCanvas('farm:bamboo', paintFarmBamboo());
+  }
+
+  const trees = FARM_GARDEN.trees.map(([x, y], i) => {
+    // Lũy tre làng Việt Nam xanh ngát bờ tây
+    const isBamboo = x <= 2 && y >= 14 && y <= 28;
+    // Cây dừa xiêm ven ao cá / bờ nước (x >= 42 hoặc mép nước phía đông và nam)
+    const isWaterEdge = !isBamboo && (x >= 42 || (x >= 32 && y >= 14 && y <= 26));
+    // Vườn cây ăn trái trĩu quả Nam Bộ phía bắc
+    const isOrchard = !isBamboo && !isWaterEdge && y <= 3.5;
+    // Cây hoa xuân khoe sắc
+    const isBlossom = !isBamboo && !isWaterEdge && !isOrchard && i % 7 === 3;
+
+    const textureKey = isBamboo
+      ? 'farm:bamboo'
+      : isWaterEdge
+        ? 'farm:coconut'
+        : isOrchard
+          ? 'farm:orchard'
+          : isBlossom
+            ? 'farm:blossom'
+            : 'farm:tree';
+
+    const rng = mulberry(Math.floor(x * 43 + y * 19));
+    const shouldFlip = !isBamboo && rng() > 0.45;
+    const scale = 0.94 + rng() * 0.12; // Natural organic scale variation
+
+    const sprite = scene.add
+      .sprite(x * TILE, y * TILE, textureKey)
       .setOrigin(0.5, 1)
-      .setDepth(y * TILE),
-  );
+      .setScale(scale)
+      .setDepth(y * TILE);
+
+    if (shouldFlip) {
+      sprite.setFlipX(true);
+    }
+
+    return sprite;
+  });
 
   // 2. Bench
   if (!scene.textures.exists('farm:bench')) scene.textures.addCanvas('farm:bench', paintProp('bench'));
@@ -779,8 +1125,9 @@ export function decorateFarm(scene: Phaser.Scene) {
       FARM_GARDEN.tractor.y + FARM_GARDEN.tractor.h,
       'farm:tractor',
     )
+    .setName('farm:parked_tractor')
     .setOrigin(0.5, 1)
-    .setScale(2)
+    .setScale(1.5)
     .setDepth(FARM_GARDEN.tractor.y + FARM_GARDEN.tractor.h);
 
   // Kho thóc phụ bên cạnh Silo

@@ -7,6 +7,8 @@ import { boatIcon } from './boat';
 import { vehicleCanvas } from './vehicle';
 import { vehicleById } from '@cozy/game-data';
 export { boatIcon } from './boat';
+import { farmItemIcon } from './farm-icons';
+export { farmItemIcon } from './farm-icons';
 
 /** Resolves canonical or alias vehicle ID to pre-rendered icon URL with procedural canvas fallback. */
 export function vehicleIcon(id: string): string {
@@ -20,13 +22,18 @@ export function vehicleIcon(id: string): string {
 /** Icon for any catalogue item, using HD Chibi mannequins for clothing, physical materials for furniture, and boat models. */
 export function itemIcon(
   sprite: string,
-  type: 'clothing' | 'furniture' | 'rod' | 'boat' | 'vehicle' | 'sword',
+  type: 'clothing' | 'furniture' | 'rod' | 'boat' | 'vehicle' | 'sword' | 'farm',
   size = { w: 1, h: 1 },
   scale = 3,
 ): string {
   const key = `${sprite}|${type}|${size.w}x${size.h}|${scale}`;
   const hit = iconCache.get(key);
   if (hit) return hit;
+  if (type === 'farm') {
+    const url = farmItemIcon(sprite, 64);
+    iconCache.set(key, url);
+    return url;
+  }
   if (type === 'vehicle') {
     const url = vehicleIcon(sprite);
     iconCache.set(key, url);

@@ -1,5 +1,6 @@
 import { VehicleShopPanel } from './panels/VehicleShopPanel';
 import { VehicleControls } from './panels/VehicleControls';
+import { TractorControlHud } from './panels/TractorControlHud';
 import { ShowroomHud } from './panels/ShowroomHud';
 import { ResidentPanel } from './panels/ResidentPanel';
 import { FISH, FISHING_RODS, OCEAN_ZONES, ZONES, type ZoneId } from '@cozy/game-data';
@@ -55,6 +56,7 @@ import { FarmPasswordModal } from './panels/FarmPasswordModal';
 import { FarmPlotModal } from './panels/FarmPlotModal';
 import { FarmSiloPanel } from './panels/FarmSiloPanel';
 import { FarmShopPanel } from './panels/FarmShopPanel';
+import { FarmLivestockPanel } from './panels/FarmLivestockPanel';
 import { AdminWeatherModal } from './admin/AdminWeatherModal';
 import { Sidebar } from './Sidebar';
 import { Brand } from './Brand';
@@ -261,22 +263,18 @@ export function GameScreen({ me, onSignedOut }: { me: Me; onSignedOut: () => voi
           {panel === 'wardrobe' ? (
             <BackpackPanel me={me} initialTab="wardrobe" onClose={() => setPanel(null)} />
           ) : null}
+          {panel === 'vehicles' ? (
+            <BackpackPanel me={me} initialTab="vehicles" onClose={() => setPanel(null)} />
+          ) : null}
           {panel === 'profile' ? (
             <BackpackPanel me={me} initialTab="profile" onClose={() => setPanel(null)} />
           ) : null}
-          {(['resident', 'farm-care', 'kitchen', 'aquarium'] as const).some((p) => p === panel) ? (
+          {panel === 'farm-care' ? <FarmLivestockPanel me={me} onClose={() => setPanel(null)} /> : null}
+          {(['resident', 'kitchen', 'aquarium'] as const).some((p) => p === panel) ? (
             <ResidentPanel
               key={panel}
               me={me}
-              initialTab={
-                panel === 'farm-care'
-                  ? 'farm'
-                  : panel === 'kitchen'
-                    ? 'kitchen'
-                    : panel === 'aquarium'
-                      ? 'aquarium'
-                      : 'quests'
-              }
+              initialTab={panel === 'kitchen' ? 'kitchen' : panel === 'aquarium' ? 'aquarium' : 'quests'}
               onClose={() => setPanel(null)}
             />
           ) : null}
@@ -625,6 +623,61 @@ function WorldHud({
     queryFn: () => api<EventHub>('/events'),
     refetchInterval: 10_000,
   });
+
+  const qc = useQueryClient();
+  const farmAlertsQuery = useQuery({
+    queryKey: ['farm', 'alerts'],
+    queryFn: () =>
+      api<{
+        starvationAlerts?: {
+          criticalCount: number;
+          deadCount: number;
+          hungryCount: number;
+          criticalAnimals: Array<{
+            id: string;
+            name: string;
+            type: string;
+            facility: string;
+            starvationRemainingSec: number;
+          }>;
+        };
+      }>('/api/farm/me'),
+    refetchInterval: 15_000,
+  });
+
+  const lastWarnedCountRef = useRef<number>(0);
+  const lastToastTimeRef = useRef<number>(0);
+
+  useEffect(() => {
+    const onFarmRefresh = () => {
+      void qc.invalidateQueries({ queryKey: ['farm', 'alerts'] });
+    };
+    window.addEventListener('farm:refresh', onFarmRefresh);
+    return () => window.removeEventListener('farm:refresh', onFarmRefresh);
+  }, [qc]);
+
+  useEffect(() => {
+    const alerts = farmAlertsQuery.data?.starvationAlerts;
+    if (!alerts) return;
+
+    const now = Date.now();
+    if (
+      alerts.criticalCount > 0 &&
+      (alerts.criticalCount > lastWarnedCountRef.current || now - lastToastTimeRef.current > 180_000)
+    ) {
+      lastWarnedCountRef.current = alerts.criticalCount;
+      lastToastTimeRef.current = now;
+      play('pop');
+      useUi.getState().toast({
+        kind: 'error',
+        title: '🚨 BÁO ĐỘNG ĐÓI: Thú nuôi sắp chết!',
+        body: `Có ${alerts.criticalCount} con vật trong trang trại sắp chết đói (< 15 phút)! Hãy nạp máng ăn hoặc cho ăn ngay!`,
+      });
+    } else if (alerts.criticalCount === 0) {
+      lastWarnedCountRef.current = 0;
+    }
+  }, [farmAlertsQuery.data?.starvationAlerts]);
+
   const [, force] = useState(0);
   useEffect(() => {
     const t = setInterval(() => force((x) => x + 1), 1000);
@@ -761,6 +814,66 @@ function WorldHud({
               🎱 Bida Arena (Tạo phòng & Ghép đấu)
             </Button>
           ) : null}
+          {/* Farm Livestock Starvation Emergency HUD Warning Chip */}
+          {farmAlertsQuery.data?.starvationAlerts?.criticalCount ? (
+            <button
+              type="button"
+              className="location-chip"
+              onClick={() => {
+                play('click');
+                setPanel('farm-care');
+              }}
+              style={{
+                cursor: 'pointer',
+                background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.95) 0%, rgba(185, 28, 28, 0.9) 100%)',
+                border: '1px solid #f87171',
+                color: '#ffffff',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 0 12px rgba(239, 68, 68, 0.6)',
+              }}
+              title="Nhấn để mở Chuồng Trại và nạp máng ăn / cho ăn khẩn cấp"
+            >
+              <span style={{ fontSize: 13 }}>🚨</span>
+              <span>{farmAlertsQuery.data.starvationAlerts.criticalCount} thú sắp chết đói (&lt;15p)!</span>
+              <span
+                style={{
+                  padding: '2px 8px',
+                  borderRadius: 10,
+                  background: '#ffffff',
+                  color: '#b91c1c',
+                  fontSize: 11,
+                  fontWeight: 800,
+                }}
+              >
+                Cứu Ngay
+              </span>
+            </button>
+          ) : farmAlertsQuery.data?.starvationAlerts?.deadCount ? (
+            <button
+              type="button"
+              className="location-chip"
+              onClick={() => {
+                play('click');
+                setPanel('farm-care');
+              }}
+              style={{
+                cursor: 'pointer',
+                background: 'rgba(71, 85, 105, 0.85)',
+                border: '1px solid rgba(148, 163, 184, 0.4)',
+                color: '#f8fafc',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+              title="Nhấn để mở Chuồng trại dọn dẹp xác"
+            >
+              <span>💀</span>
+              <span>Có {farmAlertsQuery.data.starvationAlerts.deadCount} xác thú cần dọn</span>
+            </button>
+          ) : null}
         </div>
         {ev ? (
           <div className="event-chip">
@@ -830,6 +943,7 @@ function WorldHud({
 
       <div className="hud-tools">
         <VehicleControls me={me} />
+        <TractorControlHud me={me} />
         <div style={{ position: 'relative' }}>
           <button
             className="hud-tool"

@@ -177,23 +177,39 @@ export function drawMasterFarmLandscape(ctx: CanvasRenderingContext2D): void {
   ])
     flowerBed(ctx, r, r.x);
 
-  // A shallow boundary hedge and split-rail fence frame the playable map.
+  // A lush, organic boundary hedge and split-rail fence frame the playable map.
   for (let x = 12; x < FARM_WIDTH; x += 22) {
     for (const y of [24, FARM_HEIGHT - 5]) {
-      ellipse(ctx, '#53794e', x, y, 17, 12);
-      ellipse(ctx, '#6e985c', x - 2, y - 3, 15, 9);
-      ellipse(ctx, '#a0bb77', x - 5, y - 6, 7, 3);
+      // Under-canopy shadow
+      ellipse(ctx, '#142d17', x + 1, y + 1, 18, 12);
+      // Main dark foliage
+      ellipse(ctx, '#1e4822', x, y, 17, 11);
+      // Midtone leaf volume
+      ellipse(ctx, '#33733b', x - 2, y - 2, 14, 9);
+      // Sunlit foliage highlight
+      ellipse(ctx, '#5aa64e', x - 4, y - 4, 10, 6);
+      ellipse(ctx, '#86d46a', x - 6, y - 5, 5, 3);
+
+      // Natural leaf texture flecks
+      for (let f = 0; f < 5; f++) {
+        const fx = x - 12 + Math.floor(rng() * 24);
+        const fy = y - 7 + Math.floor(rng() * 14);
+        box(ctx, rng() > 0.5 ? '#86d46a' : '#33733b', fx, fy, 2, 2);
+      }
     }
   }
   fence(ctx, 8, 31, FARM_WIDTH - 16);
   for (const x of [14, FARM_WIDTH - 14]) {
     for (let y = 50; y < FARM_HEIGHT - 25; y += 24) {
       if (x < 32 && y < 170) continue;
-      ellipse(ctx, '#567d4e', x, y, 11, 17);
-      ellipse(ctx, '#81a76b', x - 2, y - 4, 8, 11);
+      ellipse(ctx, '#142d17', x + 1, y + 1, 12, 17);
+      ellipse(ctx, '#1e4822', x, y, 11, 16);
+      ellipse(ctx, '#33733b', x - 2, y - 2, 9, 13);
+      ellipse(ctx, '#5aa64e', x - 3, y - 4, 6, 8);
+      ellipse(ctx, '#86d46a', x - 4, y - 5, 3, 4);
     }
   }
-  // Meadow flowers in small clusters instead of uniformly scattered confetti.
+  // Meadow flowers in natural, organic clusters instead of scattered confetti.
   for (let i = 0; i < 160; i++) {
     const x = 40 + Math.floor(rng() * (FARM_WIDTH - 80));
     const y = 45 + Math.floor(rng() * (FARM_HEIGHT - 90));
@@ -204,9 +220,16 @@ export function drawMasterFarmLandscape(ctx: CanvasRenderingContext2D): void {
       )
     )
       continue;
-    box(ctx, '#628d54', x, y, 1, 5);
-    box(ctx, i % 3 ? '#f0dcaf' : '#dba2a0', x - 1, y - 1, 3, 3);
-    box(ctx, '#fff0cf', x, y, 1, 1);
+
+    // Stem & leaf
+    box(ctx, '#335e2b', x, y, 1, 6);
+    box(ctx, '#4e8c3f', x - 1, y + 2, 2, 1);
+    // Delicate blooming petals
+    const petalColor = i % 3 === 0 ? '#fda4af' : i % 3 === 1 ? '#fef08a' : '#c084fc';
+    const darkPetal = i % 3 === 0 ? '#e11d48' : i % 3 === 1 ? '#eab308' : '#7e22ce';
+    box(ctx, darkPetal, x - 1, y - 2, 3, 3);
+    box(ctx, petalColor, x - 1, y - 2, 2, 2);
+    box(ctx, '#ffffff', x, y - 1, 1, 1); // center sparkle
   }
 }
 

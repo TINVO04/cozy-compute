@@ -9,6 +9,7 @@ import {
   TOP_COLORS,
   normalizeRodId,
   normalizeSwordId,
+  vehicleById,
   type Appearance,
   type HairStyle,
   type Rarity,
@@ -16,6 +17,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BookOpen,
+  Car,
   Check,
   CircleDollarSign,
   Hand,
@@ -33,6 +35,7 @@ import { avatarPortrait } from '../../art/avatar';
 import { chibiAvatarFull, chibiAvatarPortrait, chibiItemIcon } from '../../art/chibi';
 import { fishIcon, FISH_EFFECT_CLASS, ROD_EFFECT_CLASS } from '../../art/fish';
 import { itemIcon } from '../../art/items';
+import { vehicleCanvas } from '../../art/vehicle';
 import {
   api,
   formatDateSafe,
@@ -72,7 +75,93 @@ const SLOT_NAMES: Record<string, string> = {
   rod: 'Cần câu',
   sword: 'Kiếm',
   boat: 'Thuyền',
+  vehicle: 'Phương tiện / Xe',
 };
+
+const VEHICLE_ROTATION_ORDER = [0, 2, 3, 1] as const;
+const VEHICLE_DIR_LABELS: Record<number, string> = {
+  0: 'Phía trước',
+  1: 'Hông trái',
+  2: 'Hông phải',
+  3: 'Đuôi xe',
+};
+
+function BackpackVehiclePreview({ id }: { id: string }) {
+  const [dir, setDir] = useState<number>(2);
+  const src = useMemo(() => {
+    try {
+      return vehicleCanvas(id, dir).toDataURL();
+    } catch {
+      return '';
+    }
+  }, [id, dir]);
+
+  const rotate = (delta: 1 | -1) => {
+    setDir((cur) => {
+      const idx = VEHICLE_ROTATION_ORDER.indexOf(cur as (typeof VEHICLE_ROTATION_ORDER)[number]);
+      const nextIdx = (idx + delta + VEHICLE_ROTATION_ORDER.length) % VEHICLE_ROTATION_ORDER.length;
+      return VEHICLE_ROTATION_ORDER[nextIdx]!;
+    });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+      <div
+        style={{
+          width: 140,
+          height: 104,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'rgba(0, 0, 0, 0.35)',
+          borderRadius: 12,
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.4)',
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      >
+        {src ? (
+          <img
+            src={src}
+            alt=""
+            width={128}
+            height={96}
+            style={{
+              imageRendering: 'pixelated',
+              objectFit: 'contain',
+              display: 'block',
+              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
+            }}
+          />
+        ) : null}
+      </div>
+      <div className="row" style={{ gap: 4, alignItems: 'center' }}>
+        <button
+          type="button"
+          className="btn btn-secondary btn-xs"
+          onClick={() => rotate(-1)}
+          title="Xoay sang trái"
+          style={{ padding: '2px 8px', fontSize: 11 }}
+        >
+          ◀
+        </button>
+        <span className="muted" style={{ fontSize: 11, minWidth: 64, textAlign: 'center' }}>
+          {VEHICLE_DIR_LABELS[dir] ?? 'Xoay'}
+        </span>
+        <button
+          type="button"
+          className="btn btn-secondary btn-xs"
+          onClick={() => rotate(1)}
+          title="Xoay sang phải"
+          style={{ padding: '2px 8px', fontSize: 11 }}
+        >
+          ▶
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const RARITY_COLORS: Record<string, string> = {
   common: '#94a3b8',
@@ -89,10 +178,12 @@ export function BackpackPanel({
   onClose,
 }: {
   me: Me;
-  initialTab?: 'backpack' | 'tackle' | 'wardrobe' | 'profile';
+  initialTab?: 'backpack' | 'tackle' | 'wardrobe' | 'vehicles' | 'profile';
   onClose: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<'backpack' | 'tackle' | 'wardrobe' | 'profile'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'backpack' | 'tackle' | 'wardrobe' | 'vehicles' | 'profile'>(
+    initialTab,
+  );
   useFishArt();
   const qc = useQueryClient();
   const refresh = useRefreshEconomy();
@@ -107,6 +198,13 @@ export function BackpackPanel({
 
   // Shop inventory query
   const shop = useQuery({ queryKey: qk.shop, queryFn: () => api<ShopItem[]>('/shop') });
+
+  // Farm warehouse query for farm machinery (e.g. tractor)
+  const farmMe = useQuery({
+    queryKey: ['farm', 'me'],
+    queryFn: () => api<{ warehouse: { items: Array<{ itemId: string; quantity: number }> } }>('/api/farm/me'),
+    staleTime: 10_000,
+  });
 
   // Fish journal query for compendium stats
   const journalQuery = useQuery({
@@ -235,11 +333,11 @@ export function BackpackPanel({
     onError: (err) => toastError(err, 'Không thể lưu'),
   });
 
-  // Equip clothing mutation
+  // Equip clothing/gear/vehicle mutation
   const equipItem = useMutation({
     mutationFn: (v: {
       itemId: string | null;
-      slot: 'hat' | 'top' | 'face' | 'back' | 'rod' | 'boat' | 'sword';
+      slot: 'hat' | 'top' | 'face' | 'back' | 'rod' | 'boat' | 'sword' | 'vehicle';
     }) => api<{ appearance: Appearance }>('/inventory/equip', { body: v }),
     onSuccess: (data, variables) => {
       refresh();
@@ -247,6 +345,26 @@ export function BackpackPanel({
         setLocalAppearance(data.appearance);
       } else if (variables.slot === 'rod' && variables.itemId === null) {
         setLocalAppearance({ ...me.appearance, rod: null });
+      } else if (variables.slot === 'vehicle' && variables.itemId === null) {
+        setLocalAppearance({ ...me.appearance, vehicle: null });
+      }
+      void qc.invalidateQueries({ queryKey: qk.me });
+      void qc.invalidateQueries({ queryKey: qk.shop });
+      if (variables.slot === 'vehicle') {
+        if (variables.itemId) {
+          const vDef = vehicleById(variables.itemId);
+          useUi.getState().toast({
+            kind: 'success',
+            title: `Đã chọn ${vDef?.name ?? 'xe'}`,
+            body: 'Ra lòng đường hoặc sân gara rồi nhấn phím V để lên xe lái!',
+          });
+        } else {
+          useUi.getState().toast({
+            kind: 'info',
+            title: 'Đã cất phương tiện',
+            body: 'Bạn đã chuyển sang chế độ đi bộ.',
+          });
+        }
       }
     },
     onError: (err) => toastError(err, 'Không thể thay đổi trang bị'),
@@ -269,13 +387,49 @@ export function BackpackPanel({
     (i) =>
       (i.type === 'clothing' || i.type === 'rod' || i.type === 'boat' || i.type === 'sword') && i.owned > 0,
   );
+  const ownedVehicles = useMemo(() => {
+    const list = (shop.data ?? [])
+      .filter((i) => (i.type === 'vehicle' || i.slot === 'vehicle') && i.owned > 0)
+      .map((i) => ({ ...i }));
+
+    const hasTractorInWarehouse = Boolean(
+      farmMe.data?.warehouse?.items?.some((it) => it.itemId === 'tractor_farm' && it.quantity > 0),
+    );
+    const isUsingTractor =
+      me.appearance.vehicle === 'tractor_farm' || me.appearance.vehicle === 'cars/tractor-farm';
+
+    if ((hasTractorInWarehouse || isUsingTractor) && !list.some((v) => v.id === 'tractor_farm')) {
+      const tractorDef = vehicleById('tractor_farm');
+      if (tractorDef) {
+        list.push({
+          id: 'tractor_farm',
+          name: tractorDef.name,
+          type: 'vehicle',
+          slot: 'vehicle',
+          description: tractorDef.description ?? 'Máy cày nông nghiệp đa năng.',
+          rarity: 'rare',
+          rarityLabel: 'Hiếm',
+          price: tractorDef.price,
+          sprite: 'vehicle:tractor_farm',
+          size: { w: 2, h: 2 },
+          decor: 0,
+          enabled: true,
+          owned: 1,
+          equipped: isUsingTractor,
+          wished: false,
+        });
+      }
+    }
+    return list;
+  }, [shop.data, farmMe.data, me.appearance.vehicle]);
   const [wardrobeFilter, setWardrobeFilter] = useState<
-    'all' | 'hat' | 'top' | 'face' | 'back' | 'rod' | 'sword' | 'boat'
+    'all' | 'hat' | 'top' | 'face' | 'back' | 'rod' | 'sword' | 'boat' | 'vehicle'
   >('all');
   const filteredOwnedClothing = useMemo(() => {
     if (wardrobeFilter === 'all') return ownedClothing;
+    if (wardrobeFilter === 'vehicle') return ownedVehicles;
     return ownedClothing.filter((i) => i.slot === wardrobeFilter);
-  }, [ownedClothing, wardrobeFilter]);
+  }, [ownedClothing, ownedVehicles, wardrobeFilter]);
   const equippedRodId = me.appearance.rod ? normalizeRodId(me.appearance.rod) : null;
   const allRodsList = useMemo(() => Object.values(FISHING_RODS), []);
   const ownedRodIds = useMemo(() => {
@@ -338,6 +492,18 @@ export function BackpackPanel({
           >
             <Shirt size={15} style={{ verticalAlign: -2, marginRight: 6 }} />
             Tủ Đồ Thời Trang
+          </button>
+          <button
+            role="tab"
+            className="tab"
+            aria-selected={activeTab === 'vehicles'}
+            onClick={() => {
+              setActiveTab('vehicles');
+              play('click');
+            }}
+          >
+            <Car size={15} style={{ verticalAlign: -2, marginRight: 6 }} />
+            Phương Tiện & Xe ({ownedVehicles.length})
           </button>
           <button
             role="tab"
@@ -996,10 +1162,13 @@ export function BackpackPanel({
                     <Button size="sm" variant="ghost" onClick={() => setPanel('shop-swords')}>
                       ⚔ Tiệm vũ khí
                     </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setPanel('shop-vehicles')}>
+                      🚗 Showroom xe
+                    </Button>
                   </div>
                 </div>
                 <div className="wardrobe-slots">
-                  {(['hat', 'top', 'face', 'back', 'rod', 'sword'] as const).map((slot) => {
+                  {(['hat', 'top', 'face', 'back', 'rod', 'sword', 'vehicle'] as const).map((slot) => {
                     const currentSprite = me.appearance[slot];
                     const normalized =
                       slot === 'rod' && currentSprite
@@ -1007,25 +1176,33 @@ export function BackpackPanel({
                         : slot === 'sword' && currentSprite
                           ? normalizeSwordId(currentSprite)
                           : currentSprite;
-                    const currentItem = ownedClothing.find(
-                      (i) =>
-                        i.slot === slot &&
-                        (slot === 'rod'
-                          ? normalizeRodId(i.id) === normalized || normalizeRodId(i.sprite) === normalized
-                          : slot === 'sword'
-                            ? normalizeSwordId(i.id) === normalized ||
-                              normalizeSwordId(i.sprite) === normalized
-                            : i.sprite === currentSprite || i.id === currentSprite),
-                    );
+                    const currentItem =
+                      slot === 'vehicle'
+                        ? ownedVehicles.find((v) => v.id === currentSprite)
+                        : ownedClothing.find(
+                            (i) =>
+                              i.slot === slot &&
+                              (slot === 'rod'
+                                ? normalizeRodId(i.id) === normalized ||
+                                  normalizeRodId(i.sprite) === normalized
+                                : slot === 'sword'
+                                  ? normalizeSwordId(i.id) === normalized ||
+                                    normalizeSwordId(i.sprite) === normalized
+                                  : i.sprite === currentSprite || i.id === currentSprite),
+                          );
+                    const vehicleDef =
+                      slot === 'vehicle' && currentSprite ? vehicleById(currentSprite) : null;
                     const displayName =
                       currentItem?.name ??
                       (slot === 'rod' && normalized
                         ? (FISHING_RODS[normalized]?.name ?? 'Cần Cành Cây')
                         : slot === 'sword' && normalized
                           ? (SWORDS[normalized]?.name ?? 'Kiếm Tập Sự')
-                          : currentSprite
-                            ? 'Mặc định'
-                            : 'Chưa trang bị');
+                          : slot === 'vehicle' && currentSprite
+                            ? (vehicleDef?.name ?? 'Xe mặc định')
+                            : currentSprite
+                              ? 'Mặc định'
+                              : 'Chưa trang bị');
                     return (
                       <div key={slot} className="wardrobe-slot-card">
                         <div className="wardrobe-slot-header">
@@ -1048,7 +1225,9 @@ export function BackpackPanel({
                                   ? itemIcon(normalized ?? 'rod_twig', 'rod', { w: 1, h: 1 }, 3)
                                   : slot === 'sword'
                                     ? itemIcon(normalized ?? 'sword_training', 'sword', { w: 1, h: 1 }, 3)
-                                    : chibiItemIcon(currentSprite, slot, 48)
+                                    : slot === 'vehicle'
+                                      ? vehicleCanvas(currentSprite, 2).toDataURL()
+                                      : chibiItemIcon(currentSprite, slot, 48)
                               }
                               alt=""
                               style={{ width: 44, height: 44, objectFit: 'contain' }}
@@ -1150,10 +1329,19 @@ export function BackpackPanel({
                     >
                       Thuyền bè
                     </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      className="tab"
+                      aria-selected={wardrobeFilter === 'vehicle'}
+                      onClick={() => setWardrobeFilter('vehicle')}
+                    >
+                      Xe ({ownedVehicles.length})
+                    </button>
                   </div>
                 </div>
 
-                {ownedClothing.length === 0 ? (
+                {ownedClothing.length === 0 && ownedVehicles.length === 0 ? (
                   <EmptyState
                     icon={<Shirt size={26} />}
                     title="Chưa có món đồ thời trang nào trong tủ đồ"
@@ -1172,7 +1360,13 @@ export function BackpackPanel({
                     }}
                   >
                     {filteredOwnedClothing.map((item) => {
-                      const isEquipped = item.equipped;
+                      const isEquipped =
+                        item.slot === 'vehicle' || item.type === 'vehicle'
+                          ? me.appearance.vehicle === item.id ||
+                            (item.id === 'tractor_farm' &&
+                              (me.appearance.vehicle === 'tractor_farm' ||
+                                me.appearance.vehicle === 'cars/tractor-farm'))
+                          : item.equipped;
                       const rarityColor = RARITY_COLORS[item.rarity] ?? '#94a3b8';
                       return (
                         <div
@@ -1204,15 +1398,17 @@ export function BackpackPanel({
                               }}
                             >
                               ✓{' '}
-                              {item.type === 'sword'
-                                ? 'Đang vác kiếm'
-                                : item.type === 'rod'
-                                  ? 'Đang cầm'
-                                  : item.type === 'boat'
-                                    ? 'Đang trang bị'
-                                    : item.slot === 'back'
-                                      ? 'Đang đeo cánh'
-                                      : 'Đang mặc'}
+                              {item.type === 'vehicle' || item.slot === 'vehicle'
+                                ? 'Đang chọn xe'
+                                : item.type === 'sword'
+                                  ? 'Đang vác kiếm'
+                                  : item.type === 'rod'
+                                    ? 'Đang cầm'
+                                    : item.type === 'boat'
+                                      ? 'Đang trang bị'
+                                      : item.slot === 'back'
+                                        ? 'Đang đeo cánh'
+                                        : 'Đang mặc'}
                             </span>
                           ) : null}
 
@@ -1229,17 +1425,19 @@ export function BackpackPanel({
                           >
                             <img
                               src={
-                                item.slot === 'rod'
-                                  ? itemIcon(item.sprite, 'rod', item.size, 4)
-                                  : item.slot === 'sword'
-                                    ? itemIcon(item.sprite, 'sword', item.size, 4)
-                                    : item.slot === 'boat'
-                                      ? itemIcon(item.id, 'boat')
-                                      : chibiItemIcon(
-                                          item.sprite,
-                                          (item.slot as 'hat' | 'top' | 'face' | 'back') ?? 'top',
-                                          72,
-                                        )
+                                item.slot === 'vehicle' || item.type === 'vehicle'
+                                  ? vehicleCanvas(item.id, 2).toDataURL()
+                                  : item.slot === 'rod'
+                                    ? itemIcon(item.sprite, 'rod', item.size, 4)
+                                    : item.slot === 'sword'
+                                      ? itemIcon(item.sprite, 'sword', item.size, 4)
+                                      : item.slot === 'boat'
+                                        ? itemIcon(item.id, 'boat')
+                                        : chibiItemIcon(
+                                            item.sprite,
+                                            (item.slot as 'hat' | 'top' | 'face' | 'back') ?? 'top',
+                                            72,
+                                          )
                               }
                               alt={item.name}
                               style={{
@@ -1289,29 +1487,34 @@ export function BackpackPanel({
                               }
                               equipItem.mutate({
                                 itemId: isEquipped ? null : item.id,
-                                slot: item.slot as 'hat' | 'top' | 'face' | 'back' | 'rod' | 'boat' | 'sword',
+                                slot: (item.slot ?? 'vehicle') as
+                                  'hat' | 'top' | 'face' | 'back' | 'rod' | 'boat' | 'sword' | 'vehicle',
                               });
                             }}
                           >
                             {isEquipped
-                              ? item.type === 'sword'
-                                ? 'Hạ kiếm'
-                                : item.type === 'rod'
-                                  ? 'Cất cần'
-                                  : item.type === 'boat'
-                                    ? 'Tháo thuyền'
-                                    : item.slot === 'back'
-                                      ? 'Tháo cánh'
-                                      : 'Tháo ra'
-                              : item.type === 'sword'
-                                ? 'Vác kiếm'
-                                : item.type === 'rod'
-                                  ? 'Trang bị'
-                                  : item.type === 'boat'
+                              ? item.type === 'vehicle' || item.slot === 'vehicle'
+                                ? 'Cất xe'
+                                : item.type === 'sword'
+                                  ? 'Hạ kiếm'
+                                  : item.type === 'rod'
+                                    ? 'Cất cần'
+                                    : item.type === 'boat'
+                                      ? 'Tháo thuyền'
+                                      : item.slot === 'back'
+                                        ? 'Tháo cánh'
+                                        : 'Tháo ra'
+                              : item.type === 'vehicle' || item.slot === 'vehicle'
+                                ? 'Chọn xe này'
+                                : item.type === 'sword'
+                                  ? 'Vác kiếm'
+                                  : item.type === 'rod'
                                     ? 'Trang bị'
-                                    : item.slot === 'back'
-                                      ? 'Đeo cánh'
-                                      : 'Mặc vào'}
+                                    : item.type === 'boat'
+                                      ? 'Trang bị'
+                                      : item.slot === 'back'
+                                        ? 'Đeo cánh'
+                                        : 'Mặc vào'}
                           </Button>
                         </div>
                       );
@@ -1389,7 +1592,310 @@ export function BackpackPanel({
           </div>
         ) : null}
 
-        {/* TAB 3: PROFILE & RECORDS */}
+        {/* TAB 4: GARAGE & VEHICLES */}
+        {activeTab === 'vehicles' ? (
+          <div className="stack" style={{ gap: 16 }}>
+            {/* Active Vehicle Showcase Banner */}
+            {me.appearance.vehicle ? (
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(99, 102, 241, 0.16))',
+                  border: '2px solid #38bdf8',
+                  borderRadius: 14,
+                  padding: '14px 18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 16,
+                  boxShadow: '0 0 20px rgba(56, 189, 248, 0.2)',
+                }}
+              >
+                <div className="row wrap" style={{ gap: 16, alignItems: 'center' }}>
+                  <BackpackVehiclePreview id={me.appearance.vehicle} />
+                  <div className="stack" style={{ gap: 4 }}>
+                    <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+                      <span
+                        className="pill pill-primary"
+                        style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px' }}
+                      >
+                        ✓ Đang chọn làm xe chính
+                      </span>
+                      {(() => {
+                        const vDef = vehicleById(me.appearance.vehicle);
+                        return vDef?.brand ? (
+                          <span
+                            className="pill"
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              background: 'rgba(255, 255, 255, 0.12)',
+                              color: '#f8fafc',
+                            }}
+                          >
+                            {vDef.brand}
+                          </span>
+                        ) : null;
+                      })()}
+                    </div>
+                    <strong style={{ fontSize: 16, color: '#38bdf8' }}>
+                      {vehicleById(me.appearance.vehicle)?.name ?? me.appearance.vehicle}
+                    </strong>
+                    <div className="muted" style={{ fontSize: 12 }}>
+                      {vehicleById(me.appearance.vehicle)?.description ??
+                        'Phương tiện cá nhân tốc độ cao di chuyển trong thị trấn và trang trại.'}
+                    </div>
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        marginTop: 4,
+                        fontSize: 12,
+                        color: '#fbbf24',
+                        background: 'rgba(251, 191, 36, 0.12)',
+                        padding: '4px 10px',
+                        borderRadius: 8,
+                        width: 'fit-content',
+                      }}
+                    >
+                      🚦 Nhấn phím <strong>V</strong> ngoài đường hoặc sân gara để lên/xuống xe!
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row" style={{ gap: 8 }}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={equipItem.isPending && equipItem.variables?.slot === 'vehicle'}
+                    onClick={() => equipItem.mutate({ itemId: null, slot: 'vehicle' })}
+                    title="Cất xe và chuyển sang đi bộ"
+                  >
+                    🚶 Cất xe (Đi bộ)
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, rgba(148, 163, 184, 0.12), rgba(71, 85, 105, 0.12))',
+                  border: '1px solid rgba(148, 163, 184, 0.25)',
+                  borderRadius: 14,
+                  padding: '14px 18px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 12,
+                }}
+              >
+                <div className="row" style={{ gap: 12, alignItems: 'center' }}>
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 10,
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Car size={22} style={{ color: '#94a3b8' }} />
+                  </div>
+                  <div className="stack" style={{ gap: 2 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>🚶 Bạn đang đi bộ (Chưa chọn xe)</div>
+                    <div className="muted" style={{ fontSize: 12 }}>
+                      Chọn một chiếc xe bạn sở hữu bên dưới để tự tin dạo phố và tăng tốc độ di chuyển!
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    onClose();
+                    setPanel('shop-vehicles');
+                  }}
+                >
+                  <Car size={14} /> Ghé Gara Bạc Hà
+                </Button>
+              </div>
+            )}
+
+            {/* Owned Vehicles Grid */}
+            {ownedVehicles.length === 0 ? (
+              <EmptyState
+                icon={<Car size={28} />}
+                title="Chưa sở hữu phương tiện nào trong balo"
+                body="Hãy ghé thăm Gara Bạc Hà (Showroom xe) tại thị trấn để rinh về siêu xe, mô tô PKL hay xe đạp; hoặc ghé Tiệm Bác Sáu ở Nông Trại để mua Máy Cày!"
+                action={
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      onClose();
+                      setPanel('shop-vehicles');
+                    }}
+                  >
+                    🚗 Đến Showroom Gara Bạc Hà
+                  </Button>
+                }
+              />
+            ) : (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                  gap: 14,
+                }}
+              >
+                {ownedVehicles.map((item) => {
+                  const isEquipped =
+                    me.appearance.vehicle === item.id ||
+                    (item.id === 'tractor_farm' &&
+                      (me.appearance.vehicle === 'tractor_farm' ||
+                        me.appearance.vehicle === 'cars/tractor-farm'));
+                  const config = vehicleById(item.id);
+                  const rarityColor = RARITY_COLORS[item.rarity] ?? '#94a3b8';
+                  const speedMultiplier = config ? (config.speed / 150).toFixed(1) : '1.5';
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="card"
+                      style={{
+                        padding: 14,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 10,
+                        position: 'relative',
+                        border: isEquipped ? '2px solid #38bdf8' : '1px solid var(--border)',
+                        background: isEquipped
+                          ? 'linear-gradient(180deg, rgba(56, 189, 248, 0.12) 0%, var(--surface-1) 100%)'
+                          : 'var(--surface-1)',
+                        boxShadow: isEquipped ? '0 0 16px rgba(56, 189, 248, 0.25)' : undefined,
+                      }}
+                    >
+                      {isEquipped ? (
+                        <span
+                          className="pill pill-primary"
+                          style={{
+                            position: 'absolute',
+                            top: 10,
+                            right: 10,
+                            fontSize: 10,
+                            fontWeight: 700,
+                            zIndex: 2,
+                          }}
+                        >
+                          ✓ Đang Chọn (Phím V)
+                        </span>
+                      ) : null}
+
+                      {/* 360-degree Preview */}
+                      <BackpackVehiclePreview id={item.id} />
+
+                      {/* Header & Badges */}
+                      <div className="stack" style={{ gap: 4 }}>
+                        <div className="row wrap" style={{ gap: 6, alignItems: 'center' }}>
+                          <strong
+                            style={{
+                              fontSize: 14,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {item.name}
+                          </strong>
+                          {config?.brand ? (
+                            <span
+                              className="pill"
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                padding: '2px 6px',
+                                background: 'rgba(255, 255, 255, 0.1)',
+                                color: '#e2e8f0',
+                              }}
+                            >
+                              {config.brand}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className="row wrap" style={{ gap: 6, fontSize: 11 }}>
+                          <span style={{ color: rarityColor, fontWeight: 700 }}>
+                            {RARITY_LABELS[item.rarity as Rarity] ?? item.rarity}
+                          </span>
+                          <span className="muted">·</span>
+                          <span
+                            className="pill"
+                            style={{
+                              background: 'rgba(56, 189, 248, 0.12)',
+                              color: '#38bdf8',
+                              fontSize: 11,
+                              padding: '1px 6px',
+                            }}
+                          >
+                            ⚡ ×{speedMultiplier} tốc độ
+                          </span>
+                        </div>
+                      </div>
+
+                      <p
+                        className="muted"
+                        style={{
+                          margin: 0,
+                          fontSize: 12,
+                          lineHeight: 1.45,
+                          minHeight: 34,
+                        }}
+                      >
+                        {item.description || config?.description}
+                      </p>
+
+                      {/* Action Button */}
+                      <div style={{ marginTop: 'auto', paddingTop: 6 }}>
+                        {isEquipped ? (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            block
+                            loading={equipItem.isPending && equipItem.variables?.slot === 'vehicle'}
+                            onClick={() => equipItem.mutate({ itemId: null, slot: 'vehicle' })}
+                          >
+                            🚶 Cất xe (Đi bộ)
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            block
+                            loading={equipItem.isPending && equipItem.variables?.itemId === item.id}
+                            onClick={() =>
+                              equipItem.mutate({
+                                itemId: item.id,
+                                slot: 'vehicle',
+                              })
+                            }
+                          >
+                            🚗 Chọn xe này
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {/* TAB 5: PROFILE & RECORDS */}
         {activeTab === 'profile' ? (
           <div className="stack" style={{ gap: 16 }}>
             <div
