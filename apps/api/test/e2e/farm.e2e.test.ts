@@ -980,7 +980,7 @@ describe('Cozy Farm System E2E Specification', () => {
           headers: { 'Idempotency-Key': randomUUID() },
         });
         expect(emptySellRes.status).toBe(400);
-        expect(emptySellRes.body.error).toBe('no_crops_to_sell');
+        expect(emptySellRes.body.error.code).toBe('no_crops_to_sell');
       });
 
       it('F6.6: tracks livestock growth stages over time and sells mature animal for coins', async () => {
@@ -1039,7 +1039,7 @@ describe('Cozy Farm System E2E Specification', () => {
 
         // Verify ledger balance increased
         const balAfter = await getLedgerCoin(owner.id);
-        expect(balAfter).toBe(balBefore - 800 - 90 + ANIMALS.pig.matureSellPrice); // pig stock 800, feed 90
+        expect(balAfter).toBe(balBefore - 800 - 50 + ANIMALS.pig.matureSellPrice); // pig stock 800, corn-mash feed 50
 
         // Verify animal is deleted from farm
         const meAfter = await api(h, 'GET', '/api/farm/me', { token: owner.token });
@@ -1150,7 +1150,8 @@ describe('Cozy Farm System E2E Specification', () => {
           (i: { itemId: string }) => i.itemId === 'feed_grain',
         );
         expect(grainWh?.quantity).toBe(5);
-        expect(meAfterFill.body.troughs.poultry.amount).toBe(10);
+        // The automated trough immediately consumes one meal to feed the hungry, newly-raised chicken.
+        expect(meAfterFill.body.troughs.poultry.amount).toBe(9);
       });
 
       it('F6.9: breeds two adult animals to produce a baby animal and applies cooldown and happiness cost', async () => {
@@ -1191,10 +1192,20 @@ describe('Cozy Farm System E2E Specification', () => {
           body: { animalId: chicken2Id, feedItemId: 'feed_grain' },
         });
 
-        // Advance time by 200s so chickens grow to adult (180s)
-        h.clock.now += 200 * 1000;
+        // Advance time past the 300s feed interval so the birds mature into adults and produce a yield
+        h.clock.now += 400 * 1000;
 
-        // Feed both again so they are well-fed (not hungry)
+        // Adults must have their yield harvested before they can be fed again
+        for (const chickenId of [chicken1Id, chicken2Id]) {
+          const collectRes = await api(h, 'POST', '/api/farm/care', {
+            token: owner.token,
+            headers: { 'Idempotency-Key': randomUUID() },
+            body: { kind: 'collect', id: chickenId },
+          });
+          expect(collectRes.status).toBe(200);
+        }
+
+        // Feed both again so they are well-fed (not hungry) and reach full happiness for breeding
         await api(h, 'POST', '/api/farm/animals/feed', {
           token: owner.token,
           body: { animalId: chicken1Id, feedItemId: 'feed_grain' },
