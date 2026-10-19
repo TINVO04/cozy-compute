@@ -201,6 +201,32 @@ it('supports mounting and vehicle speed in FarmRoom', async () => {
   ).toBe(240);
   farmHandlers.get('vehicle:toggle')!(farmClient, {});
   expect(fp.vehicle).toBe('');
+
+  // Player without any vehicle in appearance can toggle to mount farm tractor directly
+  const unmountedClient = { sessionId: 'farmer-unmounted', send: vi.fn() } as unknown as Client;
+  farmRoom.onJoin(
+    unmountedClient,
+    {},
+    {
+      userId: 'farmer-bare',
+      role: 'player',
+      displayName: 'Farmer Bare',
+      statusText: '',
+      fame: 0,
+      appearance: { ...DEFAULT_APPEARANCE, vehicle: '' },
+      muted: [],
+    },
+  );
+  farmHandlers.get('vehicle:toggle')!(unmountedClient, { vehicle: 'tractor_farm' });
+  const tractorPlayer = farmRoom.state.players.get('farmer-unmounted')!;
+  expect(tractorPlayer.vehicle).toBe('tractor_farm');
+  expect(
+    (
+      farmRoom as unknown as {
+        playerSpeedFor(d: object, player: { vehicle: string; x: number; y: number }): number;
+      }
+    ).playerSpeedFor({}, tractorPlayer),
+  ).toBe(180);
 });
 
 it('preserves vehicle when joining TownRoom with vehicle options from another map', () => {

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { ANIMALS } from '@cozy/game-data';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { api, createHarness, makeEligible, register, type Harness } from '../harness.js';
 
@@ -65,7 +66,7 @@ describe('Cozy Farm System E2E Specification', () => {
 
         // Livestock & pond validation
         expect(Array.isArray(res.body.animals)).toBe(true);
-        expect(res.body.animals.length).toBe(4);
+        expect(res.body.animals.length).toBe(0);
         expect(Array.isArray(res.body.pondFishes)).toBe(true);
 
         // Today contracts validation
@@ -652,8 +653,26 @@ describe('Cozy Farm System E2E Specification', () => {
     });
 
     describe('Core Feature 6: Livestock Husbandry & Pond Aquaculture', () => {
-      it('F6.1: initializes 4 animal pens (poultry, cattle, pig, goat/sheep)', async () => {
+      it('F6.1: buys and raises livestock animals in pens (poultry, cattle, pig, goat/sheep)', async () => {
         const owner = await register(h);
+        await makeEligible(h, owner.id, 10000);
+
+        // Buy livestock stock items from shop
+        for (const stockId of ['stock_chicken', 'stock_cow', 'stock_pig', 'stock_goat']) {
+          await api(h, 'POST', '/api/farm/shop/buy', {
+            token: owner.token,
+            headers: { 'Idempotency-Key': randomUUID() },
+            body: { itemId: stockId, quantity: 1 },
+          });
+          const raiseRes = await api(h, 'POST', '/api/farm/animals/raise', {
+            token: owner.token,
+            body: { stockItemId: stockId },
+          });
+          expect(raiseRes.status).toBe(200);
+          expect(raiseRes.body.ok).toBe(true);
+          expect(raiseRes.body.animal.stage).toBe('baby');
+        }
+
         const me = await api(h, 'GET', '/api/farm/me', { token: owner.token });
         const types = me.body.animals.map((a: { type: string }) => a.type);
         expect(types).toContain('chicken');
@@ -665,6 +684,17 @@ describe('Cozy Farm System E2E Specification', () => {
       it('F6.2: feeds dairy cow with feed item and increases happiness score', async () => {
         const owner = await register(h);
         await makeEligible(h, owner.id, 5000);
+
+        // Buy cow & raise into cattle pasture
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_cow', quantity: 1 },
+        });
+        await api(h, 'POST', '/api/farm/animals/raise', {
+          token: owner.token,
+          body: { stockItemId: 'stock_cow' },
+        });
 
         // Buy cow feed
         await api(h, 'POST', '/api/farm/shop/buy', {
@@ -690,6 +720,17 @@ describe('Cozy Farm System E2E Specification', () => {
       it('F6.3: feeds poultry coop and decrements feed item in silo warehouse', async () => {
         const owner = await register(h);
         await makeEligible(h, owner.id, 5000);
+
+        // Buy chicken & raise
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_chicken', quantity: 1 },
+        });
+        await api(h, 'POST', '/api/farm/animals/raise', {
+          token: owner.token,
+          body: { stockItemId: 'stock_chicken' },
+        });
 
         await api(h, 'POST', '/api/farm/shop/buy', {
           token: owner.token,
@@ -768,6 +809,563 @@ describe('Cozy Farm System E2E Specification', () => {
         const me = await api(h, 'GET', '/api/farm/me', { token: owner.token });
         const basa = me.body.pondFishes.find((f: { species: string }) => f.species === 'basa')!;
         expect(basa.weightKg).toBeGreaterThan(initialWeight);
+      });
+
+      it('F6.5b: batch feeds all pond fishes with 1-click endpoint /api/farm/pond/feed-all', async () => {
+        const owner = await register(h);
+        await makeEligible(h, owner.id, 10000);
+
+        // Buy 2 fingerlings and 2 feeds
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_fingerling_tra', quantity: 1 },
+        });
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_fingerling_loc', quantity: 1 },
+        });
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'feed_aquatic', quantity: 2 },
+        });
+
+        // Stock both fingerlings into pond
+        await api(h, 'POST', '/api/farm/pond/stock', {
+          token: owner.token,
+          body: { fishSpecies: 'tra' },
+        });
+        await api(h, 'POST', '/api/farm/pond/stock', {
+          token: owner.token,
+          body: { fishSpecies: 'loc' },
+        });
+
+        // Batch feed all pond fishes
+        const feedAllRes = await api(h, 'POST', '/api/farm/pond/feed-all', {
+          token: owner.token,
+        });
+
+        expect(feedAllRes.status).toBe(200);
+        expect(feedAllRes.body.ok).toBe(true);
+        expect(feedAllRes.body.fedCount).toBe(2);
+
+        // Verify both are now marked fed
+        const meRes = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(meRes.body.pondFishes.length).toBe(2);
+        for (const f of meRes.body.pondFishes) {
+          expect(f.fedAt).toBeTruthy();
+        }
+
+        // Calling feed-all again when all are fed returns 0 fedCount
+        const feedAgainRes = await api(h, 'POST', '/api/farm/pond/feed-all', {
+          token: owner.token,
+        });
+        expect(feedAgainRes.status).toBe(200);
+        expect(feedAgainRes.body.fedCount).toBe(0);
+      });
+
+      it('F6.5c: batch harvests all ready pond fishes with 1-click endpoint /api/farm/pond/harvest-all', async () => {
+        const owner = await register(h);
+        await makeEligible(h, owner.id, 10000);
+
+        // Buy fingerling & feed
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_fingerling_tra', quantity: 1 },
+        });
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'feed_aquatic', quantity: 1 },
+        });
+
+        // Stock and feed
+        await api(h, 'POST', '/api/farm/pond/stock', {
+          token: owner.token,
+          body: { fishSpecies: 'tra' },
+        });
+        await api(h, 'POST', '/api/farm/pond/feed-all', {
+          token: owner.token,
+        });
+
+        // Try harvesting before ready
+        const earlyRes = await api(h, 'POST', '/api/farm/pond/harvest-all', {
+          token: owner.token,
+        });
+        expect(earlyRes.status).toBe(200);
+        expect(earlyRes.body.harvestedCount).toBe(0);
+
+        // Advance time past growth duration (900 sec for tra)
+        h.clock.now += 1000 * 1000;
+
+        // Batch harvest all ready fish
+        const harvestRes = await api(h, 'POST', '/api/farm/pond/harvest-all', {
+          token: owner.token,
+        });
+        expect(harvestRes.status).toBe(200);
+        expect(harvestRes.body.ok).toBe(true);
+        expect(harvestRes.body.harvestedCount).toBe(1);
+
+        // Verify pond is now empty and warehouse has harvested item
+        const meAfter = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(meAfter.body.pondFishes.length).toBe(0);
+        const harvestedFish = meAfter.body.warehouse.items.find(
+          (i: { itemId: string }) => i.itemId === 'fish_pond_tra_harvest',
+        );
+        expect(harvestedFish).toBeDefined();
+        expect(harvestedFish.quantity).toBe(1);
+      });
+
+      it('F6.5d: batch sells all farm produce, animal yields and harvested fish with /api/farm/shop/sell-all', async () => {
+        const owner = await register(h);
+        await makeEligible(h, owner.id, 10000);
+
+        // Put a harvested pond fish, crop, and animal yield in farm warehouse
+        const fishRes = await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_fingerling_tra', quantity: 1 },
+        });
+        expect(fishRes.status).toBe(200);
+
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'feed_aquatic', quantity: 1 },
+        });
+
+        await api(h, 'POST', '/api/farm/pond/stock', {
+          token: owner.token,
+          body: { fishSpecies: 'tra' },
+        });
+        await api(h, 'POST', '/api/farm/pond/feed-all', {
+          token: owner.token,
+        });
+
+        // Fast forward time to maturity and batch harvest
+        h.clock.now += 1000 * 1000;
+        await api(h, 'POST', '/api/farm/pond/harvest-all', {
+          token: owner.token,
+        });
+
+        const balBefore = await getLedgerCoin(owner.id);
+
+        // Sell all produce with 1-click endpoint
+        const sellAllRes = await api(h, 'POST', '/api/farm/shop/sell-all', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+        });
+
+        expect(sellAllRes.status).toBe(200);
+        expect(sellAllRes.body.ok).toBe(true);
+        expect(sellAllRes.body.totalItemsSold).toBeGreaterThan(0);
+        expect(sellAllRes.body.totalCoinEarned).toBeGreaterThan(0);
+
+        const balAfter = await getLedgerCoin(owner.id);
+        expect(balAfter).toBe(balBefore + sellAllRes.body.totalCoinEarned);
+
+        // Warehouse is now empty of sellable produce
+        const meAfter = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        const hasFish = meAfter.body.warehouse.items.some(
+          (i: { itemId: string }) => i.itemId === 'fish_pond_tra_harvest',
+        );
+        expect(hasFish).toBe(false);
+
+        // Re-invoking when empty returns 400
+        const emptySellRes = await api(h, 'POST', '/api/farm/shop/sell-all', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+        });
+        expect(emptySellRes.status).toBe(400);
+        expect(emptySellRes.body.error.code).toBe('no_crops_to_sell');
+      });
+
+      it('F6.6: tracks livestock growth stages over time and sells mature animal for coins', async () => {
+        const owner = await register(h);
+        await makeEligible(h, owner.id, 10000);
+        const balBefore = await getLedgerCoin(owner.id);
+
+        // Buy pig stock from shop
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_pig', quantity: 1 },
+        });
+
+        // Raise pig in pen
+        const raiseRes = await api(h, 'POST', '/api/farm/animals/raise', {
+          token: owner.token,
+          body: { stockItemId: 'stock_pig' },
+        });
+        expect(raiseRes.status).toBe(200);
+        const animalId = raiseRes.body.animal.id;
+        expect(raiseRes.body.animal.stage).toBe('baby');
+        expect(raiseRes.body.animal.sellPrice).toBe(560); // 70% of 800
+
+        // Buy pig feed and feed pig so it can grow
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'feed_corn_mash', quantity: 1 },
+        });
+
+        const feedRes = await api(h, 'POST', '/api/farm/animals/feed', {
+          token: owner.token,
+          body: { animalId, feedItemId: 'feed_corn_mash' },
+        });
+        expect(feedRes.status).toBe(200);
+
+        // Advance time to full maturity (pig growthDurationSec is 360s)
+        h.clock.now += 400 * 1000;
+
+        const meGrown = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        const grownPig = meGrown.body.animals.find((a: { id: string }) => a.id === animalId)!;
+        expect(grownPig.stage).toBe('adult');
+        expect(grownPig.progressPercent).toBe(100);
+        expect(grownPig.sellPrice).toBe(ANIMALS.pig.matureSellPrice);
+
+        // Sell the grown pig for coins
+        const sellRes = await api(h, 'POST', '/api/farm/animals/sell', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { animalId },
+        });
+        expect(sellRes.status).toBe(200);
+        expect(sellRes.body.ok).toBe(true);
+        expect(sellRes.body.coinEarned).toBe(ANIMALS.pig.matureSellPrice);
+
+        // Verify ledger balance increased
+        const balAfter = await getLedgerCoin(owner.id);
+        expect(balAfter).toBe(balBefore - 800 - 50 + ANIMALS.pig.matureSellPrice); // pig stock 800, corn-mash feed 50
+
+        // Verify animal is deleted from farm
+        const meAfter = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(meAfter.body.animals.find((a: { id: string }) => a.id === animalId)).toBeUndefined();
+      });
+
+      it('F6.7: unfed animals do not mature and eventually die of starvation if neglected', async () => {
+        const owner = await register(h);
+        await makeEligible(h, owner.id, 5000);
+
+        // Buy chicken and raise
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_chicken', quantity: 1 },
+        });
+        const raiseRes = await api(h, 'POST', '/api/farm/animals/raise', {
+          token: owner.token,
+          body: { stockItemId: 'stock_chicken' },
+        });
+        const animalId = raiseRes.body.animal.id;
+
+        // Advance time by 150s (chicken growth is 180s, but unfed)
+        h.clock.now += 150 * 1000;
+        const meUnfed = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        const chickenUnfed = meUnfed.body.animals.find((a: { id: string }) => a.id === animalId)!;
+        // MUST NOT GROW WITHOUT FOOD
+        expect(chickenUnfed.stage).toBe('baby');
+        expect(chickenUnfed.progressPercent).toBe(0);
+        expect(chickenUnfed.isDead).toBe(false);
+
+        // Advance time past chicken hungerDecaySec (600s total from birth)
+        h.clock.now += 500 * 1000; // total 650s > 600s hungerDecaySec
+        const meDead = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        const chickenDead = meDead.body.animals.find((a: { id: string }) => a.id === animalId)!;
+        expect(chickenDead.isDead).toBe(true);
+        expect(chickenDead.stage).toBe('dead');
+        expect(chickenDead.sellPrice).toBe(0);
+
+        // Attempting to feed a dead animal must fail
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'feed_grain', quantity: 1 },
+        });
+        const feedDeadRes = await api(h, 'POST', '/api/farm/animals/feed', {
+          token: owner.token,
+          body: { animalId, feedItemId: 'feed_grain' },
+        });
+        expect(feedDeadRes.status).toBe(400);
+
+        // Clearing/selling the dead carcass succeeds and gives 0 coins
+        const clearRes = await api(h, 'POST', '/api/farm/animals/sell', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { animalId },
+        });
+        expect(clearRes.status).toBe(200);
+        expect(clearRes.body.coinEarned).toBe(0);
+
+        // Pen slot is cleared
+        const meClean = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(meClean.body.animals.find((a: { id: string }) => a.id === animalId)).toBeUndefined();
+      });
+
+      it('F6.8: deposits feed into troughs and performs automated pen feeding', async () => {
+        const owner = await register(h);
+        await makeEligible(h, owner.id, 10000);
+
+        // Buy animal and feed grain
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_chicken', quantity: 1 },
+        });
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'feed_grain', quantity: 15 },
+        });
+
+        // Raise chicken
+        const raiseRes = await api(h, 'POST', '/api/farm/animals/raise', {
+          token: owner.token,
+          body: { stockItemId: 'stock_chicken' },
+        });
+        expect(raiseRes.status).toBe(200);
+
+        // Verify initial trough state
+        const meInitial = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(meInitial.body.troughs).toBeDefined();
+        expect(meInitial.body.troughs.poultry.amount).toBe(0);
+        expect(meInitial.body.troughs.poultry.capacity).toBe(40);
+
+        // Deposit 10 feed grain into poultry trough
+        const fillRes = await api(h, 'POST', '/api/farm/troughs/fill', {
+          token: owner.token,
+          body: { facility: 'poultry', quantity: 10 },
+        });
+        expect(fillRes.status).toBe(200);
+        expect(fillRes.body.ok).toBe(true);
+        expect(fillRes.body.addedQuantity).toBe(10);
+        expect(fillRes.body.trough.amount).toBe(10);
+
+        // Verify warehouse inventory decreased by 10
+        const meAfterFill = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        const grainWh = meAfterFill.body.warehouse.items.find(
+          (i: { itemId: string }) => i.itemId === 'feed_grain',
+        );
+        expect(grainWh?.quantity).toBe(5);
+        // The automated trough immediately consumes one meal to feed the hungry, newly-raised chicken.
+        expect(meAfterFill.body.troughs.poultry.amount).toBe(9);
+      });
+
+      it('F6.9: breeds two adult animals to produce a baby animal and applies cooldown and happiness cost', async () => {
+        const owner = await register(h);
+        await makeEligible(h, owner.id, 10000);
+
+        // Buy 2 chickens and feed grain
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_chicken', quantity: 2 },
+        });
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'feed_grain', quantity: 4 },
+        });
+
+        // Raise 2 chickens
+        const raise1 = await api(h, 'POST', '/api/farm/animals/raise', {
+          token: owner.token,
+          body: { stockItemId: 'stock_chicken' },
+        });
+        const raise2 = await api(h, 'POST', '/api/farm/animals/raise', {
+          token: owner.token,
+          body: { stockItemId: 'stock_chicken' },
+        });
+        const chicken1Id = raise1.body.animal.id;
+        const chicken2Id = raise2.body.animal.id;
+
+        // Feed both chickens initially
+        await api(h, 'POST', '/api/farm/animals/feed', {
+          token: owner.token,
+          body: { animalId: chicken1Id, feedItemId: 'feed_grain' },
+        });
+        await api(h, 'POST', '/api/farm/animals/feed', {
+          token: owner.token,
+          body: { animalId: chicken2Id, feedItemId: 'feed_grain' },
+        });
+
+        // Advance time past the 300s feed interval so the birds mature into adults and produce a yield
+        h.clock.now += 400 * 1000;
+
+        // Adults must have their yield harvested before they can be fed again
+        for (const chickenId of [chicken1Id, chicken2Id]) {
+          const collectRes = await api(h, 'POST', '/api/farm/care', {
+            token: owner.token,
+            headers: { 'Idempotency-Key': randomUUID() },
+            body: { kind: 'collect', id: chickenId },
+          });
+          expect(collectRes.status).toBe(200);
+        }
+
+        // Feed both again so they are well-fed (not hungry) and reach full happiness for breeding
+        await api(h, 'POST', '/api/farm/animals/feed', {
+          token: owner.token,
+          body: { animalId: chicken1Id, feedItemId: 'feed_grain' },
+        });
+        await api(h, 'POST', '/api/farm/animals/feed', {
+          token: owner.token,
+          body: { animalId: chicken2Id, feedItemId: 'feed_grain' },
+        });
+
+        // Attempting to breed an animal with itself must fail
+        const selfBreedRes = await api(h, 'POST', '/api/farm/animals/breed', {
+          token: owner.token,
+          body: { parentAId: chicken1Id, parentBId: chicken1Id },
+        });
+        expect(selfBreedRes.status).toBe(400);
+
+        // Breed chicken 1 and chicken 2
+        const breedRes = await api(h, 'POST', '/api/farm/animals/breed', {
+          token: owner.token,
+          body: { parentAId: chicken1Id, parentBId: chicken2Id },
+        });
+        expect(breedRes.status).toBe(200);
+        expect(breedRes.body.ok).toBe(true);
+        expect(breedRes.body.baby.type).toBe('chicken');
+        expect(breedRes.body.baby.stage).toBe('baby');
+        expect(breedRes.body.parentA.happiness).toBe(80);
+        expect(breedRes.body.parentB.happiness).toBe(80);
+
+        // Immediate subsequent breeding must fail due to cooldown
+        const cooldownRes = await api(h, 'POST', '/api/farm/animals/breed', {
+          token: owner.token,
+          body: { parentAId: chicken1Id, parentBId: chicken2Id },
+        });
+        expect(cooldownRes.status).toBe(400);
+
+        // Verify total animal count is now 3 (2 parents + 1 baby)
+        const meAfter = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(meAfter.body.animals.length).toBe(3);
+        const babyInList = meAfter.body.animals.find((a: { id: string }) => a.id === breedRes.body.baby.id);
+        expect(babyInList).toBeDefined();
+        expect(babyInList.stage).toBe('baby');
+      });
+
+      it('F6.10: upgrades livestock pen capacity from 24 to 32 and rejects when coins are insufficient', async () => {
+        const owner = await register(h);
+
+        // Check initial state
+        const farmInitial = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(farmInitial.body.livestockCapacity).toBe(24);
+        expect(farmInitial.body.nextCapacityUpgrade?.capacity).toBe(32);
+        expect(farmInitial.body.nextCapacityUpgrade?.costCoins).toBe(15000);
+
+        // Insufficient coins attempt
+        const failUpgrade = await api(h, 'POST', '/api/farm/facility/capacity/upgrade', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+        });
+        expect(failUpgrade.status).toBe(400);
+
+        // Grant coins to owner
+        await makeEligible(h, owner.id, 20000);
+
+        // Successful upgrade
+        const okUpgrade = await api(h, 'POST', '/api/farm/facility/capacity/upgrade', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+        });
+        expect(okUpgrade.status).toBe(200);
+        expect(okUpgrade.body.ok).toBe(true);
+        expect(okUpgrade.body.capacity).toBe(32);
+        expect(okUpgrade.body.nextUpgrade?.capacity).toBe(40);
+
+        // Verify updated state in farm me
+        const farmAfter = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(farmAfter.body.livestockCapacity).toBe(32);
+        expect(farmAfter.body.nextCapacityUpgrade?.capacity).toBe(40);
+      });
+
+      it('F6.11: upgrades feed trough level, increasing capacity from 40 to 70 for poultry', async () => {
+        const owner = await register(h);
+
+        // Check initial poultry trough
+        const farmInitial = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(farmInitial.body.troughs.poultry.upgradeLevel).toBe(1);
+        expect(farmInitial.body.troughs.poultry.capacity).toBe(40);
+        expect(farmInitial.body.troughs.poultry.nextUpgrade?.level).toBe(2);
+        expect(farmInitial.body.troughs.poultry.nextUpgrade?.capacity).toBe(70);
+        expect(farmInitial.body.troughs.poultry.nextUpgrade?.costCoins).toBe(5000);
+
+        // Insufficient funds
+        const failTrough = await api(h, 'POST', '/api/farm/troughs/upgrade', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { facility: 'poultry' },
+        });
+        expect(failTrough.status).toBe(400);
+
+        // Grant funds
+        await makeEligible(h, owner.id, 10000);
+
+        // Successful trough upgrade
+        const okTrough = await api(h, 'POST', '/api/farm/troughs/upgrade', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { facility: 'poultry' },
+        });
+        expect(okTrough.status).toBe(200);
+        expect(okTrough.body.ok).toBe(true);
+        expect(okTrough.body.trough.upgradeLevel).toBe(2);
+        expect(okTrough.body.trough.capacity).toBe(70);
+
+        // Verify in farm me
+        const farmAfter = await api(h, 'GET', '/api/farm/me', { token: owner.token });
+        expect(farmAfter.body.troughs.poultry.upgradeLevel).toBe(2);
+        expect(farmAfter.body.troughs.poultry.capacity).toBe(70);
+      });
+
+      it('F6.12: feeds all hungry animals in facility in one click using warehouse feed stock', async () => {
+        const owner = await register(h);
+        await makeEligible(h, owner.id, 10000);
+
+        // Buy 2 chickens and 5 feed grains
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'stock_chicken', quantity: 2 },
+        });
+        await api(h, 'POST', '/api/farm/shop/buy', {
+          token: owner.token,
+          headers: { 'Idempotency-Key': randomUUID() },
+          body: { itemId: 'feed_grain', quantity: 5 },
+        });
+
+        // Raise 2 chickens
+        await api(h, 'POST', '/api/farm/animals/raise', {
+          token: owner.token,
+          body: { stockItemId: 'stock_chicken' },
+        });
+        await api(h, 'POST', '/api/farm/animals/raise', {
+          token: owner.token,
+          body: { stockItemId: 'stock_chicken' },
+        });
+
+        // Both are hungry on birth -> feed all facility
+        const feedAllRes = await api(h, 'POST', '/api/farm/facility/feed-all', {
+          token: owner.token,
+          body: { facility: 'poultry' },
+        });
+        expect(feedAllRes.status).toBe(200);
+        expect(feedAllRes.body.ok).toBe(true);
+        expect(feedAllRes.body.fedCount).toBe(2);
+
+        // Calling again when all animals are well fed
+        const feedAllAgain = await api(h, 'POST', '/api/farm/facility/feed-all', {
+          token: owner.token,
+          body: { facility: 'poultry' },
+        });
+        expect(feedAllAgain.status).toBe(200);
+        expect(feedAllAgain.body.ok).toBe(true);
+        expect(feedAllAgain.body.fedCount).toBe(0);
       });
     });
 
@@ -1291,6 +1889,17 @@ describe('Cozy Farm System E2E Specification', () => {
     it('CIT-04: livestock feeding and animal product economic cycle', async () => {
       const owner = await register(h);
       await makeEligible(h, owner.id, 10000);
+
+      // Buy cow stock and raise into cattle pen
+      await api(h, 'POST', '/api/farm/shop/buy', {
+        token: owner.token,
+        headers: { 'Idempotency-Key': randomUUID() },
+        body: { itemId: 'stock_cow', quantity: 1 },
+      });
+      await api(h, 'POST', '/api/farm/animals/raise', {
+        token: owner.token,
+        body: { stockItemId: 'stock_cow' },
+      });
 
       // Buy feed
       await api(h, 'POST', '/api/farm/shop/buy', {

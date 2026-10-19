@@ -52,7 +52,7 @@ it('requires actual seed stock and correct feed, and awards one animal/pond yiel
   await post(p.token, '/api/farm/care', { kind: 'raise', id: 'stock_chicken' }, raiseKey);
   await post(p.token, '/api/farm/care', { kind: 'raise', id: 'stock_chicken' }, raiseKey);
   const state = await api(h, 'GET', '/api/farm/me', { token: p.token });
-  expect(state.body.animals).toHaveLength(5);
+  expect(state.body.animals).toHaveLength(1);
   const id = state.body.animals[0].id;
   expect(
     (await post(p.token, '/api/farm/animals/feed', { animalId: id, feedItemId: 'seed_rice' })).status,
@@ -81,6 +81,10 @@ it('requires actual seed stock and correct feed, and awards one animal/pond yiel
   expect(after.body.warehouse.items).toContainEqual(
     expect.objectContaining({ itemId: 'fish_pond_tra_harvest', quantity: 1 }),
   );
+  const sellRes = await post(p.token, '/api/farm/care', { kind: 'sell', id });
+  expect(sellRes.status).toBe(200);
+  const meAfterSell = await api(h, 'GET', '/api/farm/me', { token: p.token });
+  expect(meAfterSell.body.animals).toHaveLength(0);
 });
 it('verifies ingredients, location, time, ownership and replay on meal deliveries', async () => {
   const p = await register(h);

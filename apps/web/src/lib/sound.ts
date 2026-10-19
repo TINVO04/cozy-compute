@@ -33,6 +33,7 @@ type Cue =
   | 'farm_water'
   | 'farm_harvest'
   | 'farm_plant'
+  | 'tractor_engine'
   | 'thunder'
   | 'wind_gust';
 
@@ -67,6 +68,7 @@ const CUES: Record<Cue, { f: number[]; d: number; type: OscillatorType; vol: num
   farm_water: { f: [280, 360, 420], d: 0.08, type: 'triangle', vol: 0.06 },
   farm_harvest: { f: [587, 880, 1174], d: 0.1, type: 'triangle', vol: 0.07 },
   farm_plant: { f: [220, 330], d: 0.06, type: 'sine', vol: 0.05 },
+  tractor_engine: { f: [95, 75, 110, 85], d: 0.12, type: 'sawtooth', vol: 0.07 },
   thunder: { f: [85, 70, 58, 48, 40], d: 0.38, type: 'sawtooth', vol: 0.12 },
   wind_gust: { f: [140, 210, 175, 120], d: 0.28, type: 'sine', vol: 0.08 },
 };

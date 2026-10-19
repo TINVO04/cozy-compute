@@ -21,6 +21,7 @@ export type Panel =
   | 'wardrobe'
   | 'backpack'
   | 'tackle'
+  | 'vehicles'
   | 'events'
   | 'ai'
   | 'friends'
@@ -101,10 +102,12 @@ interface UiState {
   myUserId: string | null;
   activePlotIndex: number | null;
   farmOwnerId: string | null;
+  livestockFacility: 'all' | 'poultry' | 'cattle' | 'pig' | 'goat' | 'pond' | null;
   setPanel: (p: Panel) => void;
   setCyberStation: (station: string | null) => void;
   setActivePlotIndex: (idx: number | null) => void;
   setFarmOwnerId: (id: string | null) => void;
+  setLivestockFacility: (facility: 'all' | 'poultry' | 'cattle' | 'pig' | 'goat' | 'pond' | null) => void;
   setActivity: (a: Activity) => void;
   setZone: (z: ZoneId | null) => void;
   setConnection: (c: UiState['connection']) => void;
@@ -126,6 +129,12 @@ interface UiState {
   resetWeatherOverride: () => void;
   triggerLightning: () => void;
   triggerWindGust: () => void;
+  ownsTractor: boolean;
+  setOwnsTractor: (owns: boolean) => void;
+  tractorMode: 'harvest' | 'plant' | 'water' | 'cruise';
+  tractorSeedId: string;
+  setTractorMode: (mode: 'harvest' | 'plant' | 'water' | 'cruise') => void;
+  setTractorSeedId: (seedId: string) => void;
   shadowTierConfig: Record<FishShadowTier, ShadowTierInfo> | null;
   setShadowTierConfig: (cfg: Record<FishShadowTier, ShadowTierInfo> | null) => void;
 }
@@ -170,6 +179,14 @@ export const useUi = create<UiState>((set) => ({
   editingApartment: false,
   activePlotIndex: null,
   farmOwnerId: null,
+  livestockFacility: null,
+  setLivestockFacility: (livestockFacility) => set({ livestockFacility }),
+  ownsTractor: false,
+  setOwnsTractor: (ownsTractor) => set({ ownsTractor }),
+  tractorMode: 'harvest',
+  tractorSeedId: 'seed_rice',
+  setTractorMode: (tractorMode) => set({ tractorMode }),
+  setTractorSeedId: (tractorSeedId) => set({ tractorSeedId }),
   weather: resolveEffectiveTelemetry(null, null),
   weatherOverride: null,
   reducedMotion:

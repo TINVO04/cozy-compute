@@ -5,6 +5,8 @@ import {
   BAC_SAU_SHOP_ITEMS,
   BASE_WAREHOUSE_CAPACITY,
   calculatePondFishWeight,
+  computeAnimalGrowthStage,
+  computeAnimalHunger,
   CROPS,
   DAILY_MARKET_CONTRACTS,
   FARM_BLOCKERS,
@@ -29,6 +31,7 @@ import {
   getPondFishStage,
   getWarehouseTabForItem,
   isPlotMoist,
+  isWeatherRainy,
   MAX_WAREHOUSE_CAPACITY,
   PATHS,
   POND_FISHES,
@@ -39,14 +42,47 @@ import {
   TOWN_FARM_PORTAL_SPAWN,
   WAREHOUSE_UPGRADE_TIERS,
   ZONES,
+  FEED_TROUGHS,
+  getAnimalStarvationSeverity,
+  facilityForAnimalType,
+  simulateTroughFeeding,
+  type LivestockFacilityKey,
+  BREEDING_MIN_HAPPINESS,
+  BREEDING_HAPPINESS_COST,
+  BREEDING_MAX_FARM_ANIMALS,
+  getAnimalBreedingStatus,
+  canBreedAnimals,
+  type BreedingCandidate,
+  BASE_LIVESTOCK_CAPACITY,
+  LIVESTOCK_CAPACITY_TIERS,
+  getNextLivestockCapacityTier,
+  TROUGH_UPGRADE_TIERS,
+  getTroughCapacityForLevel,
+  getNextTroughUpgrade,
 } from './index.js';
 
 describe('Cozy Farm System Game Data', () => {
   describe('Crops Catalog', () => {
-    const cropIds: CropId[] = ['crop_rice', 'crop_corn', 'crop_watermelon', 'crop_tomato', 'crop_chili'];
+    const cropIds: CropId[] = [
+      'crop_rice',
+      'crop_corn',
+      'crop_watermelon',
+      'crop_tomato',
+      'crop_chili',
+      'crop_strawberry',
+      'crop_pumpkin',
+      'crop_eggplant',
+      'crop_carrot',
+      'crop_sunflower',
+      'crop_grape',
+      'crop_cabbage',
+      'crop_pineapple',
+      'crop_dragonfruit',
+      'crop_sugarcane',
+    ];
 
-    it('defines all 5 authoritative crop definitions', () => {
-      expect(Object.keys(CROPS)).toHaveLength(5);
+    it('defines all 15 authoritative crop definitions', () => {
+      expect(Object.keys(CROPS)).toHaveLength(15);
       for (const id of cropIds) {
         const crop = CROPS[id];
         expect(crop).toBeDefined();
@@ -101,7 +137,119 @@ describe('Cozy Farm System Game Data', () => {
         expect(animal.happinessBoost).toBeGreaterThan(0);
         expect(['poultry_coop', 'cattle_pasture', 'pig_pen', 'goat_pen']).toContain(animal.facility);
         expect(animal.sprite.startsWith('farm:animal_')).toBe(true);
+        expect(animal.growthDurationSec).toBeGreaterThan(0);
+        expect(animal.matureSellPrice).toBeGreaterThan(animal.stockPrice);
+        expect(animal.babyName.length).toBeGreaterThan(0);
       }
+    });
+
+    it('requires food to grow and progresses through growth stages when fed', () => {
+      const now = 1_000_000;
+      // 1. Newly born chicken, unfed -> baby stage, 0%
+      const baby = computeAnimalGrowthStage('chicken', new Date(now), now);
+      expect(baby.stage).toBe('baby');
+      expect(baby.progressPercent).toBe(0);
+      expect(baby.remainingSec).toBe(ANIMALS.chicken.growthDurationSec);
+      expect(baby.displayName).toBe(ANIMALS.chicken.babyName);
+      expect(baby.sellPrice).toBeLessThan(ANIMALS.chicken.matureSellPrice);
+      expect(baby.isDead).toBe(false);
+
+      // 2. Unfed chicken after some time has passed -> still 0% progress! (cannot grow without food)
+      const unfedLater = computeAnimalGrowthStage('chicken', new Date(now - 120_000), now, null);
+      expect(unfedLater.stage).toBe('baby');
+      expect(unfedLater.progressPercent).toBe(0);
+      expect(unfedLater.remainingSec).toBe(ANIMALS.chicken.growthDurationSec);
+
+      // 3. Fed chicken: halfway through growth duration -> growing stage
+      const fedHalfwayMs = now - ANIMALS.chicken.growthDurationSec * 0.5 * 1000;
+      const growing = computeAnimalGrowthStage(
+        'chicken',
+        new Date(fedHalfwayMs),
+        now,
+        new Date(fedHalfwayMs),
+      );
+      expect(growing.stage).toBe('growing');
+      expect(growing.progressPercent).toBe(50);
+      expect(growing.sellPrice).toBeGreaterThan(baby.sellPrice);
+      expect(growing.isDead).toBe(false);
+
+      // 4. Fed chicken: fully reached mature growth duration -> adult stage
+      const fedMatureMs = now - (ANIMALS.chicken.growthDurationSec + 10) * 1000;
+      const adult = computeAnimalGrowthStage('chicken', new Date(fedMatureMs), now, new Date(fedMatureMs));
+      expect(adult.stage).toBe('adult');
+      expect(adult.progressPercent).toBe(100);
+      expect(adult.remainingSec).toBe(0);
+      expect(adult.displayName).toBe(ANIMALS.chicken.name);
+      expect(adult.sellPrice).toBe(ANIMALS.chicken.matureSellPrice);
+      expect(adult.isDead).toBe(false);
+    });
+
+    it('causes animals to die of starvation if hungry for too long', () => {
+      const now = 2_000_000;
+      const chicken = ANIMALS.chicken;
+
+      // Newborn unfed past hungerDecaySec dies
+      const starvedFromBirth = now - (chicken.hungerDecaySec + 5) * 1000;
+      const deadNewborn = computeAnimalGrowthStage('chicken', new Date(starvedFromBirth), now, null);
+      expect(deadNewborn.isDead).toBe(true);
+      expect(deadNewborn.stage).toBe('dead');
+      expect(deadNewborn.sellPrice).toBe(0);
+      expect(deadNewborn.displayName).toContain('Đã chết vì đói');
+
+      // Fed once, but starved past feedIntervalSec + hungerDecaySec dies
+      const starvedFedMs = now - (chicken.feedIntervalSec + chicken.hungerDecaySec + 10) * 1000;
+      const deadFed = computeAnimalGrowthStage(
+        'chicken',
+        new Date(starvedFedMs),
+        now,
+        new Date(starvedFedMs),
+      );
+      expect(deadFed.isDead).toBe(true);
+      expect(deadFed.stage).toBe('dead');
+      expect(deadFed.sellPrice).toBe(0);
+    });
+
+    it('computes hunger status, starvation countdown, and death accurately', () => {
+      const now = 2_000_000;
+      const chicken = ANIMALS.chicken;
+
+      // 1. Never fed -> isHungry: true, starvation timer counting down
+      const birthMs = now - 100_000; // 100s ago
+      const unfed = computeAnimalHunger('chicken', null, null, now, false, new Date(birthMs));
+      expect(unfed.isHungry).toBe(true);
+      expect(unfed.hungerRemainingSec).toBe(0);
+      expect(unfed.isDead).toBe(false);
+      expect(unfed.starvationRemainingSec).toBe(chicken.hungerDecaySec - 100);
+
+      // 2. Just fed -> isHungry: false, full feed interval timer
+      const justFed = computeAnimalHunger('chicken', new Date(now), null, now);
+      expect(justFed.isHungry).toBe(false);
+      expect(justFed.hungerRemainingSec).toBe(chicken.feedIntervalSec);
+      expect(justFed.isDead).toBe(false);
+      expect(justFed.starvationRemainingSec).toBe(chicken.hungerDecaySec);
+
+      // 3. Halfway through feed interval
+      const halfFedMs = now - (chicken.feedIntervalSec / 2) * 1000;
+      const halfFed = computeAnimalHunger('chicken', new Date(halfFedMs), null, now);
+      expect(halfFed.isHungry).toBe(false);
+      expect(halfFed.hungerRemainingSec).toBe(Math.round(chicken.feedIntervalSec / 2));
+      expect(halfFed.isDead).toBe(false);
+
+      // 4. Elapsed feed interval -> isHungry: true, canYield: true (if adult)
+      const starvedMs = now - (chicken.feedIntervalSec + 10) * 1000;
+      const hungry = computeAnimalHunger('chicken', new Date(starvedMs), null, now, true);
+      expect(hungry.isHungry).toBe(true);
+      expect(hungry.hungerRemainingSec).toBe(0);
+      expect(hungry.canYield).toBe(true);
+      expect(hungry.isDead).toBe(false);
+      expect(hungry.starvationRemainingSec).toBe(chicken.hungerDecaySec - 10);
+
+      // 5. Starvation countdown reaches 0 -> animal dies
+      const fatalMs = now - (chicken.feedIntervalSec + chicken.hungerDecaySec + 1) * 1000;
+      const deadHunger = computeAnimalHunger('chicken', new Date(fatalMs), null, now, true);
+      expect(deadHunger.isDead).toBe(true);
+      expect(deadHunger.starvationRemainingSec).toBe(0);
+      expect(deadHunger.canYield).toBe(false);
     });
   });
 
@@ -210,7 +358,7 @@ describe('Cozy Farm System Game Data', () => {
     });
 
     it('defines daily market contracts with +25% bonus math', () => {
-      expect(DAILY_MARKET_CONTRACTS).toHaveLength(6);
+      expect(DAILY_MARKET_CONTRACTS).toHaveLength(18);
       for (const contract of DAILY_MARKET_CONTRACTS) {
         expect(contract.requiredQuantity).toBeGreaterThan(0);
         expect(contract.rewardCoin).toBeGreaterThan(0);
@@ -258,6 +406,16 @@ describe('Cozy Farm System Game Data', () => {
       expect(isPlotMoist(now - 1860 * 1000, now)).toBe(false);
       // Null wateredAt -> dry
       expect(isPlotMoist(null, now)).toBe(false);
+
+      // Rain naturally keeps crops moist without manual watering
+      expect(isPlotMoist(null, now, true)).toBe(true);
+      expect(isPlotMoist(now - 3600 * 1000, now, true)).toBe(true);
+      expect(isWeatherRainy('rain')).toBe(true);
+      expect(isWeatherRainy('heavy_rain')).toBe(true);
+      expect(isWeatherRainy('thunderstorm')).toBe(true);
+      expect(isWeatherRainy('drizzle')).toBe(true);
+      expect(isWeatherRainy('sunny')).toBe(false);
+      expect(isWeatherRainy({ condition: 'rain' })).toBe(true);
     });
 
     it('calculates pond fish weight and stage progression', () => {
@@ -369,6 +527,21 @@ describe('Cozy Farm System Game Data', () => {
           now,
         ),
       ).toBe('mature');
+
+      // Rainy weather: tilled dry becomes tilled wet even without manual watering
+      expect(
+        getPlotState(
+          {
+            isUnlocked: true,
+            isTilled: true,
+            wateredAt: null,
+            cropId: null,
+            plantedAt: null,
+          },
+          now,
+          true,
+        ),
+      ).toBe('tilled_wet');
     });
   });
 
@@ -415,6 +588,288 @@ describe('Cozy Farm System Game Data', () => {
 
       const pathAtGate = PATHS.find((p) => p.x === 0 && p.y === 10 * TILE);
       expect(pathAtGate).toBeDefined();
+    });
+  });
+
+  describe('Feed Troughs & Starvation Warning System', () => {
+    it('defines feed troughs for all 4 livestock facilities', () => {
+      const facilities: LivestockFacilityKey[] = ['poultry', 'cattle', 'pig', 'goat'];
+      for (const fac of facilities) {
+        const trough = FEED_TROUGHS[fac];
+        expect(trough).toBeDefined();
+        expect(trough.facility).toBe(fac);
+        expect(trough.capacity).toBeGreaterThan(0);
+        expect(trough.feedItemId).toBeDefined();
+        expect(trough.feedName).toBeDefined();
+        expect(trough.animalTypes.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('correctly maps animal species to their respective facility', () => {
+      expect(facilityForAnimalType('chicken')).toBe('poultry');
+      expect(facilityForAnimalType('duck')).toBe('poultry');
+      expect(facilityForAnimalType('cow')).toBe('cattle');
+      expect(facilityForAnimalType('pig')).toBe('pig');
+      expect(facilityForAnimalType('goat')).toBe('goat');
+      expect(facilityForAnimalType('sheep')).toBe('goat');
+    });
+
+    it('classifies starvation severity tiers accurately', () => {
+      // Dead
+      expect(getAnimalStarvationSeverity(true, true, 0)).toBe('dead');
+      expect(getAnimalStarvationSeverity(true, false, 500)).toBe('dead');
+
+      // Healthy (not hungry)
+      expect(getAnimalStarvationSeverity(false, false, 600)).toBe('healthy');
+
+      // Hungry but safe (> 15 mins remaining)
+      expect(getAnimalStarvationSeverity(false, true, 1200)).toBe('hungry');
+      expect(getAnimalStarvationSeverity(false, true, 901)).toBe('hungry');
+
+      // Critical emergency (<= 15 mins remaining)
+      expect(getAnimalStarvationSeverity(false, true, 900)).toBe('critical');
+      expect(getAnimalStarvationSeverity(false, true, 300)).toBe('critical');
+      expect(getAnimalStarvationSeverity(false, true, 1)).toBe('critical');
+    });
+
+    it('simulates automated trough feeding and offline growth catch-up', () => {
+      const now = 20000000;
+      // Chicken created 15 minutes ago, unfed initially (feedInterval: 300s, growthDuration: 180s)
+      const chickenId = 'chick_1';
+      const animals = [
+        {
+          id: chickenId,
+          type: 'chicken' as const,
+          createdAt: now - 900 * 1000,
+          fedAt: null,
+          growthAccumSec: 0,
+          lastYieldAt: null,
+          happiness: 50,
+        },
+      ];
+
+      const troughs = {
+        poultry: { facility: 'poultry' as const, amount: 5, capacity: 40 },
+        cattle: { facility: 'cattle' as const, amount: 0, capacity: 30 },
+        pig: { facility: 'pig' as const, amount: 0, capacity: 35 },
+        goat: { facility: 'goat' as const, amount: 0, capacity: 30 },
+      };
+
+      const result = simulateTroughFeeding(animals, troughs, now);
+      const updatedChicken = result.updatedAnimals.find((a) => a.id === chickenId)!;
+
+      // Chicken should have eaten multiple times from the trough
+      expect(result.mealsConsumed.poultry).toBeGreaterThan(0);
+      expect(result.updatedTroughs.poultry.amount).toBeLessThan(5);
+      expect(updatedChicken.growthAccumSec).toBeGreaterThan(0);
+      expect(updatedChicken.fedAt).not.toBeNull();
+    });
+
+    it('stops feeding when trough is depleted', () => {
+      const now = 20000000;
+      const animals = [
+        {
+          id: 'cow_1',
+          type: 'cow' as const,
+          createdAt: now - 3600 * 1000, // 1 hour ago
+          fedAt: null,
+          growthAccumSec: 0,
+          lastYieldAt: null,
+          happiness: 50,
+        },
+      ];
+
+      // Only 1 meal in cattle trough
+      const troughs = {
+        poultry: { facility: 'poultry' as const, amount: 0, capacity: 40 },
+        cattle: { facility: 'cattle' as const, amount: 1, capacity: 30 },
+        pig: { facility: 'pig' as const, amount: 0, capacity: 35 },
+        goat: { facility: 'goat' as const, amount: 0, capacity: 30 },
+      };
+
+      const result = simulateTroughFeeding(animals, troughs, now);
+      expect(result.mealsConsumed.cattle).toBe(1);
+      expect(result.updatedTroughs.cattle.amount).toBe(0);
+    });
+
+    it('does not feed dead animals from troughs', () => {
+      const now = 50000000;
+      const animals = [
+        {
+          id: 'dead_pig',
+          type: 'pig' as const,
+          createdAt: now - 86400 * 1000, // 1 day ago (way past hungerDecaySec)
+          fedAt: null,
+          growthAccumSec: 0,
+          lastYieldAt: null,
+          happiness: 0,
+        },
+      ];
+
+      const troughs = {
+        poultry: { facility: 'poultry' as const, amount: 0, capacity: 40 },
+        cattle: { facility: 'cattle' as const, amount: 0, capacity: 30 },
+        pig: { facility: 'pig' as const, amount: 20, capacity: 35, updatedAt: now },
+        goat: { facility: 'goat' as const, amount: 0, capacity: 30 },
+      };
+
+      const result = simulateTroughFeeding(animals, troughs, now);
+      expect(result.mealsConsumed.pig).toBe(0);
+      expect(result.updatedTroughs.pig.amount).toBe(20);
+      expect(result.updatedAnimals[0]!.fedAt).toBeNull();
+    });
+  });
+
+  describe('Livestock Breeding System (Ghép Đôi Sinh Sản)', () => {
+    const now = 10000000;
+
+    it('defines breeding cooldown for all animal species', () => {
+      expect(BREEDING_MIN_HAPPINESS).toBe(80);
+      expect(BREEDING_HAPPINESS_COST).toBe(20);
+      expect(ANIMALS.chicken.breedingCooldownSec).toBeGreaterThan(0);
+      expect(ANIMALS.duck.breedingCooldownSec).toBeGreaterThan(0);
+      expect(ANIMALS.cow.breedingCooldownSec).toBeGreaterThan(0);
+      expect(ANIMALS.pig.breedingCooldownSec).toBeGreaterThan(0);
+      expect(ANIMALS.goat.breedingCooldownSec).toBeGreaterThan(0);
+      expect(ANIMALS.sheep.breedingCooldownSec).toBeGreaterThan(0);
+    });
+
+    it('requires adult stage, happiness >= 80, well-fed, and cooldown elapsed', () => {
+      const candidate: BreedingCandidate = {
+        id: 'cow_1',
+        type: 'cow',
+        displayName: 'Bò Sữa Đồng Nai',
+        stage: 'adult',
+        happiness: 85,
+        isDead: false,
+        isHungry: false,
+        bredAt: null,
+      };
+
+      // Fully eligible
+      expect(getAnimalBreedingStatus(candidate, now).canBreed).toBe(true);
+
+      // Ineligible: baby or growing
+      expect(getAnimalBreedingStatus({ ...candidate, stage: 'baby' }, now).canBreed).toBe(false);
+      expect(getAnimalBreedingStatus({ ...candidate, stage: 'growing' }, now).canBreed).toBe(false);
+
+      // Ineligible: happiness < 80
+      expect(getAnimalBreedingStatus({ ...candidate, happiness: 79 }, now).canBreed).toBe(false);
+
+      // Ineligible: hungry
+      expect(getAnimalBreedingStatus({ ...candidate, isHungry: true }, now).canBreed).toBe(false);
+
+      // Ineligible: dead
+      expect(getAnimalBreedingStatus({ ...candidate, isDead: true }, now).canBreed).toBe(false);
+
+      // Ineligible: in cooldown (cooldown for cow is 600s)
+      const inCooldown = getAnimalBreedingStatus(
+        { ...candidate, bredAt: now - 300 * 1000 }, // 300s ago
+        now,
+      );
+      expect(inCooldown.canBreed).toBe(false);
+      expect(inCooldown.cooldownRemainingSec).toBe(300);
+
+      // Eligible once cooldown passed (700s ago)
+      expect(getAnimalBreedingStatus({ ...candidate, bredAt: now - 700 * 1000 }, now).canBreed).toBe(true);
+    });
+
+    it('validates pair compatibility: same species, distinct animals, farm capacity', () => {
+      const parentA: BreedingCandidate = {
+        id: 'cow_1',
+        type: 'cow',
+        displayName: 'Bò Mẹ 1',
+        stage: 'adult',
+        happiness: 90,
+        isDead: false,
+        isHungry: false,
+        bredAt: null,
+      };
+      const parentB: BreedingCandidate = {
+        id: 'cow_2',
+        type: 'cow',
+        displayName: 'Bò Ba 2',
+        stage: 'adult',
+        happiness: 85,
+        isDead: false,
+        isHungry: false,
+        bredAt: null,
+      };
+
+      // Valid pair
+      expect(canBreedAnimals(parentA, parentB, now, 10, BREEDING_MAX_FARM_ANIMALS).ok).toBe(true);
+
+      // Cannot breed with itself
+      expect(canBreedAnimals(parentA, parentA, now, 10, BREEDING_MAX_FARM_ANIMALS).ok).toBe(false);
+
+      // Cannot breed different species
+      const chickenPartner: BreedingCandidate = {
+        ...parentB,
+        id: 'chick_2',
+        type: 'chicken',
+      };
+      expect(canBreedAnimals(parentA, chickenPartner, now, 10, BREEDING_MAX_FARM_ANIMALS).ok).toBe(false);
+
+      // Farm capacity full (>= 24)
+      expect(canBreedAnimals(parentA, parentB, now, 24, BREEDING_MAX_FARM_ANIMALS).ok).toBe(false);
+    });
+  });
+
+  describe('Farm Facility Capacity & Trough Upgrades', () => {
+    it('handles livestock pen capacity expansion tiers', () => {
+      expect(BASE_LIVESTOCK_CAPACITY).toBe(24);
+      expect(LIVESTOCK_CAPACITY_TIERS).toHaveLength(4);
+
+      // Base capacity next tier is 32
+      const tier1 = getNextLivestockCapacityTier(24);
+      expect(tier1).not.toBeNull();
+      expect(tier1?.capacity).toBe(32);
+      expect(tier1?.costCoins).toBe(15000);
+
+      // Tier 1 next is 40
+      const tier2 = getNextLivestockCapacityTier(32);
+      expect(tier2?.capacity).toBe(40);
+      expect(tier2?.costCoins).toBe(35000);
+
+      // Tier 2 next is 50
+      const tier3 = getNextLivestockCapacityTier(40);
+      expect(tier3?.capacity).toBe(50);
+      expect(tier3?.costCoins).toBe(75000);
+
+      // Max tier has no next tier
+      expect(getNextLivestockCapacityTier(50)).toBeNull();
+    });
+
+    it('calculates trough capacity multipliers and next upgrade tiers', () => {
+      expect(TROUGH_UPGRADE_TIERS).toHaveLength(3);
+
+      // Level 1: base (poultry = 40)
+      expect(getTroughCapacityForLevel('poultry', 1)).toBe(40);
+      // Level 2: 40 * 1.75 = 70
+      expect(getTroughCapacityForLevel('poultry', 2)).toBe(70);
+      // Level 3: 40 * 2.5 = 100
+      expect(getTroughCapacityForLevel('poultry', 3)).toBe(100);
+
+      // Cattle base: 30
+      expect(getTroughCapacityForLevel('cattle', 1)).toBe(30);
+      expect(getTroughCapacityForLevel('cattle', 2)).toBe(53); // Math.round(30 * 1.75) = 53
+      expect(getTroughCapacityForLevel('cattle', 3)).toBe(75); // Math.round(30 * 2.5) = 75
+
+      // Next upgrade from level 1
+      const nextPoultry = getNextTroughUpgrade('poultry', 1);
+      expect(nextPoultry).not.toBeNull();
+      expect(nextPoultry?.level).toBe(2);
+      expect(nextPoultry?.capacity).toBe(70);
+      expect(nextPoultry?.costCoins).toBe(5000);
+
+      // Next upgrade from level 2
+      const nextPoultryL3 = getNextTroughUpgrade('poultry', 2);
+      expect(nextPoultryL3?.level).toBe(3);
+      expect(nextPoultryL3?.capacity).toBe(100);
+      expect(nextPoultryL3?.costCoins).toBe(12000);
+
+      // Level 3 is max
+      expect(getNextTroughUpgrade('poultry', 3)).toBeNull();
     });
   });
 });

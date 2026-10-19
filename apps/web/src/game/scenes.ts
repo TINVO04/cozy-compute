@@ -1,4 +1,5 @@
 import {
+  ANIMALS,
   APARTMENT_COLS,
   APARTMENT_ROWS,
   BLOCKERS,
@@ -14,6 +15,7 @@ import {
   BIDA_BLOCKERS,
   BIDA_COLS,
   BIDA_ROWS,
+  CROPS,
   DNTU_BLOCKERS,
   DNTU_COLS,
   DNTU_ROWS,
@@ -26,6 +28,7 @@ import {
   FARM_PLOT_TOTAL,
   getFarmPlotRect,
   getPlotUnlockPrice,
+  isWeatherRainy,
   FARM_POIS,
   FARM_GARDEN,
   OCEAN_BLOCKERS,
@@ -57,6 +60,7 @@ import {
   paintGoatPen,
   paintCattlePasture,
   paintPlotTile,
+  paintWelcomeMat,
 } from '../art/farm-props';
 import { api } from '../lib/api';
 import { APT_ART_SIDE, APT_ART_TOP } from '../art/apartment';
@@ -106,8 +110,8 @@ import { BridgeTraffic } from './bridge-traffic';
 import { RiverVesselTraffic } from './river-vessel-traffic';
 import { RIVER_BRIDGE } from '@cozy/game-data';
 import { boatPose } from './river-motion';
-import { FarmLivestockManager } from './farm-livestock';
-import { FarmLivingPropsSystem } from './farm-living-props';
+import { FarmLivestockManager, type ServerLivestockData } from './farm-livestock';
+import { FarmLivingPropsSystem, type ServerPondFishData } from './farm-living-props';
 import { loadTiledFarmMap } from './tiled-farm';
 
 /** Keyboard input is ignored while typing in React inputs. */
@@ -2024,6 +2028,9 @@ export class FarmScene extends WorldScene {
   private precipSystem: PrecipitationSystem | null = null;
   private ambientOverlay: Phaser.GameObjects.Rectangle | null = null;
   private farmLanternGlows: Phaser.GameObjects.Image[] = [];
+  private tractorCooldowns = new Map<number, number>();
+  private tractorBusy = false;
+  private lastWeatherRainy = false;
 
   constructor() {
     super('farm');
@@ -2108,51 +2115,24 @@ export class FarmScene extends WorldScene {
   }
 
   private nearestInteraction(x: number, y: number) {
-    // Check nearest animated animal first (within 48px)
-    const animal = this.livestock?.getNearestAnimal(x, y, 48);
-    if (animal) {
-      const kind =
-        (animal.getData('kind') as string) || (animal.texture.key === 'sprout:cow' ? 'cow' : 'chicken');
-      const role = animal.getData('role') as string | undefined;
+    // Check nearest animated animal entity first (within 48px)
+    const entity = this.livestock?.getNearestEntity(x, y, 48);
+    if (entity) {
+      const def = Object.values(ANIMALS).find((a) => a.type === entity.data.type);
+      const isHungry = entity.data.isHungry || (entity.data.hungerRemainingSec ?? 0) <= 0;
+      const canYield = entity.data.canYield;
+      const label = canYield
+        ? `Thu hoạch ${def?.yieldName ?? 'sản phẩm'}`
+        : isHungry
+          ? `Cho ăn ${def?.feedName ?? 'thức ăn'}`
+          : `Vuốt ve ${entity.data.displayName}`;
 
-      const label =
-        kind === 'duck'
-          ? 'Ngắm đàn vịt'
-          : kind === 'cow'
-            ? 'Vuốt ve bò sữa'
-            : kind === 'pig'
-              ? 'Xoa đầu heo mọi'
-              : kind === 'goat'
-                ? 'Vuốt ve dê núi'
-                : kind === 'sheep'
-                  ? 'Sờ lông cừu'
-                  : role === 'rooster'
-                    ? 'Vuốt ve gà trống'
-                    : role === 'chick'
-                      ? 'Vuốt ve gà con'
-                      : 'Vuốt ve gà mái';
-      const quote =
-        kind === 'duck'
-          ? 'Đàn vịt nối đuôi nhau bơi giữa những bông sen. 🦆'
-          : kind === 'cow'
-            ? 'Bò sữa thong thả nhai cỏ mật! 🐄'
-            : kind === 'pig'
-              ? 'Heo mọi ủi bùn vui vẻ! 🐷'
-              : kind === 'goat'
-                ? 'Dê bách thảo nhai rơm ngon lành! 🐐'
-                : kind === 'sheep'
-                  ? 'Cừu Phan Rang bông xù đáng yêu! 🐑'
-                  : role === 'rooster'
-                    ? 'Gà trống gáy vang ó o o đón bình minh! 🐓'
-                    : role === 'chick'
-                      ? 'Gà con lon ton mổ thóc cùng mẹ! 🐥'
-                      : 'Gà mái nhảy ổ cục ta cục tác đẻ trứng! 🐔';
       return {
-        x: animal.x,
-        y: animal.y,
+        x: entity.sprite.x,
+        y: entity.sprite.y,
         label,
         run: () => {
-          this.livestock?.interactWithAnimal(animal, quote);
+          void this.livestock?.handleAnimalClick(entity);
         },
       };
     }
@@ -2162,25 +2142,26 @@ export class FarmScene extends WorldScene {
         !best || Math.hypot(action.x - x, action.y - y) < Math.hypot(best.x - x, best.y - y) ? action : best,
       undefined,
     );
-    return nearest && Math.hypot(nearest.x - x, nearest.y - y) <= 2.5 * TILE ? nearest : undefined;
+    return nearest && Math.hypot(nearest.x - x, nearest.y - y) <= 48 ? nearest : undefined;
   }
 
   protected buildWorld() {
     this.tiledMap = loadTiledFarmMap(this).map;
 
     // 2. Animated Livestock Manager (Chickens, Ducks, Cows, Pigs, Goats, Sheep)
-    const livestock = new FarmLivestockManager(this);
+    const livestock = new FarmLivestockManager(this, () => void this.fetchFarmState());
     this.livestock = livestock;
-    void livestock.loadAssets().then(() => {
-      if (this.livestock === livestock && !this.exiting && this.sys) {
-        livestock.spawnLivestock();
-      }
-    });
+    void livestock.loadAssets();
 
     // 3. Living Props & Ambient Dynamics (water caustics, sparkles, chimney smoke, lanterns)
     this.livingProps = new FarmLivingPropsSystem(this);
     this.livingProps.init(FARM_POIS.aquaculture_pond);
     for (const tree of decorateFarm(this)) this.livingProps.registerTree(tree);
+
+    // Welcome Mat texture for building doorways
+    if (!this.textures.exists('farm:welcome_mat')) {
+      this.textures.addCanvas('farm:welcome_mat', paintWelcomeMat());
+    }
 
     // 4. Props & Buildings
     if (!this.textures.exists('farm:shop_bac_sau')) {
@@ -2196,16 +2177,27 @@ export class FarmScene extends WorldScene {
       useUi.getState().setPanel('farm-shop');
     };
     shopSprite.setInteractive({ useHandCursor: true }).on('pointerdown', openShop);
-    this.interactAt(shopP.x + shopP.w / 2, shopP.y + shopP.h + 6, 'Tiệm Bác Sáu', openShop);
-    const greenhouse = this.children.getByName('farm:estate:greenhouse') as Phaser.GameObjects.Image;
-    greenhouse.setInteractive({ useHandCursor: true }).on('pointerdown', openShop);
+    const greenhouseSprite = this.children.getByName(
+      'farm:estate:greenhouse',
+    ) as Phaser.GameObjects.Image | null;
+    greenhouseSprite?.setInteractive({ useHandCursor: true }).on('pointerdown', openShop);
+    // Doorway welcome mat with click and 48px proximity [E]
+    this.add
+      .image(shopP.x + shopP.w / 2, shopP.y + shopP.h + 2, 'farm:welcome_mat')
+      .setOrigin(0.5, 0.5)
+      .setDepth(-4)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', openShop);
+    this.interactAt(shopP.x + shopP.w / 2, shopP.y + shopP.h + 2, 'Mở Tiệm Bác Sáu', openShop);
+
     const nursery = FARM_GARDEN.greenhouse;
-    this.interactAt(
-      nursery.x + nursery.w / 2,
-      nursery.y + nursery.h + 10,
-      'Mua hạt giống ở vườn ươm',
-      openShop,
-    );
+    this.add
+      .image(nursery.x + nursery.w / 2, nursery.y + nursery.h + 2, 'farm:welcome_mat')
+      .setOrigin(0.5, 0.5)
+      .setDepth(-4)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', openShop);
+    this.interactAt(nursery.x + nursery.w / 2, nursery.y + nursery.h + 2, 'Vườn ươm giống', openShop);
 
     // Silo Warehouse
     if (!this.textures.exists('farm:silo_warehouse')) {
@@ -2221,7 +2213,13 @@ export class FarmScene extends WorldScene {
       useUi.getState().setPanel('farm-silo');
     };
     siloSprite.setInteractive({ useHandCursor: true }).on('pointerdown', openSilo);
-    this.interactAt(siloP.x + siloP.w / 2, siloP.y + siloP.h + 10, 'Nhà kho Silo', openSilo);
+    this.add
+      .image(siloP.x + siloP.w / 2, siloP.y + siloP.h + 2, 'farm:welcome_mat')
+      .setOrigin(0.5, 0.5)
+      .setDepth(-4)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', openSilo);
+    this.interactAt(siloP.x + siloP.w / 2, siloP.y + siloP.h + 2, 'Mở Kho Silo', openSilo);
 
     // All pens share terrain depth (-6), allowing animals and players to stand inside without being obscured.
     for (const [id, painter] of [
@@ -2238,33 +2236,50 @@ export class FarmScene extends WorldScene {
         .setOrigin(0)
         .setDepth(-6);
     }
-    const poultryP = FARM_POIS.poultry_coop;
-    this.interactAt(poultryP.x + poultryP.w / 2, poultryP.y + poultryP.h + 10, 'Chuồng gia cầm', () => {
+    // Pens and pastures with doorway zones, welcome mats, and HUD interaction prompts
+    const openPen = (facility: 'poultry' | 'cattle' | 'pig' | 'goat') => {
       play('pop');
+      useUi.getState().setLivestockFacility(facility);
       useUi.getState().setPanel('farm-care');
-    });
+    };
+
+    const poultryP = FARM_POIS.poultry_coop;
+    this.add
+      .zone(poultryP.x + poultryP.w / 2, poultryP.y + poultryP.h + 2, 40, 24)
+      .setOrigin(0.5, 0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => openPen('poultry'));
+    this.interactAt(poultryP.x + poultryP.w / 2, poultryP.y + poultryP.h + 2, 'Mở Chuồng gia cầm', () =>
+      openPen('poultry'),
+    );
 
     const cattleP = FARM_POIS.cattle_pasture;
-    this.interactAt(cattleP.x + cattleP.w / 2, cattleP.y + cattleP.h + 10, 'Đồng cỏ bò sữa', () => {
-      play('pop');
-      useUi.getState().toast({
-        kind: 'info',
-        title: 'Đồng Cỏ Bò Sữa',
-        body: 'Đàn bò sữa gặm cỏ thanh bình bên máng cỏ khô.',
-      });
-    });
+    this.add
+      .zone(cattleP.x + cattleP.w / 2, cattleP.y + cattleP.h + 2, 40, 24)
+      .setOrigin(0.5, 0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => openPen('cattle'));
+    this.interactAt(cattleP.x + cattleP.w / 2, cattleP.y + cattleP.h + 2, 'Mở Đồng cỏ bò sữa', () =>
+      openPen('cattle'),
+    );
 
     const pigP = FARM_POIS.pig_pen;
-    this.interactAt(pigP.x + pigP.w / 2, pigP.y + pigP.h + 10, 'Chuồng heo', () => {
-      play('pop');
-      useUi.getState().setPanel('farm-care');
-    });
+    this.add
+      .zone(pigP.x + pigP.w / 2, pigP.y + pigP.h + 2, 40, 24)
+      .setOrigin(0.5, 0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => openPen('pig'));
+    this.interactAt(pigP.x + pigP.w / 2, pigP.y + pigP.h + 2, 'Mở Chuồng heo mọi', () => openPen('pig'));
 
     const goatP = FARM_POIS.goat_pen;
-    this.interactAt(goatP.x + goatP.w / 2, goatP.y + goatP.h + 10, 'Chuồng dê & cừu', () => {
-      play('pop');
-      useUi.getState().setPanel('farm-care');
-    });
+    this.add
+      .zone(goatP.x + goatP.w / 2, goatP.y + goatP.h + 2, 40, 24)
+      .setOrigin(0.5, 0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => openPen('goat'));
+    this.interactAt(goatP.x + goatP.w / 2, goatP.y + goatP.h + 2, 'Mở Chuồng dê & cừu', () =>
+      openPen('goat'),
+    );
 
     // 5. Farm Weather & Atmospheric Lighting System
     this.ambientOverlay = this.add
@@ -2295,15 +2310,59 @@ export class FarmScene extends WorldScene {
       useUi.getState().toast({ kind: 'info', title: 'Ghế nghỉ chân', body: 'Nghỉ một lát dưới tán cây.' });
     });
 
-    this.interactAt(
-      FARM_POIS.aquaculture_pond.x - 16,
-      FARM_POIS.aquaculture_pond.y + 128,
-      'Cầu tàu câu cá',
-      () => {
+    const pondDockX = FARM_POIS.aquaculture_pond.x - 16;
+    const pondDockY = FARM_POIS.aquaculture_pond.y + 128;
+    const openPond = () => {
+      play('pop');
+      useUi.getState().setLivestockFacility('pond');
+      useUi.getState().setPanel('farm-care');
+    };
+    this.add
+      .zone(pondDockX, pondDockY, 48, 36)
+      .setOrigin(0.5, 0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', openPond);
+    this.interactAt(pondDockX, pondDockY, 'Cầu tàu ao sen (Nuôi cá & Thủy sản)', openPond);
+
+    // 7. Interactive Mountable Farm Tractor (Xe máy cày sân kho Silo)
+    const tractorX = FARM_GARDEN.tractor.x + FARM_GARDEN.tractor.w / 2;
+    const tractorY = FARM_GARDEN.tractor.y + FARM_GARDEN.tractor.h;
+    const toggleTractorMount = () => {
+      const currentVehicle = this.layer?.self?.vehicle;
+      if (currentVehicle) {
         play('pop');
-        useUi.getState().setPanel('farm-care');
-      },
-    );
+        net.send('vehicle:toggle', {});
+        useUi.getState().toast({
+          kind: 'info',
+          title: '🚜 Đã xuống xe máy cày',
+          body: 'Xe máy cày đã được đậu lại an toàn.',
+        });
+      } else {
+        const ownsTractor = useUi.getState().ownsTractor;
+        if (!ownsTractor) {
+          play('error');
+          useUi.getState().toast({
+            kind: 'info',
+            title: '🚜 Máy Cày Nông Nghiệp',
+            body: 'Bạn chưa sở hữu Máy Cày Farm! Hãy ghé Tiệm Bác Sáu để mua xe (Giá: 1.500 Xu).',
+          });
+          return;
+        }
+        play('tractor_engine');
+        net.send('vehicle:toggle', { vehicle: 'tractor_farm' });
+        useUi.getState().toast({
+          kind: 'reward',
+          title: '🚜 Đã lên xe máy cày Farm Trac!',
+          body: 'Dùng Bảng Điều Khiển bên dưới để chọn chế độ Thu Hoạch, Gieo Hạt, hoặc Cày Xới! (Nhấn V để xuống xe)',
+        });
+      }
+    };
+
+    const parkedTractor = this.children.getByName('farm:parked_tractor') as Phaser.GameObjects.Image | null;
+    if (parkedTractor) {
+      parkedTractor.setInteractive({ useHandCursor: true }).on('pointerdown', toggleTractorMount);
+    }
+    this.interactAt(tractorX, tractorY + 6, 'Lái xe máy cày', toggleTractorMount);
 
     // Gate Exit to Town
     this.interactAt(96, 130, 'Về thị trấn', () => {
@@ -2374,6 +2433,9 @@ export class FarmScene extends WorldScene {
       const res = await api<{
         farm: { isPublic: boolean; hasPassword: boolean };
         plots: FarmPlotData[];
+        animals?: ServerLivestockData[];
+        pondFishes?: ServerPondFishData[];
+        warehouse?: { items: Array<{ id: string; itemId: string; quantity: number }> };
       }>(
         useUi.getState().room.ownerId === useUi.getState().myUserId
           ? '/api/farm/me'
@@ -2383,6 +2445,12 @@ export class FarmScene extends WorldScene {
         this.plotsData = res.plots;
         this.updatePlotsVisuals();
       }
+      if (res?.animals && this.livestock) {
+        this.livestock.syncAnimals(res.animals, res.warehouse?.items);
+      }
+      if (res?.pondFishes && this.livingProps) {
+        this.livingProps.syncPondFishes(res.pondFishes);
+      }
     } catch {
       // offline / not logged in
     } finally {
@@ -2391,10 +2459,11 @@ export class FarmScene extends WorldScene {
   }
 
   private updatePlotsVisuals() {
+    const isRaining = isWeatherRainy(useUi.getState().weather);
     for (const p of this.plotsData) {
       const sprite = this.plotSprites.get(p.plotIndex);
       if (!sprite) continue;
-      const isWatered = !!p.wateredAt;
+      const isWatered = !!p.wateredAt || isRaining;
       const texKey = `farm:plot_dyn:${p.plotIndex}:${p.isUnlocked}:${isWatered}:${p.cropId ?? 'none'}:${p.growthStage ?? 'none'}`;
       if (!this.textures.exists(texKey)) {
         this.textures.addCanvas(
@@ -2503,6 +2572,12 @@ export class FarmScene extends WorldScene {
     this.livingProps?.update(time, delta);
     this.precipSystem?.update(time, delta);
 
+    const isRainingNow = isWeatherRainy(useUi.getState().weather);
+    if (isRainingNow !== this.lastWeatherRainy) {
+      this.lastWeatherRainy = isRainingNow;
+      this.updatePlotsVisuals();
+    }
+
     if (this.ambientOverlay) {
       const weather = useUi.getState().weather;
       const target = calculateBienHoaLighting(weather.solarHour, weather);
@@ -2520,8 +2595,139 @@ export class FarmScene extends WorldScene {
       self && !typing() && !useUi.getState().panel ? this.nearestInteraction(self.x, self.y) : undefined;
     this.interactionHint?.setVisible(!!action);
     if (action && self && this.interactionHint) {
-      this.interactionHint.setText('E · ' + action.label);
+      this.interactionHint.setText('[E] · ' + action.label);
       this.interactionHint.setPosition(self.x, self.y - 42);
+    }
+
+    // Tractor mechanics: Drive over plots to auto-harvest mature crops or auto-plant seeds
+    const currentVehicle = this.layer?.self?.vehicle;
+    const isTractor =
+      currentVehicle &&
+      (currentVehicle.includes('tractor') ||
+        currentVehicle === 'tractor_farm' ||
+        currentVehicle === 'cars/tractor-farm');
+
+    const parkedTractor = this.children.getByName('farm:parked_tractor') as Phaser.GameObjects.Image | null;
+    if (parkedTractor) {
+      parkedTractor.setAlpha(isTractor ? 0.25 : 1.0);
+    }
+
+    if (isTractor && self && !this.tractorBusy) {
+      const now = Date.now();
+      const tractorMode = useUi.getState().tractorMode;
+      const targetSeedId = useUi.getState().tractorSeedId;
+      const isRaining = isWeatherRainy(useUi.getState().weather);
+
+      if (tractorMode !== 'cruise') {
+        for (let i = 0; i < FARM_PLOT_TOTAL; i++) {
+          const r = getFarmPlotRect(i);
+          const cx = r.x + r.w / 2;
+          const cy = r.y + r.h / 2;
+          const dist = Math.hypot(self.x - cx, self.y - cy);
+          if (dist <= 26) {
+            const cd = this.tractorCooldowns.get(i) ?? 0;
+            if (now < cd) continue;
+
+            const plot = this.plotsData.find((p) => p.plotIndex === i);
+            if (!plot || !plot.isUnlocked) continue;
+
+            // Chế độ 1: Thu hoạch tự động (Chỉ thu hoạch khi cây đã chín mature)
+            if (tractorMode === 'harvest' && plot.cropId && plot.growthStage === 'mature') {
+              this.tractorCooldowns.set(i, now + 3000);
+              this.tractorBusy = true;
+              void (async () => {
+                try {
+                  await api('/api/farm/plots/harvest', {
+                    method: 'POST',
+                    body: { plotIndex: i },
+                  });
+                  play('farm_harvest');
+                  useUi.getState().toast({
+                    kind: 'reward',
+                    title: '🚜 Máy Cày Thu Hoạch Tự Động!',
+                    body: `Đã thu hoạch nông sản ô đất #${i + 1} vào kho Silo.`,
+                  });
+                  await this.fetchFarmState();
+                } catch {
+                  // Ignore transient errors
+                } finally {
+                  this.tractorBusy = false;
+                }
+              })();
+              break;
+            }
+
+            // Chế độ 2: Gieo hạt tự động (Gieo chính xác hạt giống người chơi đã chọn)
+            if (tractorMode === 'plant' && !plot.cropId) {
+              this.tractorCooldowns.set(i, now + 3000);
+              this.tractorBusy = true;
+              void (async () => {
+                try {
+                  const meRes = await api<{
+                    warehouse?: { items?: Array<{ itemId: string; quantity: number }> };
+                  }>('/api/farm/me');
+                  const seedItem = meRes?.warehouse?.items?.find(
+                    (it) => it.itemId === targetSeedId && it.quantity > 0,
+                  );
+                  if (seedItem) {
+                    await api('/api/farm/plots/plant', {
+                      method: 'POST',
+                      body: { plotIndex: i, seedItemId: targetSeedId },
+                    });
+                    play('farm_water');
+                    const cropDef = Object.values(CROPS).find((c) => c.seedItemId === targetSeedId);
+                    useUi.getState().toast({
+                      kind: 'info',
+                      title: '🚜 Máy Cày Gieo Hạt Tự Động!',
+                      body: isRaining
+                        ? `Đã gieo ${cropDef?.name ?? targetSeedId} vào ô đất #${i + 1}. Trời đang mưa, cây được ngấm nước tự nhiên!`
+                        : `Đã gieo ${cropDef?.name ?? targetSeedId} vào ô đất #${i + 1}.`,
+                    });
+                    await this.fetchFarmState();
+                  } else {
+                    useUi.getState().toast({
+                      kind: 'error',
+                      title: '🚜 Hết Hạt Giống Trong Kho Silo',
+                      body: 'Kho Silo không còn hạt giống đã chọn. Hãy ghé Tiệm Bác Sáu để mua thêm!',
+                    });
+                  }
+                } catch {
+                  // Ignore transient errors
+                } finally {
+                  this.tractorBusy = false;
+                }
+              })();
+              break;
+            }
+
+            // Chế độ 3: Cày xới & Tưới nước (Nếu trời đang mưa thì không cần tưới)
+            if (tractorMode === 'water' && !isRaining && plot.cropId && !plot.wateredAt) {
+              this.tractorCooldowns.set(i, now + 3000);
+              this.tractorBusy = true;
+              void (async () => {
+                try {
+                  await api('/api/farm/plots/water', {
+                    method: 'POST',
+                    body: { plotIndex: i },
+                  });
+                  play('farm_water');
+                  useUi.getState().toast({
+                    kind: 'info',
+                    title: '🚜 Máy Cày Tưới Nước!',
+                    body: `Đã tưới đẫm nước cho ô đất #${i + 1}.`,
+                  });
+                  await this.fetchFarmState();
+                } catch {
+                  // Ignore transient errors
+                } finally {
+                  this.tractorBusy = false;
+                }
+              })();
+              break;
+            }
+          }
+        }
+      }
     }
   }
 }

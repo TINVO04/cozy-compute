@@ -1,6 +1,8 @@
 import {
   ANIMALS,
   BAC_SAU_SHOP_ITEMS,
+  computeAnimalGrowthStage,
+  computeAnimalHunger,
   CROPS,
   POND_FISHES,
   type RESIDENT_QUESTS,
@@ -17,7 +19,16 @@ import { PartyPanel } from './PartyPanel';
 
 type Tab = 'quests' | 'farm' | 'kitchen' | 'aquarium' | 'bida' | 'community';
 interface Farm {
-  animals: { id: string; type: string; name: string; fedAt: string | null; lastYieldAt: string | null }[];
+  animals: {
+    id: string;
+    type: string;
+    name: string;
+    createdAt?: string;
+    fedAt: string | null;
+    growthAccumSec?: number;
+    isDead?: boolean;
+    lastYieldAt: string | null;
+  }[];
   pondFishes: { id: string; species: string; fedAt: string | null; weightKg: number }[];
   warehouse: { items: { itemId: string; quantity: number }[] };
 }
@@ -196,38 +207,103 @@ export function ResidentPanel({
             {farm.data?.animals.map((a) => {
               const def = Object.values(ANIMALS).find((d) => d.type === a.type);
               if (!def) return null;
-              const pending = !!a.fedAt && (!a.lastYieldAt || new Date(a.lastYieldAt) < new Date(a.fedAt));
+              const nowMs = Date.now();
+              const hunger = computeAnimalHunger(
+                a.type,
+                a.fedAt,
+                a.lastYieldAt,
+                nowMs,
+                false,
+                a.createdAt || null,
+              );
+              const growth = computeAnimalGrowthStage(
+                a.type,
+                a.createdAt || null,
+                nowMs,
+                a.fedAt,
+                a.growthAccumSec || 0,
+              );
+              const isDead = hunger.isDead || growth.isDead;
+              const isAdult = !isDead && growth.stage === 'adult';
+              const pending =
+                !isDead && !!a.fedAt && (!a.lastYieldAt || new Date(a.lastYieldAt) < new Date(a.fedAt));
               const seconds = pending
                 ? Math.max(
                     0,
-                    Math.ceil(
-                      (new Date(a.fedAt!).getTime() + def.feedIntervalSec * 1000 - Date.now()) / 1000,
-                    ),
+                    Math.ceil((new Date(a.fedAt!).getTime() + def.feedIntervalSec * 1000 - nowMs) / 1000),
                   )
                 : 0;
+              const starveMins = Math.floor(hunger.starvationRemainingSec / 60);
+              const starveSecs = hunger.starvationRemainingSec % 60;
+
               return (
-                <article className="resident-card" key={a.id}>
-                  <h3>{a.name}</h3>
-                  <p>
-                    {pending
-                      ? seconds
-                        ? `Còn ${seconds} giây đến kỳ ${def.yieldName}.`
-                        : `Đã có ${def.yieldName}.`
-                      : `Cần ${def.feedName} · Có ${stock(def.feedItemId)}`}
-                  </p>
-                  <Button
-                    disabled={busy || (pending ? seconds > 0 : stock(def.feedItemId) < 1)}
-                    onClick={() =>
-                      void act(
-                        pending ? '/api/farm/care' : '/api/farm/animals/feed',
-                        pending
-                          ? { kind: 'collect', id: a.id }
-                          : { animalId: a.id, feedItemId: def.feedItemId },
+                <article
+                  className="resident-card"
+                  key={a.id}
+                  style={
+                    isDead ? { borderColor: '#ef4444', background: 'rgba(239, 68, 68, 0.08)' } : undefined
+                  }
+                >
+                  <h3>
+                    {growth.displayName}{' '}
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: isDead ? '#ef4444' : isAdult ? '#10b981' : '#f59e0b',
+                      }}
+                    >
+                      (
+                      {isDead
+                        ? '💀 Đã chết vì đói'
+                        : isAdult
+                          ? 'Trưởng thành'
+                          : !a.fedAt && !a.growthAccumSec
+                            ? 'Cần cho ăn để lớn (0%)'
+                            : `Đang lớn: ${growth.progressPercent}%`}
                       )
-                    }
-                  >
-                    {pending ? 'Thu sản phẩm' : 'Cho ăn'}
-                  </Button>
+                    </span>
+                  </h3>
+                  <p>
+                    {isDead ? (
+                      <span style={{ color: '#ef4444', fontWeight: 600 }}>
+                        Vật nuôi đã chết do bị bỏ đói quá lâu. Hãy dọn xác để giải phóng chuồng.
+                      </span>
+                    ) : pending ? (
+                      seconds ? (
+                        `Còn ${seconds} giây đến kỳ ${def.yieldName}.`
+                      ) : (
+                        `Đã có ${def.yieldName}.`
+                      )
+                    ) : hunger.isHungry ? (
+                      <span style={{ color: '#f87171' }}>
+                        ⚠️ Đang đói! Sẽ chết sau: {starveMins}p {starveSecs}s · Cần {def.feedName} (Có{' '}
+                        {stock(def.feedItemId)})
+                      </span>
+                    ) : (
+                      `Cần ${def.feedName} · Có ${stock(def.feedItemId)}`
+                    )}
+                  </p>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <Button
+                      disabled={busy || isDead || (pending ? seconds > 0 : stock(def.feedItemId) < 1)}
+                      onClick={() =>
+                        void act(
+                          pending ? '/api/farm/care' : '/api/farm/animals/feed',
+                          pending
+                            ? { kind: 'collect', id: a.id }
+                            : { animalId: a.id, feedItemId: def.feedItemId },
+                        )
+                      }
+                    >
+                      {isDead ? 'Đã chết' : pending ? 'Thu sản phẩm' : 'Cho ăn'}
+                    </Button>
+                    <Button
+                      disabled={busy}
+                      onClick={() => void act('/api/farm/care', { kind: 'sell', id: a.id })}
+                    >
+                      {isDead ? 'Dọn xác (0 Xu)' : `Bán (${growth.sellPrice} Xu)`}
+                    </Button>
+                  </div>
                 </article>
               );
             })}
